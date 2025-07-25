@@ -1,0 +1,16 @@
+{
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": ["sequentialThinking", "context7", "figma-dev-mode-mcp-server"],
+  "hooks": {
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pnpm format"
+          }
+        ]
+      }
+    ]
+  }
+}

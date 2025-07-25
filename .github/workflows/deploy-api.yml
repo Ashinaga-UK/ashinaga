@@ -1,0 +1,343 @@
+name: Deploy API
+
+# This workflow deploys the API to different environments based on branch:
+# - Push to 'test' branch -> Deploy to test environment
+# - Push to 'main' branch -> Deploy to prod environment
+# - Manual workflow_dispatch -> Deploy to selected environment
+#
+# Required GitHub Secrets:
+# - AWS_ROLE_ARN_TEST: IAM role for test environment
+# - AWS_ROLE_ARN_PROD: IAM role for prod environment
+# Note: Database passwords are retrieved from AWS Secrets Manager for test/prod,
+#       playground uses hardcoded password from Terraform variables
+#
+# Environment Protection Rules:
+# Configure in GitHub Settings > Environments:
+# - test: Optional approval, can be automatic
+# - prod: Required approval from designated reviewers
+
+on:
+  push:
+    branches:
+      - test
+      - main
+    paths:
+      - 'apps/api/**'
+      - 'packages/**'
+      - '.github/workflows/deploy-api.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'test'
+        type: choice
+        options:
+        - test
+        - prod
+
+concurrency:
+  group: deploy-api-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: eu-west-3
+
+jobs:
+  # Determine environment based on branch
+  determine-environment:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.set-env.outputs.environment }}
+    steps:
+      - name: Determine environment
+        id: set-env
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" = "refs/heads/test" ]; then
+            echo "environment=test" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "environment=prod" >> $GITHUB_OUTPUT
+          else
+            echo "Unknown branch: ${{ github.ref }}"
+            exit 1
+          fi
+
+  deploy:
+    needs: determine-environment
+    runs-on: ubuntu-latest
+    environment: ${{ needs.determine-environment.outputs.environment }}
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ needs.determine-environment.outputs.environment == 'test' && secrets.AWS_ROLE_ARN_TEST || secrets.AWS_ROLE_ARN_PROD }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Generate image tags
+      id: meta
+      run: |
+        ENVIRONMENT="${{ needs.determine-environment.outputs.environment }}"
+        REPOSITORY_URI="${{ steps.login-ecr.outputs.registry }}/ashinaga-api-${ENVIRONMENT}"
+        
+        # Generate tags
+        TAGS="${REPOSITORY_URI}:latest"
+        TAGS="${TAGS},${REPOSITORY_URI}:${GITHUB_SHA::8}"
+        TAGS="${TAGS},${REPOSITORY_URI}:${GITHUB_REF_NAME}-${GITHUB_SHA::8}"
+        
+        # Add timestamp tag
+        TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+        TAGS="${TAGS},${REPOSITORY_URI}:${TIMESTAMP}"
+        
+        echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+        echo "repository_uri=${REPOSITORY_URI}" >> $GITHUB_OUTPUT
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: apps/api/Dockerfile
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: linux/amd64
+
+    - name: Install PostgreSQL client
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y postgresql-client
+
+    - name: Run database migrations
+      run: |
+        ENVIRONMENT="${{ needs.determine-environment.outputs.environment }}"
+        
+        echo "Getting database connection details..."
+        
+        # Get database connection details directly from AWS RDS
+        DB_IDENTIFIER="ashinaga-postgres-${ENVIRONMENT}"
+        
+        DB_ENDPOINT=$(aws rds describe-db-instances \
+          --db-instance-identifier ${DB_IDENTIFIER} \
+          --query 'DBInstances[0].Endpoint.Address' \
+          --output text 2>/dev/null || echo "")
+        
+        if [ -z "$DB_ENDPOINT" ] || [ "$DB_ENDPOINT" = "None" ]; then
+          echo "Cannot get database endpoint from AWS RDS. Please ensure infrastructure is deployed."
+          echo "Looking for database with identifier: ${DB_IDENTIFIER}"
+          aws rds describe-db-instances --query 'DBInstances[*].[DBInstanceIdentifier,DBInstanceStatus]' --output table || echo "Failed to list databases"
+          exit 1
+        fi
+        
+        # Get database connection details from RDS instance
+        DB_HOST="$DB_ENDPOINT"
+        DB_PORT=5432
+        DB_NAME=$(aws rds describe-db-instances \
+          --db-instance-identifier ${DB_IDENTIFIER} \
+          --query 'DBInstances[0].DBName' \
+          --output text)
+        DB_USER=$(aws rds describe-db-instances \
+          --db-instance-identifier ${DB_IDENTIFIER} \
+          --query 'DBInstances[0].MasterUsername' \
+          --output text)
+        
+        echo "Database host: ${DB_HOST}"
+        echo "Database name: ${DB_NAME}"
+        echo "Database user: ${DB_USER}"
+        
+        # Set up Node.js and pnpm for migrations
+        echo "Setting up Node.js and pnpm..."
+        
+        # Install pnpm if not available
+        if ! command -v pnpm &> /dev/null; then
+          npm install -g pnpm
+        fi
+        
+        # Install dependencies (only if package.json changed)
+        pnpm install --frozen-lockfile
+        
+        # Database is now permanently publicly accessible for debugging purposes
+        
+        # Run migrations
+        echo "Running database migrations..."
+        cd apps/api
+        
+        # Set database environment variables
+        export DB_HOST="$DB_HOST"
+        export DB_PORT="$DB_PORT"
+        export DB_NAME="$DB_NAME" 
+        export DB_USER="$DB_USER"
+        
+        # Get database password based on environment
+        if [ "$ENVIRONMENT" = "playground" ]; then
+          # Playground uses hardcoded password in Terraform variables
+          export DB_PASSWORD="ashinaga-password-123"
+        else
+          # Test and prod use AWS Secrets Manager
+          echo "Retrieving database password from AWS Secrets Manager..."
+          SECRET_NAME="ashinaga-db-password-${ENVIRONMENT}"
+          
+          # Get the most recent secret ARN (in case there are duplicates)
+          SECRET_ARN=$(aws secretsmanager list-secrets \
+            --query "SecretList[?contains(Name, '${SECRET_NAME}')] | sort_by(@, &CreatedDate) | [-1].ARN" \
+            --output text)
+          
+          if [ -z "$SECRET_ARN" ]; then
+            echo "ERROR: Could not find secret with name containing: ${SECRET_NAME}"
+            echo "Available secrets:"
+            aws secretsmanager list-secrets --query "SecretList[].Name" --output table
+            exit 1
+          fi
+          
+          echo "Found secret: $SECRET_ARN"
+          export DB_PASSWORD=$(aws secretsmanager get-secret-value \
+            --secret-id "$SECRET_ARN" \
+            --query SecretString --output text)
+        fi
+        
+        # Run Drizzle migrations
+        echo "Running Drizzle migrations with verbose output..."
+        echo "Environment variables:"
+        echo "NODE_ENV: $NODE_ENV"
+        echo "DB_HOST: $DB_HOST"
+        echo "DB_PORT: $DB_PORT"
+        echo "DB_NAME: $DB_NAME"
+        echo "DB_USER: $DB_USER"
+        
+        # Set SSL to production mode for RDS connection
+        export NODE_ENV="production"
+        
+        # Run the migration
+        pnpm db:push --verbose
+        
+        echo "Database migrations completed successfully!"
+
+    - name: Update App Runner service
+      run: |
+        ENVIRONMENT="${{ needs.determine-environment.outputs.environment }}"
+        SERVICE_NAME="ashinaga-api-${ENVIRONMENT}"
+        IMAGE_URI="${{ steps.meta.outputs.repository_uri }}:latest"
+        
+        echo "Updating App Runner service: ${SERVICE_NAME}"
+        echo "New image: ${IMAGE_URI}"
+        
+        # Get service ARN
+        SERVICE_ARN=$(aws apprunner list-services --query "ServiceSummaryList[?ServiceName=='${SERVICE_NAME}'].ServiceArn" --output text)
+        
+        if [ -z "$SERVICE_ARN" ]; then
+          echo "Service does not exist yet. Please run terraform apply first."
+          exit 1
+        fi
+        
+        # Check service status
+        SERVICE_STATUS=$(aws apprunner describe-service --service-arn ${SERVICE_ARN} --query "Service.Status" --output text)
+        echo "Current service status: ${SERVICE_STATUS}"
+        
+        case ${SERVICE_STATUS} in
+          "RUNNING")
+            echo "Service is running - triggering deployment..."
+            aws apprunner start-deployment --service-arn ${SERVICE_ARN}
+            ;;
+          "CREATE_FAILED"|"PAUSED"|"DELETE_FAILED")
+            echo "Service is in failed state (${SERVICE_STATUS}). Manual intervention required."
+            exit 1
+            ;;
+          "OPERATION_IN_PROGRESS")
+            echo "Service has an operation in progress - waiting for completion..."
+            # Wait up to 15 minutes for current operation to complete
+            timeout 900 bash -c "
+              while true; do
+                STATUS=\$(aws apprunner describe-service --service-arn ${SERVICE_ARN} --query 'Service.Status' --output text)
+                echo \"Current status: \$STATUS\"
+                if [ \"\$STATUS\" = \"RUNNING\" ]; then
+                  echo \"Service is now running!\"
+                  break
+                elif [ \"\$STATUS\" = \"CREATE_FAILED\" ] || [ \"\$STATUS\" = \"DELETE_FAILED\" ]; then
+                  echo \"Service failed: \$STATUS\"
+                  exit 1
+                fi
+                sleep 30
+              done
+            " || {
+              echo "Timeout waiting for service operation to complete"
+              exit 1
+            }
+            echo "Service is now ready - triggering deployment..."
+            aws apprunner start-deployment --service-arn ${SERVICE_ARN}
+            ;;
+          *)
+            echo "Service is in ${SERVICE_STATUS} state - waiting for it to be ready..."
+            # Wait up to 15 minutes for service to be ready
+            timeout 900 bash -c "
+              while true; do
+                STATUS=\$(aws apprunner describe-service --service-arn ${SERVICE_ARN} --query 'Service.Status' --output text)
+                echo \"Current status: \$STATUS\"
+                if [ \"\$STATUS\" = \"RUNNING\" ]; then
+                  echo \"Service is now running!\"
+                  break
+                elif [ \"\$STATUS\" = \"CREATE_FAILED\" ] || [ \"\$STATUS\" = \"DELETE_FAILED\" ]; then
+                  echo \"Service failed to start: \$STATUS\"
+                  exit 1
+                fi
+                sleep 30
+              done
+            " || {
+              echo "Timeout waiting for service to be ready"
+              exit 1
+            }
+            
+            echo "Service is now ready - triggering deployment..."
+            aws apprunner start-deployment --service-arn ${SERVICE_ARN}
+            ;;
+        esac
+
+    - name: Wait for deployment
+      run: |
+        ENVIRONMENT="${{ needs.determine-environment.outputs.environment }}"
+        SERVICE_NAME="ashinaga-api-${ENVIRONMENT}"
+        SERVICE_ARN=$(aws apprunner list-services --query "ServiceSummaryList[?ServiceName=='${SERVICE_NAME}'].ServiceArn" --output text)
+        
+        echo "Waiting for deployment to complete..."
+        # Wait up to 20 minutes for deployment to complete
+        timeout 1200 bash -c "
+          while true; do
+            STATUS=\$(aws apprunner describe-service --service-arn ${SERVICE_ARN} --query 'Service.Status' --output text)
+            echo \"Current deployment status: \$STATUS\"
+            if [ \"\$STATUS\" = \"RUNNING\" ]; then
+              echo \"Deployment completed successfully!\"
+              break
+            elif [ \"\$STATUS\" = \"CREATE_FAILED\" ] || [ \"\$STATUS\" = \"DELETE_FAILED\" ]; then
+              echo \"Deployment failed: \$STATUS\"
+              exit 1
+            fi
+            sleep 30
+          done
+        " || {
+          echo "Timeout waiting for deployment to complete"
+          exit 1
+        }
+        
+        # Get service URL
+        SERVICE_URL=$(aws apprunner describe-service --service-arn ${SERVICE_ARN} --query "Service.ServiceUrl" --output text)
+        echo "Deployment complete! Service available at: https://${SERVICE_URL}"
+        
+        # Add to job summary
+        echo "## 🚀 Deployment Complete" >> $GITHUB_STEP_SUMMARY
+        echo "- **Environment**: ${ENVIRONMENT}" >> $GITHUB_STEP_SUMMARY  
+        echo "- **Service URL**: https://${SERVICE_URL}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Image**: ${{ steps.meta.outputs.repository_uri }}:latest" >> $GITHUB_STEP_SUMMARY

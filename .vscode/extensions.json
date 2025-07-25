@@ -1,0 +1,4 @@
+{
+  // Recommended Cursor AI and VSCode extensions for this project
+  "recommendations": ["hashicorp.terraform", "biomejs.biome"]
+}

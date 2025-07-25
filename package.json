@@ -1,0 +1,32 @@
+{
+  "name": "ashinaga",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "turbo run dev storybook --parallel",
+    "dev:db": "docker compose up -d postgres",
+    "dev:down": "docker compose down",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "test:e2e": "turbo run test:e2e",
+    "test:coverage": "turbo run test:coverage",
+    "test:coverage:open": "turbo run test:coverage:open",
+    "lint": "turbo run lint",
+    "format": "turbo run format",
+    "check": "biome check .",
+    "check:fix": "biome check --write .",
+    "db:generate": "cd apps/api && pnpm db:generate",
+    "db:migrate": "cd apps/api && pnpm db:migrate",
+    "db:push": "cd apps/api && pnpm db:push",
+    "db:studio": "cd apps/api && pnpm db:studio"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.0.6",
+    "@workspace/typescript-config": "workspace:*",
+    "turbo": "^2.5.4"
+  },
+  "packageManager": "pnpm@10.13.1",
+  "engines": {
+    "node": ">=18"
+  }
+}

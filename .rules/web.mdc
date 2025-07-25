@@ -1,0 +1,367 @@
+---
+alwaysApply: true
+---
+
+# Web Development Rules and Patterns
+
+This document outlines the patterns, conventions, and best practices for developing the web application. Following these rules ensures consistency, maintainability, and optimal performance.
+
+## 1. Component Architecture
+
+### Server-First Approach
+
+- **Default to Server Components**: All components should be server components unless client-side interactivity is required
+- **Async Components**: Use async/await for data fetching in server components
+- **Client Components**: Only use `'use client'` directive when necessary for:
+  - Interactive forms
+  - Event handlers
+  - Browser APIs
+  - State management
+  - Animations
+
+### Example Structure
+
+```tsx
+// Server Component (default)
+export default async function DashboardPage() {
+  const data = await fetchData();
+  return <div>{/* content */}</div>;
+}
+
+// Client Component (only when needed)
+'use client';
+export function InteractiveForm() {
+  const [state, setState] = useState();
+  return <form>{/* interactive content */}</form>;
+}
+```
+
+## 2. File Organization (Midday Pattern)
+
+### Directory Structure
+
+```
+apps/web/
+├── app/
+│   ├── (routes)/          # Grouped routes
+│   │   ├── dashboard/
+│   │   │   ├── layout.tsx
+│   │   │   └── page.tsx
+│   │   └── signin/
+│   │       └── page.tsx
+│   ├── layout.tsx         # Root layout
+│   └── not-found.tsx      # 404 page
+├── components/
+│   ├── widgets/           # Composite UI components
+│   │   ├── list-card.tsx
+│   │   └── kpi-highlights.tsx
+│   ├── charts/            # Chart components
+│   │   └── revenue-chart.tsx
+│   ├── tables/            # Table components
+│   │   └── segments/
+│   └── [feature-name].tsx # Feature-specific components
+└── lib/                   # Utilities and helpers
+```
+
+### Naming Conventions
+
+- **Files**: kebab-case (e.g., `list-card.tsx`, `revenue-chart.tsx`)
+- **Components**: PascalCase (e.g., `ListCard`, `RevenueChart`)
+- **Utilities**: camelCase (e.g., `formatCurrency`, `parseDate`)
+
+## 3. UI Component Patterns
+
+### Reusable List Pattern
+
+All list components should follow this structure:
+
+```tsx
+<ListCard
+  title="Component Title"
+  filterOptions={filterOptions}
+  defaultFilter={filter}
+  onFilterChange={setFilter}
+>
+  <Table>
+    <TableHeader>{/* headers */}</TableHeader>
+    <TableBody>{/* rows */}</TableBody>
+  </Table>
+</ListCard>
+```
+
+### Spacing Conventions
+
+- Section spacing: `py-8` (top and bottom padding)
+- Card internal padding: `p-5`
+- Component gaps: `gap-4` for grids, `gap-6` for sections
+- No unnecessary card wrappers for clean sections
+
+### Component Composition
+
+- Header sections with title and filter/action buttons
+- Main content sections with tables or data displays
+- Consistent use of shadcn/ui components
+
+## 4. State Management
+
+### URL State with nuqs
+
+Use nuqs for filter states, pagination, and other URL-persisted state:
+
+```tsx
+import { useQueryState } from 'nuqs';
+
+export function FilteredList() {
+  const [filter, setFilter] = useQueryState('filter', {
+    defaultValue: 'all',
+  });
+  // ...
+}
+```
+
+### Server State with tRPC
+
+- Define procedures in `apps/api/src/trpc/`
+- Use tRPC for all API calls
+- Type safety from backend to frontend
+
+### Client State
+
+- Minimize client state usage
+- Use React hooks only when necessary
+- Prefer server state and URL state
+
+## 5. Data Fetching Patterns
+
+### Server Components
+
+```tsx
+// Fetch data directly in server components
+async function getData() {
+  const data = await api.resource.getAll();
+  return data;
+}
+
+export default async function Page() {
+  const data = await getData();
+  return <Component data={data} />;
+}
+```
+
+### Loading States with Suspense
+
+```tsx
+<Suspense fallback={<Skeleton className="h-[300px] w-full" />}>
+  <AsyncComponent />
+</Suspense>
+```
+
+### Skeleton Components
+
+Create specific skeleton components for different UI patterns:
+
+```tsx
+export function TableSkeleton() {
+  return (
+    <div className="space-y-2">
+      <Skeleton className="h-10 w-full" />
+      <Skeleton className="h-10 w-full" />
+    </div>
+  );
+}
+```
+
+## 6. Styling Conventions
+
+### Tailwind CSS Usage
+
+- Use Tailwind utility classes exclusively
+- No inline styles or CSS modules
+- Consistent color tokens:
+  - `text-foreground` - primary text
+  - `text-muted-foreground` - secondary text
+  - `bg-background` - page background
+  - `bg-card` - card backgrounds
+  - `border` - default borders
+
+### shadcn/ui Components
+
+- Use shadcn/ui components from `@workspace/ui`
+- Follow the component API consistently
+- Don't modify core component styles
+
+### Responsive Design
+
+- Mobile-first approach
+- Use responsive prefixes: `sm:`, `md:`, `lg:`
+- Test all breakpoints
+
+## 7. TypeScript Patterns
+
+### Interface Definitions
+
+```tsx
+interface ComponentProps {
+  data: DataType[];
+  title?: string;
+  onAction?: (id: string) => void;
+}
+```
+
+### Type Safety
+
+- No `any` types
+- Proper typing for all props and returns
+- Use discriminated unions for variants
+
+### tRPC Type Safety
+
+```tsx
+// Automatically typed from backend
+const { data, isLoading } = api.resource.getAll.useQuery();
+```
+
+## 8. Internationalization
+
+### Server Components
+
+```tsx
+import { getTranslations } from 'next-intl/server';
+
+export default async function Page() {
+  const t = await getTranslations('PageNamespace');
+  return <h1>{t('title')}</h1>;
+}
+```
+
+### Client Components
+
+```tsx
+import { useTranslations } from 'next-intl';
+
+export function ClientComponent() {
+  const t = useTranslations('ComponentNamespace');
+  return <button>{t('action')}</button>;
+}
+```
+
+## 9. Layout Patterns
+
+### Dashboard Layout
+
+```tsx
+<SidebarProvider>
+  <AppSidebar />
+  <SidebarInset>{children}</SidebarInset>
+</SidebarProvider>
+```
+
+### Page Structure
+
+```tsx
+<div className="flex flex-col">
+  <DashboardHeader />
+  <ActionsHeader />
+  <main className="flex-1 space-y-4 p-6">
+    {/* Page content */}
+  </main>
+</div>
+```
+
+## 10. Best Practices
+
+### Accessibility
+
+- Add `aria-hidden="true"` to decorative icons
+- Use semantic HTML elements
+- Proper focus management
+- Keyboard navigation support
+
+### Performance
+
+- Lazy load heavy components
+- Use Suspense boundaries effectively
+- Optimize images with Next.js Image
+- Minimize client-side JavaScript
+
+### Error Handling
+
+- Use error boundaries for client components
+- Graceful fallbacks for failed data fetching
+- User-friendly error messages
+
+### Code Quality
+
+- Extract reusable logic into hooks
+- Keep components focused and single-purpose
+- Write self-documenting code
+- Add comments only when necessary
+
+## 11. Common Patterns
+
+### List Components with Filters
+
+```tsx
+'use client';
+
+export function DataList({ data }: Props) {
+  const [filter, setFilter] = useState('all');
+  
+  return (
+    <ListCard
+      title="Data List"
+      filterOptions={filterOptions}
+      defaultFilter={filter}
+      onFilterChange={setFilter}
+    >
+      {/* Filtered content */}
+    </ListCard>
+  );
+}
+```
+
+### Grid Layouts
+
+```tsx
+// Two columns on desktop
+<div className="grid gap-4 md:grid-cols-2">
+  <Component1 />
+  <Component2 />
+</div>
+
+// Full width components
+<div className="space-y-4">
+  <FullWidthComponent />
+</div>
+```
+
+### Data Display Patterns
+
+- Tables for structured data
+- Cards for summaries
+- Charts for trends
+- KPI highlights for metrics
+
+## 12. Development Workflow
+
+### Component Creation
+
+1. Start with a server component
+2. Add client directive only if needed
+3. Follow the established file structure
+4. Use consistent naming
+5. Implement loading states
+6. Add proper TypeScript types
+7. Test responsiveness
+
+### Code Review Checklist
+
+- [ ] Server component by default?
+- [ ] Proper loading states?
+- [ ] TypeScript types complete?
+- [ ] Follows styling conventions?
+- [ ] Accessible markup?
+- [ ] Responsive design?
+- [ ] Internationalized text?
+
+This document should be updated as new patterns emerge or existing ones evolve.
