@@ -20,7 +20,7 @@ on:
   push:
     branches:
       - test
-      - main
+      # - main - add back when prod ready
     paths:
       - 'apps/api/**'
       - 'packages/**'
