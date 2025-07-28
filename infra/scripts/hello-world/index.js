@@ -7,18 +7,18 @@ console.log('Port:', port);
 console.log('NODE_ENV:', process.env.NODE_ENV);
 
 app.get('/', (req, res) => {
-  res.json({ 
+  res.json({
     message: 'Hello World from App Runner!',
     status: 'success',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 });
 
 app.get('/health', (req, res) => {
-  res.json({ 
+  res.json({
     status: 'healthy',
     uptime: process.uptime(),
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 });
 

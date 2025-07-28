@@ -7,14 +7,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Turborepo monorepo** with TypeScript, containing:
 
 - **apps/api** - NestJS API server using Fastify (runs on default port)
-- **apps/web** - Next.js frontend application (runs on port 3001)
+- **apps/staff** - Next.js staff portal application (runs on port 3001)
 - **packages/api** - Shared NestJS resources and DTOs
 - **packages/ui** - React component library
 - **packages/eslint-config** - ESLint configurations with Prettier
 - **packages/jest-config** - Jest test configurations
 - **packages/typescript-config** - TypeScript configurations
 
-The API and web apps are designed to work together, with the web app consuming the API endpoints.
+The API and staff apps are designed to work together, with the staff app consuming the API endpoints.
 
 ## Essential Commands
 
@@ -59,10 +59,10 @@ pnpm test:watch   # Tests in watch mode
 pnpm test:e2e     # End-to-end tests
 ```
 
-### Web (apps/web)
+### Staff (apps/staff)
 
 ```bash
-cd apps/web
+cd apps/staff
 pnpm dev          # Development server (port 3001)
 pnpm build        # Build for production
 pnpm test:watch   # Tests in watch mode
