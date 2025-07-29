@@ -23,11 +23,11 @@ import { Plus } from 'lucide-react';
 
 interface TaskAssignmentProps {
   trigger?: React.ReactNode;
-  preselectedStudentId?: string;
+  preselectedScholarId?: string;
 }
 
 // Mock students data
-const mockStudents = [
+const mockScholars = [
   {
     id: 'SC001',
     name: 'Sarah Chen',
@@ -58,9 +58,9 @@ const mockStudents = [
   },
 ];
 
-export function TaskAssignment({ trigger, preselectedStudentId }: TaskAssignmentProps) {
+export function TaskAssignment({ trigger, preselectedScholarId }: TaskAssignmentProps) {
   const [open, setOpen] = useState(false);
-  const [selectedStudentId, setSelectedStudentId] = useState(preselectedStudentId || '');
+  const [selectedScholarId, setSelectedScholarId] = useState(preselectedScholarId || '');
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDescription, setTaskDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
@@ -68,14 +68,14 @@ export function TaskAssignment({ trigger, preselectedStudentId }: TaskAssignment
   const [taskType, setTaskType] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const selectedStudent = mockStudents.find((s) => s.id === selectedStudentId);
+  const selectedScholar = mockScholars.find((s) => s.id === selectedScholarId);
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
     // Mock API call
     await new Promise((resolve) => setTimeout(resolve, 1500));
     console.log('Task assigned:', {
-      studentId: selectedStudentId,
+      scholarId: selectedScholarId,
       title: taskTitle,
       description: taskDescription,
       dueDate,
@@ -90,8 +90,8 @@ export function TaskAssignment({ trigger, preselectedStudentId }: TaskAssignment
     setDueDate('');
     setPriority('');
     setTaskType('');
-    if (!preselectedStudentId) {
-      setSelectedStudentId('');
+    if (!preselectedScholarId) {
+      setSelectedScholarId('');
     }
   };
 
@@ -113,29 +113,29 @@ export function TaskAssignment({ trigger, preselectedStudentId }: TaskAssignment
 
         <div className="space-y-6">
           {/* Student Selection */}
-          {!preselectedStudentId && (
+          {!preselectedScholarId && (
             <div className="space-y-2">
               <Label>Select Student *</Label>
-              <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
+              <Select value={selectedScholarId} onValueChange={setSelectedScholarId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Choose a student" />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockStudents.map((student) => (
-                    <SelectItem key={student.id} value={student.id}>
+                  {mockScholars.map((scholar) => (
+                    <SelectItem key={scholar.id} value={scholar.id}>
                       <div className="flex items-center gap-2">
                         <Avatar className="h-6 w-6">
-                          <AvatarImage src={student.avatar || '/placeholder.svg'} />
+                          <AvatarImage src={scholar.avatar || '/placeholder.svg'} />
                           <AvatarFallback>
-                            {student.name
+                            {scholar.name
                               .split(' ')
                               .map((n) => n[0])
                               .join('')}
                           </AvatarFallback>
                         </Avatar>
-                        <span>{student.name}</span>
+                        <span>{scholar.name}</span>
                         <Badge variant="outline" className="ml-2">
-                          {student.year}
+                          {scholar.year}
                         </Badge>
                       </div>
                     </SelectItem>
@@ -146,22 +146,22 @@ export function TaskAssignment({ trigger, preselectedStudentId }: TaskAssignment
           )}
 
           {/* Selected Student Display */}
-          {selectedStudent && (
+          {selectedScholar && (
             <div className="bg-ashinaga-teal-50 p-4 rounded-lg">
               <div className="flex items-center gap-3">
                 <Avatar>
-                  <AvatarImage src={selectedStudent.avatar || '/placeholder.svg'} />
+                  <AvatarImage src={selectedScholar.avatar || '/placeholder.svg'} />
                   <AvatarFallback>
-                    {selectedStudent.name
+                    {selectedScholar.name
                       .split(' ')
                       .map((n) => n[0])
                       .join('')}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h4 className="font-medium">{selectedStudent.name}</h4>
+                  <h4 className="font-medium">{selectedScholar.name}</h4>
                   <p className="text-sm text-gray-600">
-                    {selectedStudent.program} • {selectedStudent.year}
+                    {selectedScholar.program} • {selectedScholar.year}
                   </p>
                 </div>
               </div>
@@ -241,7 +241,7 @@ export function TaskAssignment({ trigger, preselectedStudentId }: TaskAssignment
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!selectedStudentId || !taskTitle || !taskDescription || isSubmitting}
+            disabled={!selectedScholarId || !taskTitle || !taskDescription || isSubmitting}
             className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
           >
             {isSubmitting ? 'Assigning...' : 'Assign Task'}

@@ -23,7 +23,7 @@ This monorepo is organized into three main directories:
 - **[Getting Started Guide](./docs/getting-started.md)** - Quick start and overview
 - [API App Documentation](./apps/api/README.md)
 - [Staff App Documentation](./apps/staff/README.md)
-- [Student App Documentation](./apps/student/README.md)
+- [Scholar App Documentation](./apps/scholar/README.md)
 - [Vercel Deployment Guide](./docs/VERCEL_DEPLOYMENT.md) - Deploy multiple apps to Vercel
 
 ## 📄 Package Specific Documentation
@@ -48,7 +48,7 @@ This monorepo uses Turborepo and these tools are set up:
     ├── apps
     │   ├── api                       # NestJS API server with PostgreSQL
     │   ├── staff                     # Next.js staff portal (port 3001)
-    │   └── student                   # Next.js student portal (port 3002)
+    │   └── scholar                   # Next.js scholar portal (port 3002)
     └── packages
         ├── @workspace/jest-config         # Jest configurations
         ├── @workspace/typescript-config   # TypeScript configurations

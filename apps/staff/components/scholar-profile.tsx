@@ -22,10 +22,10 @@ import { GoalSetting } from './goal-setting';
 import { TaskAssignment } from './task-assignment';
 
 // Mock student data
-const mockStudent = {
+const mockScholar = {
   id: 'SC001',
   name: 'Sarah Chen',
-  email: 'sarah.chen@student.ac.uk',
+  email: 'sarah.chen@scholar.ac.uk',
   phone: '+44 7123 456789',
   program: 'Computer Science',
   year: 'Year 2',
@@ -86,12 +86,12 @@ const mockStudent = {
   ],
 };
 
-interface StudentProfileProps {
+interface ScholarProfileProps {
   onBack: () => void;
 }
 
-export function StudentProfile({ onBack }: StudentProfileProps) {
-  const [student] = useState(mockStudent); // In real app, fetch by studentId
+export function ScholarProfile({ onBack }: ScholarProfileProps) {
+  const [scholar] = useState(mockScholar); // In real app, fetch by scholarId
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -134,9 +134,9 @@ export function StudentProfile({ onBack }: StudentProfileProps) {
         <CardContent className="pt-6">
           <div className="flex items-start gap-6">
             <Avatar className="h-20 w-20">
-              <AvatarImage src={student.avatar || '/placeholder.svg'} />
+              <AvatarImage src={scholar.avatar || '/placeholder.svg'} />
               <AvatarFallback className="text-lg">
-                {student.name
+                {scholar.name
                   .split(' ')
                   .map((n) => n[0])
                   .join('')}
@@ -144,36 +144,36 @@ export function StudentProfile({ onBack }: StudentProfileProps) {
             </Avatar>
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-2xl font-bold">{student.name}</h1>
-                <Badge className="bg-green-100 text-green-800">{student.status}</Badge>
+                <h1 className="text-2xl font-bold">{scholar.name}</h1>
+                <Badge className="bg-green-100 text-green-800">{scholar.status}</Badge>
               </div>
-              <p className="text-gray-600 mb-4">{student.bio}</p>
+              <p className="text-gray-600 mb-4">{scholar.bio}</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div className="flex items-center gap-2">
                   <Mail className="h-4 w-4 text-gray-400" />
-                  <span>{student.email}</span>
+                  <span>{scholar.email}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Phone className="h-4 w-4 text-gray-400" />
-                  <span>{student.phone}</span>
+                  <span>{scholar.phone}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-gray-400" />
-                  <span>{student.location}</span>
+                  <span>{scholar.location}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-gray-400" />
-                  <span>Started {student.startDate}</span>
+                  <span>Started {scholar.startDate}</span>
                 </div>
               </div>
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-500">Program</p>
-              <p className="font-medium">{student.program}</p>
+              <p className="font-medium">{scholar.program}</p>
               <p className="text-sm text-gray-500 mt-2">Year</p>
-              <Badge variant="outline">{student.year}</Badge>
+              <Badge variant="outline">{scholar.year}</Badge>
               <p className="text-sm text-gray-500 mt-2">University</p>
-              <p className="font-medium text-sm">{student.university}</p>
+              <p className="font-medium text-sm">{scholar.university}</p>
             </div>
           </div>
         </CardContent>
@@ -197,11 +197,11 @@ export function StudentProfile({ onBack }: StudentProfileProps) {
                   Add Goal
                 </Button>
               }
-              preselectedStudentId={student.id}
+              preselectedScholarId={scholar.id}
             />
           </div>
           <div className="grid gap-4">
-            {student.goals.map((goal) => (
+            {scholar.goals.map((goal) => (
               <Card key={goal.id}>
                 <CardContent className="pt-4">
                   <div className="flex items-start justify-between mb-3">
@@ -246,11 +246,11 @@ export function StudentProfile({ onBack }: StudentProfileProps) {
                   Add Task
                 </Button>
               }
-              preselectedStudentId={student.id}
+              preselectedScholarId={scholar.id}
             />
           </div>
           <div className="space-y-4">
-            {student.tasks.map((task) => (
+            {scholar.tasks.map((task) => (
               <Card key={task.id}>
                 <CardContent className="pt-4">
                   <div className="flex items-start justify-between">
@@ -271,7 +271,7 @@ export function StudentProfile({ onBack }: StudentProfileProps) {
                           Edit
                         </Button>
                       }
-                      preselectedStudentId={student.id}
+                      preselectedScholarId={scholar.id}
                     />
                   </div>
                 </CardContent>
@@ -285,7 +285,7 @@ export function StudentProfile({ onBack }: StudentProfileProps) {
             <h3 className="text-lg font-semibold">Documents</h3>
           </div>
           <div className="space-y-4">
-            {student.documents.map((doc) => (
+            {scholar.documents.map((doc) => (
               <Card key={doc.name}>
                 <CardContent className="pt-4">
                   <div className="flex items-center justify-between">

@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd ../.. && pnpm turbo run build --filter=student",
+  "buildCommand": "cd ../.. && pnpm turbo run build --filter=scholar",
   "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
   "framework": "nextjs",
   "outputDirectory": ".next"

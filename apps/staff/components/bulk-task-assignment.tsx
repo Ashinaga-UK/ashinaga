@@ -21,7 +21,7 @@ import { Badge } from './ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Plus, Send } from 'lucide-react';
 
-interface Student {
+interface Scholar {
   id: string;
   name: string;
   year: string;
@@ -32,14 +32,14 @@ interface Student {
 
 interface BulkTaskAssignmentProps {
   trigger?: React.ReactNode;
-  selectedStudentIds?: string[];
-  filteredStudents?: Student[];
+  selectedScholarIds?: string[];
+  filteredScholars?: Scholar[];
 }
 
 export function BulkTaskAssignment({
   trigger,
-  selectedStudentIds,
-  filteredStudents,
+  selectedScholarIds,
+  filteredScholars,
 }: BulkTaskAssignmentProps) {
   const [open, setOpen] = useState(false);
   const [taskTitle, setTaskTitle] = useState('');
@@ -55,12 +55,12 @@ export function BulkTaskAssignment({
     // Mock API call
     await new Promise((resolve) => setTimeout(resolve, 1500));
 
-    const targetCount = selectedStudentIds
-      ? selectedStudentIds.length
-      : filteredStudents?.length || 0;
+    const targetCount = selectedScholarIds
+      ? selectedScholarIds.length
+      : filteredScholars?.length || 0;
     console.log('Bulk task assigned:', {
-      selectedStudentIds,
-      filteredStudents: filteredStudents?.map((s) => s.id),
+      selectedScholarIds,
+      filteredScholars: filteredScholars?.map((s) => s.id),
       title: taskTitle,
       description: taskDescription,
       dueDate,
@@ -82,15 +82,15 @@ export function BulkTaskAssignment({
   };
 
   const getTargetCount = () => {
-    if (selectedStudentIds) return selectedStudentIds.length;
-    if (filteredStudents) return filteredStudents.length;
+    if (selectedScholarIds) return selectedScholarIds.length;
+    if (filteredScholars) return filteredScholars.length;
     return 0;
   };
 
   const getTargetDescription = () => {
-    if (selectedStudentIds) return 'selected students';
-    if (filteredStudents) return 'filtered students';
-    return 'students';
+    if (selectedScholarIds) return 'selected scholars';
+    if (filteredScholars) return 'filtered scholars';
+    return 'scholars';
   };
 
   return (
@@ -105,7 +105,7 @@ export function BulkTaskAssignment({
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Assign Task to Multiple Students</DialogTitle>
+          <DialogTitle>Assign Task to Multiple Scholars</DialogTitle>
           <DialogDescription>
             Create and assign a task to {getTargetCount()} {getTargetDescription()}
           </DialogDescription>
@@ -117,16 +117,16 @@ export function BulkTaskAssignment({
             <CardHeader>
               <CardTitle className="text-lg">Assignment Target</CardTitle>
               <CardDescription>
-                This task will be assigned to {getTargetCount()} students
+                This task will be assigned to {getTargetCount()} scholars
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2">
                 <Badge variant="secondary" className="text-lg px-3 py-1">
-                  {getTargetCount()} Students
+                  {getTargetCount()} Scholars
                 </Badge>
                 <span className="text-sm text-gray-600">
-                  {selectedStudentIds ? 'Selected from table' : 'All currently filtered students'}
+                  {selectedScholarIds ? 'Selected from table' : 'All currently filtered scholars'}
                 </span>
               </div>
             </CardContent>
@@ -191,7 +191,7 @@ export function BulkTaskAssignment({
                   id="taskDescription"
                   value={taskDescription}
                   onChange={(e) => setTaskDescription(e.target.value)}
-                  placeholder="Provide detailed instructions for the students"
+                  placeholder="Provide detailed instructions for the scholars"
                   rows={6}
                 />
               </div>
@@ -209,7 +209,7 @@ export function BulkTaskAssignment({
             className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
           >
             <Send className="h-4 w-4 mr-2" />
-            {isSubmitting ? 'Assigning...' : `Assign to ${getTargetCount()} Students`}
+            {isSubmitting ? 'Assigning...' : `Assign to ${getTargetCount()} Scholars`}
           </Button>
         </DialogFooter>
       </DialogContent>

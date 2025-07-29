@@ -20,11 +20,11 @@ import { GoalSetting } from './goal-setting';
 import { BulkTaskAssignment } from './bulk-task-assignment';
 
 // Extended mock data for demonstration
-const mockStudents = [
+const mockScholars = [
   {
     id: 'SC001',
     name: 'Sarah Chen',
-    email: 'sarah.chen@student.ac.uk',
+    email: 'sarah.chen@scholar.ac.uk',
     program: 'Computer Science',
     year: 'Year 2',
     university: 'Imperial College London',
@@ -37,7 +37,7 @@ const mockStudents = [
   {
     id: 'MJ002',
     name: 'Marcus Johnson',
-    email: 'marcus.j@student.ac.uk',
+    email: 'marcus.j@scholar.ac.uk',
     program: 'Medicine',
     year: 'Foundation',
     university: 'University of Edinburgh',
@@ -50,7 +50,7 @@ const mockStudents = [
   {
     id: 'AO003',
     name: 'Amara Okafor',
-    email: 'amara.okafor@student.ac.uk',
+    email: 'amara.okafor@scholar.ac.uk',
     program: 'International Relations',
     year: 'Year 1',
     university: 'LSE',
@@ -63,7 +63,7 @@ const mockStudents = [
   {
     id: 'DK004',
     name: 'David Kim',
-    email: 'david.kim@student.ac.uk',
+    email: 'david.kim@scholar.ac.uk',
     program: 'Engineering',
     year: 'Pre-University',
     university: 'Cambridge University',
@@ -77,31 +77,31 @@ const mockStudents = [
 
 interface StudentManagementTableProps {
   onViewProfile: (studentId: string) => void;
-  onOnboardStudent: () => void;
+  onOnboardScholar: () => void;
 }
 
-export function StudentManagementTable({
+export function ScholarManagementTable({
   onViewProfile,
-  onOnboardStudent,
+  onOnboardScholar,
 }: StudentManagementTableProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [students] = useState(mockStudents);
-  const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
+  const [scholars] = useState(mockScholars);
+  const [selectedScholars, setSelectedScholars] = useState<string[]>([]);
 
   const [programFilter, setProgramFilter] = useState('all');
   const [yearFilter, setYearFilter] = useState('all');
   const [universityFilter, setUniversityFilter] = useState('all');
 
-  const filteredStudents = students.filter((student) => {
+  const filteredScholars = scholars.filter((scholar) => {
     const matchesSearch =
-      student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.program.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.university.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.year.toLowerCase().includes(searchTerm.toLowerCase());
+      scholar.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      scholar.program.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      scholar.university.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      scholar.year.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesProgram = programFilter === 'all' || student.program === programFilter;
-    const matchesYear = yearFilter === 'all' || student.year === yearFilter;
-    const matchesUniversity = universityFilter === 'all' || student.university === universityFilter;
+    const matchesProgram = programFilter === 'all' || scholar.program === programFilter;
+    const matchesYear = yearFilter === 'all' || scholar.year === yearFilter;
+    const matchesUniversity = universityFilter === 'all' || scholar.university === universityFilter;
 
     return matchesSearch && matchesProgram && matchesYear && matchesUniversity;
   });
@@ -121,24 +121,24 @@ export function StudentManagementTable({
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedStudents(filteredStudents.map((s) => s.id));
+      setSelectedScholars(filteredScholars.map((s) => s.id));
     } else {
-      setSelectedStudents([]);
+      setSelectedScholars([]);
     }
   };
 
-  const handleSelectStudent = (studentId: string, checked: boolean) => {
+  const handleSelectScholar = (scholarId: string, checked: boolean) => {
     if (checked) {
-      setSelectedStudents([...selectedStudents, studentId]);
+      setSelectedScholars([...selectedScholars, scholarId]);
     } else {
-      setSelectedStudents(selectedStudents.filter((id) => id !== studentId));
+      setSelectedScholars(selectedScholars.filter((id) => id !== scholarId));
     }
   };
 
   const isAllSelected =
-    filteredStudents.length > 0 && selectedStudents.length === filteredStudents.length;
+    filteredScholars.length > 0 && selectedScholars.length === filteredScholars.length;
   const isIndeterminate =
-    selectedStudents.length > 0 && selectedStudents.length < filteredStudents.length;
+    selectedScholars.length > 0 && selectedScholars.length < filteredScholars.length;
 
   return (
     <div className="space-y-4">
@@ -154,29 +154,29 @@ export function StudentManagementTable({
           />
         </div>
         <div className="flex gap-2">
-          {selectedStudents.length > 0 && (
+          {selectedScholars.length > 0 && (
             <BulkTaskAssignment
-              selectedStudentIds={selectedStudents}
+              selectedScholarIds={selectedScholars}
               trigger={
                 <Button variant="outline">
                   <Plus className="h-4 w-4 mr-2" />
-                  Assign Task to Selected ({selectedStudents.length})
+                  Assign Task to Selected ({selectedScholars.length})
                 </Button>
               }
             />
           )}
           <BulkTaskAssignment
-            filteredStudents={filteredStudents}
+            filteredScholars={filteredScholars}
             trigger={
               <Button variant="outline">
                 <Users className="h-4 w-4 mr-2" />
-                Assign to All Filtered ({filteredStudents.length})
+                Assign to All Filtered ({filteredScholars.length})
               </Button>
             }
           />
           <Button
             className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
-            onClick={onOnboardStudent}
+            onClick={onOnboardScholar}
           >
             <Plus className="h-4 w-4 mr-2" />
             Onboard New Students
@@ -267,41 +267,41 @@ export function StudentManagementTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredStudents.map((student) => (
+            {filteredScholars.map((scholar) => (
               <TableRow
-                key={student.id}
+                key={scholar.id}
                 className="hover:bg-ashinaga-teal-50 cursor-pointer"
-                onClick={() => onViewProfile(student.id)}
+                onClick={() => onViewProfile(scholar.id)}
               >
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <Checkbox
-                    checked={selectedStudents.includes(student.id)}
+                    checked={selectedScholars.includes(scholar.id)}
                     onCheckedChange={(checked) =>
-                      handleSelectStudent(student.id, checked as boolean)
+                      handleSelectScholar(scholar.id, checked as boolean)
                     }
                   />
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={student.avatar || '/placeholder.svg'} />
+                      <AvatarImage src={scholar.avatar || '/placeholder.svg'} />
                       <AvatarFallback>
-                        {student.name
+                        {scholar.name
                           .split(' ')
                           .map((n) => n[0])
                           .join('')}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <div className="font-medium">{student.name}</div>
-                      <div className="text-sm text-gray-500">{student.email}</div>
+                      <div className="font-medium">{scholar.name}</div>
+                      <div className="text-sm text-gray-500">{scholar.email}</div>
                     </div>
                   </div>
                 </TableCell>
-                <TableCell>{student.program}</TableCell>
-                <TableCell>{student.university}</TableCell>
+                <TableCell>{scholar.program}</TableCell>
+                <TableCell>{scholar.university}</TableCell>
                 <TableCell>
-                  <Badge variant="outline">{student.year}</Badge>
+                  <Badge variant="outline">{scholar.year}</Badge>
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
@@ -309,25 +309,25 @@ export function StudentManagementTable({
                       <div
                         className="bg-ashinaga-teal-600 h-2 rounded-full"
                         style={{
-                          width: `${(student.completedGoals / student.goals) * 100}%`,
+                          width: `${(scholar.completedGoals / scholar.goals) * 100}%`,
                         }}
                       />
                     </div>
                     <span className="text-sm text-gray-600">
-                      {student.completedGoals}/{student.goals}
+                      {scholar.completedGoals}/{scholar.goals}
                     </span>
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Badge className={getStatusColor(student.status)}>{student.status}</Badge>
+                  <Badge className={getStatusColor(scholar.status)}>{scholar.status}</Badge>
                 </TableCell>
-                <TableCell className="text-sm text-gray-500">{student.lastActivity}</TableCell>
+                <TableCell className="text-sm text-gray-500">{scholar.lastActivity}</TableCell>
                 <TableCell className="text-right">
                   {/* biome-ignore lint/a11y/useSemanticElements: div with role="group" is appropriate for interactive action buttons container */}
                   <div
                     className="flex items-center gap-2"
                     role="group"
-                    aria-label="Student actions"
+                    aria-label="Scholar actions"
                     onClick={(e) => e.stopPropagation()}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
@@ -342,7 +342,7 @@ export function StudentManagementTable({
                           Task
                         </Button>
                       }
-                      preselectedStudentId={student.id}
+                      preselectedScholarId={scholar.id}
                     />
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -351,7 +351,7 @@ export function StudentManagementTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onViewProfile(student.id)}>
+                        <DropdownMenuItem onClick={() => onViewProfile(scholar.id)}>
                           <Eye className="h-4 w-4 mr-2" />
                           View Profile
                         </DropdownMenuItem>
@@ -362,7 +362,7 @@ export function StudentManagementTable({
                               Set Goals
                             </DropdownMenuItem>
                           }
-                          preselectedStudentId={student.id}
+                          preselectedScholarId={scholar.id}
                         />
                       </DropdownMenuContent>
                     </DropdownMenu>

@@ -20,7 +20,7 @@ import { CheckCircle, MessageCircle, X, Send, Paperclip, Download } from 'lucide
 interface RequestManagementProps {
   request: {
     id: number;
-    studentName: string;
+    scholarName: string;
     type: string;
     description: string;
     submittedDate: string;
@@ -110,7 +110,7 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
-              <h4 className="font-medium text-gray-900">{request.studentName}</h4>
+              <h4 className="font-medium text-gray-900">{request.scholarName}</h4>
               <Badge variant={getPriorityColor(request.priority)}>{request.priority}</Badge>
               <Badge className={getStatusBadgeColor(request.status)}>{request.status}</Badge>
             </div>
@@ -160,7 +160,7 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
                 <DialogHeader>
                   <DialogTitle>Add Comment</DialogTitle>
                   <DialogDescription>
-                    Add a comment or request more information from {request.studentName}
+                    Add a comment or request more information from {request.scholarName}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
@@ -200,7 +200,7 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
                   <DialogHeader>
                     <DialogTitle>Review Request</DialogTitle>
                     <DialogDescription>
-                      Approve or reject the request from {request.studentName}
+                      Approve or reject the request from {request.scholarName}
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">

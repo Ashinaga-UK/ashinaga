@@ -8,14 +8,14 @@ This is a **Turborepo monorepo** with TypeScript, containing:
 
 - **apps/api** - NestJS API server using Fastify (runs on default port)
 - **apps/staff** - Next.js staff portal application (runs on port 3001)
-- **apps/student** - Next.js student portal application (runs on port 3002)
+- **apps/scholar** - Next.js scholar portal application (runs on port 3002)
 - **packages/api** - Shared NestJS resources and DTOs
 - **packages/ui** - React component library
 - **packages/eslint-config** - ESLint configurations with Prettier
 - **packages/jest-config** - Jest test configurations
 - **packages/typescript-config** - TypeScript configurations
 
-The API, staff, and student apps are designed to work together, with the frontend apps consuming the API endpoints.
+The API, staff, and scholar apps are designed to work together, with the frontend apps consuming the API endpoints.
 
 ## Essential Commands
 
@@ -70,10 +70,10 @@ pnpm test:watch   # Tests in watch mode
 pnpm test:e2e     # Playwright e2e tests
 ```
 
-### Student (apps/student)
+### Scholar (apps/scholar)
 
 ```bash
-cd apps/student
+cd apps/scholar
 pnpm dev          # Development server (port 3002)
 pnpm build        # Build for production
 pnpm test:watch   # Tests in watch mode

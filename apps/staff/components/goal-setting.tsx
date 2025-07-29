@@ -24,11 +24,11 @@ import { Plus, Target, Save } from 'lucide-react';
 
 interface GoalSettingProps {
   trigger?: React.ReactNode;
-  preselectedStudentId?: string;
+  preselectedScholarId?: string;
 }
 
-// Mock students data
-const mockStudents = [
+// Mock scholars data
+const mockScholars = [
   {
     id: 'SC001',
     name: 'Sarah Chen',
@@ -67,9 +67,9 @@ interface Goal {
   milestones: string[];
 }
 
-export function GoalSetting({ trigger, preselectedStudentId }: GoalSettingProps) {
+export function GoalSetting({ trigger, preselectedScholarId }: GoalSettingProps) {
   const [open, setOpen] = useState(false);
-  const [selectedStudentId, setSelectedStudentId] = useState(preselectedStudentId || '');
+  const [selectedScholarId, setSelectedScholarId] = useState(preselectedScholarId || '');
   const [goals, setGoals] = useState<Goal[]>([
     {
       title: '',
@@ -81,7 +81,7 @@ export function GoalSetting({ trigger, preselectedStudentId }: GoalSettingProps)
   ]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const selectedStudent = mockStudents.find((s) => s.id === selectedStudentId);
+  const selectedScholar = mockScholars.find((s) => s.id === selectedScholarId);
 
   const addGoal = () => {
     setGoals([
@@ -140,7 +140,7 @@ export function GoalSetting({ trigger, preselectedStudentId }: GoalSettingProps)
     setIsSubmitting(true);
     // Mock API call
     await new Promise((resolve) => setTimeout(resolve, 1500));
-    console.log('Goals set:', { studentId: selectedStudentId, goals });
+    console.log('Goals set:', { scholarId: selectedScholarId, goals });
     setOpen(false);
     setIsSubmitting(false);
     // Reset form
@@ -153,8 +153,8 @@ export function GoalSetting({ trigger, preselectedStudentId }: GoalSettingProps)
         milestones: [''],
       },
     ]);
-    if (!preselectedStudentId) {
-      setSelectedStudentId('');
+    if (!preselectedScholarId) {
+      setSelectedScholarId('');
     }
   };
 
@@ -170,37 +170,37 @@ export function GoalSetting({ trigger, preselectedStudentId }: GoalSettingProps)
       </DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Set Student Goals</DialogTitle>
+          <DialogTitle>Set Scholar Goals</DialogTitle>
           <DialogDescription>
-            Create and assign goals to help students track their progress
+            Create and assign goals to help scholars track their progress
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Student Selection */}
-          {!preselectedStudentId && (
+          {/* Scholar Selection */}
+          {!preselectedScholarId && (
             <div className="space-y-2">
-              <Label>Select Student *</Label>
-              <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
+              <Label>Select Scholar *</Label>
+              <Select value={selectedScholarId} onValueChange={setSelectedScholarId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Choose a student" />
+                  <SelectValue placeholder="Choose a scholar" />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockStudents.map((student) => (
-                    <SelectItem key={student.id} value={student.id}>
+                  {mockScholars.map((scholar) => (
+                    <SelectItem key={scholar.id} value={scholar.id}>
                       <div className="flex items-center gap-2">
                         <Avatar className="h-6 w-6">
-                          <AvatarImage src={student.avatar || '/placeholder.svg'} />
+                          <AvatarImage src={scholar.avatar || '/placeholder.svg'} />
                           <AvatarFallback>
-                            {student.name
+                            {scholar.name
                               .split(' ')
                               .map((n) => n[0])
                               .join('')}
                           </AvatarFallback>
                         </Avatar>
-                        <span>{student.name}</span>
+                        <span>{scholar.name}</span>
                         <Badge variant="outline" className="ml-2">
-                          {student.year}
+                          {scholar.year}
                         </Badge>
                       </div>
                     </SelectItem>
@@ -210,23 +210,23 @@ export function GoalSetting({ trigger, preselectedStudentId }: GoalSettingProps)
             </div>
           )}
 
-          {/* Selected Student Display */}
-          {selectedStudent && (
+          {/* Selected Scholar Display */}
+          {selectedScholar && (
             <div className="bg-ashinaga-teal-50 p-4 rounded-lg">
               <div className="flex items-center gap-3">
                 <Avatar>
-                  <AvatarImage src={selectedStudent.avatar || '/placeholder.svg'} />
+                  <AvatarImage src={selectedScholar.avatar || '/placeholder.svg'} />
                   <AvatarFallback>
-                    {selectedStudent.name
+                    {selectedScholar.name
                       .split(' ')
                       .map((n) => n[0])
                       .join('')}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h4 className="font-medium">Setting goals for {selectedStudent.name}</h4>
+                  <h4 className="font-medium">Setting goals for {selectedScholar.name}</h4>
                   <p className="text-sm text-gray-600">
-                    {selectedStudent.program} • {selectedStudent.year}
+                    {selectedScholar.program} • {selectedScholar.year}
                   </p>
                 </div>
               </div>
@@ -361,7 +361,7 @@ export function GoalSetting({ trigger, preselectedStudentId }: GoalSettingProps)
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!selectedStudentId || goals.some((g) => !g.title) || isSubmitting}
+            disabled={!selectedScholarId || goals.some((g) => !g.title) || isSubmitting}
             className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
           >
             <Save className="h-4 w-4 mr-2" />

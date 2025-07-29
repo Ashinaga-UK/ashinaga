@@ -14,14 +14,14 @@ import { Badge } from './ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { ArrowLeft, Upload, UserPlus, Send, FileSpreadsheet, CheckCircle } from 'lucide-react';
 
-interface StudentOnboardingProps {
+interface ScholarOnboardingProps {
   onBack: () => void;
 }
 
-interface StudentData {
+interface ScholarData {
   firstName: string;
   lastName: string;
-  aaiStudentId: string;
+  aaiScholarId: string;
   dateOfBirth: string;
   gender: string;
   nationality: string;
@@ -33,7 +33,7 @@ interface StudentData {
   addressHomeCountry: string;
   emergencyContactCountryOfStudy: string;
   emergencyContactHomeCountry: string;
-  universityStudentId: string;
+  universityScholarId: string;
   dietaryInfo: string;
   kokorozashi: string;
   longTermCareerPlan: string;
@@ -44,10 +44,10 @@ interface StudentData {
   startDate: string;
 }
 
-const initialStudentData: StudentData = {
+const initialScholarData: ScholarData = {
   firstName: '',
   lastName: '',
-  aaiStudentId: '',
+  aaiScholarId: '',
   dateOfBirth: '',
   gender: '',
   nationality: '',
@@ -59,7 +59,7 @@ const initialStudentData: StudentData = {
   addressHomeCountry: '',
   emergencyContactCountryOfStudy: '',
   emergencyContactHomeCountry: '',
-  universityStudentId: '',
+  universityScholarId: '',
   dietaryInfo: '',
   kokorozashi: '',
   longTermCareerPlan: '',
@@ -70,16 +70,16 @@ const initialStudentData: StudentData = {
   startDate: '',
 };
 
-export function StudentOnboarding({ onBack }: StudentOnboardingProps) {
+export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
   const [activeTab, setActiveTab] = useState('single');
-  const [studentData, setStudentData] = useState<StudentData>(initialStudentData);
-  const [csvData, setCsvData] = useState<StudentData[]>([]);
+  const [scholarData, setScholarData] = useState<ScholarData>(initialScholarData);
+  const [csvData, setCsvData] = useState<ScholarData[]>([]);
   const [_csvFile, setCsvFile] = useState<File | null>(null);
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleInputChange = (field: keyof StudentData, value: string) => {
-    setStudentData((prev) => ({ ...prev, [field]: value }));
+  const handleInputChange = (field: keyof ScholarData, value: string) => {
+    setScholarData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleCsvUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -87,23 +87,23 @@ export function StudentOnboarding({ onBack }: StudentOnboardingProps) {
     if (file) {
       setCsvFile(file);
       // Mock CSV parsing - in real app, you'd parse the actual CSV
-      const mockCsvData: StudentData[] = [
+      const mockCsvData: ScholarData[] = [
         {
           firstName: 'John',
           lastName: 'Doe',
-          aaiStudentId: 'AAI123',
+          aaiScholarId: 'AAI123',
           dateOfBirth: '2000-01-01',
           gender: 'Male',
           nationality: 'British',
           phoneNumber: '+44 7123 456789',
-          email: 'john.doe@student.ac.uk',
+          email: 'john.doe@scholar.ac.uk',
           passportExpirationDate: '2026-01-01',
           visaExpirationDate: '2025-01-01',
-          addressCountryOfStudy: '123 Student St, London',
+          addressCountryOfStudy: '123 Scholar St, London',
           addressHomeCountry: '456 Home St, London',
           emergencyContactCountryOfStudy: 'Jane Doe',
           emergencyContactHomeCountry: 'John Smith',
-          universityStudentId: 'UNI123',
+          universityScholarId: 'UNI123',
           dietaryInfo: 'None',
           kokorozashi: 'To become a software engineer',
           longTermCareerPlan: 'Work in AI',
@@ -116,19 +116,19 @@ export function StudentOnboarding({ onBack }: StudentOnboardingProps) {
         {
           firstName: 'Jane',
           lastName: 'Smith',
-          aaiStudentId: 'AAI456',
+          aaiScholarId: 'AAI456',
           dateOfBirth: '2001-02-02',
           gender: 'Female',
           nationality: 'American',
           phoneNumber: '+44 7234 567890',
-          email: 'jane.smith@student.ac.uk',
+          email: 'jane.smith@scholar.ac.uk',
           passportExpirationDate: '2027-02-02',
           visaExpirationDate: '2026-02-02',
           addressCountryOfStudy: '456 Scholar Ave, Edinburgh',
           addressHomeCountry: '789 Home Ave, New York',
           emergencyContactCountryOfStudy: 'John Smith',
           emergencyContactHomeCountry: 'Jane Doe',
-          universityStudentId: 'UNI456',
+          universityScholarId: 'UNI456',
           dietaryInfo: 'Vegetarian',
           kokorozashi: 'To become a doctor',
           longTermCareerPlan: 'Work in healthcare',
@@ -143,7 +143,7 @@ export function StudentOnboarding({ onBack }: StudentOnboardingProps) {
     }
   };
 
-  const handleSingleStudentSubmit = async () => {
+  const handleSingleScholarSubmit = async () => {
     setIsSubmitting(true);
     // Mock API call
     await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -180,11 +180,11 @@ export function StudentOnboarding({ onBack }: StudentOnboardingProps) {
           <CardContent className="pt-6">
             <div className="text-center space-y-4">
               <CheckCircle className="h-16 w-16 text-green-600 mx-auto" />
-              <h2 className="text-2xl font-bold text-gray-900">Students Successfully Onboarded!</h2>
+              <h2 className="text-2xl font-bold text-gray-900">Scholars Successfully Onboarded!</h2>
               <p className="text-gray-600">
                 {activeTab === 'single'
-                  ? `${studentData.firstName} ${studentData.lastName} has been added to the system and invitation sent.`
-                  : `${csvData.length} students have been added to the system and invitations sent.`}
+                  ? `${scholarData.firstName} ${scholarData.lastName} has been added to the system and invitation sent.`
+                  : `${csvData.length} scholars have been added to the system and invitations sent.`}
               </p>
               <Button onClick={onBack} className="mt-4">
                 Return to Dashboard
@@ -210,15 +210,15 @@ export function StudentOnboarding({ onBack }: StudentOnboardingProps) {
             <CardTitle>Send Invitation</CardTitle>
             <CardDescription>
               {activeTab === 'single'
-                ? 'Send an invitation email to the new student'
-                : 'Send invitation emails to all new students'}
+                ? 'Send an invitation email to the new scholar'
+                : 'Send invitation emails to all new scholars'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="bg-blue-50 p-4 rounded-lg">
               <h4 className="font-medium text-blue-900 mb-2">Invitation Preview</h4>
               <p className="text-sm text-blue-800">
-                Students will receive an email with login credentials and instructions to access the
+                Scholars will receive an email with login credentials and instructions to access the
                 Ashinaga platform. They'll be able to set up their profile and start tracking their
                 goals.
               </p>
@@ -255,14 +255,14 @@ export function StudentOnboarding({ onBack }: StudentOnboardingProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5" />
-            Onboard New Students
+            Onboard New Scholars
           </CardTitle>
-          <CardDescription>Add new students to the Ashinaga platform</CardDescription>
+          <CardDescription>Add new scholars to the Ashinaga platform</CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="single">Single Student</TabsTrigger>
+              <TabsTrigger value="single">Single Scholar</TabsTrigger>
               <TabsTrigger value="bulk">Bulk Import (CSV)</TabsTrigger>
             </TabsList>
 
@@ -273,27 +273,27 @@ export function StudentOnboarding({ onBack }: StudentOnboardingProps) {
                     <Label htmlFor="firstName">First Name *</Label>
                     <Input
                       id="firstName"
-                      value={studentData.firstName}
+                      value={scholarData.firstName}
                       onChange={(e) => handleInputChange('firstName', e.target.value)}
-                      placeholder="Enter student's first name"
+                      placeholder="Enter scholar's first name"
                     />
                   </div>
                   <div>
                     <Label htmlFor="lastName">Last Name *</Label>
                     <Input
                       id="lastName"
-                      value={studentData.lastName}
+                      value={scholarData.lastName}
                       onChange={(e) => handleInputChange('lastName', e.target.value)}
-                      placeholder="Enter student's last name"
+                      placeholder="Enter scholar's last name"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="aaiStudentId">AAI Student ID</Label>
+                    <Label htmlFor="aaiScholarId">AAI Scholar ID</Label>
                     <Input
-                      id="aaiStudentId"
-                      value={studentData.aaiStudentId}
-                      onChange={(e) => handleInputChange('aaiStudentId', e.target.value)}
-                      placeholder="Enter AAI Student ID"
+                      id="aaiScholarId"
+                      value={scholarData.aaiScholarId}
+                      onChange={(e) => handleInputChange('aaiScholarId', e.target.value)}
+                      placeholder="Enter AAI Scholar ID"
                     />
                   </div>
                   <div>
@@ -301,14 +301,14 @@ export function StudentOnboarding({ onBack }: StudentOnboardingProps) {
                     <Input
                       id="dateOfBirth"
                       type="date"
-                      value={studentData.dateOfBirth}
+                      value={scholarData.dateOfBirth}
                       onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
                     />
                   </div>
                   <div>
                     <Label htmlFor="gender">Gender</Label>
                     <Select
-                      value={studentData.gender}
+                      value={scholarData.gender}
                       onValueChange={(value) => handleInputChange('gender', value)}
                     >
                       <SelectTrigger>
@@ -325,7 +325,7 @@ export function StudentOnboarding({ onBack }: StudentOnboardingProps) {
                     <Label htmlFor="nationality">Nationality</Label>
                     <Input
                       id="nationality"
-                      value={studentData.nationality}
+                      value={scholarData.nationality}
                       onChange={(e) => handleInputChange('nationality', e.target.value)}
                       placeholder="Enter nationality"
                     />
@@ -337,7 +337,7 @@ export function StudentOnboarding({ onBack }: StudentOnboardingProps) {
                     <Label htmlFor="phoneNumber">Phone Number</Label>
                     <Input
                       id="phoneNumber"
-                      value={studentData.phoneNumber}
+                      value={scholarData.phoneNumber}
                       onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
                       placeholder="+44 7123 456789"
                     />
@@ -347,18 +347,18 @@ export function StudentOnboarding({ onBack }: StudentOnboardingProps) {
                     <Input
                       id="email"
                       type="email"
-                      value={studentData.email}
+                      value={scholarData.email}
                       onChange={(e) => handleInputChange('email', e.target.value)}
-                      placeholder="student@university.ac.uk"
+                      placeholder="scholar@university.ac.uk"
                     />
                   </div>
                   <div>
                     <Label htmlFor="addressCountryOfStudy">Address (Country of Study)</Label>
                     <Textarea
                       id="addressCountryOfStudy"
-                      value={studentData.addressCountryOfStudy}
+                      value={scholarData.addressCountryOfStudy}
                       onChange={(e) => handleInputChange('addressCountryOfStudy', e.target.value)}
-                      placeholder="Student's address in the country of study"
+                      placeholder="Scholar's address in the country of study"
                       rows={3}
                     />
                   </div>
@@ -366,9 +366,9 @@ export function StudentOnboarding({ onBack }: StudentOnboardingProps) {
                     <Label htmlFor="addressHomeCountry">Address (Home Country)</Label>
                     <Textarea
                       id="addressHomeCountry"
-                      value={studentData.addressHomeCountry}
+                      value={scholarData.addressHomeCountry}
                       onChange={(e) => handleInputChange('addressHomeCountry', e.target.value)}
-                      placeholder="Student's address in their home country"
+                      placeholder="Scholar's address in their home country"
                       rows={3}
                     />
                   </div>
@@ -377,7 +377,7 @@ export function StudentOnboarding({ onBack }: StudentOnboardingProps) {
                     <Input
                       id="passportExpirationDate"
                       type="date"
-                      value={studentData.passportExpirationDate}
+                      value={scholarData.passportExpirationDate}
                       onChange={(e) => handleInputChange('passportExpirationDate', e.target.value)}
                     />
                   </div>
@@ -386,7 +386,7 @@ export function StudentOnboarding({ onBack }: StudentOnboardingProps) {
                     <Input
                       id="visaExpirationDate"
                       type="date"
-                      value={studentData.visaExpirationDate}
+                      value={scholarData.visaExpirationDate}
                       onChange={(e) => handleInputChange('visaExpirationDate', e.target.value)}
                     />
                   </div>
@@ -401,7 +401,7 @@ export function StudentOnboarding({ onBack }: StudentOnboardingProps) {
                     </Label>
                     <Input
                       id="emergencyContactCountryOfStudy"
-                      value={studentData.emergencyContactCountryOfStudy}
+                      value={scholarData.emergencyContactCountryOfStudy}
                       onChange={(e) =>
                         handleInputChange('emergencyContactCountryOfStudy', e.target.value)
                       }
@@ -414,7 +414,7 @@ export function StudentOnboarding({ onBack }: StudentOnboardingProps) {
                     </Label>
                     <Input
                       id="emergencyContactHomeCountry"
-                      value={studentData.emergencyContactHomeCountry}
+                      value={scholarData.emergencyContactHomeCountry}
                       onChange={(e) =>
                         handleInputChange('emergencyContactHomeCountry', e.target.value)
                       }
@@ -424,7 +424,7 @@ export function StudentOnboarding({ onBack }: StudentOnboardingProps) {
                   <div>
                     <Label htmlFor="program">Program of Study *</Label>
                     <Select
-                      value={studentData.program}
+                      value={scholarData.program}
                       onValueChange={(value) => handleInputChange('program', value)}
                     >
                       <SelectTrigger>
@@ -445,7 +445,7 @@ export function StudentOnboarding({ onBack }: StudentOnboardingProps) {
                   <div>
                     <Label htmlFor="university">University</Label>
                     <Select
-                      value={studentData.university}
+                      value={scholarData.university}
                       onValueChange={(value) => handleInputChange('university', value)}
                     >
                       <SelectTrigger>
@@ -471,7 +471,7 @@ export function StudentOnboarding({ onBack }: StudentOnboardingProps) {
                   <div>
                     <Label htmlFor="year">Academic Year</Label>
                     <Select
-                      value={studentData.year}
+                      value={scholarData.year}
                       onValueChange={(value) => handleInputChange('year', value)}
                     >
                       <SelectTrigger>
@@ -494,24 +494,24 @@ export function StudentOnboarding({ onBack }: StudentOnboardingProps) {
                     <Input
                       id="startDate"
                       type="date"
-                      value={studentData.startDate}
+                      value={scholarData.startDate}
                       onChange={(e) => handleInputChange('startDate', e.target.value)}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="universityStudentId">University Student ID</Label>
+                    <Label htmlFor="universityScholarId">University Scholar ID</Label>
                     <Input
-                      id="universityStudentId"
-                      value={studentData.universityStudentId}
-                      onChange={(e) => handleInputChange('universityStudentId', e.target.value)}
-                      placeholder="Enter University Student ID"
+                      id="universityScholarId"
+                      value={scholarData.universityScholarId}
+                      onChange={(e) => handleInputChange('universityScholarId', e.target.value)}
+                      placeholder="Enter University Scholar ID"
                     />
                   </div>
                   <div>
                     <Label htmlFor="dietaryInfo">Dietary Information</Label>
                     <Textarea
                       id="dietaryInfo"
-                      value={studentData.dietaryInfo}
+                      value={scholarData.dietaryInfo}
                       onChange={(e) => handleInputChange('dietaryInfo', e.target.value)}
                       placeholder="Any dietary restrictions or allergies"
                       rows={3}
@@ -521,7 +521,7 @@ export function StudentOnboarding({ onBack }: StudentOnboardingProps) {
                     <Label htmlFor="kokorozashi">Kokorozashi Essay</Label>
                     <Textarea
                       id="kokorozashi"
-                      value={studentData.kokorozashi}
+                      value={scholarData.kokorozashi}
                       onChange={(e) => handleInputChange('kokorozashi', e.target.value)}
                       placeholder="Kokorozashi Essay"
                       rows={3}
@@ -531,7 +531,7 @@ export function StudentOnboarding({ onBack }: StudentOnboardingProps) {
                     <Label htmlFor="longTermCareerPlan">Long Term Career Plan</Label>
                     <Textarea
                       id="longTermCareerPlan"
-                      value={studentData.longTermCareerPlan}
+                      value={scholarData.longTermCareerPlan}
                       onChange={(e) => handleInputChange('longTermCareerPlan', e.target.value)}
                       placeholder="Long Term Career Plan"
                       rows={3}
@@ -541,7 +541,7 @@ export function StudentOnboarding({ onBack }: StudentOnboardingProps) {
                     <Label htmlFor="postGraduationPlan">Post Graduation Plan</Label>
                     <Textarea
                       id="postGraduationPlan"
-                      value={studentData.postGraduationPlan}
+                      value={scholarData.postGraduationPlan}
                       onChange={(e) => handleInputChange('postGraduationPlan', e.target.value)}
                       placeholder="Post Graduation Plan"
                       rows={3}
@@ -552,17 +552,17 @@ export function StudentOnboarding({ onBack }: StudentOnboardingProps) {
 
               <div className="flex justify-end">
                 <Button
-                  onClick={handleSingleStudentSubmit}
+                  onClick={handleSingleScholarSubmit}
                   disabled={
-                    !studentData.firstName ||
-                    !studentData.lastName ||
-                    !studentData.email ||
-                    !studentData.program ||
+                    !scholarData.firstName ||
+                    !scholarData.lastName ||
+                    !scholarData.email ||
+                    !scholarData.program ||
                     isSubmitting
                   }
                   className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
                 >
-                  {isSubmitting ? 'Creating...' : 'Create Student'}
+                  {isSubmitting ? 'Creating...' : 'Create Scholar'}
                 </Button>
               </div>
             </TabsContent>
@@ -612,16 +612,16 @@ export function StudentOnboarding({ onBack }: StudentOnboardingProps) {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {csvData.map((student) => (
-                              <TableRow key={student.email}>
+                            {csvData.map((scholar) => (
+                              <TableRow key={scholar.email}>
                                 <TableCell>
-                                  {student.firstName} {student.lastName}
+                                  {scholar.firstName} {scholar.lastName}
                                 </TableCell>
-                                <TableCell>{student.email}</TableCell>
-                                <TableCell>{student.program}</TableCell>
-                                <TableCell>{student.university}</TableCell>
+                                <TableCell>{scholar.email}</TableCell>
+                                <TableCell>{scholar.program}</TableCell>
+                                <TableCell>{scholar.university}</TableCell>
                                 <TableCell>
-                                  <Badge variant="outline">{student.year}</Badge>
+                                  <Badge variant="outline">{scholar.year}</Badge>
                                 </TableCell>
                               </TableRow>
                             ))}
@@ -634,7 +634,7 @@ export function StudentOnboarding({ onBack }: StudentOnboardingProps) {
                           disabled={isSubmitting}
                           className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
                         >
-                          {isSubmitting ? 'Importing...' : `Import ${csvData.length} Students`}
+                          {isSubmitting ? 'Importing...' : `Import ${csvData.length} Scholars`}
                         </Button>
                       </div>
                     </CardContent>

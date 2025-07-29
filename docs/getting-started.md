@@ -1,6 +1,6 @@
 # Getting Started with Ashinaga
 
-Welcome to the Ashinaga monorepo! This is a minimal, clean starting point for building the Ashinaga student management platform.
+Welcome to the Ashinaga monorepo! This is a minimal, clean starting point for building the Ashinaga scholar management platform.
 
 ## Quick Start
 

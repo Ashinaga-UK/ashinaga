@@ -6,10 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { FileText, MessageSquare, Plus, Target, Users, AlertCircle } from 'lucide-react';
-import { StudentManagementTable } from '../components/student-management-table';
+import { ScholarManagementTable } from '../components/scholar-management-table';
 import { AnnouncementCreator } from '../components/announcement-creator';
-import { StudentProfile } from '../components/student-profile';
-import { StudentOnboarding } from '../components/student-onboarding';
+import { ScholarProfile } from '../components/scholar-profile';
+import { ScholarOnboarding } from '../components/scholar-onboarding';
 import { TaskAssignment } from '../components/task-assignment';
 import { MyProfile } from '../components/my-profile';
 import { GoalSetting } from '../components/goal-setting';
@@ -32,7 +32,7 @@ const _mockTasks = [
     priority: 'high',
     dueDate: '2025-01-05',
     status: 'pending',
-    studentId: 'SC001',
+    scholarId: 'SC001',
   },
   {
     id: 2,
@@ -41,7 +41,7 @@ const _mockTasks = [
     priority: 'medium',
     dueDate: '2025-01-07',
     status: 'in-progress',
-    studentId: 'MJ002',
+    scholarId: 'MJ002',
   },
   {
     id: 3,
@@ -50,14 +50,14 @@ const _mockTasks = [
     priority: 'low',
     dueDate: '2025-01-10',
     status: 'pending',
-    studentId: null,
+    scholarId: null,
   },
 ];
 
 const mockRequests = [
   {
     id: 1,
-    studentName: 'Amara Okafor',
+    scholarName: 'Amara Okafor',
     type: 'Financial Support',
     description: 'Request for emergency funding for accommodation',
     submittedDate: '2025-01-02',
@@ -70,7 +70,7 @@ const mockRequests = [
   },
   {
     id: 2,
-    studentName: 'David Kim',
+    scholarName: 'David Kim',
     type: 'Extenuating Circumstances',
     description: 'Medical documentation for exam deferrals',
     submittedDate: '2025-01-01',
@@ -80,7 +80,7 @@ const mockRequests = [
   },
   {
     id: 3,
-    studentName: 'Sarah Chen',
+    scholarName: 'Sarah Chen',
     type: 'Academic Support',
     description: 'Request for additional tutoring support',
     submittedDate: '2024-12-28',
@@ -90,7 +90,7 @@ const mockRequests = [
   },
 ];
 
-const _mockStudents = [
+const _mockScholars = [
   {
     id: 'SC001',
     name: 'Sarah Chen',
@@ -116,7 +116,7 @@ const _mockStudents = [
 export default function StaffDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [currentView, setCurrentView] = useState<
-    'dashboard' | 'student-profile' | 'onboarding' | 'task-assignment' | 'my-profile'
+    'dashboard' | 'scholar-profile' | 'onboarding' | 'task-assignment' | 'my-profile'
   >('dashboard');
   const [isAuthenticated, setIsAuthenticated] = useState(true); // Set to false for login flow
   const [requestStatusFilter, setRequestStatusFilter] = useState('all');
@@ -197,14 +197,14 @@ export default function StaffDashboard() {
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         {currentView === 'onboarding' ? (
-          <StudentOnboarding onBack={() => setCurrentView('dashboard')} />
+          <ScholarOnboarding onBack={() => setCurrentView('dashboard')} />
         ) : currentView === 'my-profile' ? (
           <MyProfile onBack={() => setCurrentView('dashboard')} />
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList className="grid w-full grid-cols-4 lg:w-[600px]">
               <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="students">Students</TabsTrigger>
+              <TabsTrigger value="scholars">Scholars</TabsTrigger>
               <TabsTrigger value="requests">Requests</TabsTrigger>
               <TabsTrigger value="announcements">Announcements</TabsTrigger>
             </TabsList>
@@ -216,7 +216,7 @@ export default function StaffDashboard() {
                   <CardContent className="pt-6">
                     <div className="flex items-center">
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-600">Total Students</p>
+                        <p className="text-sm font-medium text-gray-600">Total Scholars</p>
                         <p className="text-2xl font-bold text-gray-900">24</p>
                         <p className="text-xs text-green-600 mt-1">+3 this month</p>
                       </div>
@@ -261,7 +261,7 @@ export default function StaffDashboard() {
                       onClick={() => setCurrentView('onboarding')}
                     >
                       <Users className="h-6 w-6" />
-                      Onboard Student
+                      Onboard Scholar
                     </Button>
                     <TaskAssignment
                       trigger={
@@ -270,7 +270,7 @@ export default function StaffDashboard() {
                           className="h-20 flex-col gap-2 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent w-full"
                         >
                           <FileText className="h-6 w-6" />
-                          Assign Task to Student
+                          Assign Task to Scholar
                         </Button>
                       }
                     />
@@ -298,21 +298,21 @@ export default function StaffDashboard() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="students" className="space-y-6">
-              {currentView === 'student-profile' ? (
-                <StudentProfile onBack={() => setCurrentView('dashboard')} />
+            <TabsContent value="scholars" className="space-y-6">
+              {currentView === 'scholar-profile' ? (
+                <ScholarProfile onBack={() => setCurrentView('dashboard')} />
               ) : (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Student Management</CardTitle>
+                    <CardTitle>Scholar Management</CardTitle>
                     <CardDescription>View and manage your assigned scholars</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <StudentManagementTable
+                    <ScholarManagementTable
                       onViewProfile={() => {
-                        setCurrentView('student-profile');
+                        setCurrentView('scholar-profile');
                       }}
-                      onOnboardStudent={() => setCurrentView('onboarding')}
+                      onOnboardScholar={() => setCurrentView('onboarding')}
                     />
                   </CardContent>
                 </Card>

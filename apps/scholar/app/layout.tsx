@@ -4,7 +4,7 @@ import { GeistMono } from 'geist/font/mono';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Ashinaga Student Portal',
+  title: 'Ashinaga Scholar Portal',
   description: 'Your learning journey starts here',
 };
 

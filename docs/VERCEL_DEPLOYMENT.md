@@ -5,8 +5,8 @@ This guide explains how to deploy the Ashinaga monorepo apps to Vercel.
 ## Overview
 
 The Ashinaga monorepo contains two Next.js applications that can be deployed to Vercel:
-- **Staff Portal** (`apps/staff`) - For staff members to manage students
-- **Student Portal** (`apps/student`) - For students to access their resources
+- **Staff Portal** (`apps/staff`) - For staff members to manage scholars
+- **Scholar Portal** (`apps/scholar`) - For scholars to access their resources
 
 ## Deployment Steps
 
@@ -21,10 +21,10 @@ You'll need to create two separate projects in Vercel:
 4. Vercel will automatically detect the `vercel.json` configuration
 5. Deploy the project
 
-#### Student Portal
+#### Scholar Portal
 1. Create another new project in Vercel
 2. Import the same Git repository
-3. Set the **Root Directory** to `apps/student`
+3. Set the **Root Directory** to `apps/scholar`
 4. Vercel will automatically detect the `vercel.json` configuration
 5. Deploy the project
 
@@ -39,7 +39,7 @@ If your apps require environment variables:
 
 You can configure custom domains for each app:
 - Staff Portal: `staff.yourdomain.com`
-- Student Portal: `student.yourdomain.com`
+- Scholar Portal: `scholar.yourdomain.com`
 
 ## Configuration Details
 
@@ -59,10 +59,10 @@ Each app has its own `vercel.json` file that specifies:
 }
 ```
 
-### apps/student/vercel.json
+### apps/scholar/vercel.json
 ```json
 {
-  "buildCommand": "cd ../.. && pnpm turbo run build --filter=student",
+  "buildCommand": "cd ../.. && pnpm turbo run build --filter=scholar",
   "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
   "framework": "nextjs",
   "outputDirectory": ".next"

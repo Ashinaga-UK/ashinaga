@@ -1,30 +1,30 @@
 import { render, screen } from '@testing-library/react';
-import StudentHome from '../page';
+import ScholarHome from '../page';
 
-describe('StudentHome', () => {
-  it('renders the student portal heading', () => {
-    render(<StudentHome />);
+describe('ScholarHome', () => {
+  it('renders the scholar portal heading', () => {
+    render(<ScholarHome />);
 
-    const heading = screen.getByText('Ashinaga Student Portal');
+    const heading = screen.getByText('Ashinaga Scholar Portal');
     expect(heading).toBeInTheDocument();
   });
 
   it('renders the welcome message', () => {
-    render(<StudentHome />);
+    render(<ScholarHome />);
 
     const welcomeText = screen.getByText('Welcome to your learning journey');
     expect(welcomeText).toBeInTheDocument();
   });
 
   it('renders the coming soon message', () => {
-    render(<StudentHome />);
+    render(<ScholarHome />);
 
     const comingSoonText = screen.getByText('Coming soon...');
     expect(comingSoonText).toBeInTheDocument();
   });
 
   it('renders the logo', () => {
-    render(<StudentHome />);
+    render(<ScholarHome />);
 
     const logo = screen.getByText('A');
     expect(logo).toBeInTheDocument();

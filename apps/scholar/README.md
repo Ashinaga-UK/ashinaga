@@ -1,10 +1,10 @@
-# Ashinaga Student Portal
+# Ashinaga Scholar Portal
 
-A Next.js application for Ashinaga students to access their resources and manage their learning journey.
+A Next.js application for Ashinaga scholars to access their resources and manage their learning journey.
 
 ## Overview
 
-The Student Portal provides students with access to:
+The Scholar Portal provides scholars with access to:
 - Learning resources
 - Goal tracking
 - Communication with mentors
@@ -32,11 +32,11 @@ Currently, this is a placeholder application with a simple landing page. Feature
 pnpm install
 
 # Start the development server (runs on port 3002)
-cd apps/student
+cd apps/scholar
 pnpm dev
 
 # Or from the monorepo root
-pnpm dev --filter=student
+pnpm dev --filter=scholar
 ```
 
 ### Available Scripts
@@ -72,7 +72,7 @@ This app is part of the Ashinaga monorepo and:
 ## Future Features
 
 Planned features include:
-- Student authentication
+- Scholar authentication
 - Dashboard with personalized content
 - Goal setting and tracking
 - Resource library
