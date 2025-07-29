@@ -72,7 +72,7 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const _getStatusColor = (status: string) => {
     switch (status) {
       case 'approved':
         return 'text-green-600';
@@ -126,9 +126,9 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {request.attachments.map((attachment, index) => (
+                  {request.attachments.map((attachment) => (
                     <div
-                      key={index}
+                      key={attachment.name}
                       className="flex items-center gap-2 bg-gray-50 rounded px-2 py-1"
                     >
                       <span className="text-xs text-gray-700">{attachment.name}</span>

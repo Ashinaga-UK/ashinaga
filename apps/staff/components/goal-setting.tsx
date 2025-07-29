@@ -98,26 +98,35 @@ export function GoalSetting({ trigger, preselectedStudentId }: GoalSettingProps)
 
   const updateGoal = (index: number, field: keyof Goal, value: string | string[]) => {
     const updatedGoals = [...goals];
-    updatedGoals[index] = { ...updatedGoals[index], [field]: value };
+    updatedGoals[index] = { ...updatedGoals[index], [field]: value } as Goal;
     setGoals(updatedGoals);
   };
 
   const addMilestone = (goalIndex: number) => {
     const updatedGoals = [...goals];
-    updatedGoals[goalIndex].milestones.push('');
-    setGoals(updatedGoals);
+    if (updatedGoals[goalIndex]) {
+      updatedGoals[goalIndex].milestones.push('');
+      setGoals(updatedGoals);
+    }
   };
 
   const updateMilestone = (goalIndex: number, milestoneIndex: number, value: string) => {
     const updatedGoals = [...goals];
-    updatedGoals[goalIndex].milestones[milestoneIndex] = value;
-    setGoals(updatedGoals);
+    if (
+      updatedGoals[goalIndex] &&
+      updatedGoals[goalIndex].milestones[milestoneIndex] !== undefined
+    ) {
+      updatedGoals[goalIndex].milestones[milestoneIndex] = value;
+      setGoals(updatedGoals);
+    }
   };
 
   const removeMilestone = (goalIndex: number, milestoneIndex: number) => {
     const updatedGoals = [...goals];
-    updatedGoals[goalIndex].milestones.splice(milestoneIndex, 1);
-    setGoals(updatedGoals);
+    if (updatedGoals[goalIndex]) {
+      updatedGoals[goalIndex].milestones.splice(milestoneIndex, 1);
+      setGoals(updatedGoals);
+    }
   };
 
   const removeGoal = (index: number) => {
@@ -227,7 +236,7 @@ export function GoalSetting({ trigger, preselectedStudentId }: GoalSettingProps)
           {/* Goals */}
           <div className="space-y-6">
             {goals.map((goal, goalIndex) => (
-              <Card key={goalIndex}>
+              <Card key={`goal-${goalIndex}-${goal.title || 'untitled'}`}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">Goal {goalIndex + 1}</CardTitle>
@@ -305,7 +314,10 @@ export function GoalSetting({ trigger, preselectedStudentId }: GoalSettingProps)
                     </div>
                     <div className="space-y-2">
                       {goal.milestones.map((milestone, milestoneIndex) => (
-                        <div key={milestoneIndex} className="flex gap-2">
+                        <div
+                          key={`milestone-${goalIndex}-${milestoneIndex}-${milestone}`}
+                          className="flex gap-2"
+                        >
                           <Input
                             value={milestone}
                             onChange={(e) =>

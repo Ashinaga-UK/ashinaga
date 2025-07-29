@@ -87,11 +87,10 @@ const mockStudent = {
 };
 
 interface StudentProfileProps {
-  studentId: string;
   onBack: () => void;
 }
 
-export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
+export function StudentProfile({ onBack }: StudentProfileProps) {
   const [student] = useState(mockStudent); // In real app, fetch by studentId
 
   const getStatusColor = (status: string) => {
@@ -273,8 +272,6 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                         </Button>
                       }
                       preselectedStudentId={student.id}
-                      editMode={true}
-                      taskData={task}
                     />
                   </div>
                 </CardContent>
@@ -288,8 +285,8 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
             <h3 className="text-lg font-semibold">Documents</h3>
           </div>
           <div className="space-y-4">
-            {student.documents.map((doc, index) => (
-              <Card key={index}>
+            {student.documents.map((doc) => (
+              <Card key={doc.name}>
                 <CardContent className="pt-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">

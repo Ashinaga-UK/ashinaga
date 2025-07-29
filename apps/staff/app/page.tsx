@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@workspace/ui';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@workspace/ui';
-import { Avatar, AvatarFallback, AvatarImage } from '@workspace/ui';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@workspace/ui';
+import { Button } from '../components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { FileText, MessageSquare, Plus, Target, Users, AlertCircle } from 'lucide-react';
 import { StudentManagementTable } from '../components/student-management-table';
 import { AnnouncementCreator } from '../components/announcement-creator';
@@ -15,10 +15,16 @@ import { MyProfile } from '../components/my-profile';
 import { GoalSetting } from '../components/goal-setting';
 import { RequestManagement } from '../components/request-management';
 import { LoginPage } from '../components/login-page';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@workspace/ui';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '../components/ui/select';
 
 // Mock data - in real app this would come from your API/database
-const mockTasks = [
+const _mockTasks = [
   {
     id: 1,
     title: 'Review scholarship proposal - Sarah Chen',
@@ -84,7 +90,7 @@ const mockRequests = [
   },
 ];
 
-const mockStudents = [
+const _mockStudents = [
   {
     id: 'SC001',
     name: 'Sarah Chen',
@@ -112,11 +118,10 @@ export default function StaffDashboard() {
   const [currentView, setCurrentView] = useState<
     'dashboard' | 'student-profile' | 'onboarding' | 'task-assignment' | 'my-profile'
   >('dashboard');
-  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(true); // Set to false for login flow
   const [requestStatusFilter, setRequestStatusFilter] = useState('all');
 
-  const getPriorityColor = (priority: string) => {
+  const _getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high':
         return 'destructive';
@@ -129,7 +134,7 @@ export default function StaffDashboard() {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const _getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
         return 'text-green-600';
@@ -295,10 +300,7 @@ export default function StaffDashboard() {
 
             <TabsContent value="students" className="space-y-6">
               {currentView === 'student-profile' ? (
-                <StudentProfile
-                  studentId={selectedStudentId!}
-                  onBack={() => setCurrentView('dashboard')}
-                />
+                <StudentProfile onBack={() => setCurrentView('dashboard')} />
               ) : (
                 <Card>
                   <CardHeader>
@@ -307,8 +309,7 @@ export default function StaffDashboard() {
                   </CardHeader>
                   <CardContent>
                     <StudentManagementTable
-                      onViewProfile={(studentId) => {
-                        setSelectedStudentId(studentId);
+                      onViewProfile={() => {
                         setCurrentView('student-profile');
                       }}
                       onOnboardStudent={() => setCurrentView('onboarding')}

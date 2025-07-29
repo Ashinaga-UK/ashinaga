@@ -21,10 +21,19 @@ import { Badge } from './ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Plus, Send } from 'lucide-react';
 
+interface Student {
+  id: string;
+  name: string;
+  year: string;
+  program: string;
+  university: string;
+  status: string;
+}
+
 interface BulkTaskAssignmentProps {
   trigger?: React.ReactNode;
   selectedStudentIds?: string[];
-  filteredStudents?: any[];
+  filteredStudents?: Student[];
 }
 
 export function BulkTaskAssignment({

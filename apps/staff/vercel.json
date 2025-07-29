@@ -1,0 +1,6 @@
+{
+  "buildCommand": "cd ../.. && pnpm turbo run build --filter=staff",
+  "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
+  "framework": "nextjs",
+  "outputDirectory": ".next"
+}

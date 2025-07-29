@@ -250,7 +250,9 @@ export function StudentManagementTable({
                   checked={isAllSelected}
                   onCheckedChange={handleSelectAll}
                   ref={(el) => {
-                    if (el) el.indeterminate = isIndeterminate;
+                    if (el && 'indeterminate' in el) {
+                      (el as any).indeterminate = isIndeterminate;
+                    }
                   }}
                 />
               </TableHead>
@@ -321,7 +323,18 @@ export function StudentManagementTable({
                 </TableCell>
                 <TableCell className="text-sm text-gray-500">{student.lastActivity}</TableCell>
                 <TableCell className="text-right">
-                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                  {/* biome-ignore lint/a11y/useSemanticElements: div with role="group" is appropriate for interactive action buttons container */}
+                  <div
+                    className="flex items-center gap-2"
+                    role="group"
+                    aria-label="Student actions"
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.stopPropagation();
+                      }
+                    }}
+                  >
                     <TaskAssignment
                       trigger={
                         <Button size="sm" variant="outline">

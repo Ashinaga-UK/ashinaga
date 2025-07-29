@@ -70,7 +70,12 @@ export function LoginPage({ onLogin }: LoginPageProps) {
               'Signing in...'
             ) : (
               <>
-                <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+                <svg
+                  className="w-5 h-5 mr-2"
+                  viewBox="0 0 24 24"
+                  role="img"
+                  aria-label="Microsoft logo"
+                >
                   <path fill="#f25022" d="M1 1h10v10H1z" />
                   <path fill="#00a4ef" d="M13 1h10v10H13z" />
                   <path fill="#7fba00" d="M1 13h10v10H1z" />

@@ -1,7 +1,7 @@
 'use client';
 
 import type React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -21,6 +21,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Plus, Send, X } from 'lucide-react';
 
+interface Student {
+  id: string;
+  name: string;
+  year: string;
+  program: string;
+  university: string;
+  status: string;
+}
+
 interface AnnouncementCreatorProps {
   trigger?: React.ReactNode;
 }
@@ -32,7 +41,7 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
   const [filters, setFilters] = useState<string[]>([]);
   const [currentFilter, setCurrentFilter] = useState('');
   const [currentFilterValue, setCurrentFilterValue] = useState('');
-  const [previewStudents, setPreviewStudents] = useState<any[]>([]);
+  const [previewStudents, setPreviewStudents] = useState<Student[]>([]);
 
   // Mock students data for filtering
   const allStudents = [
@@ -106,7 +115,7 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
   };
 
   // Function to filter students based on active filters
-  const getFilteredStudents = () => {
+  const getFilteredStudents = useCallback(() => {
     if (filters.length === 0) return allStudents;
 
     return allStudents.filter((student) => {
@@ -126,11 +135,11 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
         }
       });
     });
-  };
+  }, [filters]);
 
   useEffect(() => {
     setPreviewStudents(getFilteredStudents());
-  }, [filters]);
+  }, [getFilteredStudents]);
 
   const addFilter = () => {
     if (currentFilter && currentFilterValue) {

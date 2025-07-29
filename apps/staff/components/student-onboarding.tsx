@@ -74,7 +74,7 @@ export function StudentOnboarding({ onBack }: StudentOnboardingProps) {
   const [activeTab, setActiveTab] = useState('single');
   const [studentData, setStudentData] = useState<StudentData>(initialStudentData);
   const [csvData, setCsvData] = useState<StudentData[]>([]);
-  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [_csvFile, setCsvFile] = useState<File | null>(null);
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -612,8 +612,8 @@ export function StudentOnboarding({ onBack }: StudentOnboardingProps) {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {csvData.map((student, index) => (
-                              <TableRow key={index}>
+                            {csvData.map((student) => (
+                              <TableRow key={student.email}>
                                 <TableCell>
                                   {student.firstName} {student.lastName}
                                 </TableCell>

@@ -102,7 +102,15 @@ export function SidebarLayout({ children, activeTab, onTabChange, onLogout }: Si
       {isSidebarOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          role="button"
+          tabIndex={0}
           onClick={() => setIsSidebarOpen(false)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              setIsSidebarOpen(false);
+            }
+          }}
+          aria-label="Close sidebar"
         />
       )}
     </div>

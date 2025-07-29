@@ -1,5 +1,0 @@
-{
-  "buildCommand": "cd ../.. && pnpm turbo run build --filter=web --filter=@workspace/ui --filter=@workspace/trpc",
-  "installCommand": "pnpm install --frozen-lockfile",
-  "framework": "nextjs"
-}
