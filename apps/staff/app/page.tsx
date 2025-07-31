@@ -1,27 +1,27 @@
 'use client';
 
+import { AlertCircle, FileText, MessageSquare, Plus, Target, Users } from 'lucide-react';
 import { useState } from 'react';
+import { AnnouncementCreator } from '../components/announcement-creator';
+import { GoalSetting } from '../components/goal-setting';
+import { LoginPage } from '../components/login-page';
+import { MyProfile } from '../components/my-profile';
+import { RequestManagement } from '../components/request-management';
+import { ScholarManagementTable } from '../components/scholar-management-table';
+import { ScholarOnboarding } from '../components/scholar-onboarding';
+import { ScholarProfile } from '../components/scholar-profile';
+import { TaskAssignment } from '../components/task-assignment';
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { FileText, MessageSquare, Plus, Target, Users, AlertCircle } from 'lucide-react';
-import { ScholarManagementTable } from '../components/scholar-management-table';
-import { AnnouncementCreator } from '../components/announcement-creator';
-import { ScholarProfile } from '../components/scholar-profile';
-import { ScholarOnboarding } from '../components/scholar-onboarding';
-import { TaskAssignment } from '../components/task-assignment';
-import { MyProfile } from '../components/my-profile';
-import { GoalSetting } from '../components/goal-setting';
-import { RequestManagement } from '../components/request-management';
-import { LoginPage } from '../components/login-page';
 import {
   Select,
-  SelectTrigger,
-  SelectValue,
   SelectContent,
   SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '../components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 
 // Mock data - in real app this would come from your API/database
 const _mockTasks = [

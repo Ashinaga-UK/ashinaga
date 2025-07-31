@@ -1,9 +1,9 @@
 'use client';
 
 import { Button } from '@workspace/ui';
-import { Home, Users, FileText, MessageSquare, LogOut, Menu, X } from 'lucide-react';
-import { useState } from 'react';
 import { cn } from '@workspace/ui/lib/utils';
+import { FileText, Home, LogOut, Menu, MessageSquare, Users, X } from 'lucide-react';
+import { useState } from 'react';
 
 interface SidebarLayoutProps {
   children: React.ReactNode;

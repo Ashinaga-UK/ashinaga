@@ -1,25 +1,25 @@
 'use client';
 
-import { useState } from 'react';
-import { Button } from './ui/button';
-import { Card, CardContent } from './ui/card';
-import { Badge } from './ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Progress } from './ui/progress';
 import {
   ArrowLeft,
-  Mail,
-  Phone,
-  MapPin,
   Calendar,
-  FileText,
-  Plus,
   CheckCircle,
   Clock,
+  FileText,
+  Mail,
+  MapPin,
+  Phone,
+  Plus,
 } from 'lucide-react';
+import { useState } from 'react';
 import { GoalSetting } from './goal-setting';
 import { TaskAssignment } from './task-assignment';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Card, CardContent } from './ui/card';
+import { Progress } from './ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 
 // Mock student data
 const mockScholar = {

@@ -1,9 +1,10 @@
 'use client';
 
+import { CheckCircle, Download, MessageCircle, Paperclip, Send, X } from 'lucide-react';
 import { useState } from 'react';
+import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { Textarea } from './ui/textarea';
-import { Label } from './ui/label';
+import { Card, CardContent } from './ui/card';
 import {
   Dialog,
   DialogContent,
@@ -13,9 +14,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from './ui/dialog';
-import { Badge } from './ui/badge';
-import { Card, CardContent } from './ui/card';
-import { CheckCircle, MessageCircle, X, Send, Paperclip, Download } from 'lucide-react';
+import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
 
 interface RequestManagementProps {
   request: {

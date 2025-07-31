@@ -3,7 +3,7 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Health check endpoint
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.status(200).json({
     status: 'healthy',
     message: 'Hello World API is running',
@@ -13,7 +13,7 @@ app.get('/health', (req, res) => {
 });
 
 // Root endpoint
-app.get('/', (req, res) => {
+app.get('/', (_req, res) => {
   res.json({
     message: 'Hello World from App Runner!',
     version: '1.0.0',
@@ -25,7 +25,7 @@ app.get('/', (req, res) => {
 });
 
 // API endpoint
-app.get('/api', (req, res) => {
+app.get('/api', (_req, res) => {
   res.json({
     message: 'API is working!',
     database: {

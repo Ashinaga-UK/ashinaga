@@ -1,11 +1,11 @@
 'use client';
 
+import { Plus, Send, X } from 'lucide-react';
 import type React from 'react';
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import {
   Dialog,
   DialogContent,
@@ -15,11 +15,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from './ui/dialog';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Badge } from './ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { Plus, Send, X } from 'lucide-react';
+import { Textarea } from './ui/textarea';
 
 interface Student {
   id: string;

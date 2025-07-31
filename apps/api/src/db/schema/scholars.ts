@@ -1,11 +1,14 @@
-import { pgTable, text, timestamp, uuid, pgEnum } from 'drizzle-orm/pg-core';
+import { pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { users } from './users';
 
 export const scholarStatusEnum = pgEnum('scholar_status', ['active', 'inactive', 'on_hold']);
 
 export const scholars = pgTable('scholars', {
   id: uuid('id').defaultRandom().primaryKey(),
-  name: text('name').notNull(),
-  email: text('email').notNull().unique(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' })
+    .unique(),
   phone: text('phone'),
   program: text('program').notNull(),
   year: text('year').notNull(),
@@ -15,8 +18,6 @@ export const scholars = pgTable('scholars', {
   status: scholarStatusEnum('status').notNull().default('active'),
   lastActivity: timestamp('last_activity', { withTimezone: true }),
   bio: text('bio'),
-  avatar: text('avatar'),
-  password: text('password').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });

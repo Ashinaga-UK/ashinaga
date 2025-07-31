@@ -1,14 +1,13 @@
 'use client';
 
+import { AlertCircle, Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import type React from 'react';
-
 import { useState } from 'react';
 import { Button } from './ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Separator } from './ui/separator';
-import { Eye, EyeOff, Mail, Lock, AlertCircle } from 'lucide-react';
 
 interface LoginPageProps {
   onLogin: () => void;

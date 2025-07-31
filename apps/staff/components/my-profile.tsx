@@ -1,14 +1,13 @@
 'use client';
 
+import { ArrowLeft, Save, Upload } from 'lucide-react';
 import type React from 'react';
-
 import { useState } from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { ArrowLeft, Upload, Save } from 'lucide-react';
 
 interface MyProfileProps {
   onBack: () => void;

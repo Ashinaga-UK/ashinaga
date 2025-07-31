@@ -1,18 +1,17 @@
 'use client';
 
+import { ArrowLeft, CheckCircle, FileSpreadsheet, Send, Upload, UserPlus } from 'lucide-react';
 import type React from 'react';
-
 import { useState } from 'react';
+import { Badge } from './ui/badge';
 import { Button } from './ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Badge } from './ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { ArrowLeft, Upload, UserPlus, Send, FileSpreadsheet, CheckCircle } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Textarea } from './ui/textarea';
 
 interface ScholarOnboardingProps {
   onBack: () => void;

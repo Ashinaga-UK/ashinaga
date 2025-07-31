@@ -1,23 +1,23 @@
 'use client';
 
+import { Eye, MoreHorizontal, Plus, Search, Target, Users } from 'lucide-react';
 import { useState } from 'react';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Badge } from './ui/badge';
+import { BulkTaskAssignment } from './bulk-task-assignment';
+import { GoalSetting } from './goal-setting';
+import { TaskAssignment } from './task-assignment';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Checkbox } from './ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
-import { Checkbox } from './ui/checkbox';
-import { Search, MoreHorizontal, Eye, Plus, Target, Users } from 'lucide-react';
-import { TaskAssignment } from './task-assignment';
+import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { GoalSetting } from './goal-setting';
-import { BulkTaskAssignment } from './bulk-task-assignment';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 
 // Extended mock data for demonstration
 const mockScholars = [

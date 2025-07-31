@@ -6,7 +6,7 @@ console.log('Starting Hello World API...');
 console.log('Port:', port);
 console.log('NODE_ENV:', process.env.NODE_ENV);
 
-app.get('/', (req, res) => {
+app.get('/', (_req, res) => {
   res.json({
     message: 'Hello World from App Runner!',
     status: 'success',
@@ -14,7 +14,7 @@ app.get('/', (req, res) => {
   });
 });
 
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.json({
     status: 'healthy',
     uptime: process.uptime(),

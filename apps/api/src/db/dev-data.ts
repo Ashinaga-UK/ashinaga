@@ -1,6 +1,6 @@
+import * as bcrypt from 'bcryptjs';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
-import * as bcrypt from 'bcryptjs';
 import * as schema from './schema';
 
 const pool = new Pool({
@@ -17,7 +17,7 @@ async function populateDevData() {
   console.log('🌱 Starting development data population...');
 
   try {
-    // Clear existing data
+    // Clear existing data in the correct order
     console.log('🧹 Clearing existing data...');
     await db.delete(schema.requestAuditLogs);
     await db.delete(schema.requestAttachments);
@@ -30,120 +30,208 @@ async function populateDevData() {
     await db.delete(schema.announcementFilters);
     await db.delete(schema.announcements);
     await db.delete(schema.scholars);
+    await db.delete(schema.staff);
+    await db.delete(schema.sessions);
+    await db.delete(schema.accounts);
     await db.delete(schema.users);
 
-    // Create users (staff)
-    console.log('👥 Creating users...');
-    const hashedPassword = await bcrypt.hash('password123', 10);
+    // Note: In production, Better Auth will handle password hashing
+    // For dev data, we'll create a temporary hash for testing
+    const _hashedPassword = await bcrypt.hash('password123', 10);
 
+    // Create staff users
+    console.log('👥 Creating staff users...');
+
+    // Admin user
     const [adminUser] = await db
       .insert(schema.users)
       .values({
         name: 'Sarah Johnson',
         email: 'sarah.johnson@ashinaga.org',
-        password: hashedPassword,
-        role: 'admin',
-        phone: '+44 20 1234 5678',
-        department: 'Scholar Support',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah',
+        emailVerified: true,
+        image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah',
+        userType: 'staff',
       })
       .returning();
 
+    const [_adminStaff] = await db
+      .insert(schema.staff)
+      .values({
+        userId: adminUser.id,
+        role: 'admin',
+        phone: '+44 20 1234 5678',
+        department: 'Scholar Support',
+        isActive: true,
+      })
+      .returning();
+
+    // Viewer user
     const [viewerUser] = await db
       .insert(schema.users)
       .values({
         name: 'Michael Chen',
         email: 'michael.chen@ashinaga.org',
-        password: hashedPassword,
-        role: 'viewer',
-        phone: '+44 20 1234 5679',
-        department: 'Academic Affairs',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Michael',
+        emailVerified: true,
+        image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Michael',
+        userType: 'staff',
       })
       .returning();
 
-    // Create scholars
-    console.log('🎓 Creating scholars...');
-    const scholars = await db
-      .insert(schema.scholars)
-      .values([
-        {
-          name: 'Amara Okafor',
-          email: 'amara.okafor@example.com',
-          password: hashedPassword,
-          phone: '+234 123 456 7890',
-          program: 'Computer Science',
-          year: 'Year 2',
-          university: 'University of Oxford',
-          location: 'Oxford, UK',
-          startDate: new Date('2022-09-01'),
-          status: 'active',
-          lastActivity: new Date(),
-          bio: 'Passionate about AI and machine learning. Aspiring to use technology to solve healthcare challenges in Africa.',
-          avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Amara',
-        },
-        {
-          name: 'Kenji Tanaka',
-          email: 'kenji.tanaka@example.com',
-          password: hashedPassword,
-          phone: '+81 90 1234 5678',
-          program: 'Medicine',
-          year: 'Year 3',
-          university: 'Imperial College London',
-          location: 'London, UK',
-          startDate: new Date('2021-09-01'),
-          status: 'active',
-          lastActivity: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-          bio: 'Future doctor dedicated to improving rural healthcare access. Interested in telemedicine innovations.',
-          avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Kenji',
-        },
-        {
-          name: 'Fatima Al-Hassan',
-          email: 'fatima.alhassan@example.com',
-          password: hashedPassword,
-          phone: '+962 79 123 4567',
-          program: 'International Relations',
-          year: 'Year 1',
-          university: 'London School of Economics',
-          location: 'London, UK',
-          startDate: new Date('2023-09-01'),
-          status: 'active',
-          lastActivity: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-          bio: 'Committed to refugee advocacy and international humanitarian law. Fluent in Arabic, English, and French.',
-          avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Fatima',
-        },
-        {
-          name: 'Carlos Rodriguez',
-          email: 'carlos.rodriguez@example.com',
-          password: hashedPassword,
-          phone: '+52 55 1234 5678',
-          program: 'Environmental Science',
-          year: 'Year 4',
-          university: 'University of Edinburgh',
-          location: 'Edinburgh, UK',
-          startDate: new Date('2020-09-01'),
-          status: 'active',
-          lastActivity: new Date(),
-          bio: 'Environmental activist focusing on sustainable development in Latin America. Leading campus sustainability initiatives.',
-          avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Carlos',
-        },
-        {
-          name: 'Priya Sharma',
-          email: 'priya.sharma@example.com',
-          password: hashedPassword,
-          phone: '+91 98765 43210',
-          program: 'Economics',
-          year: 'Pre-University',
-          university: 'Cambridge Pre-U',
-          location: 'Cambridge, UK',
-          startDate: new Date('2023-09-01'),
-          status: 'on_hold',
-          lastActivity: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-          bio: 'Aspiring economist interested in microfinance and poverty alleviation strategies.',
-          avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Priya',
-        },
-      ])
+    const [_viewerStaff] = await db
+      .insert(schema.staff)
+      .values({
+        userId: viewerUser.id,
+        role: 'viewer',
+        phone: '+44 20 1234 5679',
+        department: 'Academic Affairs',
+        isActive: true,
+      })
       .returning();
+
+    // Create scholar users
+    console.log('🎓 Creating scholars...');
+
+    // Scholar 1
+    const [scholar1User] = await db
+      .insert(schema.users)
+      .values({
+        name: 'Amara Okafor',
+        email: 'amara.okafor@example.com',
+        emailVerified: true,
+        image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Amara',
+        userType: 'scholar',
+      })
+      .returning();
+
+    const [scholar1] = await db
+      .insert(schema.scholars)
+      .values({
+        userId: scholar1User.id,
+        phone: '+234 123 456 7890',
+        program: 'Computer Science',
+        year: 'Year 2',
+        university: 'University of Oxford',
+        location: 'Oxford, UK',
+        startDate: new Date('2022-09-01'),
+        status: 'active',
+        lastActivity: new Date(),
+        bio: 'Passionate about AI and machine learning. Aspiring to use technology to solve healthcare challenges in Africa.',
+      })
+      .returning();
+
+    // Scholar 2
+    const [scholar2User] = await db
+      .insert(schema.users)
+      .values({
+        name: 'Kenji Tanaka',
+        email: 'kenji.tanaka@example.com',
+        emailVerified: true,
+        image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Kenji',
+        userType: 'scholar',
+      })
+      .returning();
+
+    const [scholar2] = await db
+      .insert(schema.scholars)
+      .values({
+        userId: scholar2User.id,
+        phone: '+81 90 1234 5678',
+        program: 'Medicine',
+        year: 'Year 3',
+        university: 'Imperial College London',
+        location: 'London, UK',
+        startDate: new Date('2021-09-01'),
+        status: 'active',
+        lastActivity: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+        bio: 'Future doctor dedicated to improving rural healthcare access. Interested in telemedicine innovations.',
+      })
+      .returning();
+
+    // Scholar 3
+    const [scholar3User] = await db
+      .insert(schema.users)
+      .values({
+        name: 'Fatima Al-Hassan',
+        email: 'fatima.alhassan@example.com',
+        emailVerified: true,
+        image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Fatima',
+        userType: 'scholar',
+      })
+      .returning();
+
+    const [scholar3] = await db
+      .insert(schema.scholars)
+      .values({
+        userId: scholar3User.id,
+        phone: '+962 79 123 4567',
+        program: 'International Relations',
+        year: 'Year 1',
+        university: 'London School of Economics',
+        location: 'London, UK',
+        startDate: new Date('2023-09-01'),
+        status: 'active',
+        lastActivity: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+        bio: 'Committed to refugee advocacy and international humanitarian law. Fluent in Arabic, English, and French.',
+      })
+      .returning();
+
+    // Scholar 4
+    const [scholar4User] = await db
+      .insert(schema.users)
+      .values({
+        name: 'Carlos Rodriguez',
+        email: 'carlos.rodriguez@example.com',
+        emailVerified: true,
+        image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Carlos',
+        userType: 'scholar',
+      })
+      .returning();
+
+    const [scholar4] = await db
+      .insert(schema.scholars)
+      .values({
+        userId: scholar4User.id,
+        phone: '+52 55 1234 5678',
+        program: 'Environmental Science',
+        year: 'Year 4',
+        university: 'University of Edinburgh',
+        location: 'Edinburgh, UK',
+        startDate: new Date('2020-09-01'),
+        status: 'active',
+        lastActivity: new Date(),
+        bio: 'Environmental activist focusing on sustainable development in Latin America. Leading campus sustainability initiatives.',
+      })
+      .returning();
+
+    // Scholar 5
+    const [scholar5User] = await db
+      .insert(schema.users)
+      .values({
+        name: 'Priya Sharma',
+        email: 'priya.sharma@example.com',
+        emailVerified: false, // Not yet verified
+        image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Priya',
+        userType: 'scholar',
+      })
+      .returning();
+
+    const [scholar5] = await db
+      .insert(schema.scholars)
+      .values({
+        userId: scholar5User.id,
+        phone: '+91 98765 43210',
+        program: 'Economics',
+        year: 'Pre-University',
+        university: 'Cambridge Pre-U',
+        location: 'Cambridge, UK',
+        startDate: new Date('2023-09-01'),
+        status: 'on_hold',
+        lastActivity: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        bio: 'Aspiring economist interested in microfinance and poverty alleviation strategies.',
+      })
+      .returning();
+
+    const scholars = [scholar1, scholar2, scholar3, scholar4, scholar5];
 
     // Create tasks
     console.log('📋 Creating tasks...');
@@ -362,7 +450,7 @@ async function populateDevData() {
     }
 
     // Third announcement targets active scholars only
-    const activeScholars = scholars.filter((s) => s.status === 'active');
+    const activeScholars = scholars.filter((_s, idx) => [0, 1, 2, 3].includes(idx)); // First 4 are active
     for (const scholar of activeScholars) {
       await db.insert(schema.announcementRecipients).values({
         announcementId: announcements[2].id,
@@ -513,7 +601,7 @@ async function populateDevData() {
 
     console.log('✅ Development data populated successfully!');
     console.log(`Created:
-    - ${2} users (1 admin, 1 viewer)
+    - ${2} staff members (1 admin, 1 viewer)
     - ${scholars.length} scholars
     - ${tasks.length} tasks
     - ${goals.length} goals with milestones
@@ -522,9 +610,11 @@ async function populateDevData() {
     - ${4} documents`);
 
     console.log('\n📧 Login credentials:');
-    console.log('Staff Admin: sarah.johnson@ashinaga.org / password123');
-    console.log('Staff Viewer: michael.chen@ashinaga.org / password123');
-    console.log('Scholar: amara.okafor@example.com / password123');
+    console.log('Note: Better Auth will handle authentication. Use these emails for testing:');
+    console.log('Staff Admin: sarah.johnson@ashinaga.org');
+    console.log('Staff Viewer: michael.chen@ashinaga.org');
+    console.log('Scholar: amara.okafor@example.com');
+    console.log('\nPasswords will be set when users are created through Better Auth signup flow.');
   } catch (error) {
     console.error('❌ Development data population failed:', error);
     throw error;

@@ -1,12 +1,12 @@
 'use client';
 
+import { Plus, Save, Target } from 'lucide-react';
 import type React from 'react';
-
 import { useState } from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import {
   Dialog,
   DialogContent,
@@ -16,11 +16,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from './ui/dialog';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Badge } from './ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Plus, Target, Save } from 'lucide-react';
+import { Textarea } from './ui/textarea';
 
 interface GoalSettingProps {
   trigger?: React.ReactNode;

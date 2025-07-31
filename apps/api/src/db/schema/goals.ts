@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid, pgEnum, integer } from 'drizzle-orm/pg-core';
+import { integer, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { scholars } from './scholars';
 
 export const goalCategoryEnum = pgEnum('goal_category', [

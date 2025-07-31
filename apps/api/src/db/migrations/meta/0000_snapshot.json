@@ -1,5 +1,5 @@
 {
-  "id": "44385707-ca0d-4724-85ec-1f6cd53a8fcc",
+  "id": "7981b388-c8e3-40d9-9db3-06d1032d9fb7",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -15,15 +15,9 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "email": {
-          "name": "email",
-          "type": "text",
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
@@ -83,18 +77,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "avatar": {
-          "name": "avatar",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "password": {
-          "name": "password",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -111,21 +93,31 @@
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "scholars_user_id_user_id_fk": {
+          "name": "scholars_user_id_user_id_fk",
+          "tableFrom": "scholars",
+          "tableTo": "user",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "scholars_email_unique": {
-          "name": "scholars_email_unique",
+        "scholars_user_id_unique": {
+          "name": "scholars_user_id_unique",
           "nullsNotDistinct": false,
-          "columns": ["email"]
+          "columns": ["user_id"]
         }
       },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.users": {
-      "name": "users",
+    "public.account": {
+      "name": "account",
       "schema": "",
       "columns": {
         "id": {
@@ -135,21 +127,165 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "name": {
-          "name": "name",
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider": {
+          "name": "provider",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "email": {
-          "name": "email",
+        "provider_account_id": {
+          "name": "provider_account_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "password": {
-          "name": "password",
+        "refresh_token": {
+          "name": "refresh_token",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "access_token": {
+          "name": "access_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "token_type": {
+          "name": "token_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "scope": {
+          "name": "scope",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id_token": {
+          "name": "id_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "session_state": {
+          "name": "session_state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "account_user_id_user_id_fk": {
+          "name": "account_user_id_user_id_fk",
+          "tableFrom": "account",
+          "tableTo": "user",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.session": {
+      "name": "session",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token": {
+          "name": "token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ip_address": {
+          "name": "ip_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_agent": {
+          "name": "user_agent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "session_user_id_user_id_fk": {
+          "name": "session_user_id_user_id_fk",
+          "tableFrom": "session",
+          "tableTo": "user",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "session_token_unique": {
+          "name": "session_token_unique",
+          "nullsNotDistinct": false,
+          "columns": ["token"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.staff": {
+      "name": "staff",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
@@ -173,18 +309,94 @@
           "primaryKey": false,
           "notNull": false
         },
-        "avatar": {
-          "name": "avatar",
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "staff_user_id_user_id_fk": {
+          "name": "staff_user_id_user_id_fk",
+          "tableFrom": "staff",
+          "tableTo": "user",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "staff_user_id_unique": {
+          "name": "staff_user_id_unique",
+          "nullsNotDistinct": false,
+          "columns": ["user_id"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.user": {
+      "name": "user",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email_verified": {
+          "name": "email_verified",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "image": {
+          "name": "image",
           "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "is_active": {
-          "name": "is_active",
-          "type": "text",
+        "user_type": {
+          "name": "user_type",
+          "type": "user_type",
+          "typeSchema": "public",
           "primaryKey": false,
-          "notNull": true,
-          "default": "'true'"
+          "notNull": true
         },
         "created_at": {
           "name": "created_at",
@@ -205,8 +417,8 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "users_email_unique": {
-          "name": "users_email_unique",
+        "user_email_unique": {
+          "name": "user_email_unique",
           "nullsNotDistinct": false,
           "columns": ["email"]
         }
@@ -311,10 +523,10 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "tasks_assigned_by_users_id_fk": {
-          "name": "tasks_assigned_by_users_id_fk",
+        "tasks_assigned_by_user_id_fk": {
+          "name": "tasks_assigned_by_user_id_fk",
           "tableFrom": "tasks",
-          "tableTo": "users",
+          "tableTo": "user",
           "columnsFrom": ["assigned_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -651,10 +863,10 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "announcements_created_by_users_id_fk": {
-          "name": "announcements_created_by_users_id_fk",
+        "announcements_created_by_user_id_fk": {
+          "name": "announcements_created_by_user_id_fk",
           "tableFrom": "announcements",
-          "tableTo": "users",
+          "tableTo": "user",
           "columnsFrom": ["created_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -808,10 +1020,10 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "request_audit_logs_performed_by_users_id_fk": {
-          "name": "request_audit_logs_performed_by_users_id_fk",
+        "request_audit_logs_performed_by_user_id_fk": {
+          "name": "request_audit_logs_performed_by_user_id_fk",
           "tableFrom": "request_audit_logs",
-          "tableTo": "users",
+          "tableTo": "user",
           "columnsFrom": ["performed_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -921,10 +1133,10 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "requests_reviewed_by_users_id_fk": {
-          "name": "requests_reviewed_by_users_id_fk",
+        "requests_reviewed_by_user_id_fk": {
+          "name": "requests_reviewed_by_user_id_fk",
           "tableFrom": "requests",
-          "tableTo": "users",
+          "tableTo": "user",
           "columnsFrom": ["reviewed_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -1023,10 +1235,10 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "documents_uploaded_by_users_id_fk": {
-          "name": "documents_uploaded_by_users_id_fk",
+        "documents_uploaded_by_user_id_fk": {
+          "name": "documents_uploaded_by_user_id_fk",
           "tableFrom": "documents",
-          "tableTo": "users",
+          "tableTo": "user",
           "columnsFrom": ["uploaded_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -1050,6 +1262,11 @@
       "name": "user_role",
       "schema": "public",
       "values": ["admin", "viewer"]
+    },
+    "public.user_type": {
+      "name": "user_type",
+      "schema": "public",
+      "values": ["staff", "scholar"]
     },
     "public.task_priority": {
       "name": "task_priority",
