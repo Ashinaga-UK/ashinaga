@@ -13,10 +13,17 @@ const authConfig = betterAuth({
       user: schema.users,
       account: schema.accounts,
       session: schema.sessions,
+      jwks: schema.jwks,
     },
   }),
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: process.env.BETTER_AUTH_URL || 'http://localhost:3000',
+  trustedOrigins: [
+    'http://localhost:3000', // API server
+    'http://localhost:3001', // Staff app
+    'http://localhost:3002', // Scholar app
+    process.env.BETTER_AUTH_URL || 'http://localhost:3000',
+  ],
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: false, // We handle verification through invitations
@@ -57,34 +64,51 @@ const authConfig = betterAuth({
   callbacks: {
     signUp: {
       before: async ({ email }) => {
-        // Check if user has a valid invitation
-        const db = getDatabase();
-        const invitations = await db
-          .select()
-          .from(schema.invitations)
-          .where(eq(schema.invitations.email, email))
-          .limit(1);
+        console.log('SignUp Before Hook - Email:', email);
 
-        const invitation = invitations[0];
+        try {
+          // Check if user has a valid invitation
+          const db = getDatabase();
+          console.log('Got database connection');
 
-        if (!invitation) {
-          throw new Error('Invalid invitation. You must be invited to join this platform.');
+          const invitations = await db
+            .select()
+            .from(schema.invitations)
+            .where(eq(schema.invitations.email, email))
+            .limit(1);
+
+          console.log('Invitations found:', invitations.length);
+
+          const invitation = invitations[0];
+
+          if (!invitation) {
+            console.error('No invitation found for email:', email);
+            throw new Error('Invalid invitation. You must be invited to join this platform.');
+          }
+
+          console.log('Invitation status:', invitation.status);
+
+          if (invitation.status !== 'pending') {
+            throw new Error('This invitation has already been used or expired.');
+          }
+
+          if (new Date() > new Date(invitation.expiresAt)) {
+            throw new Error('This invitation has expired. Please request a new one.');
+          }
+
+          console.log('Invitation valid, returning user data');
+
+          // Return user data with userType from invitation
+          return {
+            email,
+            name: '',
+            userType: invitation.userType,
+            emailVerified: false,
+          };
+        } catch (error) {
+          console.error('SignUp Before Hook Error:', error);
+          throw error;
         }
-
-        if (invitation.status !== 'pending') {
-          throw new Error('This invitation has already been used or expired.');
-        }
-
-        if (new Date() > new Date(invitation.expiresAt)) {
-          throw new Error('This invitation has expired. Please request a new one.');
-        }
-
-        // Return user data with userType from invitation
-        return {
-          email,
-          name: '',
-          userType: invitation.userType,
-        };
       },
       after: async ({ user }) => {
         // Mark invitation as accepted and link to user

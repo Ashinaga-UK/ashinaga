@@ -12,7 +12,7 @@ export const documents = pgTable('documents', {
   mimeType: text('mime_type').notNull(),
   size: text('size').notNull(),
   url: text('url').notNull(),
-  uploadedBy: uuid('uploaded_by')
+  uploadedBy: text('uploaded_by')
     .notNull()
     .references(() => users.id),
   uploadDate: timestamp('upload_date', { withTimezone: true }).defaultNow().notNull(),

@@ -25,7 +25,7 @@ export const tasks = pgTable('tasks', {
   scholarId: uuid('scholar_id')
     .notNull()
     .references(() => scholars.id),
-  assignedBy: uuid('assigned_by')
+  assignedBy: text('assigned_by')
     .notNull()
     .references(() => users.id),
   completedAt: timestamp('completed_at', { withTimezone: true }),

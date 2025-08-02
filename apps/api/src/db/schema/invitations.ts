@@ -12,7 +12,7 @@ export const invitations = pgTable('invitations', {
   id: uuid('id').defaultRandom().primaryKey(),
   email: text('email').notNull().unique(), // Email to invite
   userType: userTypeEnum('user_type').notNull(), // 'staff' or 'scholar'
-  invitedBy: uuid('invited_by')
+  invitedBy: text('invited_by')
     .notNull()
     .references(() => users.id),
   status: invitationStatusEnum('status').notNull().default('pending'),
@@ -24,7 +24,7 @@ export const invitations = pgTable('invitations', {
   // Invitation metadata
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   acceptedAt: timestamp('accepted_at', { withTimezone: true }),
-  userId: uuid('user_id').references(() => users.id), // Link to user once accepted
+  userId: text('user_id').references(() => users.id), // Link to user once accepted
 
   // Email tracking
   sentAt: timestamp('sent_at', { withTimezone: true }),

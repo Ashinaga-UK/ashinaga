@@ -1,7 +1,18 @@
 import * as bcrypt from 'bcryptjs';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
+import { generateInvitationToken } from '../auth/auth.config';
 import * as schema from './schema';
+
+// Generate Better Auth compatible IDs
+function generateId(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let id = '';
+  for (let i = 0; i < 32; i++) {
+    id += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return id;
+}
 
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
@@ -46,6 +57,7 @@ async function populateDevData() {
     const [adminUser] = await db
       .insert(schema.users)
       .values({
+        id: generateId(),
         name: 'Sarah Johnson',
         email: 'sarah.johnson@ashinaga.org',
         emailVerified: true,
@@ -69,6 +81,7 @@ async function populateDevData() {
     const [viewerUser] = await db
       .insert(schema.users)
       .values({
+        id: generateId(),
         name: 'Michael Chen',
         email: 'michael.chen@ashinaga.org',
         emailVerified: true,
@@ -95,6 +108,7 @@ async function populateDevData() {
     const [scholar1User] = await db
       .insert(schema.users)
       .values({
+        id: generateId(),
         name: 'Amara Okafor',
         email: 'amara.okafor@example.com',
         emailVerified: true,
@@ -123,6 +137,7 @@ async function populateDevData() {
     const [scholar2User] = await db
       .insert(schema.users)
       .values({
+        id: generateId(),
         name: 'Kenji Tanaka',
         email: 'kenji.tanaka@example.com',
         emailVerified: true,
@@ -151,6 +166,7 @@ async function populateDevData() {
     const [scholar3User] = await db
       .insert(schema.users)
       .values({
+        id: generateId(),
         name: 'Fatima Al-Hassan',
         email: 'fatima.alhassan@example.com',
         emailVerified: true,
@@ -179,6 +195,7 @@ async function populateDevData() {
     const [scholar4User] = await db
       .insert(schema.users)
       .values({
+        id: generateId(),
         name: 'Carlos Rodriguez',
         email: 'carlos.rodriguez@example.com',
         emailVerified: true,
@@ -207,6 +224,7 @@ async function populateDevData() {
     const [scholar5User] = await db
       .insert(schema.users)
       .values({
+        id: generateId(),
         name: 'Priya Sharma',
         email: 'priya.sharma@example.com',
         emailVerified: false, // Not yet verified
@@ -599,6 +617,44 @@ async function populateDevData() {
       },
     ]);
 
+    // Create invitations for demo purposes
+    console.log('📧 Creating invitations...');
+    const invitations = await db
+      .insert(schema.invitations)
+      .values([
+        {
+          email: 'new.staff@ashinaga.org',
+          userType: 'staff',
+          invitedBy: adminUser.id,
+          token: generateInvitationToken(),
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+          sentAt: new Date(),
+        },
+        {
+          email: 'new.scholar@example.com',
+          userType: 'scholar',
+          invitedBy: adminUser.id,
+          token: generateInvitationToken(),
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+          sentAt: new Date(),
+          scholarData: JSON.stringify({
+            program: 'Engineering',
+            year: '2025',
+            university: 'University of Manchester',
+            location: 'Manchester, UK',
+          }),
+        },
+        {
+          email: 'expired.invite@example.com',
+          userType: 'scholar',
+          invitedBy: adminUser.id,
+          token: generateInvitationToken(),
+          expiresAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // Yesterday (expired)
+          sentAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000), // 8 days ago
+        },
+      ])
+      .returning();
+
     console.log('✅ Development data populated successfully!');
     console.log(`Created:
     - ${2} staff members (1 admin, 1 viewer)
@@ -607,7 +663,8 @@ async function populateDevData() {
     - ${goals.length} goals with milestones
     - ${announcements.length} announcements
     - ${requests.length} requests with attachments and audit logs
-    - ${4} documents`);
+    - ${4} documents
+    - ${invitations.length} invitations`);
 
     console.log('\n📧 Login credentials:');
     console.log('Note: Better Auth will handle authentication. Use these emails for testing:');
@@ -615,6 +672,11 @@ async function populateDevData() {
     console.log('Staff Viewer: michael.chen@ashinaga.org');
     console.log('Scholar: amara.okafor@example.com');
     console.log('\nPasswords will be set when users are created through Better Auth signup flow.');
+
+    console.log('\n🎫 Sample invitations created:');
+    console.log('- new.staff@ashinaga.org (valid staff invitation)');
+    console.log('- new.scholar@example.com (valid scholar invitation with pre-filled data)');
+    console.log('- expired.invite@example.com (expired invitation for testing)');
   } catch (error) {
     console.error('❌ Development data population failed:', error);
     throw error;

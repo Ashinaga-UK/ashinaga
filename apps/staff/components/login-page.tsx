@@ -3,17 +3,16 @@
 import { AlertCircle, Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { signIn } from '../lib/auth-client';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Separator } from './ui/separator';
 
-interface LoginPageProps {
-  onLogin: () => void;
-}
-
-export function LoginPage({ onLogin }: LoginPageProps) {
+export function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -25,26 +24,45 @@ export function LoginPage({ onLogin }: LoginPageProps) {
     e.preventDefault();
     setError('');
 
-    // Check if email is from @ashinaga.org domain
-    if (!email.endsWith('@ashinaga.org')) {
-      setError('Only @ashinaga.org email addresses are allowed for staff portal access.');
-      return;
-    }
+    // Note: In production, domain validation happens server-side
+    // The invitation system ensures only invited emails can sign up
 
     setIsLoading(true);
-    // Mock authentication
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsLoading(false);
-    onLogin();
+    try {
+      const { data, error: authError } = await signIn.email({
+        email,
+        password,
+      });
+
+      if (authError) {
+        setError(authError.message || 'Invalid email or password');
+        setIsLoading(false);
+        return;
+      }
+
+      if (data) {
+        // Redirect to dashboard on successful login
+        router.push('/');
+        router.refresh();
+      }
+    } catch (_err) {
+      setError('An unexpected error occurred. Please try again.');
+      setIsLoading(false);
+    }
   };
 
   const handleMicrosoftLogin = async () => {
     setError('');
     setIsMicrosoftLoading(true);
-    // Mock Microsoft authentication with domain validation
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    setIsMicrosoftLoading(false);
-    onLogin();
+    try {
+      await signIn.social({
+        provider: 'microsoft',
+      });
+      // The OAuth flow will handle the redirect
+    } catch (_err) {
+      setError('Failed to sign in with Microsoft. Please try again.');
+      setIsMicrosoftLoading(false);
+    }
   };
 
   return (
@@ -58,8 +76,12 @@ export function LoginPage({ onLogin }: LoginPageProps) {
           <CardDescription>Sign in to your Ashinaga Staff Portal account</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Microsoft Sign In */}
-          <Button
+          {/* Microsoft Sign In - Hidden until OAuth credentials are configured */}
+          {/* To enable Microsoft login:
+              1. Register an app at https://portal.azure.com
+              2. Add MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET to your .env file
+              3. Uncomment the button below */}
+          {/* <Button
             variant="outline"
             className="w-full bg-transparent"
             onClick={handleMicrosoftLogin}
@@ -83,16 +105,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                 Continue with Microsoft
               </>
             )}
-          </Button>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <Separator className="w-full" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-gray-500">Or continue with email</span>
-            </div>
-          </div>
+          </Button> */}
 
           {/* Error Message */}
           {error && (
@@ -118,9 +131,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                   required
                 />
               </div>
-              <p className="text-xs text-gray-500">
-                Only @ashinaga.org email addresses are allowed
-              </p>
+              <p className="text-xs text-gray-500">You must have an invitation to sign in</p>
             </div>
 
             <div className="space-y-2">
@@ -161,10 +172,22 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             </Button>
           </form>
 
-          <div className="text-center">
-            <Button variant="link" className="text-sm text-gray-600">
-              Forgot your password?
-            </Button>
+          <div className="text-center space-y-2">
+            <div>
+              <span className="text-sm text-gray-600">Don't have an account? </span>
+              <Button
+                variant="link"
+                className="p-0 h-auto text-sm font-normal text-ashinaga-teal hover:text-ashinaga-teal/80"
+                onClick={() => router.push('/signup')}
+              >
+                Sign up with invitation
+              </Button>
+            </div>
+            <div>
+              <Button variant="link" className="text-sm text-gray-600">
+                Forgot your password?
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

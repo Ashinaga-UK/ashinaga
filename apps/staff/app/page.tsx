@@ -1,7 +1,8 @@
 'use client';
 
 import { AlertCircle, FileText, MessageSquare, Plus, Target, Users } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { AnnouncementCreator } from '../components/announcement-creator';
 import { GoalSetting } from '../components/goal-setting';
 import { LoginPage } from '../components/login-page';
@@ -22,6 +23,7 @@ import {
   SelectValue,
 } from '../components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { useSession, signOut } from '../lib/auth-client';
 
 // Mock data - in real app this would come from your API/database
 const _mockTasks = [
@@ -114,12 +116,18 @@ const _mockScholars = [
 ];
 
 export default function StaffDashboard() {
+  const router = useRouter();
+  const session = useSession();
   const [activeTab, setActiveTab] = useState('overview');
   const [currentView, setCurrentView] = useState<
     'dashboard' | 'scholar-profile' | 'onboarding' | 'task-assignment' | 'my-profile'
   >('dashboard');
-  const [isAuthenticated, setIsAuthenticated] = useState(true); // Set to false for login flow
   const [requestStatusFilter, setRequestStatusFilter] = useState('all');
+
+  // Get user data from session
+  const user = session.data?.user;
+  const isLoading = session.isPending;
+  const isAuthenticated = !!user;
 
   const _getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -162,8 +170,29 @@ export default function StaffDashboard() {
     (request) => requestStatusFilter === 'all' || request.status === requestStatusFilter
   );
 
+  const handleSignOut = async () => {
+    await signOut();
+    router.push('/');
+    router.refresh();
+  };
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 rounded-lg flex items-center justify-center mx-auto mb-4 animate-pulse">
+            <span className="text-white font-bold text-2xl">A</span>
+          </div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login page if not authenticated
   if (!isAuthenticated) {
-    return <LoginPage onLogin={() => setIsAuthenticated(true)} />;
+    return <LoginPage />;
   }
 
   return (
@@ -184,12 +213,12 @@ export default function StaffDashboard() {
             <Button variant="ghost" size="sm" onClick={() => setCurrentView('my-profile')}>
               My Profile
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setIsAuthenticated(false)}>
+            <Button variant="outline" size="sm" onClick={handleSignOut}>
               Logout
             </Button>
             <Avatar>
-              <AvatarImage src="/placeholder.svg?height=32&width=32" />
-              <AvatarFallback>JD</AvatarFallback>
+              <AvatarImage src={user?.image || '/placeholder.svg?height=32&width=32'} />
+              <AvatarFallback>{user?.name?.slice(0, 2).toUpperCase() || 'U'}</AvatarFallback>
             </Avatar>
           </div>
         </div>

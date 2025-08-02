@@ -5,7 +5,7 @@ export const scholarStatusEnum = pgEnum('scholar_status', ['active', 'inactive',
 
 export const scholars = pgTable('scholars', {
   id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id')
+  userId: text('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' })
     .unique(),

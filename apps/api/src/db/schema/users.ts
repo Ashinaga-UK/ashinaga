@@ -4,7 +4,7 @@ export const userTypeEnum = pgEnum('user_type', ['staff', 'scholar']);
 
 export const users = pgTable('user', {
   // Better Auth expects 'user' not 'users'
-  id: uuid('id').defaultRandom().primaryKey(),
+  id: text('id').primaryKey(), // Better Auth generates string IDs
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
   emailVerified: boolean('email_verified').notNull().default(false),
@@ -16,30 +16,40 @@ export const users = pgTable('user', {
 
 // Better Auth required tables
 export const accounts = pgTable('account', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id')
+  id: text('id').primaryKey(),
+  userId: text('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
-  provider: text('provider').notNull(),
-  providerAccountId: text('provider_account_id').notNull(),
-  refreshToken: text('refresh_token'),
+  accountId: text('account_id').notNull(), // This is the unique identifier from the provider
+  providerId: text('provider_id').notNull(),
   accessToken: text('access_token'),
-  expiresAt: timestamp('expires_at', { withTimezone: true }),
-  tokenType: text('token_type'),
-  scope: text('scope'),
+  refreshToken: text('refresh_token'),
   idToken: text('id_token'),
-  sessionState: text('session_state'),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  password: text('password'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const sessions = pgTable('session', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id')
+  id: text('id').primaryKey(),
+  userId: text('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
-  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   token: text('token').notNull().unique(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   ipAddress: text('ip_address'),
   userAgent: text('user_agent'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+// JWKS table for JWT keys (required by Better Auth JWT plugin)
+export const jwks = pgTable('jwks', {
+  id: text('id').primaryKey(),
+  publicKey: text('public_key').notNull(),
+  privateKey: text('private_key').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
 // Staff specific table
@@ -47,7 +57,7 @@ export const userRoleEnum = pgEnum('user_role', ['admin', 'viewer']);
 
 export const staff = pgTable('staff', {
   id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id')
+  userId: text('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' })
     .unique(),

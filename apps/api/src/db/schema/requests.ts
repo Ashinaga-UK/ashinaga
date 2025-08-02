@@ -28,7 +28,7 @@ export const requests = pgTable('requests', {
   priority: requestPriorityEnum('priority').notNull().default('medium'),
   status: requestStatusEnum('status').notNull().default('pending'),
   submittedDate: timestamp('submitted_date', { withTimezone: true }).defaultNow().notNull(),
-  reviewedBy: uuid('reviewed_by').references(() => users.id),
+  reviewedBy: text('reviewed_by').references(() => users.id),
   reviewComment: text('review_comment'),
   reviewDate: timestamp('review_date', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -53,7 +53,7 @@ export const requestAuditLogs = pgTable('request_audit_logs', {
     .notNull()
     .references(() => requests.id, { onDelete: 'cascade' }),
   action: text('action').notNull(), // 'created', 'status_changed', 'comment_added', 'attachment_added'
-  performedBy: uuid('performed_by')
+  performedBy: text('performed_by')
     .notNull()
     .references(() => users.id),
   previousStatus: requestStatusEnum('previous_status'),

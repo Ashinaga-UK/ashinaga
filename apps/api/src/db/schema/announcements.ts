@@ -6,7 +6,7 @@ export const announcements = pgTable('announcements', {
   id: uuid('id').defaultRandom().primaryKey(),
   title: text('title').notNull(),
   content: text('content').notNull(),
-  createdBy: uuid('created_by')
+  createdBy: text('created_by')
     .notNull()
     .references(() => users.id),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
