@@ -1,6 +1,6 @@
-import { generateInvitationToken } from './auth.config';
 import { getDatabase } from '../db/connection';
 import * as schema from '../db/schema';
+import { generateInvitationToken } from './auth.config';
 
 // Mock the database connection
 jest.mock('../db/connection', () => ({

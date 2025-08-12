@@ -1,8 +1,8 @@
 'use client';
 
 import { AlertCircle, FileText, MessageSquare, Plus, Target, Users } from 'lucide-react';
-import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { AnnouncementCreator } from '../components/announcement-creator';
 import { GoalSetting } from '../components/goal-setting';
 import { LoginPage } from '../components/login-page';
@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from '../components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { useSession, signOut } from '../lib/auth-client';
+import { signOut, useSession } from '../lib/auth-client';
 
 // Mock data - in real app this would come from your API/database
 const _mockTasks = [

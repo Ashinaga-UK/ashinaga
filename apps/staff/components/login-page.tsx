@@ -1,9 +1,9 @@
 'use client';
 
 import { AlertCircle, Eye, EyeOff, Lock, Mail } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import type React from 'react';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { signIn } from '../lib/auth-client';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
