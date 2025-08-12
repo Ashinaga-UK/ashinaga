@@ -4,7 +4,11 @@ import { AuthController } from './auth.controller';
 // Mock the auth config
 jest.mock('./auth.config', () => ({
   auth: {
-    handler: jest.fn().mockResolvedValue({ status: 200, body: {} }),
+    handler: jest.fn().mockResolvedValue({
+      status: 200,
+      headers: new Map(),
+      text: jest.fn().mockResolvedValue('{"success":true}'),
+    }),
   },
 }));
 
@@ -28,6 +32,11 @@ describe('AuthController', () => {
       url: '/api/auth/login',
       method: 'POST',
       body: { email: 'test@example.com', password: 'password' },
+      headers: {
+        'content-type': 'application/json',
+      },
+      protocol: 'http',
+      hostname: 'localhost',
     };
 
     const mockRes = {
@@ -40,6 +49,7 @@ describe('AuthController', () => {
     await controller.handleAuth(mockReq as never, mockRes as never);
 
     const { auth } = require('./auth.config');
-    expect(auth.handler).toHaveBeenCalledWith(mockReq, expect.any(Object));
+    expect(auth.handler).toHaveBeenCalled();
+    expect(mockRes.send).toHaveBeenCalledWith('{"success":true}');
   });
 });
