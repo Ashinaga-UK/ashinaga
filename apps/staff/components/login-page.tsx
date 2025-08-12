@@ -9,7 +9,6 @@ import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Separator } from './ui/separator';
 
 export function LoginPage() {
   const router = useRouter();
@@ -17,7 +16,6 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isMicrosoftLoading, setIsMicrosoftLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleEmailLogin = async (e: React.FormEvent) => {
@@ -48,20 +46,6 @@ export function LoginPage() {
     } catch (_err) {
       setError('An unexpected error occurred. Please try again.');
       setIsLoading(false);
-    }
-  };
-
-  const handleMicrosoftLogin = async () => {
-    setError('');
-    setIsMicrosoftLoading(true);
-    try {
-      await signIn.social({
-        provider: 'microsoft',
-      });
-      // The OAuth flow will handle the redirect
-    } catch (_err) {
-      setError('Failed to sign in with Microsoft. Please try again.');
-      setIsMicrosoftLoading(false);
     }
   };
 

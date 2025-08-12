@@ -34,12 +34,6 @@ export class AuthController {
       body,
     });
 
-    // Create response wrapper
-    const responseInit = {
-      status: 200,
-      headers: new Headers(),
-    };
-
     try {
       console.log('Auth request URL:', url.toString());
       console.log('Auth request method:', req.method);

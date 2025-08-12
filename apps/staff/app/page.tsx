@@ -2,7 +2,7 @@
 
 import { AlertCircle, FileText, MessageSquare, Plus, Target, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { AnnouncementCreator } from '../components/announcement-creator';
 import { GoalSetting } from '../components/goal-setting';
 import { LoginPage } from '../components/login-page';

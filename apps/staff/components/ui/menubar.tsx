@@ -6,15 +6,15 @@ import * as React from 'react';
 
 import { cn } from '../../lib/utils';
 
-const MenubarMenu: any = MenubarPrimitive.Menu;
+const MenubarMenu: typeof MenubarPrimitive.Menu = MenubarPrimitive.Menu;
 
-const MenubarGroup: any = MenubarPrimitive.Group;
+const MenubarGroup: typeof MenubarPrimitive.Group = MenubarPrimitive.Group;
 
-const MenubarPortal: any = MenubarPrimitive.Portal;
+const MenubarPortal: typeof MenubarPrimitive.Portal = MenubarPrimitive.Portal;
 
-const MenubarSub: any = MenubarPrimitive.Sub;
+const MenubarSub: typeof MenubarPrimitive.Sub = MenubarPrimitive.Sub;
 
-const MenubarRadioGroup: any = MenubarPrimitive.RadioGroup;
+const MenubarRadioGroup: typeof MenubarPrimitive.RadioGroup = MenubarPrimitive.RadioGroup;
 
 const Menubar = React.forwardRef<
   React.ElementRef<typeof MenubarPrimitive.Root>,

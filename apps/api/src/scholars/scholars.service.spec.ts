@@ -10,7 +10,7 @@ jest.mock('../db/connection', () => ({
 
 describe('ScholarsService', () => {
   let service: ScholarsService;
-  let mockDatabase: any;
+  let mockDatabase: { select: jest.Mock };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -69,7 +69,6 @@ describe('ScholarsService', () => {
         },
       ];
 
-      const mockSelect = jest.fn().mockReturnThis();
       const mockFrom = jest.fn().mockReturnThis();
       const mockInnerJoin = jest.fn().mockReturnThis();
       const mockWhere = jest.fn().mockReturnThis();
