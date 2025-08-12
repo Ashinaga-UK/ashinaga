@@ -18,6 +18,15 @@ export class ScholarsController {
     return this.scholarsService.getScholars(query);
   }
 
+  @Get('filters')
+  async getFilterOptions(): Promise<{
+    programs: string[];
+    years: string[];
+    universities: string[];
+  }> {
+    return this.scholarsService.getFilterOptions();
+  }
+
   @Get(':id')
   async getScholar(@Param('id', ParseUUIDPipe) id: string): Promise<ScholarResponseDto> {
     return this.scholarsService.getScholar(id);

@@ -103,3 +103,13 @@ export async function getScholars(params?: GetScholarsParams): Promise<GetSchola
 export async function getScholar(id: string): Promise<Scholar> {
   return fetchAPI<Scholar>(`/api/scholars/${id}`);
 }
+
+export interface FilterOptions {
+  programs: string[];
+  years: string[];
+  universities: string[];
+}
+
+export async function getFilterOptions(): Promise<FilterOptions> {
+  return fetchAPI<FilterOptions>('/api/scholars/filters');
+}

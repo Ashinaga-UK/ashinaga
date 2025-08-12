@@ -271,4 +271,34 @@ export class ScholarsService {
 
     return stats;
   }
+
+  async getFilterOptions(): Promise<{
+    programs: string[];
+    years: string[];
+    universities: string[];
+  }> {
+    // Get unique programs
+    const programsResult = await database
+      .selectDistinct({ value: scholars.program })
+      .from(scholars)
+      .orderBy(scholars.program);
+
+    // Get unique years
+    const yearsResult = await database
+      .selectDistinct({ value: scholars.year })
+      .from(scholars)
+      .orderBy(scholars.year);
+
+    // Get unique universities
+    const universitiesResult = await database
+      .selectDistinct({ value: scholars.university })
+      .from(scholars)
+      .orderBy(scholars.university);
+
+    return {
+      programs: programsResult.map((r) => r.value).filter(Boolean),
+      years: yearsResult.map((r) => r.value).filter(Boolean),
+      universities: universitiesResult.map((r) => r.value).filter(Boolean),
+    };
+  }
 }

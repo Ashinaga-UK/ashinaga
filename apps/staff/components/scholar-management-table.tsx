@@ -11,7 +11,13 @@ import {
   Users,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import { getScholars, type GetScholarsParams, type Scholar } from '../lib/api-client';
+import {
+  getFilterOptions,
+  getScholars,
+  type FilterOptions,
+  type GetScholarsParams,
+  type Scholar,
+} from '../lib/api-client';
 import { BulkTaskAssignment } from './bulk-task-assignment';
 import { GoalSetting } from './goal-setting';
 import { TaskAssignment } from './task-assignment';
@@ -53,6 +59,13 @@ export function ScholarManagementTable({
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive' | 'on_hold'>(
     'all'
   );
+
+  // Filter options from API
+  const [filterOptions, setFilterOptions] = useState<FilterOptions>({
+    programs: [],
+    years: [],
+    universities: [],
+  });
 
   // Debounce search to avoid too many API calls
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
@@ -97,6 +110,19 @@ export function ScholarManagementTable({
   useEffect(() => {
     fetchScholars();
   }, [fetchScholars]);
+
+  // Fetch filter options on mount
+  useEffect(() => {
+    const fetchFilters = async () => {
+      try {
+        const options = await getFilterOptions();
+        setFilterOptions(options);
+      } catch (err) {
+        console.error('Error fetching filter options:', err);
+      }
+    };
+    fetchFilters();
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -191,10 +217,11 @@ export function ScholarManagementTable({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Programs</SelectItem>
-            <SelectItem value="Computer Science">Computer Science</SelectItem>
-            <SelectItem value="Medicine">Medicine</SelectItem>
-            <SelectItem value="Engineering">Engineering</SelectItem>
-            <SelectItem value="International Relations">International Relations</SelectItem>
+            {filterOptions.programs.map((program) => (
+              <SelectItem key={program} value={program}>
+                {program}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 
@@ -204,11 +231,11 @@ export function ScholarManagementTable({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Years</SelectItem>
-            <SelectItem value="Pre-University">Pre-University</SelectItem>
-            <SelectItem value="Foundation">Foundation</SelectItem>
-            <SelectItem value="Year 1">Year 1</SelectItem>
-            <SelectItem value="Year 2">Year 2</SelectItem>
-            <SelectItem value="Year 3">Year 3</SelectItem>
+            {filterOptions.years.map((year) => (
+              <SelectItem key={year} value={year}>
+                {year}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 
@@ -218,10 +245,11 @@ export function ScholarManagementTable({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Universities</SelectItem>
-            <SelectItem value="Imperial College London">Imperial College London</SelectItem>
-            <SelectItem value="University of Edinburgh">University of Edinburgh</SelectItem>
-            <SelectItem value="LSE">LSE</SelectItem>
-            <SelectItem value="Cambridge University">Cambridge University</SelectItem>
+            {filterOptions.universities.map((university) => (
+              <SelectItem key={university} value={university}>
+                {university}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 
@@ -251,7 +279,7 @@ export function ScholarManagementTable({
                   onCheckedChange={handleSelectAll}
                   ref={(el) => {
                     if (el && 'indeterminate' in el) {
-                      (el as any).indeterminate = isIndeterminate;
+                      (el as HTMLInputElement).indeterminate = isIndeterminate;
                     }
                   }}
                 />
