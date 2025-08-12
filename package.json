@@ -11,13 +11,10 @@
     "test:e2e": "turbo run test:e2e",
     "test:coverage": "turbo run test:coverage",
     "test:coverage:open": "turbo run test:coverage:open",
-    "lint": "turbo run lint",
-    "format": "turbo run format",
-    "check": "biome check .",
-    "check:fix": "biome check --write .",
+    "lint": "biome check --write .",
+    "format": "biome format --write .",
     "db:generate": "cd apps/api && pnpm db:generate",
     "db:migrate": "cd apps/api && pnpm db:migrate",
-    "db:push": "cd apps/api && pnpm db:push",
     "db:studio": "cd apps/api && pnpm db:studio"
   },
   "devDependencies": {

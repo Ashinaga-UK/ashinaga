@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "docker": "docker compose up -d",
-    "migrate": "pnpm docker && pnpm drizzle-kit push",
+    "migrate": "pnpm docker && pnpm db:migrate",
     "dev": "nest start --watch",
     "build": "nest build",
     "start": "nest start",
@@ -16,13 +16,10 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "test:coverage": "jest --coverage && node scripts/update-coverage-title.js",
     "test:coverage:open": "jest --coverage && node scripts/update-coverage-title.js && open coverage/lcov-report/index.html",
-    "lint": "biome lint .",
+    "lint": "biome check --write .",
     "format": "biome format --write .",
-    "check": "biome check .",
-    "check:fix": "biome check --write .",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:reset": "ts-node -r tsconfig-paths/register src/db/reset.ts",
     "db:populate-dev": "ts-node -r tsconfig-paths/register src/db/dev-data.ts"
