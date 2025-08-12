@@ -12,10 +12,10 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  getFilterOptions,
-  getScholars,
   type FilterOptions,
   type GetScholarsParams,
+  getFilterOptions,
+  getScholars,
   type Scholar,
 } from '../lib/api-client';
 import { BulkTaskAssignment } from './bulk-task-assignment';
@@ -51,12 +51,12 @@ export function ScholarManagementTable({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [_totalPages, setTotalPages] = useState(1);
 
   const [programFilter, setProgramFilter] = useState('all');
   const [yearFilter, setYearFilter] = useState('all');
   const [universityFilter, setUniversityFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive' | 'on_hold'>(
+  const [statusFilter, _setStatusFilter] = useState<'all' | 'active' | 'inactive' | 'on_hold'>(
     'all'
   );
 
