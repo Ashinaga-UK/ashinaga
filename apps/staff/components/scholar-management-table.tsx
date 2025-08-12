@@ -1,10 +1,21 @@
 'use client';
 
-import { Eye, MoreHorizontal, Plus, Search, Target, Users } from 'lucide-react';
-import { useState } from 'react';
+import {
+  AlertCircle,
+  Eye,
+  Loader2,
+  MoreHorizontal,
+  Plus,
+  Search,
+  Target,
+  Users,
+} from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { getScholars, type GetScholarsParams, type Scholar } from '../lib/api-client';
 import { BulkTaskAssignment } from './bulk-task-assignment';
 import { GoalSetting } from './goal-setting';
 import { TaskAssignment } from './task-assignment';
+import { Alert, AlertDescription } from './ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -19,62 +30,6 @@ import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 
-// Extended mock data for demonstration
-const mockScholars = [
-  {
-    id: 'SC001',
-    name: 'Sarah Chen',
-    email: 'sarah.chen@scholar.ac.uk',
-    program: 'Computer Science',
-    year: 'Year 2',
-    university: 'Imperial College London',
-    goals: 3,
-    completedGoals: 1,
-    status: 'Active',
-    lastActivity: '2025-01-02',
-    avatar: '/placeholder.svg?height=32&width=32',
-  },
-  {
-    id: 'MJ002',
-    name: 'Marcus Johnson',
-    email: 'marcus.j@scholar.ac.uk',
-    program: 'Medicine',
-    year: 'Foundation',
-    university: 'University of Edinburgh',
-    goals: 4,
-    completedGoals: 2,
-    status: 'Active',
-    lastActivity: '2025-01-01',
-    avatar: '/placeholder.svg?height=32&width=32',
-  },
-  {
-    id: 'AO003',
-    name: 'Amara Okafor',
-    email: 'amara.okafor@scholar.ac.uk',
-    program: 'International Relations',
-    year: 'Year 1',
-    university: 'LSE',
-    goals: 2,
-    completedGoals: 0,
-    status: 'Active',
-    lastActivity: '2024-12-30',
-    avatar: '/placeholder.svg?height=32&width=32',
-  },
-  {
-    id: 'DK004',
-    name: 'David Kim',
-    email: 'david.kim@scholar.ac.uk',
-    program: 'Engineering',
-    year: 'Pre-University',
-    university: 'Cambridge University',
-    goals: 5,
-    completedGoals: 3,
-    status: 'Active',
-    lastActivity: '2025-01-03',
-    avatar: '/placeholder.svg?height=32&width=32',
-  },
-];
-
 interface StudentManagementTableProps {
   onViewProfile: (studentId: string) => void;
   onOnboardScholar: () => void;
@@ -85,34 +40,71 @@ export function ScholarManagementTable({
   onOnboardScholar,
 }: StudentManagementTableProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [scholars] = useState(mockScholars);
+  const [scholars, setScholars] = useState<Scholar[]>([]);
   const [selectedScholars, setSelectedScholars] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   const [programFilter, setProgramFilter] = useState('all');
   const [yearFilter, setYearFilter] = useState('all');
   const [universityFilter, setUniversityFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive' | 'on_hold'>(
+    'all'
+  );
 
-  const filteredScholars = scholars.filter((scholar) => {
-    const matchesSearch =
-      scholar.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      scholar.program.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      scholar.university.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      scholar.year.toLowerCase().includes(searchTerm.toLowerCase());
+  // Debounce search to avoid too many API calls
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
 
-    const matchesProgram = programFilter === 'all' || scholar.program === programFilter;
-    const matchesYear = yearFilter === 'all' || scholar.year === yearFilter;
-    const matchesUniversity = universityFilter === 'all' || scholar.university === universityFilter;
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+      setCurrentPage(1); // Reset to first page on search
+    }, 500);
 
-    return matchesSearch && matchesProgram && matchesYear && matchesUniversity;
-  });
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const fetchScholars = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const params: GetScholarsParams = {
+        page: currentPage,
+        limit: 20,
+        search: debouncedSearchTerm || undefined,
+        program: programFilter !== 'all' ? programFilter : undefined,
+        year: yearFilter !== 'all' ? yearFilter : undefined,
+        university: universityFilter !== 'all' ? universityFilter : undefined,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
+      };
+
+      const response = await getScholars(params);
+      setScholars(response.data);
+      setTotalPages(response.pagination.totalPages);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load scholars');
+      console.error('Error fetching scholars:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentPage, debouncedSearchTerm, programFilter, yearFilter, universityFilter, statusFilter]);
+
+  useEffect(() => {
+    fetchScholars();
+  }, [fetchScholars]);
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Active':
+    switch (status.toLowerCase()) {
+      case 'active':
         return 'bg-green-100 text-green-800';
-      case 'Inactive':
+      case 'inactive':
         return 'bg-gray-100 text-gray-800';
-      case 'On Hold':
+      case 'on_hold':
         return 'bg-yellow-100 text-yellow-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -121,7 +113,7 @@ export function ScholarManagementTable({
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedScholars(filteredScholars.map((s) => s.id));
+      setSelectedScholars(scholars.map((s) => s.id));
     } else {
       setSelectedScholars([]);
     }
@@ -135,10 +127,18 @@ export function ScholarManagementTable({
     }
   };
 
-  const isAllSelected =
-    filteredScholars.length > 0 && selectedScholars.length === filteredScholars.length;
-  const isIndeterminate =
-    selectedScholars.length > 0 && selectedScholars.length < filteredScholars.length;
+  const isAllSelected = scholars.length > 0 && selectedScholars.length === scholars.length;
+  const isIndeterminate = selectedScholars.length > 0 && selectedScholars.length < scholars.length;
+
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-GB', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
 
   return (
     <div className="space-y-4">
@@ -166,11 +166,11 @@ export function ScholarManagementTable({
             />
           )}
           <BulkTaskAssignment
-            filteredScholars={filteredScholars}
+            filteredScholars={scholars}
             trigger={
               <Button variant="outline">
                 <Users className="h-4 w-4 mr-2" />
-                Assign to All Filtered ({filteredScholars.length})
+                Assign to All Filtered ({scholars.length})
               </Button>
             }
           />
@@ -267,109 +267,135 @@ export function ScholarManagementTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredScholars.map((scholar) => (
-              <TableRow
-                key={scholar.id}
-                className="hover:bg-ashinaga-teal-50 cursor-pointer"
-                onClick={() => onViewProfile(scholar.id)}
-              >
-                <TableCell onClick={(e) => e.stopPropagation()}>
-                  <Checkbox
-                    checked={selectedScholars.includes(scholar.id)}
-                    onCheckedChange={(checked) =>
-                      handleSelectScholar(scholar.id, checked as boolean)
-                    }
-                  />
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={scholar.avatar || '/placeholder.svg'} />
-                      <AvatarFallback>
-                        {scholar.name
-                          .split(' ')
-                          .map((n) => n[0])
-                          .join('')}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div className="font-medium">{scholar.name}</div>
-                      <div className="text-sm text-gray-500">{scholar.email}</div>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>{scholar.program}</TableCell>
-                <TableCell>{scholar.university}</TableCell>
-                <TableCell>
-                  <Badge variant="outline">{scholar.year}</Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div className="w-16 bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-ashinaga-teal-600 h-2 rounded-full"
-                        style={{
-                          width: `${(scholar.completedGoals / scholar.goals) * 100}%`,
-                        }}
-                      />
-                    </div>
-                    <span className="text-sm text-gray-600">
-                      {scholar.completedGoals}/{scholar.goals}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge className={getStatusColor(scholar.status)}>{scholar.status}</Badge>
-                </TableCell>
-                <TableCell className="text-sm text-gray-500">{scholar.lastActivity}</TableCell>
-                <TableCell className="text-right">
-                  {/* biome-ignore lint/a11y/useSemanticElements: div with role="group" is appropriate for interactive action buttons container */}
-                  <div
-                    className="flex items-center gap-2"
-                    role="group"
-                    aria-label="Scholar actions"
-                    onClick={(e) => e.stopPropagation()}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.stopPropagation();
-                      }
-                    }}
-                  >
-                    <TaskAssignment
-                      trigger={
-                        <Button size="sm" variant="outline">
-                          <Plus className="h-4 w-4 mr-1" />
-                          Task
-                        </Button>
-                      }
-                      preselectedScholarId={scholar.id}
-                    />
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onViewProfile(scholar.id)}>
-                          <Eye className="h-4 w-4 mr-2" />
-                          View Profile
-                        </DropdownMenuItem>
-                        <GoalSetting
-                          trigger={
-                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                              <Target className="h-4 w-4 mr-2" />
-                              Set Goals
-                            </DropdownMenuItem>
-                          }
-                          preselectedScholarId={scholar.id}
-                        />
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={9} className="text-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                  <div className="text-sm text-gray-500">Loading scholars...</div>
                 </TableCell>
               </TableRow>
-            ))}
+            ) : error ? (
+              <TableRow>
+                <TableCell colSpan={9} className="text-center py-8">
+                  <Alert className="mx-auto max-w-md">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                </TableCell>
+              </TableRow>
+            ) : scholars.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                  No scholars found
+                </TableCell>
+              </TableRow>
+            ) : (
+              scholars.map((scholar) => (
+                <TableRow
+                  key={scholar.id}
+                  className="hover:bg-ashinaga-teal-50 cursor-pointer"
+                  onClick={() => onViewProfile(scholar.id)}
+                >
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={selectedScholars.includes(scholar.id)}
+                      onCheckedChange={(checked) =>
+                        handleSelectScholar(scholar.id, checked as boolean)
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={scholar.image || '/placeholder.svg'} />
+                        <AvatarFallback>
+                          {scholar.name
+                            .split(' ')
+                            .map((n: string) => n[0])
+                            .join('')}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <div className="font-medium">{scholar.name}</div>
+                        <div className="text-sm text-gray-500">{scholar.email}</div>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>{scholar.program}</TableCell>
+                  <TableCell>{scholar.university}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{scholar.year}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <div className="w-16 bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-ashinaga-teal-600 h-2 rounded-full"
+                          style={{
+                            width: `${scholar.goals.total > 0 ? (scholar.goals.completed / scholar.goals.total) * 100 : 0}%`,
+                          }}
+                        />
+                      </div>
+                      <span className="text-sm text-gray-600">
+                        {scholar.goals.completed}/{scholar.goals.total}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={getStatusColor(scholar.status)}>{scholar.status}</Badge>
+                  </TableCell>
+                  <TableCell className="text-sm text-gray-500">
+                    {formatDate(scholar.lastActivity)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {/* biome-ignore lint/a11y/useSemanticElements: div with role="group" is appropriate for interactive action buttons container */}
+                    <div
+                      className="flex items-center gap-2"
+                      role="group"
+                      aria-label="Scholar actions"
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.stopPropagation();
+                        }
+                      }}
+                    >
+                      <TaskAssignment
+                        trigger={
+                          <Button size="sm" variant="outline">
+                            <Plus className="h-4 w-4 mr-1" />
+                            Task
+                          </Button>
+                        }
+                        preselectedScholarId={scholar.id}
+                      />
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => onViewProfile(scholar.id)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Profile
+                          </DropdownMenuItem>
+                          <GoalSetting
+                            trigger={
+                              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                <Target className="h-4 w-4 mr-2" />
+                                Set Goals
+                              </DropdownMenuItem>
+                            }
+                            preselectedScholarId={scholar.id}
+                          />
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>

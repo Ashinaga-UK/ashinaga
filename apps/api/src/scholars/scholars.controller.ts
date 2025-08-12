@@ -6,7 +6,7 @@ import {
 } from './dto/get-scholars.dto';
 import { ScholarsService } from './scholars.service';
 
-@Controller('scholars')
+@Controller('api/scholars')
 export class ScholarsController {
   constructor(private readonly scholarsService: ScholarsService) {}
 
