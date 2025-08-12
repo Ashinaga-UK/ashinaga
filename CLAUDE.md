@@ -156,3 +156,60 @@ AWS_PROFILE=playground terraform destroy
 - **Database Timeouts**: Extended 60-minute delete timeout configured
 
 See `infra/DEPLOYMENT_GUIDE.md` for complete setup instructions.
+
+## API & Frontend Integration Patterns
+
+### Authentication
+- **Better Auth**: Cookie-based authentication with sessions
+- Auth endpoints are at `/api/auth/*` (login, signup, etc.)
+- All API requests must include `credentials: 'include'` for cookie authentication
+
+### Creating New API Endpoints
+
+1. **DTOs**: Define request/response DTOs in the service folder
+2. **Service**: Implement business logic using Drizzle ORM
+   - Use `inArray()` for SQL IN operations (not raw SQL `ANY`)
+   - Handle joins with proper type safety
+   - Aggregate related data (goals, tasks stats)
+3. **Controller**: 
+   - Prefix all routes with `/api/` for consistency
+   - Place specific routes before parameterized routes (e.g., `/filters` before `/:id`)
+   - Use validation pipes for query parameters
+4. **Tests**: Write basic happy-path tests for both service and controller
+
+### Frontend Data Fetching
+
+1. **API Client** (`apps/staff/lib/api-client.ts`):
+   ```typescript
+   async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+     const response = await fetch(url, {
+       ...options,
+       credentials: 'include', // Essential for auth
+     });
+   }
+   ```
+
+2. **Component Patterns**:
+   - Use `useState` for data, loading, and error states
+   - Implement debounced search to reduce API calls
+   - Fetch filter options dynamically from the database
+   - Handle pagination with proper state management
+
+3. **Common Issues & Solutions**:
+   - **Hydration errors**: Add `suppressHydrationWarning` to body tags
+   - **Route mismatches**: Ensure controller routes match frontend expectations
+   - **TypeScript**: Cast checkbox refs as `HTMLInputElement` not `any`
+
+### Database & ORM
+
+- **Drizzle ORM**: Primary database interface
+- **PostgreSQL**: Main database
+- Use `selectDistinct` for getting unique filter values
+- Handle nullable fields with proper TypeScript types
+
+### Development Workflow
+
+1. Always run `pnpm lint` to check for issues
+2. Fix linting with `pnpm lint` (runs biome check with fixes)
+3. Test endpoints with Swagger UI before frontend integration
+4. Use loading states and error handling in all data fetching components
