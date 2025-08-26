@@ -15,6 +15,13 @@
       "when": 1756243845906,
       "tag": "0001_awesome_galactus",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1756244504226,
+      "tag": "0002_odd_pride",
+      "breakpoints": true
     }
   ]
 }

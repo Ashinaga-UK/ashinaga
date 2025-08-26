@@ -15,6 +15,7 @@ const authConfig = betterAuth({
     schema: {
       user: schema.users,
       account: schema.accounts,
+      session: schema.sessions,
     },
   }),
   secret: process.env.BETTER_AUTH_SECRET,
