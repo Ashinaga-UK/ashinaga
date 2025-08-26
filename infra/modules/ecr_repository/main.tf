@@ -23,7 +23,7 @@ variable "scan_on_push" {
 resource "aws_ecr_repository" "this" {
   name                 = var.repository_name
   image_tag_mutability = var.image_tag_mutability
-  force_delete         = true  # Allow deletion even with images
+  force_delete         = true # Allow deletion even with images
 
   image_scanning_configuration {
     scan_on_push = var.scan_on_push
@@ -42,12 +42,12 @@ resource "aws_ecr_lifecycle_policy" "this" {
     rules = [
       {
         rulePriority = 1
-        description  = "Keep last 10 production images"
+        description  = "Keep only 2 production images"
         selection = {
           tagStatus     = "tagged"
           tagPrefixList = ["prod"]
           countType     = "imageCountMoreThan"
-          countNumber   = 10
+          countNumber   = 2 # Reduced from 10 for cost optimization
         }
         action = {
           type = "expire"
@@ -55,12 +55,26 @@ resource "aws_ecr_lifecycle_policy" "this" {
       },
       {
         rulePriority = 2
-        description  = "Keep last 5 non-production images"
+        description  = "Delete untagged images after 1 day"
         selection = {
           tagStatus   = "untagged"
           countType   = "sinceImagePushed"
           countUnit   = "days"
-          countNumber = 7
+          countNumber = 1 # Reduced from 7 for cost optimization
+        }
+        action = {
+          type = "expire"
+        }
+      },
+      {
+        rulePriority = 3
+        description  = "Delete test/development images after 3 days"
+        selection = {
+          tagStatus     = "tagged"
+          tagPrefixList = ["test", "dev", "latest"]
+          countType     = "sinceImagePushed"
+          countUnit     = "days"
+          countNumber   = 3
         }
         action = {
           type = "expire"
