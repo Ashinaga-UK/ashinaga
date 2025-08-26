@@ -1,14 +1,18 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { and, count, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 import { database } from '../db/connection';
-import { goals, scholars, tasks, users } from '../db/schema';
+import { documents, goals, scholars, tasks, users } from '../db/schema';
 import {
+  DocumentDto,
   GetScholarsQueryDto,
   GetScholarsResponseDto,
+  GoalDto,
   PaginationMetaDto,
   ScholarGoalsStatsDto,
+  ScholarProfileDto,
   ScholarResponseDto,
   ScholarTasksStatsDto,
+  TaskDto,
 } from './dto/get-scholars.dto';
 
 @Injectable()
@@ -270,6 +274,111 @@ export class ScholarsService {
     }
 
     return stats;
+  }
+
+  async getScholarProfile(id: string): Promise<ScholarProfileDto> {
+    // Get basic scholar data
+    const result = await database
+      .select({
+        scholar: scholars,
+        user: users,
+      })
+      .from(scholars)
+      .innerJoin(users, eq(scholars.userId, users.id))
+      .where(eq(scholars.id, id))
+      .limit(1);
+
+    if (!result[0]) {
+      throw new NotFoundException(`Scholar with ID ${id} not found`);
+    }
+
+    const row = result[0];
+
+    // Get detailed goals
+    const goalsData = await database
+      .select()
+      .from(goals)
+      .where(eq(goals.scholarId, id))
+      .orderBy(desc(goals.createdAt));
+
+    // Get detailed tasks
+    const tasksData = await database
+      .select()
+      .from(tasks)
+      .where(eq(tasks.scholarId, id))
+      .orderBy(desc(tasks.createdAt));
+
+    // Get documents
+    const documentsData = await database
+      .select()
+      .from(documents)
+      .where(eq(documents.scholarId, id))
+      .orderBy(desc(documents.createdAt));
+
+    // Transform goals data
+    const goalsList: GoalDto[] = goalsData.map((goal) => ({
+      id: goal.id,
+      title: goal.title,
+      description: goal.description,
+      category: goal.category,
+      targetDate: goal.targetDate,
+      progress: goal.progress,
+      status: goal.status,
+      completedAt: goal.completedAt,
+      createdAt: goal.createdAt,
+      updatedAt: goal.updatedAt,
+    }));
+
+    // Transform tasks data
+    const tasksList: TaskDto[] = tasksData.map((task) => ({
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      type: task.type,
+      priority: task.priority,
+      dueDate: task.dueDate,
+      status: task.status,
+      assignedBy: task.assignedBy,
+      completedAt: task.completedAt,
+      createdAt: task.createdAt,
+      updatedAt: task.updatedAt,
+    }));
+
+    // Transform documents data
+    const documentsList: DocumentDto[] = documentsData.map((doc) => ({
+      id: doc.id,
+      name: doc.name,
+      type: doc.type,
+      mimeType: doc.mimeType,
+      size: doc.size,
+      url: doc.url,
+      uploadedBy: doc.uploadedBy,
+      uploadDate: doc.uploadDate,
+      createdAt: doc.createdAt,
+      updatedAt: doc.updatedAt,
+    }));
+
+    return {
+      id: row.scholar.id,
+      userId: row.scholar.userId,
+      name: row.user.name,
+      email: row.user.email,
+      image: row.user.image,
+      phone: row.scholar.phone,
+      program: row.scholar.program,
+      year: row.scholar.year,
+      university: row.scholar.university,
+      location: row.scholar.location,
+      bio: row.scholar.bio,
+      status: row.scholar.status as 'active' | 'inactive' | 'on_hold',
+      startDate: row.scholar.startDate,
+      lastActivity: row.scholar.lastActivity,
+      goals: goalsList,
+      tasks: tasksList,
+      documents: documentsList,
+      createdAt: row.scholar.createdAt,
+      updatedAt: row.scholar.updatedAt,
+    };
   }
 
   async getFilterOptions(): Promise<{

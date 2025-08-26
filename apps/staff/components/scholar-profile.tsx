@@ -6,14 +6,17 @@ import {
   CheckCircle,
   Clock,
   FileText,
+  Loader2,
   Mail,
   MapPin,
   Phone,
   Plus,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { getScholarProfile, type ScholarProfile } from '../lib/api-client';
 import { GoalSetting } from './goal-setting';
 import { TaskAssignment } from './task-assignment';
+import { Alert, AlertDescription } from './ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -21,77 +24,33 @@ import { Card, CardContent } from './ui/card';
 import { Progress } from './ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 
-// Mock student data
-const mockScholar = {
-  id: 'SC001',
-  name: 'Sarah Chen',
-  email: 'sarah.chen@scholar.ac.uk',
-  phone: '+44 7123 456789',
-  program: 'Computer Science',
-  year: 'Year 2',
-  university: 'Imperial College London',
-  location: 'London, UK',
-  startDate: 'September 2023',
-  status: 'Active',
-  avatar: '/placeholder.svg?height=80&width=80',
-  bio: 'Passionate about AI and machine learning. Aspiring to develop technology solutions for healthcare in Africa.',
-  goals: [
-    {
-      id: 1,
-      title: 'Graduate with First Class Honours',
-      description: 'Maintain high academic performance throughout degree',
-      progress: 65,
-      status: 'in-progress',
-      dueDate: 'June 2026',
-    },
-    {
-      id: 2,
-      title: 'Complete Summer Internship',
-      description: 'Secure and complete internship at tech company',
-      progress: 100,
-      status: 'completed',
-      dueDate: 'August 2024',
-    },
-    {
-      id: 3,
-      title: 'Develop Leadership Skills',
-      description: 'Take on leadership role in student society',
-      progress: 30,
-      status: 'in-progress',
-      dueDate: 'May 2025',
-    },
-  ],
-  tasks: [
-    {
-      id: 1,
-      title: 'Submit scholarship renewal documents',
-      description: 'Upload academic transcripts and personal statement',
-      dueDate: '2025-01-15',
-      status: 'pending',
-      priority: 'high',
-    },
-    {
-      id: 2,
-      title: 'Complete leadership development workshop',
-      description: 'Attend online workshop and submit reflection',
-      dueDate: '2025-01-20',
-      status: 'in-progress',
-      priority: 'medium',
-    },
-  ],
-  documents: [
-    { name: 'Academic Transcript 2024', uploadDate: '2024-12-15', type: 'PDF' },
-    { name: 'Personal Statement', uploadDate: '2024-11-20', type: 'PDF' },
-    { name: 'Passport Copy', uploadDate: '2024-09-10', type: 'PDF' },
-  ],
-};
-
 interface ScholarProfileProps {
+  scholarId: string;
   onBack: () => void;
 }
 
-export function ScholarProfile({ onBack }: ScholarProfileProps) {
-  const [scholar] = useState(mockScholar); // In real app, fetch by scholarId
+export function ScholarProfilePage({ scholarId, onBack }: ScholarProfileProps) {
+  const [scholar, setScholar] = useState<ScholarProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchScholarProfile = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await getScholarProfile(scholarId);
+      setScholar(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load scholar profile');
+      console.error('Error fetching scholar profile:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [scholarId]);
+
+  useEffect(() => {
+    fetchScholarProfile();
+  }, [fetchScholarProfile]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -119,6 +78,39 @@ export function ScholarProfile({ onBack }: ScholarProfileProps) {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" onClick={onBack}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Students
+          </Button>
+        </div>
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <span className="ml-2">Loading scholar profile...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !scholar) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" onClick={onBack}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Students
+          </Button>
+        </div>
+        <Alert>
+          <AlertDescription>{error || 'Failed to load scholar profile'}</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -134,7 +126,7 @@ export function ScholarProfile({ onBack }: ScholarProfileProps) {
         <CardContent className="pt-6">
           <div className="flex items-start gap-6">
             <Avatar className="h-20 w-20">
-              <AvatarImage src={scholar.avatar || '/placeholder.svg'} />
+              <AvatarImage src={scholar.image || '/placeholder.svg'} />
               <AvatarFallback className="text-lg">
                 {scholar.name
                   .split(' ')
@@ -147,7 +139,7 @@ export function ScholarProfile({ onBack }: ScholarProfileProps) {
                 <h1 className="text-2xl font-bold">{scholar.name}</h1>
                 <Badge className="bg-green-100 text-green-800">{scholar.status}</Badge>
               </div>
-              <p className="text-gray-600 mb-4">{scholar.bio}</p>
+              <p className="text-gray-600 mb-4">{scholar.bio || 'No bio available'}</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div className="flex items-center gap-2">
                   <Mail className="h-4 w-4 text-gray-400" />
@@ -155,15 +147,15 @@ export function ScholarProfile({ onBack }: ScholarProfileProps) {
                 </div>
                 <div className="flex items-center gap-2">
                   <Phone className="h-4 w-4 text-gray-400" />
-                  <span>{scholar.phone}</span>
+                  <span>{scholar.phone || 'No phone number'}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-gray-400" />
-                  <span>{scholar.location}</span>
+                  <span>{scholar.location || 'No location'}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-gray-400" />
-                  <span>Started {scholar.startDate}</span>
+                  <span>Started {new Date(scholar.startDate).toLocaleDateString()}</span>
                 </div>
               </div>
             </div>
@@ -201,38 +193,50 @@ export function ScholarProfile({ onBack }: ScholarProfileProps) {
             />
           </div>
           <div className="grid gap-4">
-            {scholar.goals.map((goal) => (
-              <Card key={goal.id}>
+            {scholar.goals.length === 0 ? (
+              <Card>
                 <CardContent className="pt-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <h4 className="font-medium mb-1">{goal.title}</h4>
-                      <p className="text-sm text-gray-600 mb-3">{goal.description}</p>
-                      <div className="flex items-center gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm text-gray-600">Progress</span>
-                            <span className="text-sm font-medium">{goal.progress}%</span>
-                          </div>
-                          <Progress value={goal.progress} className="h-2" />
-                        </div>
-                        <div className="text-sm text-gray-500">Due: {goal.dueDate}</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {goal.status === 'completed' ? (
-                        <CheckCircle className="h-5 w-5 text-green-600" />
-                      ) : (
-                        <Clock className="h-5 w-5 text-blue-600" />
-                      )}
-                      <span className={`text-sm ${getStatusColor(goal.status)}`}>
-                        {goal.status}
-                      </span>
-                    </div>
-                  </div>
+                  <p className="text-gray-500 text-center py-4">No goals set yet</p>
                 </CardContent>
               </Card>
-            ))}
+            ) : (
+              scholar.goals.map((goal) => (
+                <Card key={goal.id}>
+                  <CardContent className="pt-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <h4 className="font-medium mb-1">{goal.title}</h4>
+                        <p className="text-sm text-gray-600 mb-3">
+                          {goal.description || 'No description'}
+                        </p>
+                        <div className="flex items-center gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-sm text-gray-600">Progress</span>
+                              <span className="text-sm font-medium">{goal.progress}%</span>
+                            </div>
+                            <Progress value={goal.progress} className="h-2" />
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            Due: {new Date(goal.targetDate).toLocaleDateString()}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {goal.status === 'completed' ? (
+                          <CheckCircle className="h-5 w-5 text-green-600" />
+                        ) : (
+                          <Clock className="h-5 w-5 text-blue-600" />
+                        )}
+                        <span className={`text-sm ${getStatusColor(goal.status)}`}>
+                          {goal.status.replace('_', ' ')}
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
         </TabsContent>
 
@@ -250,33 +254,45 @@ export function ScholarProfile({ onBack }: ScholarProfileProps) {
             />
           </div>
           <div className="space-y-4">
-            {scholar.tasks.map((task) => (
-              <Card key={task.id}>
+            {scholar.tasks.length === 0 ? (
+              <Card>
                 <CardContent className="pt-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h4 className="font-medium">{task.title}</h4>
-                        <Badge variant={getPriorityColor(task.priority)}>{task.priority}</Badge>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-2">{task.description}</p>
-                      <div className="flex items-center gap-4 text-sm text-gray-500">
-                        <span>Due: {task.dueDate}</span>
-                        <span className={getStatusColor(task.status)}>Status: {task.status}</span>
-                      </div>
-                    </div>
-                    <TaskAssignment
-                      trigger={
-                        <Button size="sm" variant="outline">
-                          Edit
-                        </Button>
-                      }
-                      preselectedScholarId={scholar.id}
-                    />
-                  </div>
+                  <p className="text-gray-500 text-center py-4">No tasks assigned yet</p>
                 </CardContent>
               </Card>
-            ))}
+            ) : (
+              scholar.tasks.map((task) => (
+                <Card key={task.id}>
+                  <CardContent className="pt-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h4 className="font-medium">{task.title}</h4>
+                          <Badge variant={getPriorityColor(task.priority)}>{task.priority}</Badge>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-2">
+                          {task.description || 'No description'}
+                        </p>
+                        <div className="flex items-center gap-4 text-sm text-gray-500">
+                          <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
+                          <span className={getStatusColor(task.status)}>
+                            Status: {task.status.replace('_', ' ')}
+                          </span>
+                        </div>
+                      </div>
+                      <TaskAssignment
+                        trigger={
+                          <Button size="sm" variant="outline">
+                            Edit
+                          </Button>
+                        }
+                        preselectedScholarId={scholar.id}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
         </TabsContent>
 
@@ -285,26 +301,34 @@ export function ScholarProfile({ onBack }: ScholarProfileProps) {
             <h3 className="text-lg font-semibold">Documents</h3>
           </div>
           <div className="space-y-4">
-            {scholar.documents.map((doc) => (
-              <Card key={doc.name}>
+            {scholar.documents.length === 0 ? (
+              <Card>
                 <CardContent className="pt-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <FileText className="h-8 w-8 text-gray-400" />
-                      <div>
-                        <h4 className="font-medium">{doc.name}</h4>
-                        <p className="text-sm text-gray-500">
-                          Uploaded {doc.uploadDate} • {doc.type}
-                        </p>
-                      </div>
-                    </div>
-                    <Button size="sm" variant="outline">
-                      Download
-                    </Button>
-                  </div>
+                  <p className="text-gray-500 text-center py-4">No documents uploaded yet</p>
                 </CardContent>
               </Card>
-            ))}
+            ) : (
+              scholar.documents.map((doc) => (
+                <Card key={doc.id}>
+                  <CardContent className="pt-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <FileText className="h-8 w-8 text-gray-400" />
+                        <div>
+                          <h4 className="font-medium">{doc.name}</h4>
+                          <p className="text-sm text-gray-500">
+                            Uploaded {new Date(doc.uploadDate).toLocaleDateString()} • {doc.type}
+                          </p>
+                        </div>
+                      </div>
+                      <Button size="sm" variant="outline">
+                        Download
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
         </TabsContent>
       </Tabs>

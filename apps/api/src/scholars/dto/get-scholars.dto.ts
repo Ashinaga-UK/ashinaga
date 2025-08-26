@@ -58,6 +58,53 @@ export class ScholarTasksStatsDto {
   overdue: number;
 }
 
+// New DTOs for detailed scholar profile
+export class GoalDto {
+  id: string;
+  title: string;
+  description?: string | null;
+  category: 'academic' | 'career' | 'leadership' | 'personal' | 'community';
+  targetDate: Date;
+  progress: number;
+  status: 'pending' | 'in_progress' | 'completed';
+  completedAt?: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export class TaskDto {
+  id: string;
+  title: string;
+  description?: string | null;
+  type:
+    | 'document_upload'
+    | 'form_completion'
+    | 'meeting_attendance'
+    | 'goal_update'
+    | 'feedback_submission'
+    | 'other';
+  priority: 'high' | 'medium' | 'low';
+  dueDate: Date;
+  status: 'pending' | 'in_progress' | 'completed';
+  assignedBy: string;
+  completedAt?: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export class DocumentDto {
+  id: string;
+  name: string;
+  type: string;
+  mimeType: string;
+  size: string;
+  url: string;
+  uploadedBy: string;
+  uploadDate: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export class ScholarResponseDto {
   id: string;
   userId: string;
@@ -75,6 +122,29 @@ export class ScholarResponseDto {
   lastActivity?: Date | null;
   goals: ScholarGoalsStatsDto;
   tasks: ScholarTasksStatsDto;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// New DTO for detailed scholar profile
+export class ScholarProfileDto {
+  id: string;
+  userId: string;
+  name: string;
+  email: string;
+  image?: string | null;
+  phone?: string | null;
+  program: string;
+  year: string;
+  university: string;
+  location?: string | null;
+  bio?: string | null;
+  status: 'active' | 'inactive' | 'on_hold';
+  startDate: Date;
+  lastActivity?: Date | null;
+  goals: GoalDto[];
+  tasks: TaskDto[];
+  documents: DocumentDto[];
   createdAt: Date;
   updatedAt: Date;
 }

@@ -10,7 +10,7 @@ import { MyProfile } from '../components/my-profile';
 import { RequestManagement } from '../components/request-management';
 import { ScholarManagementTable } from '../components/scholar-management-table';
 import { ScholarOnboarding } from '../components/scholar-onboarding';
-import { ScholarProfile } from '../components/scholar-profile';
+import { ScholarProfilePage } from '../components/scholar-profile';
 import { TaskAssignment } from '../components/task-assignment';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Button } from '../components/ui/button';
@@ -122,6 +122,7 @@ export default function StaffDashboard() {
   const [currentView, setCurrentView] = useState<
     'dashboard' | 'scholar-profile' | 'onboarding' | 'task-assignment' | 'my-profile'
   >('dashboard');
+  const [selectedScholarId, setSelectedScholarId] = useState<string | null>(null);
   const [requestStatusFilter, setRequestStatusFilter] = useState('all');
 
   // Get user data from session
@@ -328,8 +329,14 @@ export default function StaffDashboard() {
             </TabsContent>
 
             <TabsContent value="scholars" className="space-y-6">
-              {currentView === 'scholar-profile' ? (
-                <ScholarProfile onBack={() => setCurrentView('dashboard')} />
+              {currentView === 'scholar-profile' && selectedScholarId ? (
+                <ScholarProfilePage
+                  scholarId={selectedScholarId}
+                  onBack={() => {
+                    setCurrentView('dashboard');
+                    setSelectedScholarId(null);
+                  }}
+                />
               ) : (
                 <Card>
                   <CardHeader>
@@ -338,7 +345,8 @@ export default function StaffDashboard() {
                   </CardHeader>
                   <CardContent>
                     <ScholarManagementTable
-                      onViewProfile={() => {
+                      onViewProfile={(scholarId) => {
+                        setSelectedScholarId(scholarId);
                         setCurrentView('scholar-profile');
                       }}
                       onOnboardScholar={() => setCurrentView('onboarding')}

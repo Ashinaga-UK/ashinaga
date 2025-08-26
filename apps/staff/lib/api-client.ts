@@ -37,6 +37,59 @@ export interface Scholar {
   updatedAt: string;
 }
 
+// New interfaces for detailed scholar profile
+export interface Goal {
+  id: string;
+  title: string;
+  description?: string | null;
+  category: 'academic' | 'career' | 'leadership' | 'personal' | 'community';
+  targetDate: string;
+  progress: number;
+  status: 'pending' | 'in_progress' | 'completed';
+  completedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Task {
+  id: string;
+  title: string;
+  description?: string | null;
+  type:
+    | 'document_upload'
+    | 'form_completion'
+    | 'meeting_attendance'
+    | 'goal_update'
+    | 'feedback_submission'
+    | 'other';
+  priority: 'high' | 'medium' | 'low';
+  dueDate: string;
+  status: 'pending' | 'in_progress' | 'completed';
+  assignedBy: string;
+  completedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Document {
+  id: string;
+  name: string;
+  type: string;
+  mimeType: string;
+  size: string;
+  url: string;
+  uploadedBy: string;
+  uploadDate: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ScholarProfile extends Scholar {
+  goals: Goal[];
+  tasks: Task[];
+  documents: Document[];
+}
+
 export interface PaginationMeta {
   page: number;
   limit: number;
@@ -102,6 +155,10 @@ export async function getScholars(params?: GetScholarsParams): Promise<GetSchola
 
 export async function getScholar(id: string): Promise<Scholar> {
   return fetchAPI<Scholar>(`/api/scholars/${id}`);
+}
+
+export async function getScholarProfile(id: string): Promise<ScholarProfile> {
+  return fetchAPI<ScholarProfile>(`/api/scholars/${id}/profile`);
 }
 
 export interface FilterOptions {

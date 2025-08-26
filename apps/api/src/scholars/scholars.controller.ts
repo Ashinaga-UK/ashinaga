@@ -2,6 +2,7 @@ import { Controller, Get, Param, ParseUUIDPipe, Query, ValidationPipe } from '@n
 import {
   GetScholarsQueryDto,
   GetScholarsResponseDto,
+  ScholarProfileDto,
   ScholarResponseDto,
 } from './dto/get-scholars.dto';
 import { ScholarsService } from './scholars.service';
@@ -25,6 +26,11 @@ export class ScholarsController {
     universities: string[];
   }> {
     return this.scholarsService.getFilterOptions();
+  }
+
+  @Get(':id/profile')
+  async getScholarProfile(@Param('id', ParseUUIDPipe) id: string): Promise<ScholarProfileDto> {
+    return this.scholarsService.getScholarProfile(id);
   }
 
   @Get(':id')
