@@ -14,7 +14,16 @@ async function bootstrap() {
     : ['http://localhost:3001', 'http://localhost:3002'];
 
   app.enableCors({
-    origin: corsOrigins,
+    origin: (origin, callback) => {
+      // Allow all localhost origins regardless of port
+      if (!origin || origin.startsWith('http://localhost:')) {
+        callback(null, true);
+      } else if (corsOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(null, false);
+      }
+    },
     credentials: true,
   });
 
