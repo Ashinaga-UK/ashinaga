@@ -2,6 +2,7 @@
 
 import { CheckCircle, Download, MessageCircle, Paperclip, Send, X } from 'lucide-react';
 import { useState } from 'react';
+import type { Request } from '../lib/api-client';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
@@ -18,20 +19,8 @@ import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 
 interface RequestManagementProps {
-  request: {
-    id: number;
-    scholarName: string;
-    type: string;
-    description: string;
-    submittedDate: string;
-    status: string;
-    priority: string;
-    attachments?: Array<{
-      name: string;
-      size: string;
-    }>;
-  };
-  onStatusUpdate: (requestId: number, status: string, comment?: string) => void;
+  request: Request;
+  onStatusUpdate: (requestId: string, status: string, comment?: string) => void;
 }
 
 export function RequestManagement({ request, onStatusUpdate }: RequestManagementProps) {
@@ -143,8 +132,8 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
             )}
 
             <div className="flex items-center gap-4 text-sm text-gray-500">
-              <span>Type: {request.type}</span>
-              <span>Submitted: {request.submittedDate}</span>
+              <span>Type: {request.type.replace('_', ' ')}</span>
+              <span>Submitted: {new Date(request.submittedDate).toLocaleDateString()}</span>
             </div>
           </div>
           <div className="flex gap-2">

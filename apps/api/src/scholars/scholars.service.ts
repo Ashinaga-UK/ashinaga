@@ -410,4 +410,43 @@ export class ScholarsService {
       universities: universitiesResult.map((r) => r.value).filter(Boolean),
     };
   }
+
+  async getScholarStats(): Promise<{
+    total: number;
+    active: number;
+    inactive: number;
+    onHold: number;
+  }> {
+    const statsResult = await database
+      .select({
+        status: scholars.status,
+        count: count(),
+      })
+      .from(scholars)
+      .groupBy(scholars.status);
+
+    const stats = {
+      total: 0,
+      active: 0,
+      inactive: 0,
+      onHold: 0,
+    };
+
+    for (const row of statsResult) {
+      stats.total += row.count;
+      switch (row.status) {
+        case 'active':
+          stats.active = row.count;
+          break;
+        case 'inactive':
+          stats.inactive = row.count;
+          break;
+        case 'on_hold':
+          stats.onHold = row.count;
+          break;
+      }
+    }
+
+    return stats;
+  }
 }

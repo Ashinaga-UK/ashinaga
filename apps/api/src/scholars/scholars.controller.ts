@@ -28,6 +28,16 @@ export class ScholarsController {
     return this.scholarsService.getFilterOptions();
   }
 
+  @Get('stats')
+  async getScholarStats(): Promise<{
+    total: number;
+    active: number;
+    inactive: number;
+    onHold: number;
+  }> {
+    return this.scholarsService.getScholarStats();
+  }
+
   @Get(':id/profile')
   async getScholarProfile(@Param('id', ParseUUIDPipe) id: string): Promise<ScholarProfileDto> {
     return this.scholarsService.getScholarProfile(id);

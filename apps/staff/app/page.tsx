@@ -1,8 +1,8 @@
 'use client';
 
-import { AlertCircle, FileText, MessageSquare, Plus, Target, Users } from 'lucide-react';
+import { AlertCircle, FileText, Loader2, MessageSquare, Plus, Target, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AnnouncementCreator } from '../components/announcement-creator';
 import { GoalSetting } from '../components/goal-setting';
 import { LoginPage } from '../components/login-page';
@@ -23,97 +23,15 @@ import {
   SelectValue,
 } from '../components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import {
+  getRequestStats,
+  getRequests,
+  getScholarStats,
+  type Request,
+  type RequestStats,
+  type ScholarStats,
+} from '../lib/api-client';
 import { signOut, useSession } from '../lib/auth-client';
-
-// Mock data - in real app this would come from your API/database
-const _mockTasks = [
-  {
-    id: 1,
-    title: 'Review scholarship proposal - Sarah Chen',
-    type: 'review',
-    priority: 'high',
-    dueDate: '2025-01-05',
-    status: 'pending',
-    scholarId: 'SC001',
-  },
-  {
-    id: 2,
-    title: 'Provide feedback on internship application - Marcus Johnson',
-    type: 'feedback',
-    priority: 'medium',
-    dueDate: '2025-01-07',
-    status: 'in-progress',
-    scholarId: 'MJ002',
-  },
-  {
-    id: 3,
-    title: 'Upload visa guidance document',
-    type: 'upload',
-    priority: 'low',
-    dueDate: '2025-01-10',
-    status: 'pending',
-    scholarId: null,
-  },
-];
-
-const mockRequests = [
-  {
-    id: 1,
-    scholarName: 'Amara Okafor',
-    type: 'Financial Support',
-    description: 'Request for emergency funding for accommodation',
-    submittedDate: '2025-01-02',
-    status: 'pending',
-    priority: 'high',
-    attachments: [
-      { name: 'accommodation_invoice.pdf', size: '245 KB' },
-      { name: 'bank_statement.pdf', size: '156 KB' },
-    ],
-  },
-  {
-    id: 2,
-    scholarName: 'David Kim',
-    type: 'Extenuating Circumstances',
-    description: 'Medical documentation for exam deferrals',
-    submittedDate: '2025-01-01',
-    status: 'approved',
-    priority: 'medium',
-    attachments: [{ name: 'medical_certificate.pdf', size: '89 KB' }],
-  },
-  {
-    id: 3,
-    scholarName: 'Sarah Chen',
-    type: 'Academic Support',
-    description: 'Request for additional tutoring support',
-    submittedDate: '2024-12-28',
-    status: 'rejected',
-    priority: 'low',
-    attachments: [],
-  },
-];
-
-const _mockScholars = [
-  {
-    id: 'SC001',
-    name: 'Sarah Chen',
-    program: 'Computer Science',
-    year: 'Year 2',
-    university: 'Imperial College London',
-    goals: 3,
-    completedGoals: 1,
-    avatar: '/placeholder.svg?height=32&width=32',
-  },
-  {
-    id: 'MJ002',
-    name: 'Marcus Johnson',
-    program: 'Medicine',
-    year: 'Year 4',
-    university: 'University of Edinburgh',
-    goals: 4,
-    completedGoals: 2,
-    avatar: '/placeholder.svg?height=32&width=32',
-  },
-];
 
 export default function StaffDashboard() {
   const router = useRouter();
@@ -124,6 +42,13 @@ export default function StaffDashboard() {
   >('dashboard');
   const [selectedScholarId, setSelectedScholarId] = useState<string | null>(null);
   const [requestStatusFilter, setRequestStatusFilter] = useState('all');
+  const [requests, setRequests] = useState<Request[]>([]);
+  const [requestsLoading, setRequestsLoading] = useState(true);
+  const [requestsError, setRequestsError] = useState<string | null>(null);
+  const [scholarStats, setScholarStats] = useState<ScholarStats | null>(null);
+  const [scholarStatsLoading, setScholarStatsLoading] = useState(true);
+  const [requestStats, setRequestStats] = useState<RequestStats | null>(null);
+  const [requestStatsLoading, setRequestStatsLoading] = useState(true);
 
   // Get user data from session
   const user = session.data?.user;
@@ -162,14 +87,68 @@ export default function StaffDashboard() {
     }
   };
 
-  const handleRequestStatusUpdate = (requestId: number, status: string, comment?: string) => {
+  const fetchRequests = useCallback(async () => {
+    setRequestsLoading(true);
+    setRequestsError(null);
+    try {
+      const response = await getRequests({
+        status: requestStatusFilter !== 'all' ? (requestStatusFilter as any) : undefined,
+        sortBy: 'submittedDate',
+        sortOrder: 'desc',
+      });
+      setRequests(response.data);
+    } catch (err) {
+      setRequestsError(err instanceof Error ? err.message : 'Failed to load requests');
+      console.error('Error fetching requests:', err);
+    } finally {
+      setRequestsLoading(false);
+    }
+  }, [requestStatusFilter]);
+
+  const fetchScholarStats = useCallback(async () => {
+    setScholarStatsLoading(true);
+    try {
+      const stats = await getScholarStats();
+      setScholarStats(stats);
+    } catch (err) {
+      console.error('Error fetching scholar stats:', err);
+    } finally {
+      setScholarStatsLoading(false);
+    }
+  }, []);
+
+  const fetchRequestStats = useCallback(async () => {
+    setRequestStatsLoading(true);
+    try {
+      const stats = await getRequestStats();
+      setRequestStats(stats);
+    } catch (err) {
+      console.error('Error fetching request stats:', err);
+    } finally {
+      setRequestStatsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchRequests();
+    fetchScholarStats();
+    fetchRequestStats();
+  }, [fetchRequests, fetchScholarStats, fetchRequestStats]);
+
+  const handleRequestStatusUpdate = (requestId: string, status: string, comment?: string) => {
     console.log('Request updated:', { requestId, status, comment });
     // In real app, update the request status in your state/API
+    // For now, just refetch the data
+    fetchRequests();
   };
 
-  const filteredRequests = mockRequests.filter(
-    (request) => requestStatusFilter === 'all' || request.status === requestStatusFilter
-  );
+  const navigateToScholars = () => {
+    setActiveTab('scholars');
+  };
+
+  const navigateToRequests = () => {
+    setActiveTab('requests');
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -242,13 +221,27 @@ export default function StaffDashboard() {
             <TabsContent value="overview" className="space-y-6">
               {/* Stats Overview */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card>
+                <Card
+                  className="cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={navigateToScholars}
+                >
                   <CardContent className="pt-6">
                     <div className="flex items-center">
                       <div className="flex-1">
                         <p className="text-sm font-medium text-gray-600">Total Scholars</p>
-                        <p className="text-2xl font-bold text-gray-900">24</p>
-                        <p className="text-xs text-green-600 mt-1">+3 this month</p>
+                        {scholarStatsLoading ? (
+                          <div className="flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span className="text-2xl font-bold text-gray-900">Loading...</span>
+                          </div>
+                        ) : (
+                          <p className="text-2xl font-bold text-gray-900">
+                            {scholarStats?.total || 0}
+                          </p>
+                        )}
+                        <p className="text-xs text-green-600 mt-1">
+                          {scholarStats?.active || 0} active
+                        </p>
                       </div>
                       <div className="w-12 h-12 bg-gradient-to-r from-ashinaga-teal-100 to-ashinaga-green-100 rounded-lg flex items-center justify-center">
                         <Users className="h-6 w-6 text-ashinaga-teal-600" />
@@ -257,13 +250,27 @@ export default function StaffDashboard() {
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card
+                  className="cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={navigateToRequests}
+                >
                   <CardContent className="pt-6">
                     <div className="flex items-center">
                       <div className="flex-1">
                         <p className="text-sm font-medium text-gray-600">Pending Requests</p>
-                        <p className="text-2xl font-bold text-gray-900">7</p>
-                        <p className="text-xs text-orange-600 mt-1">2 high priority</p>
+                        {requestStatsLoading ? (
+                          <div className="flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span className="text-2xl font-bold text-gray-900">Loading...</span>
+                          </div>
+                        ) : (
+                          <p className="text-2xl font-bold text-gray-900">
+                            {requestStats?.pending || 0}
+                          </p>
+                        )}
+                        <p className="text-xs text-orange-600 mt-1">
+                          {requestStats?.total || 0} total requests
+                        </p>
                       </div>
                       <div className="w-12 h-12 bg-gradient-to-r from-orange-100 to-red-100 rounded-lg flex items-center justify-center">
                         <AlertCircle className="h-6 w-6 text-orange-600" />
@@ -379,15 +386,32 @@ export default function StaffDashboard() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {filteredRequests.map((request) => (
-                      <RequestManagement
-                        key={request.id}
-                        request={request}
-                        onStatusUpdate={handleRequestStatusUpdate}
-                      />
-                    ))}
-                  </div>
+                  {requestsLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                      <span className="ml-2">Loading requests...</span>
+                    </div>
+                  ) : requestsError ? (
+                    <div className="text-center py-12">
+                      <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-500" />
+                      <p className="text-red-600">{requestsError}</p>
+                    </div>
+                  ) : requests.length === 0 ? (
+                    <div className="text-center py-12 text-gray-500">
+                      <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No requests found</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {requests.map((request) => (
+                        <RequestManagement
+                          key={request.id}
+                          request={request}
+                          onStatusUpdate={handleRequestStatusUpdate}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

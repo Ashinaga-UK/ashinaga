@@ -84,10 +84,26 @@ export interface Document {
   updatedAt: string;
 }
 
-export interface ScholarProfile extends Scholar {
+export interface ScholarProfile {
+  id: string;
+  userId: string;
+  name: string;
+  email: string;
+  image?: string | null;
+  phone?: string | null;
+  program: string;
+  year: string;
+  university: string;
+  location?: string | null;
+  bio?: string | null;
+  status: 'active' | 'inactive' | 'on_hold';
+  startDate: string;
+  lastActivity?: string | null;
   goals: Goal[];
   tasks: Task[];
   documents: Document[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface PaginationMeta {
@@ -161,6 +177,92 @@ export async function getScholarProfile(id: string): Promise<ScholarProfile> {
   return fetchAPI<ScholarProfile>(`/api/scholars/${id}/profile`);
 }
 
+// Request interfaces
+export interface RequestAttachment {
+  id: string;
+  name: string;
+  size: string;
+  url: string;
+  mimeType: string;
+  uploadedAt: string;
+}
+
+export interface RequestAuditLog {
+  id: string;
+  action: string;
+  performedBy: string;
+  previousStatus?: 'pending' | 'approved' | 'rejected' | 'reviewed' | 'commented';
+  newStatus?: 'pending' | 'approved' | 'rejected' | 'reviewed' | 'commented';
+  comment?: string | null;
+  metadata?: string | null;
+  createdAt: string;
+}
+
+export interface Request {
+  id: string;
+  scholarId: string;
+  scholarName: string;
+  scholarEmail: string;
+  type: 'financial_support' | 'extenuating_circumstances' | 'academic_support';
+  description: string;
+  priority: 'high' | 'medium' | 'low';
+  status: 'pending' | 'approved' | 'rejected' | 'reviewed' | 'commented';
+  submittedDate: string;
+  reviewedBy?: string | null;
+  reviewComment?: string | null;
+  reviewDate?: string | null;
+  attachments: RequestAttachment[];
+  auditLogs: RequestAuditLog[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GetRequestsParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  type?: 'financial_support' | 'extenuating_circumstances' | 'academic_support';
+  status?: 'pending' | 'approved' | 'rejected' | 'reviewed' | 'commented';
+  priority?: 'high' | 'medium' | 'low';
+  sortBy?: 'submittedDate' | 'status' | 'priority' | 'createdAt';
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface GetRequestsResponse {
+  data: Request[];
+  pagination: PaginationMeta;
+}
+
+export async function getRequests(params?: GetRequestsParams): Promise<GetRequestsResponse> {
+  const queryParams = new URLSearchParams();
+
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, String(value));
+      }
+    });
+  }
+
+  const queryString = queryParams.toString();
+  const endpoint = `/api/requests${queryString ? `?${queryString}` : ''}`;
+
+  return fetchAPI<GetRequestsResponse>(endpoint);
+}
+
+export interface RequestStats {
+  total: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+  reviewed: number;
+  commented: number;
+}
+
+export async function getRequestStats(): Promise<RequestStats> {
+  return fetchAPI<RequestStats>('/api/requests/stats');
+}
+
 export interface FilterOptions {
   programs: string[];
   years: string[];
@@ -169,4 +271,15 @@ export interface FilterOptions {
 
 export async function getFilterOptions(): Promise<FilterOptions> {
   return fetchAPI<FilterOptions>('/api/scholars/filters');
+}
+
+export interface ScholarStats {
+  total: number;
+  active: number;
+  inactive: number;
+  onHold: number;
+}
+
+export async function getScholarStats(): Promise<ScholarStats> {
+  return fetchAPI<ScholarStats>('/api/scholars/stats');
 }
