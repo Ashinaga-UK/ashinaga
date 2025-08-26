@@ -168,7 +168,11 @@ export function LoginPage() {
               </Button>
             </div>
             <div>
-              <Button variant="link" className="text-sm text-gray-600">
+              <Button 
+                variant="link" 
+                className="text-sm text-gray-600"
+                onClick={() => router.push('/forgot-password')}
+              >
                 Forgot your password?
               </Button>
             </div>

@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { EmailModule } from './email/email.module';
 import { ScholarsModule } from './scholars/scholars.module';
 
 @Module({
@@ -10,6 +11,7 @@ import { ScholarsModule } from './scholars/scholars.module';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    EmailModule,
     AuthModule,
     ScholarsModule,
   ],

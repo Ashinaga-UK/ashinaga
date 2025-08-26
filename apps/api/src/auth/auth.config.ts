@@ -1,9 +1,12 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { jwt } from 'better-auth/plugins';
 import { eq } from 'drizzle-orm';
 import { getDatabase } from '../db/connection';
 import * as schema from '../db/schema';
+import { EmailService } from '../email/email.service';
+
+// Create email service instance
+const emailService = new EmailService();
 
 // Better Auth configuration
 const authConfig = betterAuth({
@@ -12,24 +15,46 @@ const authConfig = betterAuth({
     schema: {
       user: schema.users,
       account: schema.accounts,
-      session: schema.sessions,
-      jwks: schema.jwks,
     },
   }),
   secret: process.env.BETTER_AUTH_SECRET,
-  baseURL: process.env.BETTER_AUTH_URL || 'http://localhost:3000',
-  trustedOrigins: [
-    'http://localhost:3000', // API server
-    'http://localhost:3001', // Staff app
-    'http://localhost:3002', // Scholar app
-    process.env.BETTER_AUTH_URL || 'http://localhost:3000',
-  ],
+  baseURL: process.env.BETTER_AUTH_URL || 'http://localhost:4000',
+  trustedOrigins: (request) => {
+    const origin = request.headers.get('origin') || '';
+    // Allow all localhost origins in development
+    if (process.env.NODE_ENV === 'development' && origin.startsWith('http://localhost:')) {
+      return [origin];
+    }
+    // In production, check against explicit list
+    const allowedOrigins = process.env.CORS_ORIGINS?.split(',') || [];
+    if (allowedOrigins.includes(origin)) {
+      return [origin];
+    }
+    return [];
+  },
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: false, // We handle verification through invitations
-    sendResetPassword: async (_user, url) => {
-      // TODO: Implement email sending
-      console.log('Password reset link:', url);
+    sendResetPassword: async (data) => {
+      const email = data.user.email;
+      if (!email) {
+        console.error('No email found for user');
+        return;
+      }
+
+      // In test environment, just log the reset URL instead of sending email
+      if (process.env.NODE_ENV === 'test') {
+        console.log('═══════════════════════════════════════════════════════════════');
+        console.log('PASSWORD RESET EMAIL (Test Environment)');
+        console.log('═══════════════════════════════════════════════════════════════');
+        console.log(`To: ${email}`);
+        console.log(`Reset Link: ${data.url}`);
+        console.log('═══════════════════════════════════════════════════════════════');
+        return;
+      }
+
+      // In production, use the email service to send password reset emails
+      await emailService.sendPasswordResetEmail(email, data.url);
     },
   },
   socialProviders: {
@@ -38,15 +63,10 @@ const authConfig = betterAuth({
         ? {
             clientId: process.env.MICROSOFT_CLIENT_ID,
             clientSecret: process.env.MICROSOFT_CLIENT_SECRET,
-            tenant: 'common', // Allow any Microsoft account
+            tenantId: 'common', // Allow any Microsoft account
           }
         : undefined,
   },
-  plugins: [
-    jwt({
-      // JWT configuration options
-    }),
-  ],
   user: {
     additionalFields: {
       userType: {
@@ -66,8 +86,21 @@ const authConfig = betterAuth({
       before: async ({ email }) => {
         console.log('SignUp Before Hook - Email:', email);
 
+        // In test environment, allow any email to sign up without invitation
+        if (process.env.NODE_ENV === 'test') {
+          console.log('Test environment: Allowing signup without invitation');
+          // Determine user type based on email domain for test environment
+          const userType = email.endsWith('@ashinaga.org') ? 'staff' : 'scholar';
+          return {
+            email,
+            name: '',
+            userType,
+            emailVerified: false,
+          };
+        }
+
         try {
-          // Check if user has a valid invitation
+          // Check if user has a valid invitation (production behavior)
           const db = getDatabase();
           console.log('Got database connection');
 
