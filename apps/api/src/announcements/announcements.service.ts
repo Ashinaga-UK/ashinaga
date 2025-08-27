@@ -1,7 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { database } from '../db/connection';
-import { announcementFilters, announcements, scholars, users } from '../db/schema';
+import {
+  announcementFilters,
+  announcementRecipients,
+  announcements,
+  scholars,
+  users,
+} from '../db/schema';
 import { CreateAnnouncementDto, ScholarFilterDto } from './dto/create-announcement.dto';
 
 @Injectable()
@@ -29,6 +35,9 @@ export class AnnouncementsService {
         }))
       );
     }
+
+    // Create recipient records for scholars who match the filters
+    await this.createRecipientRecords(announcement.id, filters);
 
     return announcement;
   }
@@ -79,5 +88,60 @@ export class AnnouncementsService {
       locations,
       statuses,
     };
+  }
+
+  private async createRecipientRecords(
+    announcementId: string,
+    filters: Array<{ filterType: string; filterValue: string }>
+  ) {
+    // Build where conditions based on filters
+    const whereConditions = [];
+
+    for (const filter of filters) {
+      switch (filter.filterType) {
+        case 'year':
+          whereConditions.push(eq(scholars.year, filter.filterValue));
+          break;
+        case 'program':
+          whereConditions.push(eq(scholars.program, filter.filterValue));
+          break;
+        case 'university':
+          whereConditions.push(eq(scholars.university, filter.filterValue));
+          break;
+        case 'status':
+          if (
+            filter.filterValue === 'active' ||
+            filter.filterValue === 'inactive' ||
+            filter.filterValue === 'on_hold'
+          ) {
+            whereConditions.push(
+              eq(scholars.status, filter.filterValue as 'active' | 'inactive' | 'on_hold')
+            );
+          }
+          break;
+        case 'location':
+          whereConditions.push(eq(scholars.location, filter.filterValue));
+          break;
+      }
+    }
+
+    // If no filters, get all scholars
+    const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
+
+    // Get scholars that match the filters
+    const matchingScholars = await database
+      .select({ id: scholars.id })
+      .from(scholars)
+      .where(whereClause);
+
+    // Create recipient records for each matching scholar
+    if (matchingScholars.length > 0) {
+      await database.insert(announcementRecipients).values(
+        matchingScholars.map((scholar) => ({
+          announcementId,
+          scholarId: scholar.id,
+        }))
+      );
+    }
   }
 }
