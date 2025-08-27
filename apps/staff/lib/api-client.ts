@@ -311,6 +311,21 @@ export async function createAnnouncement(data: CreateAnnouncementData): Promise<
   });
 }
 
+export interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  filters: Array<{ type: string; value: string }>;
+  recipientCount: number;
+}
+
+export async function getAnnouncements(): Promise<Announcement[]> {
+  return fetchAPI<Announcement[]>('/api/announcements');
+}
+
 export interface ScholarStats {
   total: number;
   active: number;

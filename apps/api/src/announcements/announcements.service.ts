@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, count, desc, eq, inArray } from 'drizzle-orm';
 import { database } from '../db/connection';
 import {
   announcementFilters,
@@ -40,6 +40,46 @@ export class AnnouncementsService {
     await this.createRecipientRecords(announcement.id, filters);
 
     return announcement;
+  }
+
+  async getAnnouncements() {
+    const result = await database
+      .select({
+        announcement: announcements,
+        creator: users,
+      })
+      .from(announcements)
+      .innerJoin(users, eq(announcements.createdBy, users.id))
+      .orderBy(desc(announcements.createdAt));
+
+    const announcementsWithDetails = await Promise.all(
+      result.map(async (row) => {
+        // Get filters for this announcement
+        const filters = await database
+          .select()
+          .from(announcementFilters)
+          .where(eq(announcementFilters.announcementId, row.announcement.id));
+
+        // Get recipient count for this announcement
+        const recipientCount = await database
+          .select({ count: count() })
+          .from(announcementRecipients)
+          .where(eq(announcementRecipients.announcementId, row.announcement.id));
+
+        return {
+          id: row.announcement.id,
+          title: row.announcement.title,
+          content: row.announcement.content,
+          createdBy: row.creator.name,
+          createdAt: row.announcement.createdAt,
+          updatedAt: row.announcement.updatedAt,
+          filters: filters.map((f) => ({ type: f.filterType, value: f.filterValue })),
+          recipientCount: recipientCount[0]?.count || 0,
+        };
+      })
+    );
+
+    return announcementsWithDetails;
   }
 
   async getScholarsForFiltering(): Promise<ScholarFilterDto[]> {

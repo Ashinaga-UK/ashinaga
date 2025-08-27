@@ -13,6 +13,7 @@ import { ScholarOnboarding } from '../components/scholar-onboarding';
 import { ScholarProfilePage } from '../components/scholar-profile';
 import { TaskAssignment } from '../components/task-assignment';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import {
@@ -24,6 +25,8 @@ import {
 } from '../components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import {
+  type Announcement,
+  getAnnouncements,
   getRequestStats,
   getRequests,
   getScholarStats,
@@ -49,6 +52,9 @@ export default function StaffDashboard() {
   const [scholarStatsLoading, setScholarStatsLoading] = useState(true);
   const [requestStats, setRequestStats] = useState<RequestStats | null>(null);
   const [requestStatsLoading, setRequestStatsLoading] = useState(true);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [announcementsLoading, setAnnouncementsLoading] = useState(true);
+  const [announcementsError, setAnnouncementsError] = useState<string | null>(null);
 
   // Get user data from session
   const user = session.data?.user;
@@ -129,11 +135,26 @@ export default function StaffDashboard() {
     }
   }, []);
 
+  const fetchAnnouncements = useCallback(async () => {
+    setAnnouncementsLoading(true);
+    setAnnouncementsError(null);
+    try {
+      const data = await getAnnouncements();
+      setAnnouncements(data);
+    } catch (err) {
+      setAnnouncementsError(err instanceof Error ? err.message : 'Failed to load announcements');
+      console.error('Error fetching announcements:', err);
+    } finally {
+      setAnnouncementsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchRequests();
     fetchScholarStats();
     fetchRequestStats();
-  }, [fetchRequests, fetchScholarStats, fetchRequestStats]);
+    fetchAnnouncements();
+  }, [fetchRequests, fetchScholarStats, fetchRequestStats, fetchAnnouncements]);
 
   const handleRequestStatusUpdate = (requestId: string, status: string, comment?: string) => {
     console.log('Request updated:', { requestId, status, comment });
@@ -430,10 +451,64 @@ export default function StaffDashboard() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-center py-12 text-gray-500">
-                    <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No announcements yet. Create your first announcement to get started.</p>
-                  </div>
+                  {announcementsLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                      <span className="ml-2">Loading announcements...</span>
+                    </div>
+                  ) : announcementsError ? (
+                    <div className="text-center py-12">
+                      <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-500" />
+                      <p className="text-red-600">{announcementsError}</p>
+                    </div>
+                  ) : announcements.length === 0 ? (
+                    <div className="text-center py-12 text-gray-500">
+                      <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No announcements yet. Create your first announcement to get started.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {announcements.map((announcement) => (
+                        <div key={announcement.id} className="border rounded-lg p-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-lg mb-2">{announcement.title}</h3>
+                              <p className="text-gray-600 mb-3 whitespace-pre-wrap">
+                                {announcement.content}
+                              </p>
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center text-sm text-gray-500">
+                                  <span>By {announcement.createdBy}</span>
+                                  <span className="mx-2">•</span>
+                                  <span>
+                                    {new Date(announcement.createdAt).toLocaleDateString()}
+                                  </span>
+                                  <span className="mx-2">•</span>
+                                  <span>
+                                    Sent to {announcement.recipientCount} scholar
+                                    {announcement.recipientCount !== 1 ? 's' : ''}
+                                  </span>
+                                </div>
+                                {announcement.filters.length > 0 && (
+                                  <div className="flex gap-1">
+                                    {announcement.filters.map((filter, index) => (
+                                      <Badge
+                                        key={`${filter.type}-${filter.value}-${index}`}
+                                        variant="outline"
+                                        className="text-xs"
+                                      >
+                                        {filter.type}: {filter.value}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

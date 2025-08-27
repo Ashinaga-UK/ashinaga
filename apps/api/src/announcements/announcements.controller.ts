@@ -9,6 +9,11 @@ import { CreateAnnouncementDto, ScholarFilterDto } from './dto/create-announceme
 export class AnnouncementsController {
   constructor(private readonly announcementsService: AnnouncementsService) {}
 
+  @Get()
+  async getAnnouncements() {
+    return this.announcementsService.getAnnouncements();
+  }
+
   @Post()
   async createAnnouncement(
     @Body() createAnnouncementDto: CreateAnnouncementDto,
