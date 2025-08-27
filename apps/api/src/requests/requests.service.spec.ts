@@ -1,6 +1,7 @@
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
 import { RequestsService } from './requests.service';
+import { EmailService } from '../email/email.service';
 
 // Mock the database module
 jest.mock('../db/connection');
@@ -8,9 +9,19 @@ jest.mock('../db/connection');
 describe('RequestsService', () => {
   let service: RequestsService;
 
+  const mockEmailService = {
+    sendRequestStatusNotification: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [RequestsService],
+      providers: [
+        RequestsService,
+        {
+          provide: EmailService,
+          useValue: mockEmailService,
+        },
+      ],
     }).compile();
 
     service = module.get<RequestsService>(RequestsService);
@@ -49,67 +60,57 @@ describe('RequestsService', () => {
 
       const mockDatabase = require('../db/connection').database;
 
-      // Mock the main query
-      mockDatabase.select = jest.fn().mockReturnValue({
-        from: jest.fn().mockReturnValue({
-          innerJoin: jest.fn().mockReturnValue({
-            innerJoin: jest.fn().mockReturnValue({
-              where: jest.fn().mockReturnValue({
-                orderBy: jest.fn().mockReturnValue({
-                  limit: jest.fn().mockReturnValue({
-                    offset: jest.fn().mockResolvedValue(mockRequestData),
+      let callCount = 0;
+      mockDatabase.select = jest.fn().mockImplementation(() => {
+        callCount++;
+
+        if (callCount === 1) {
+          // First call - main query for requests
+          return {
+            from: jest.fn().mockReturnValue({
+              innerJoin: jest.fn().mockReturnValue({
+                innerJoin: jest.fn().mockReturnValue({
+                  where: jest.fn().mockReturnValue({
+                    orderBy: jest.fn().mockReturnValue({
+                      limit: jest.fn().mockReturnValue({
+                        offset: jest.fn().mockResolvedValue(mockRequestData),
+                      }),
+                    }),
                   }),
                 }),
               }),
             }),
-          }),
-        }),
-      });
-
-      // Mock count query
-      mockDatabase.select.mockReturnValueOnce({
-        from: jest.fn().mockReturnValue({
-          innerJoin: jest.fn().mockReturnValue({
-            innerJoin: jest.fn().mockReturnValue({
-              where: jest.fn().mockResolvedValue([{ count: 1 }]),
-            }),
-          }),
-        }),
-      });
-
-      // Mock for requestsWithScholars query
-      mockDatabase.select.mockReturnValueOnce({
-        from: jest.fn().mockReturnValue({
-          innerJoin: jest.fn().mockReturnValue({
-            innerJoin: jest.fn().mockReturnValue({
-              where: jest.fn().mockReturnValue({
-                orderBy: jest.fn().mockReturnValue({
-                  limit: jest.fn().mockReturnValue({
-                    offset: jest.fn().mockResolvedValue(mockRequestData),
-                  }),
+          };
+        } else if (callCount === 2) {
+          // Second call - count query
+          return {
+            from: jest.fn().mockReturnValue({
+              innerJoin: jest.fn().mockReturnValue({
+                innerJoin: jest.fn().mockReturnValue({
+                  where: jest.fn().mockResolvedValue([{ count: 1 }]),
                 }),
               }),
             }),
-          }),
-        }),
-      });
-
-      // Mock attachments query
-      mockDatabase.select.mockReturnValueOnce({
-        from: jest.fn().mockReturnValue({
-          where: jest.fn().mockReturnValue({
-            orderBy: jest.fn().mockResolvedValue([]),
-          }),
-        }),
-      });
-
-      // Mock audit logs query
-      mockDatabase.select.mockReturnValueOnce({
-        from: jest.fn().mockReturnValue({
-          where: jest.fn().mockReturnValue({
-            orderBy: jest.fn().mockResolvedValue([]),
-          }),
-        }),
+          };
+        } else if (callCount === 3) {
+          // Third call - attachments query
+          return {
+            from: jest.fn().mockReturnValue({
+              where: jest.fn().mockReturnValue({
+                orderBy: jest.fn().mockResolvedValue([]),
+              }),
+            }),
+          };
+        } else {
+          // Fourth call - audit logs query
+          return {
+            from: jest.fn().mockReturnValue({
+              where: jest.fn().mockReturnValue({
+                orderBy: jest.fn().mockResolvedValue([]),
+              }),
+            }),
+          };
+        }
       });
 
       const result = await service.getRequests({});
