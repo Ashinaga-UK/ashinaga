@@ -4,7 +4,6 @@ import { AlertCircle, FileText, Loader2, MessageSquare, Plus, Target, Users } fr
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { AnnouncementCreator } from '../components/announcement-creator';
-import { GoalSetting } from '../components/goal-setting';
 import { LoginPage } from '../components/login-page';
 import { MyProfile } from '../components/my-profile';
 import { RequestManagement } from '../components/request-management';
@@ -340,17 +339,14 @@ export default function StaffDashboard() {
                       <MessageSquare className="h-6 w-6" />
                       Create Announcement
                     </Button>
-                    <GoalSetting
-                      trigger={
-                        <Button
-                          variant="outline"
-                          className="h-20 flex-col gap-2 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent w-full"
-                        >
-                          <Target className="h-6 w-6" />
-                          Set Goals
-                        </Button>
-                      }
-                    />
+                    <Button
+                      variant="outline"
+                      className="h-20 flex-col gap-2 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent"
+                      onClick={() => setActiveTab('requests')}
+                    >
+                      <FileText className="h-6 w-6" />
+                      Review Requests
+                    </Button>
                   </div>
                 </CardContent>
               </Card>

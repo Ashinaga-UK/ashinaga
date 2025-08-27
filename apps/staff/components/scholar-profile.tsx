@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { getScholarProfile, type ScholarProfile } from '../lib/api-client';
-import { GoalSetting } from './goal-setting';
 import { TaskAssignment } from './task-assignment';
 import { Alert, AlertDescription } from './ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -182,15 +181,6 @@ export function ScholarProfilePage({ scholarId, onBack }: ScholarProfileProps) {
         <TabsContent value="goals" className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Student Goals</h3>
-            <GoalSetting
-              trigger={
-                <Button variant="outline">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Goal
-                </Button>
-              }
-              preselectedScholarId={scholar.id}
-            />
           </div>
           <div className="grid gap-4">
             {scholar.goals.length === 0 ? (

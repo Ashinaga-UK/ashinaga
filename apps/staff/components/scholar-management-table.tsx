@@ -19,7 +19,6 @@ import {
   type ScholarFilterOptions,
 } from '../lib/api-client';
 import { BulkTaskAssignment } from './bulk-task-assignment';
-import { GoalSetting } from './goal-setting';
 import { TaskAssignment } from './task-assignment';
 import { Alert, AlertDescription } from './ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -408,15 +407,6 @@ export function ScholarManagementTable({
                             <Eye className="h-4 w-4 mr-2" />
                             View Profile
                           </DropdownMenuItem>
-                          <GoalSetting
-                            trigger={
-                              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                <Target className="h-4 w-4 mr-2" />
-                                Set Goals
-                              </DropdownMenuItem>
-                            }
-                            preselectedScholarId={scholar.id}
-                          />
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>

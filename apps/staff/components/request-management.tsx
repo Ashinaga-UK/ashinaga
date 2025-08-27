@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle, Download, Eye, MessageCircle, Paperclip, Send, X } from 'lucide-react';
+import { CheckCircle, Download, Eye, Paperclip, X } from 'lucide-react';
 import { useState } from 'react';
 import { type Request, updateRequestStatus } from '../lib/api-client';
 import { useSession } from '../lib/auth-client';
@@ -25,10 +25,8 @@ interface RequestManagementProps {
 }
 
 export function RequestManagement({ request, onStatusUpdate }: RequestManagementProps) {
-  const [commentOpen, setCommentOpen] = useState(false);
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [viewReviewOpen, setViewReviewOpen] = useState(false);
-  const [comment, setComment] = useState('');
   const [approvalComment, setApprovalComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -39,27 +37,6 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
 
   // Debug logging
   console.log('Auth state:', { user, isLoading, isAuthenticated });
-
-  const handleComment = async () => {
-    if (!user?.id) {
-      console.error('User not authenticated. Auth state:', { user, isLoading, isAuthenticated });
-      alert('Please log in to perform this action.');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      await updateRequestStatus(request.id, 'commented', comment, user.id);
-      onStatusUpdate(request.id, 'commented', comment);
-      setCommentOpen(false);
-      setComment('');
-    } catch (error) {
-      console.error('Error updating request status:', error);
-      alert('Failed to update request status. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const handleApproval = async (approved: boolean) => {
     if (!user?.id) {
@@ -195,45 +172,6 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
             {/* Show different buttons based on status */}
             {request.status === 'pending' && (
               <>
-                {/* Comment Dialog */}
-                <Dialog open={commentOpen} onOpenChange={setCommentOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" variant="outline">
-                      <MessageCircle className="h-4 w-4 mr-1" />
-                      Comment
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Add Comment</DialogTitle>
-                      <DialogDescription>
-                        Add a comment or request more information from {request.scholarName}
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="comment">Your Comment</Label>
-                        <Textarea
-                          id="comment"
-                          value={comment}
-                          onChange={(e) => setComment(e.target.value)}
-                          placeholder="Add your comment or questions here..."
-                          rows={4}
-                        />
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setCommentOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button onClick={handleComment} disabled={!comment || isSubmitting}>
-                        <Send className="h-4 w-4 mr-2" />
-                        {isSubmitting ? 'Sending...' : 'Send Comment'}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-
                 {/* Approval Dialog */}
                 <Dialog open={approvalOpen} onOpenChange={setApprovalOpen}>
                   <DialogTrigger asChild>
