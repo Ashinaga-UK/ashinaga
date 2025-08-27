@@ -263,6 +263,21 @@ export async function getRequestStats(): Promise<RequestStats> {
   return fetchAPI<RequestStats>('/api/requests/stats');
 }
 
+export async function updateRequestStatus(
+  requestId: string,
+  status: 'approved' | 'rejected' | 'reviewed' | 'commented',
+  comment: string,
+  reviewedBy: string
+): Promise<any> {
+  return fetchAPI(`/api/requests/${requestId}/status`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ status, comment, reviewedBy }),
+  });
+}
+
 // Announcement types and functions
 export interface ScholarFilter {
   id: string;

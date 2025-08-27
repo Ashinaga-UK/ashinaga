@@ -1,4 +1,4 @@
-import { Controller, Get, Query, ValidationPipe } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, ValidationPipe } from '@nestjs/common';
 import { GetRequestsQueryDto, GetRequestsResponseDto } from './dto/get-requests.dto';
 import { RequestsService } from './requests.service';
 
@@ -24,5 +24,22 @@ export class RequestsController {
     commented: number;
   }> {
     return this.requestsService.getRequestStats();
+  }
+
+  @Post(':id/status')
+  async updateRequestStatus(
+    @Param('id') requestId: string,
+    @Body() body: {
+      status: 'approved' | 'rejected' | 'reviewed' | 'commented';
+      comment: string;
+      reviewedBy: string;
+    }
+  ) {
+    return this.requestsService.updateRequestStatus(
+      requestId,
+      body.status,
+      body.comment,
+      body.reviewedBy
+    );
   }
 }

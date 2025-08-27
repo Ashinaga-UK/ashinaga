@@ -12,16 +12,7 @@ import {
 @Injectable()
 export class RequestsService {
   async getRequests(query: GetRequestsQueryDto): Promise<GetRequestsResponseDto> {
-    const {
-      page = 1,
-      limit = 20,
-      search,
-      type,
-      status,
-      priority,
-      sortBy = 'submittedDate',
-      sortOrder = 'desc',
-    } = query;
+    const { page = 1, limit = 20, search, type, status, priority } = query;
 
     const offset = (page - 1) * limit;
 
@@ -51,15 +42,18 @@ export class RequestsService {
 
     const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
 
-    const orderByColumn =
-      {
-        submittedDate: requests.submittedDate,
-        status: requests.status,
-        priority: requests.priority,
-        createdAt: requests.createdAt,
-      }[sortBy] || requests.submittedDate;
-
-    const orderByClause = sortOrder === 'desc' ? desc(orderByColumn) : sql`${orderByColumn} ASC`;
+    // Custom ordering: pending requests first, then by submitted date (newest first)
+    const orderByClause = sql`
+      CASE 
+        WHEN ${requests.status} = 'pending' THEN 0
+        WHEN ${requests.status} = 'reviewed' THEN 1
+        WHEN ${requests.status} = 'commented' THEN 2
+        WHEN ${requests.status} = 'approved' THEN 3
+        WHEN ${requests.status} = 'rejected' THEN 4
+        ELSE 5
+      END,
+      ${requests.submittedDate} DESC
+    `;
 
     const requestsWithScholars = await database
       .select({
@@ -227,5 +221,41 @@ export class RequestsService {
     }
 
     return stats;
+  }
+
+  async updateRequestStatus(
+    requestId: string,
+    status: 'approved' | 'rejected' | 'reviewed' | 'commented',
+    comment: string,
+    reviewedBy: string
+  ) {
+    const [updatedRequest] = await database
+      .update(requests)
+      .set({
+        status,
+        reviewComment: comment,
+        reviewedBy,
+        reviewDate: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(requests.id, requestId))
+      .returning();
+
+    if (!updatedRequest) {
+      throw new NotFoundException(`Request with ID ${requestId} not found`);
+    }
+
+    // Create audit log entry
+    await database.insert(requestAuditLogs).values({
+      requestId,
+      action: 'status_changed',
+      performedBy: reviewedBy,
+      previousStatus: 'pending', // We'll need to get the actual previous status
+      newStatus: status,
+      comment,
+      metadata: JSON.stringify({ reviewedBy, reviewDate: new Date() }),
+    });
+
+    return updatedRequest;
   }
 }

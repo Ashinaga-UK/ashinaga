@@ -1,8 +1,8 @@
 'use client';
 
-import { CheckCircle, Download, MessageCircle, Paperclip, Send, X } from 'lucide-react';
+import { CheckCircle, Download, Eye, MessageCircle, Paperclip, Send, X } from 'lucide-react';
 import { useState } from 'react';
-import type { Request } from '../lib/api-client';
+import { type Request, updateRequestStatus } from '../lib/api-client';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
@@ -26,26 +26,48 @@ interface RequestManagementProps {
 export function RequestManagement({ request, onStatusUpdate }: RequestManagementProps) {
   const [commentOpen, setCommentOpen] = useState(false);
   const [approvalOpen, setApprovalOpen] = useState(false);
+  const [viewReviewOpen, setViewReviewOpen] = useState(false);
   const [comment, setComment] = useState('');
   const [approvalComment, setApprovalComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleComment = async () => {
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    onStatusUpdate(request.id, 'commented', comment);
-    setCommentOpen(false);
-    setComment('');
-    setIsSubmitting(false);
+    try {
+      await updateRequestStatus(request.id, 'commented', comment, 'staff-user-id'); // TODO: Get actual user ID
+      onStatusUpdate(request.id, 'commented', comment);
+      setCommentOpen(false);
+      setComment('');
+    } catch (error) {
+      console.error('Error updating request status:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleApproval = async (approved: boolean) => {
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    onStatusUpdate(request.id, approved ? 'approved' : 'rejected', approvalComment);
-    setApprovalOpen(false);
-    setApprovalComment('');
-    setIsSubmitting(false);
+    try {
+      const status = approved ? 'approved' : 'rejected';
+      await updateRequestStatus(request.id, status, approvalComment, 'staff-user-id'); // TODO: Get actual user ID
+      onStatusUpdate(request.id, status, approvalComment);
+      setApprovalOpen(false);
+      setApprovalComment('');
+    } catch (error) {
+      console.error('Error updating request status:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDownload = (url: string, filename: string) => {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const getPriorityColor = (priority: string) => {
@@ -61,23 +83,6 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
     }
   };
 
-  const _getStatusColor = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return 'text-green-600';
-      case 'rejected':
-        return 'text-red-600';
-      case 'commented':
-        return 'text-blue-600';
-      case 'pending':
-        return 'text-orange-600';
-      case 'reviewed':
-        return 'text-purple-600';
-      default:
-        return 'text-gray-600';
-    }
-  };
-
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
       case 'approved':
@@ -88,6 +93,8 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
         return 'bg-orange-100 text-orange-800';
       case 'reviewed':
         return 'bg-purple-100 text-purple-800';
+      case 'commented':
+        return 'bg-blue-100 text-blue-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -122,7 +129,12 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
                     >
                       <span className="text-xs text-gray-700">{attachment.name}</span>
                       <span className="text-xs text-gray-500">({attachment.size})</span>
-                      <Button size="sm" variant="ghost" className="h-4 w-4 p-0">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-4 w-4 p-0"
+                        onClick={() => handleDownload(attachment.url, attachment.name)}
+                      >
                         <Download className="h-3 w-3" />
                       </Button>
                     </div>
@@ -135,111 +147,241 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
               <span>Type: {request.type.replace('_', ' ')}</span>
               <span>Submitted: {new Date(request.submittedDate).toLocaleDateString()}</span>
             </div>
-          </div>
-          <div className="flex gap-2">
-            {/* Comment Dialog */}
-            <Dialog open={commentOpen} onOpenChange={setCommentOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" variant="outline">
-                  <MessageCircle className="h-4 w-4 mr-1" />
-                  Comment
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add Comment</DialogTitle>
-                  <DialogDescription>
-                    Add a comment or request more information from {request.scholarName}
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="comment">Your Comment</Label>
-                    <Textarea
-                      id="comment"
-                      value={comment}
-                      onChange={(e) => setComment(e.target.value)}
-                      placeholder="Add your comment or questions here..."
-                      rows={4}
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setCommentOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleComment} disabled={!comment || isSubmitting}>
-                    <Send className="h-4 w-4 mr-2" />
-                    {isSubmitting ? 'Sending...' : 'Send Comment'}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
 
-            {/* Approval Dialog */}
+            {/* Show review details if already reviewed */}
+            {(request.status === 'approved' ||
+              request.status === 'rejected' ||
+              request.status === 'commented') &&
+              request.reviewComment && (
+                <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-sm font-medium text-gray-700">Review:</span>
+                    <Badge className={getStatusBadgeColor(request.status)}>{request.status}</Badge>
+                  </div>
+                  <p className="text-sm text-gray-600">{request.reviewComment}</p>
+                  {request.reviewDate && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Reviewed on {new Date(request.reviewDate).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              )}
+          </div>
+
+          <div className="flex gap-2">
+            {/* Show different buttons based on status */}
             {request.status === 'pending' && (
-              <Dialog open={approvalOpen} onOpenChange={setApprovalOpen}>
+              <>
+                {/* Comment Dialog */}
+                <Dialog open={commentOpen} onOpenChange={setCommentOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="outline">
+                      <MessageCircle className="h-4 w-4 mr-1" />
+                      Comment
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Add Comment</DialogTitle>
+                      <DialogDescription>
+                        Add a comment or request more information from {request.scholarName}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="comment">Your Comment</Label>
+                        <Textarea
+                          id="comment"
+                          value={comment}
+                          onChange={(e) => setComment(e.target.value)}
+                          placeholder="Add your comment or questions here..."
+                          rows={4}
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setCommentOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button onClick={handleComment} disabled={!comment || isSubmitting}>
+                        <Send className="h-4 w-4 mr-2" />
+                        {isSubmitting ? 'Sending...' : 'Send Comment'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                {/* Approval Dialog */}
+                <Dialog open={approvalOpen} onOpenChange={setApprovalOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm">
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      Review
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Review Request</DialogTitle>
+                      <DialogDescription>
+                        Approve or reject the request from {request.scholarName}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <h4 className="font-medium mb-2">Request Details</h4>
+                        <p className="text-sm text-gray-600 mb-2">
+                          <strong>Type:</strong> {request.type.replace('_', ' ')}
+                        </p>
+                        <p className="text-sm text-gray-600 mb-2">
+                          <strong>Description:</strong> {request.description}
+                        </p>
+                        {request.attachments && request.attachments.length > 0 && (
+                          <div className="mt-2">
+                            <p className="text-sm text-gray-600 mb-2">
+                              <strong>Attachments:</strong> {request.attachments.length} file(s)
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {request.attachments.map((attachment) => (
+                                <div
+                                  key={attachment.name}
+                                  className="flex items-center gap-2 bg-white rounded px-2 py-1"
+                                >
+                                  <span className="text-xs text-gray-700">{attachment.name}</span>
+                                  <span className="text-xs text-gray-500">({attachment.size})</span>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-4 w-4 p-0"
+                                    onClick={() => handleDownload(attachment.url, attachment.name)}
+                                  >
+                                    <Download className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <Label htmlFor="approvalComment">Comments (Optional)</Label>
+                        <Textarea
+                          id="approvalComment"
+                          value={approvalComment}
+                          onChange={(e) => setApprovalComment(e.target.value)}
+                          placeholder="Add any comments about your decision..."
+                          rows={3}
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setApprovalOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => handleApproval(false)}
+                        disabled={isSubmitting}
+                        className="text-red-600 border-red-200 hover:bg-red-50"
+                      >
+                        <X className="h-4 w-4 mr-2" />
+                        {isSubmitting ? 'Processing...' : 'Reject'}
+                      </Button>
+                      <Button
+                        onClick={() => handleApproval(true)}
+                        disabled={isSubmitting}
+                        className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        {isSubmitting ? 'Processing...' : 'Approve'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </>
+            )}
+
+            {/* View Review Button for already reviewed requests */}
+            {(request.status === 'approved' ||
+              request.status === 'rejected' ||
+              request.status === 'commented') && (
+              <Dialog open={viewReviewOpen} onOpenChange={setViewReviewOpen}>
                 <DialogTrigger asChild>
-                  <Button size="sm">
-                    <CheckCircle className="h-4 w-4 mr-1" />
-                    Review
+                  <Button size="sm" variant="outline">
+                    <Eye className="h-4 w-4 mr-1" />
+                    View Review
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Review Request</DialogTitle>
+                    <DialogTitle>Review Details</DialogTitle>
                     <DialogDescription>
-                      Approve or reject the request from {request.scholarName}
+                      Review details for {request.scholarName}'s request
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <h4 className="font-medium mb-2">Request Details</h4>
                       <p className="text-sm text-gray-600 mb-2">
-                        <strong>Type:</strong> {request.type}
+                        <strong>Type:</strong> {request.type.replace('_', ' ')}
                       </p>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-gray-600 mb-2">
                         <strong>Description:</strong> {request.description}
                       </p>
                       {request.attachments && request.attachments.length > 0 && (
                         <div className="mt-2">
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-gray-600 mb-2">
                             <strong>Attachments:</strong> {request.attachments.length} file(s)
                           </p>
+                          <div className="flex flex-wrap gap-2">
+                            {request.attachments.map((attachment) => (
+                              <div
+                                key={attachment.name}
+                                className="flex items-center gap-2 bg-white rounded px-2 py-1"
+                              >
+                                <span className="text-xs text-gray-700">{attachment.name}</span>
+                                <span className="text-xs text-gray-500">({attachment.size})</span>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-4 w-4 p-0"
+                                  onClick={() => handleDownload(attachment.url, attachment.name)}
+                                >
+                                  <Download className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
                     <div>
-                      <Label htmlFor="approvalComment">Comments (Optional)</Label>
-                      <Textarea
-                        id="approvalComment"
-                        value={approvalComment}
-                        onChange={(e) => setApprovalComment(e.target.value)}
-                        placeholder="Add any comments about your decision..."
-                        rows={3}
-                      />
+                      <Label>Review Decision</Label>
+                      <div className="mt-2">
+                        <Badge className={getStatusBadgeColor(request.status)}>
+                          {request.status}
+                        </Badge>
+                      </div>
                     </div>
+                    {request.reviewComment && (
+                      <div>
+                        <Label>Review Comment</Label>
+                        <div className="mt-2 p-3 bg-gray-50 rounded-lg">
+                          <p className="text-sm text-gray-600">{request.reviewComment}</p>
+                        </div>
+                      </div>
+                    )}
+                    {request.reviewDate && (
+                      <div>
+                        <Label>Review Date</Label>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {new Date(request.reviewDate).toLocaleDateString()}
+                        </p>
+                      </div>
+                    )}
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setApprovalOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => handleApproval(false)}
-                      disabled={isSubmitting}
-                      className="text-red-600 border-red-200 hover:bg-red-50"
-                    >
-                      <X className="h-4 w-4 mr-2" />
-                      {isSubmitting ? 'Processing...' : 'Reject'}
-                    </Button>
-                    <Button
-                      onClick={() => handleApproval(true)}
-                      disabled={isSubmitting}
-                      className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
-                    >
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      {isSubmitting ? 'Processing...' : 'Approve'}
+                    <Button variant="outline" onClick={() => setViewReviewOpen(false)}>
+                      Close
                     </Button>
                   </DialogFooter>
                 </DialogContent>
