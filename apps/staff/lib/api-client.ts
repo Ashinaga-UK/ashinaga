@@ -268,7 +268,13 @@ export async function updateRequestStatus(
   status: 'approved' | 'rejected' | 'reviewed' | 'commented',
   comment: string,
   reviewedBy: string
-): Promise<any> {
+): Promise<{
+  id: string;
+  status: string;
+  reviewComment: string;
+  reviewedBy: string;
+  reviewDate: string;
+}> {
   return fetchAPI(`/api/requests/${requestId}/status`, {
     method: 'POST',
     headers: {
@@ -316,7 +322,14 @@ export async function getAnnouncementFilterOptions(): Promise<AnnouncementFilter
   return fetchAPI<AnnouncementFilterOptions>('/api/announcements/filter-options');
 }
 
-export async function createAnnouncement(data: CreateAnnouncementData): Promise<any> {
+export async function createAnnouncement(data: CreateAnnouncementData): Promise<{
+  id: string;
+  title: string;
+  content: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}> {
   return fetchAPI('/api/announcements', {
     method: 'POST',
     headers: {

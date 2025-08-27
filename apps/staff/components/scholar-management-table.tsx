@@ -1,15 +1,6 @@
 'use client';
 
-import {
-  AlertCircle,
-  Eye,
-  Loader2,
-  MoreHorizontal,
-  Plus,
-  Search,
-  Target,
-  Users,
-} from 'lucide-react';
+import { AlertCircle, Eye, Loader2, MoreHorizontal, Plus, Search, Users } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import {
   type GetScholarsParams,

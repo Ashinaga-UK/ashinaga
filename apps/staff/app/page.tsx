@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertCircle, FileText, Loader2, MessageSquare, Plus, Target, Users } from 'lucide-react';
+import { AlertCircle, FileText, Loader2, MessageSquare, Plus, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { AnnouncementCreator } from '../components/announcement-creator';
@@ -97,7 +97,15 @@ export default function StaffDashboard() {
     setRequestsError(null);
     try {
       const response = await getRequests({
-        status: requestStatusFilter !== 'all' ? (requestStatusFilter as any) : undefined,
+        status:
+          requestStatusFilter !== 'all'
+            ? (requestStatusFilter as
+                | 'pending'
+                | 'approved'
+                | 'rejected'
+                | 'reviewed'
+                | 'commented')
+            : undefined,
         sortBy: 'submittedDate',
         sortOrder: 'desc',
       });

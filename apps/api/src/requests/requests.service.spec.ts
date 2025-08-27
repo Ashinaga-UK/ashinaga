@@ -1,7 +1,7 @@
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
-import { RequestsService } from './requests.service';
 import { EmailService } from '../email/email.service';
+import { RequestsService } from './requests.service';
 
 // Mock the database module
 jest.mock('../db/connection');

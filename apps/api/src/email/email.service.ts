@@ -36,7 +36,7 @@ export class EmailService {
 
       // In development, save to file for testing
       if (process.env.NODE_ENV === 'development') {
-        const fs = await import('fs/promises');
+        const fs = await import('node:fs/promises');
         const resetData = {
           email,
           resetUrl,
@@ -118,7 +118,7 @@ export class EmailService {
     }
   }
 
-  async sendWelcomeEmail(email: string, name: string): Promise<void> {
+  async sendWelcomeEmail(_email: string, _name: string): Promise<void> {
     // Similar implementation for welcome emails
     // This can be extended later
   }

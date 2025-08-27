@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { useSession } from '../lib/auth-client';
 
 interface AuthContextType {
-  user: any | null;
+  user: { id: string; email: string; name: string; image?: string } | null;
   isLoading: boolean;
   isAuthenticated: boolean;
 }
