@@ -12,11 +12,11 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  type FilterOptions,
   type GetScholarsParams,
   getFilterOptions,
   getScholars,
   type Scholar,
+  type ScholarFilterOptions,
 } from '../lib/api-client';
 import { BulkTaskAssignment } from './bulk-task-assignment';
 import { GoalSetting } from './goal-setting';
@@ -61,7 +61,7 @@ export function ScholarManagementTable({
   );
 
   // Filter options from API
-  const [filterOptions, setFilterOptions] = useState<FilterOptions>({
+  const [filterOptions, setFilterOptions] = useState<ScholarFilterOptions>({
     programs: [],
     years: [],
     universities: [],

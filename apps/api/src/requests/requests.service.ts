@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { and, count, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 import { database } from '../db/connection';
 import { requestAttachments, requestAuditLogs, requests, scholars, users } from '../db/schema';
+import { EmailService } from '../email/email.service';
 import {
   GetRequestsQueryDto,
   GetRequestsResponseDto,
@@ -11,6 +12,8 @@ import {
 
 @Injectable()
 export class RequestsService {
+  constructor(private readonly emailService: EmailService) {}
+
   async getRequests(query: GetRequestsQueryDto): Promise<GetRequestsResponseDto> {
     const { page = 1, limit = 20, search, type, status, priority } = query;
 
@@ -229,6 +232,25 @@ export class RequestsService {
     comment: string,
     reviewedBy: string
   ) {
+    // First, get the current request with scholar and user info
+    const requestWithScholar = await database
+      .select({
+        request: requests,
+        scholar: scholars,
+        user: users,
+      })
+      .from(requests)
+      .innerJoin(scholars, eq(requests.scholarId, scholars.id))
+      .innerJoin(users, eq(scholars.userId, users.id))
+      .where(eq(requests.id, requestId))
+      .limit(1);
+
+    if (!requestWithScholar[0]) {
+      throw new NotFoundException(`Request with ID ${requestId} not found`);
+    }
+
+    const { request: currentRequest, user } = requestWithScholar[0];
+
     const [updatedRequest] = await database
       .update(requests)
       .set({
@@ -250,11 +272,28 @@ export class RequestsService {
       requestId,
       action: 'status_changed',
       performedBy: reviewedBy,
-      previousStatus: 'pending', // We'll need to get the actual previous status
+      previousStatus: currentRequest.status,
       newStatus: status,
       comment,
       metadata: JSON.stringify({ reviewedBy, reviewDate: new Date() }),
     });
+
+    // Send email notification for approved, rejected, or commented statuses
+    if (status === 'approved' || status === 'rejected' || status === 'commented') {
+      try {
+        await this.emailService.sendRequestStatusNotification(
+          user.email,
+          user.name,
+          currentRequest.type.replace('_', ' '),
+          status,
+          comment,
+          currentRequest.description
+        );
+      } catch (error) {
+        console.error('Failed to send email notification:', error);
+        // Don't throw error here - we don't want email failures to break the request update
+      }
+    }
 
     return updatedRequest;
   }

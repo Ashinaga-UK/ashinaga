@@ -3,6 +3,7 @@
 import { CheckCircle, Download, Eye, MessageCircle, Paperclip, Send, X } from 'lucide-react';
 import { useState } from 'react';
 import { type Request, updateRequestStatus } from '../lib/api-client';
+import { useSession } from '../lib/auth-client';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
@@ -31,30 +32,52 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
   const [approvalComment, setApprovalComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const session = useSession();
+  const user = session.data?.user;
+  const isLoading = session.isPending;
+  const isAuthenticated = !!user;
+
+  // Debug logging
+  console.log('Auth state:', { user, isLoading, isAuthenticated });
+
   const handleComment = async () => {
+    if (!user?.id) {
+      console.error('User not authenticated. Auth state:', { user, isLoading, isAuthenticated });
+      alert('Please log in to perform this action.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      await updateRequestStatus(request.id, 'commented', comment, 'staff-user-id'); // TODO: Get actual user ID
+      await updateRequestStatus(request.id, 'commented', comment, user.id);
       onStatusUpdate(request.id, 'commented', comment);
       setCommentOpen(false);
       setComment('');
     } catch (error) {
       console.error('Error updating request status:', error);
+      alert('Failed to update request status. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleApproval = async (approved: boolean) => {
+    if (!user?.id) {
+      console.error('User not authenticated. Auth state:', { user, isLoading, isAuthenticated });
+      alert('Please log in to perform this action.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const status = approved ? 'approved' : 'rejected';
-      await updateRequestStatus(request.id, status, approvalComment, 'staff-user-id'); // TODO: Get actual user ID
+      await updateRequestStatus(request.id, status, approvalComment, user.id);
       onStatusUpdate(request.id, status, approvalComment);
       setApprovalOpen(false);
       setApprovalComment('');
     } catch (error) {
       console.error('Error updating request status:', error);
+      alert('Failed to update request status. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
