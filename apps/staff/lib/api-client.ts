@@ -321,3 +321,14 @@ export interface ScholarStats {
 export async function getScholarStats(): Promise<ScholarStats> {
   return fetchAPI<ScholarStats>('/api/scholars/stats');
 }
+
+// Scholar filter options (for scholar management table)
+export interface ScholarFilterOptions {
+  programs: string[];
+  years: string[];
+  universities: string[];
+}
+
+export async function getFilterOptions(): Promise<ScholarFilterOptions> {
+  return fetchAPI<ScholarFilterOptions>('/api/scholars/filters');
+}

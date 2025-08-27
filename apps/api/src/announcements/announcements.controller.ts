@@ -1,16 +1,24 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import type { Request } from 'express';
+import { AuthGuard } from '../auth/auth.guard';
 import { AnnouncementsService } from './announcements.service';
 import { CreateAnnouncementDto, ScholarFilterDto } from './dto/create-announcement.dto';
 
 @Controller('api/announcements')
+@UseGuards(AuthGuard)
 export class AnnouncementsController {
   constructor(private readonly announcementsService: AnnouncementsService) {}
 
   @Post()
-  async createAnnouncement(@Body() createAnnouncementDto: CreateAnnouncementDto) {
-    // TODO: Get actual user ID from auth context
-    const createdBy = 'staff-user-id'; // This should come from the authenticated user
-    return this.announcementsService.createAnnouncement(createAnnouncementDto, createdBy);
+  async createAnnouncement(
+    @Body() createAnnouncementDto: CreateAnnouncementDto,
+    @Req() req: Request
+  ) {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new Error('User not authenticated');
+    }
+    return this.announcementsService.createAnnouncement(createAnnouncementDto, userId);
   }
 
   @Get('scholars')

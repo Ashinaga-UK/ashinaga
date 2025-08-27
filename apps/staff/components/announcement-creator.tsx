@@ -4,12 +4,12 @@ import { Plus, Send, X } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  type AnnouncementFilterOptions,
   type CreateAnnouncementData,
   createAnnouncement,
-  getAnnouncementFilterOptions,
+  getFilterOptions,
   getScholarsForFiltering,
   type ScholarFilter,
+  type ScholarFilterOptions,
 } from '../lib/api-client';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -42,7 +42,7 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
   const [currentFilterValue, setCurrentFilterValue] = useState('');
   const [previewStudents, setPreviewStudents] = useState<ScholarFilter[]>([]);
   const [allStudents, setAllStudents] = useState<ScholarFilter[]>([]);
-  const [filterOptions, setFilterOptions] = useState<AnnouncementFilterOptions | null>(null);
+  const [filterOptions, setFilterOptions] = useState<ScholarFilterOptions | null>(null);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
 
@@ -50,8 +50,6 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
     { value: 'year', label: 'Year' },
     { value: 'program', label: 'Program' },
     { value: 'university', label: 'University' },
-    { value: 'status', label: 'Status' },
-    { value: 'location', label: 'Location' },
   ];
 
   // Fetch data when dialog opens
@@ -66,7 +64,7 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
     try {
       const [scholarsData, filterOptionsData] = await Promise.all([
         getScholarsForFiltering(),
-        getAnnouncementFilterOptions(),
+        getFilterOptions(),
       ]);
       setAllStudents(scholarsData);
       setFilterOptions(filterOptionsData);
@@ -92,10 +90,6 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
             return student.program === filterValue;
           case 'university':
             return student.university === filterValue;
-          case 'status':
-            return student.status === filterValue;
-          case 'location':
-            return student.location === filterValue;
           default:
             return true;
         }
@@ -130,7 +124,7 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
         content,
         filters: filters.map((filter) => {
           const [filterType, filterValue] = filter.split(': ');
-          return { filterType, filterValue };
+          return { filterType: filterType!, filterValue: filterValue! };
         }),
       };
 
@@ -225,13 +219,30 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
                         <SelectValue placeholder="Select value" />
                       </SelectTrigger>
                       <SelectContent>
-                        {filterOptions[currentFilter as keyof AnnouncementFilterOptions]?.map(
-                          (value) => (
-                            <SelectItem key={value} value={value}>
-                              {value}
-                            </SelectItem>
-                          )
-                        )}
+                        {(() => {
+                          switch (currentFilter) {
+                            case 'program':
+                              return filterOptions.programs?.map((value) => (
+                                <SelectItem key={value} value={value}>
+                                  {value}
+                                </SelectItem>
+                              ));
+                            case 'year':
+                              return filterOptions.years?.map((value) => (
+                                <SelectItem key={value} value={value}>
+                                  {value}
+                                </SelectItem>
+                              ));
+                            case 'university':
+                              return filterOptions.universities?.map((value) => (
+                                <SelectItem key={value} value={value}>
+                                  {value}
+                                </SelectItem>
+                              ));
+                            default:
+                              return null;
+                          }
+                        })()}
                       </SelectContent>
                     </Select>
                   )}
