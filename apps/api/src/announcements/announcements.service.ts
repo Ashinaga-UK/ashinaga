@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { database } from '../db/connection';
-import { announcements, announcementFilters, scholars, users } from '../db/schema';
 import { eq } from 'drizzle-orm';
+import { database } from '../db/connection';
+import { announcementFilters, announcements, scholars, users } from '../db/schema';
 import { CreateAnnouncementDto, ScholarFilterDto } from './dto/create-announcement.dto';
 
 @Injectable()

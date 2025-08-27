@@ -62,20 +62,17 @@ export function ForgotPasswordPage() {
           <CardContent className="space-y-4">
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm text-blue-800">
-                The reset link will expire in 1 hour. If you don't see the email, check your spam folder.
+                The reset link will expire in 1 hour. If you don't see the email, check your spam
+                folder.
               </p>
             </div>
-            
+
             <div className="space-y-2">
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => router.push('/login')}
-              >
+              <Button variant="outline" className="w-full" onClick={() => router.push('/login')}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Sign In
               </Button>
-              
+
               <Button
                 variant="ghost"
                 className="w-full text-sm"
@@ -141,7 +138,7 @@ export function ForgotPasswordPage() {
           </form>
 
           <div className="text-center">
-            <Link 
+            <Link
               href="/login"
               className="text-sm text-gray-600 hover:text-gray-800 inline-flex items-center"
             >

@@ -3,6 +3,14 @@
 import { Plus, Send, X } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useEffect, useState } from 'react';
+import {
+  type AnnouncementFilterOptions,
+  type CreateAnnouncementData,
+  createAnnouncement,
+  getAnnouncementFilterOptions,
+  getScholarsForFiltering,
+  type ScholarFilter,
+} from '../lib/api-client';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -21,15 +29,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Textarea } from './ui/textarea';
 
-interface Student {
-  id: string;
-  name: string;
-  year: string;
-  program: string;
-  university: string;
-  status: string;
-}
-
 interface AnnouncementCreatorProps {
   trigger?: React.ReactNode;
 }
@@ -41,77 +40,42 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
   const [filters, setFilters] = useState<string[]>([]);
   const [currentFilter, setCurrentFilter] = useState('');
   const [currentFilterValue, setCurrentFilterValue] = useState('');
-  const [previewStudents, setPreviewStudents] = useState<Student[]>([]);
+  const [previewStudents, setPreviewStudents] = useState<ScholarFilter[]>([]);
+  const [allStudents, setAllStudents] = useState<ScholarFilter[]>([]);
+  const [filterOptions, setFilterOptions] = useState<AnnouncementFilterOptions | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [sending, setSending] = useState(false);
 
-  // Mock students data for filtering
-  const allStudents = [
-    {
-      id: 'SC001',
-      name: 'Sarah Chen',
-      year: 'Year 2',
-      program: 'Computer Science',
-      university: 'Imperial College London',
-      status: 'Active',
-    },
-    {
-      id: 'MJ002',
-      name: 'Marcus Johnson',
-      year: 'Year 4',
-      program: 'Medicine',
-      university: 'University of Edinburgh',
-      status: 'Active',
-    },
-    {
-      id: 'AO003',
-      name: 'Amara Okafor',
-      year: 'Year 1',
-      program: 'International Relations',
-      university: 'LSE',
-      status: 'Active',
-    },
-    {
-      id: 'DK004',
-      name: 'David Kim',
-      year: 'Year 3',
-      program: 'Engineering',
-      university: 'Cambridge University',
-      status: 'Active',
-    },
-    {
-      id: 'JS005',
-      name: 'Jennifer Smith',
-      year: 'Year 1',
-      program: 'Computer Science',
-      university: 'Imperial College London',
-      status: 'Active',
-    },
-    {
-      id: 'AB006',
-      name: 'Ahmed Ben',
-      year: 'Year 2',
-      program: 'Medicine',
-      university: 'University of Edinburgh',
-      status: 'Active',
-    },
-  ];
-
-  const filterOptions = [
+  const filterTypeOptions = [
     { value: 'year', label: 'Year' },
     { value: 'program', label: 'Program' },
     { value: 'university', label: 'University' },
     { value: 'status', label: 'Status' },
+    { value: 'location', label: 'Location' },
   ];
 
-  const filterValues = {
-    year: ['Year 1', 'Year 2', 'Year 3', 'Year 4'],
-    program: ['Computer Science', 'Medicine', 'Engineering', 'International Relations'],
-    university: [
-      'Imperial College London',
-      'University of Edinburgh',
-      'LSE',
-      'Cambridge University',
-    ],
-    status: ['Active', 'Inactive', 'On Hold'],
+  // Fetch data when dialog opens
+  useEffect(() => {
+    if (open) {
+      fetchData();
+    }
+  }, [open]);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [scholarsData, filterOptionsData] = await Promise.all([
+        getScholarsForFiltering(),
+        getAnnouncementFilterOptions(),
+      ]);
+      setAllStudents(scholarsData);
+      setFilterOptions(filterOptionsData);
+      setPreviewStudents(scholarsData); // Show all students by default
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Function to filter students based on active filters
@@ -130,12 +94,14 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
             return student.university === filterValue;
           case 'status':
             return student.status === filterValue;
+          case 'location':
+            return student.location === filterValue;
           default:
             return true;
         }
       });
     });
-  }, [filters]);
+  }, [filters, allStudents]);
 
   useEffect(() => {
     setPreviewStudents(getFilteredStudents());
@@ -156,13 +122,29 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
     setFilters(filters.filter((filter) => filter !== filterToRemove));
   };
 
-  const handleSend = () => {
-    // Here you would implement the actual sending logic
-    console.log('Sending announcement:', { title, content, filters, recipients: previewStudents });
-    setOpen(false);
-    setTitle('');
-    setContent('');
-    setFilters([]);
+  const handleSend = async () => {
+    setSending(true);
+    try {
+      const announcementData: CreateAnnouncementData = {
+        title,
+        content,
+        filters: filters.map((filter) => {
+          const [filterType, filterValue] = filter.split(': ');
+          return { filterType, filterValue };
+        }),
+      };
+
+      await createAnnouncement(announcementData);
+      console.log('Announcement sent successfully');
+      setOpen(false);
+      setTitle('');
+      setContent('');
+      setFilters([]);
+    } catch (error) {
+      console.error('Error sending announcement:', error);
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -229,7 +211,7 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
                       <SelectValue placeholder="Select filter" />
                     </SelectTrigger>
                     <SelectContent>
-                      {filterOptions.map((option) => (
+                      {filterTypeOptions.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
                         </SelectItem>
@@ -237,17 +219,19 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
                     </SelectContent>
                   </Select>
 
-                  {currentFilter && (
+                  {currentFilter && filterOptions && (
                     <Select value={currentFilterValue} onValueChange={setCurrentFilterValue}>
                       <SelectTrigger className="w-[200px]">
                         <SelectValue placeholder="Select value" />
                       </SelectTrigger>
                       <SelectContent>
-                        {filterValues[currentFilter as keyof typeof filterValues]?.map((value) => (
-                          <SelectItem key={value} value={value}>
-                            {value}
-                          </SelectItem>
-                        ))}
+                        {filterOptions[currentFilter as keyof AnnouncementFilterOptions]?.map(
+                          (value) => (
+                            <SelectItem key={value} value={value}>
+                              {value}
+                            </SelectItem>
+                          )
+                        )}
                       </SelectContent>
                     </Select>
                   )}
@@ -297,7 +281,11 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {previewStudents.length > 0 ? (
+                {loading ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>Loading scholars...</p>
+                  </div>
+                ) : previewStudents.length > 0 ? (
                   <div className="border rounded-lg max-h-64 overflow-y-auto">
                     <Table>
                       <TableHeader>
@@ -336,11 +324,20 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
           </Button>
           <Button
             onClick={handleSend}
-            disabled={!title || !content || previewStudents.length === 0}
+            disabled={!title || !content || previewStudents.length === 0 || sending}
             className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
           >
-            <Send className="h-4 w-4 mr-2" />
-            Send to {previewStudents.length} Student{previewStudents.length !== 1 ? 's' : ''}
+            {sending ? (
+              <>
+                <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                Sending...
+              </>
+            ) : (
+              <>
+                <Send className="h-4 w-4 mr-2" />
+                Send to {previewStudents.length} Student{previewStudents.length !== 1 ? 's' : ''}
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

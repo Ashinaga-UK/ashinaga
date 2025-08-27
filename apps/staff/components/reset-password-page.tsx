@@ -202,7 +202,11 @@ export function ResetPasswordPage() {
                 <li className={password.length >= 8 ? 'text-green-700' : ''}>
                   • At least 8 characters long
                 </li>
-                <li className={password === confirmPassword && password.length > 0 ? 'text-green-700' : ''}>
+                <li
+                  className={
+                    password === confirmPassword && password.length > 0 ? 'text-green-700' : ''
+                  }
+                >
                   • Passwords must match
                 </li>
               </ul>

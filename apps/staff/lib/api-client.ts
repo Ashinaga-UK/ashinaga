@@ -263,14 +263,52 @@ export async function getRequestStats(): Promise<RequestStats> {
   return fetchAPI<RequestStats>('/api/requests/stats');
 }
 
-export interface FilterOptions {
+// Announcement types and functions
+export interface ScholarFilter {
+  id: string;
+  userId: string;
+  name: string;
+  email: string;
+  program: string;
+  year: string;
+  university: string;
+  location?: string | null;
+  status: 'active' | 'inactive' | 'on_hold';
+}
+
+export interface AnnouncementFilterOptions {
   programs: string[];
   years: string[];
   universities: string[];
+  locations: string[];
+  statuses: string[];
 }
 
-export async function getFilterOptions(): Promise<FilterOptions> {
-  return fetchAPI<FilterOptions>('/api/scholars/filters');
+export interface CreateAnnouncementData {
+  title: string;
+  content: string;
+  filters?: Array<{
+    filterType: string;
+    filterValue: string;
+  }>;
+}
+
+export async function getScholarsForFiltering(): Promise<ScholarFilter[]> {
+  return fetchAPI<ScholarFilter[]>('/api/announcements/scholars');
+}
+
+export async function getAnnouncementFilterOptions(): Promise<AnnouncementFilterOptions> {
+  return fetchAPI<AnnouncementFilterOptions>('/api/announcements/filter-options');
+}
+
+export async function createAnnouncement(data: CreateAnnouncementData): Promise<any> {
+  return fetchAPI('/api/announcements', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
 }
 
 export interface ScholarStats {
