@@ -234,6 +234,8 @@ jobs:
         echo "DB_PORT: $DB_PORT"
         echo "DB_NAME: $DB_NAME"
         echo "DB_USER: $DB_USER"
+        echo "BETTER_AUTH_URL: $BETTER_AUTH_URL"
+        echo "BETTER_AUTH_SECRET: [MASKED]"
         
         # Set SSL to production mode for RDS connection
         export NODE_ENV="production"
