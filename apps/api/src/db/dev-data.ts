@@ -562,7 +562,7 @@ async function populateDevData() {
       department: 'System',
       isActive: true,
     });
-    
+
     // Dummy viewer for varied seed data
     const viewerUser = await upsertUserByEmail({
       name: 'System Viewer',
@@ -1095,7 +1095,7 @@ async function populateDevData() {
     // Create invitations for real staff members
     console.log('📧 Creating staff invitations...');
     const invitations: InvitationRow[] = [];
-    
+
     // Real Ashinaga staff invitations
     invitations.push(
       await upsertInvitationByEmail({
@@ -1107,7 +1107,7 @@ async function populateDevData() {
         sentAt: new Date(),
       })
     );
-    
+
     invitations.push(
       await upsertInvitationByEmail({
         email: 'mcfarlane.j@ashinaga.org',
@@ -1118,7 +1118,7 @@ async function populateDevData() {
         sentAt: new Date(),
       })
     );
-    
+
     invitations.push(
       await upsertInvitationByEmail({
         email: 'chukwu.o@ashinaga.org',
@@ -1129,7 +1129,7 @@ async function populateDevData() {
         sentAt: new Date(),
       })
     );
-    
+
     invitations.push(
       await upsertInvitationByEmail({
         email: 'harty.s@ashinaga.org',
@@ -1140,7 +1140,7 @@ async function populateDevData() {
         sentAt: new Date(),
       })
     );
-    
+
     // Demo scholar invitation
     invitations.push(
       await upsertInvitationByEmail({

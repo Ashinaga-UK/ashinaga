@@ -4,6 +4,14 @@ import { AuthGuard } from '../auth/auth.guard';
 import { AnnouncementsService } from './announcements.service';
 import { CreateAnnouncementDto, ScholarFilterDto } from './dto/create-announcement.dto';
 
+interface AuthenticatedRequest extends Request {
+  user?: {
+    id: string;
+    email?: string;
+    userType?: string;
+  };
+}
+
 @Controller('api/announcements')
 @UseGuards(AuthGuard)
 export class AnnouncementsController {
@@ -17,7 +25,7 @@ export class AnnouncementsController {
   @Post()
   async createAnnouncement(
     @Body() createAnnouncementDto: CreateAnnouncementDto,
-    @Req() req: Request
+    @Req() req: AuthenticatedRequest
   ) {
     const userId = req.user?.id;
     if (!userId) {
