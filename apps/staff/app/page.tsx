@@ -157,11 +157,14 @@ export default function StaffDashboard() {
   }, []);
 
   useEffect(() => {
-    fetchRequests();
-    fetchScholarStats();
-    fetchRequestStats();
-    fetchAnnouncements();
-  }, [fetchRequests, fetchScholarStats, fetchRequestStats, fetchAnnouncements]);
+    // Only fetch data if user is authenticated
+    if (isAuthenticated) {
+      fetchRequests();
+      fetchScholarStats();
+      fetchRequestStats();
+      fetchAnnouncements();
+    }
+  }, [isAuthenticated, fetchRequests, fetchScholarStats, fetchRequestStats, fetchAnnouncements]);
 
   const handleRequestStatusUpdate = (requestId: string, status: string, comment?: string) => {
     console.log('Request updated:', { requestId, status, comment });

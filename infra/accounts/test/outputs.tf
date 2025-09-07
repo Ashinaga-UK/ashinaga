@@ -10,7 +10,7 @@ output "app_runner_service_url" {
 
 output "app_runner_custom_domain" {
   description = "Custom domain for the API"
-  value       = "https://api-test.ashinaga.com"
+  value       = "https://api-test.ashinaga-uk.org"
 }
 
 output "app_runner_dns_target" {

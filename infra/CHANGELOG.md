@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Complete production environment with enterprise-level security
   - Separate S3 backend for state isolation (`ashinaga-terraform-state-prod`)
   - Production-sized resources for Customer Data Platform workloads
-  - Custom domain support with App Runner custom domain association (api.ashinaga.com)
+  - Custom domain support with App Runner custom domain association (api.ashinaga-uk.org)
   - Enhanced database configuration with production-level sizing (db.t3.medium, 100GB-1TB storage)
 - **Test Environment Infrastructure** (`infra/accounts/test/`):
   - Complete test environment with production-level security
@@ -79,7 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Enterprise-level sizing (db.t3.medium, 2 vCPU, 4GB RAM for CDP workloads)
   - 100GB-1TB auto-scaling storage for Customer Data Platform
   - 7-day backup retention with deletion protection enabled
-  - Custom domain integration (api.ashinaga.com)
+  - Custom domain integration (api.ashinaga-uk.org)
   - Enhanced App Runner configuration (1 vCPU, 2GB RAM)
 - **Test Environment Specs**:
   - Same resource sizing as playground (cost-effective testing)

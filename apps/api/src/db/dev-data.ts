@@ -545,35 +545,37 @@ async function populateDevData() {
     // For dev data, we'll create a temporary hash for testing
     const _hashedPassword = await bcrypt.hash('password123', 10);
 
-    // Create staff users (idempotent)
-    console.log('👥 Creating staff users...');
+    // Note: We don't create staff users directly - they should sign up via invitations
+    // Creating a dummy admin user just for seeding tasks/announcements that need an assignedBy/createdBy field
+    console.log('👥 Creating system admin user for seed data...');
     const adminUser = await upsertUserByEmail({
-      name: 'Sarah Johnson',
-      email: 'sarah.johnson@ashinaga.org',
+      name: 'System Admin',
+      email: 'system@ashinaga.org',
       emailVerified: true,
-      image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah',
+      image: null,
       userType: 'staff',
     });
     await upsertStaffByUserId({
       userId: adminUser.id,
       role: 'admin',
-      phone: '+44 20 1234 5678',
-      department: 'Scholar Support',
+      phone: null,
+      department: 'System',
       isActive: true,
     });
-
+    
+    // Dummy viewer for varied seed data
     const viewerUser = await upsertUserByEmail({
-      name: 'Michael Chen',
-      email: 'michael.chen@ashinaga.org',
+      name: 'System Viewer',
+      email: 'system-viewer@ashinaga.org',
       emailVerified: true,
-      image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Michael',
+      image: null,
       userType: 'staff',
     });
     await upsertStaffByUserId({
       userId: viewerUser.id,
       role: 'viewer',
-      phone: '+44 20 1234 5679',
-      department: 'Academic Affairs',
+      phone: null,
+      department: 'System',
       isActive: true,
     });
 
@@ -1090,19 +1092,56 @@ async function populateDevData() {
       uploadedBy: adminUser.id,
     });
 
-    // Create invitations for demo purposes
-    console.log('📧 Creating invitations...');
+    // Create invitations for real staff members
+    console.log('📧 Creating staff invitations...');
     const invitations: InvitationRow[] = [];
+    
+    // Real Ashinaga staff invitations
     invitations.push(
       await upsertInvitationByEmail({
-        email: 'new.staff@ashinaga.org',
+        email: 'kimeshan@gmail.com',
         userType: 'staff',
         invitedBy: adminUser.id,
         token: generateInvitationToken(),
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
         sentAt: new Date(),
       })
     );
+    
+    invitations.push(
+      await upsertInvitationByEmail({
+        email: 'mcfarlane.j@ashinaga.org',
+        userType: 'staff',
+        invitedBy: adminUser.id,
+        token: generateInvitationToken(),
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        sentAt: new Date(),
+      })
+    );
+    
+    invitations.push(
+      await upsertInvitationByEmail({
+        email: 'chukwu.o@ashinaga.org',
+        userType: 'staff',
+        invitedBy: adminUser.id,
+        token: generateInvitationToken(),
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        sentAt: new Date(),
+      })
+    );
+    
+    invitations.push(
+      await upsertInvitationByEmail({
+        email: 'harty.s@ashinaga.org',
+        userType: 'staff',
+        invitedBy: adminUser.id,
+        token: generateInvitationToken(),
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        sentAt: new Date(),
+      })
+    );
+    
+    // Demo scholar invitation
     invitations.push(
       await upsertInvitationByEmail({
         email: 'new.scholar@example.com',
@@ -1119,21 +1158,10 @@ async function populateDevData() {
         }),
       })
     );
-    invitations.push(
-      await upsertInvitationByEmail({
-        email: 'expired.invite@example.com',
-        userType: 'scholar',
-        invitedBy: adminUser.id,
-        token: generateInvitationToken(),
-        expiresAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-        sentAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
-        status: 'expired',
-      })
-    );
 
     console.log('✅ Development data populated successfully!');
     console.log(`Created or updated:
-    - ${2} staff members (1 admin, 1 viewer)
+    - ${2} system users for seed data (not for login)
     - ${scholars.length} scholars
     - ${taskResults.length} tasks
     - ${goals.length} goals with milestones
@@ -1142,17 +1170,17 @@ async function populateDevData() {
     - ${4} documents
     - ${invitations.length} invitations`);
 
-    console.log('\n📧 Login credentials:');
-    console.log('Note: Better Auth will handle authentication. Use these emails for testing:');
-    console.log('Staff Admin: sarah.johnson@ashinaga.org');
-    console.log('Staff Viewer: michael.chen@ashinaga.org');
-    console.log('Scholar (example): amara.okafor0@example.com');
-    console.log('\nPasswords will be set when users are created through Better Auth signup flow.');
+    console.log('\n📧 Staff invitations created for:');
+    console.log('- kimeshan@gmail.com');
+    console.log('- mcfarlane.j@ashinaga.org');
+    console.log('- chukwu.o@ashinaga.org');
+    console.log('- harty.s@ashinaga.org');
+    console.log('\nStaff members should use these invitations to sign up via the invite link.');
 
-    console.log('\n🎫 Sample invitations created:');
-    console.log('- new.staff@ashinaga.org (valid staff invitation)');
-    console.log('- new.scholar@example.com (valid scholar invitation with pre-filled data)');
-    console.log('- expired.invite@example.com (expired invitation for testing)');
+    console.log('\n🎓 Test data:');
+    console.log('- 30 demo scholars created (amara.okafor0@example.com, etc.)');
+    console.log('- Sample scholar invitation: new.scholar@example.com');
+    console.log('\nPasswords will be set when users sign up through Better Auth.');
   } catch (error) {
     console.error('❌ Development data population failed:', error);
     throw error;
