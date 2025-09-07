@@ -241,7 +241,7 @@ jobs:
         export NODE_ENV="production"
         
         # Run the migration
-        pnpm db:push --verbose
+        pnpm db:migrate
         
         echo "Database migrations completed successfully!"
 
