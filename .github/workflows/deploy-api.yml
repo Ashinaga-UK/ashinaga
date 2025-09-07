@@ -201,6 +201,30 @@ jobs:
         export DB_PASSWORD=$(aws secretsmanager get-secret-value \
           --secret-id "$SECRET_ARN" \
           --query SecretString --output text)
+          
+        # Get Better Auth secret from AWS Secrets Manager
+        echo "Retrieving Better Auth secret from AWS Secrets Manager..."
+        AUTH_SECRET_NAME="ashinaga-auth-secret-${ENVIRONMENT}"
+        
+        AUTH_SECRET_ARN=$(aws secretsmanager list-secrets \
+          --query "SecretList[?contains(Name, '${AUTH_SECRET_NAME}')] | sort_by(@, &CreatedDate) | [-1].ARN" \
+          --output text)
+        
+        if [ -z "$AUTH_SECRET_ARN" ]; then
+          echo "ERROR: Could not find auth secret with name containing: ${AUTH_SECRET_NAME}"
+          exit 1
+        fi
+        
+        export BETTER_AUTH_SECRET=$(aws secretsmanager get-secret-value \
+          --secret-id "$AUTH_SECRET_ARN" \
+          --query SecretString --output text)
+        
+        # Set Better Auth URL based on environment
+        if [ "$ENVIRONMENT" = "test" ]; then
+          export BETTER_AUTH_URL="https://api-test.ashinaga-uk.org"
+        else
+          export BETTER_AUTH_URL="https://api.ashinaga-uk.org"
+        fi
         
         # Run Drizzle migrations
         echo "Running Drizzle migrations with verbose output..."

@@ -25,6 +25,21 @@ module "db_password" {
   }
 }
 
+# Better Auth secret stored in AWS Secrets Manager
+module "better_auth_secret" {
+  source = "../../modules/secrets_manager"
+
+  secret_name_prefix = "${var.project_name}-auth-secret-${var.environment}-"
+  description        = "Better Auth secret for ${var.project_name} ${var.environment} environment"
+  environment        = var.environment
+  password_length    = 64  # Longer for auth secret
+
+  additional_tags = {
+    Purpose = "Authentication"
+    Service = "BetterAuth"
+  }
+}
+
 # VPC and networking
 module "vpc" {
   source = "../../modules/vpc"
@@ -251,6 +266,17 @@ module "api_app_runner" {
     DB_NAME     = aws_db_instance.postgres.db_name
     DB_USER     = aws_db_instance.postgres.username
     DB_PASSWORD = module.db_password.secret_value
+    
+    # Better Auth Configuration
+    BETTER_AUTH_SECRET = module.better_auth_secret.secret_value
+    BETTER_AUTH_URL    = "https://api-test.ashinaga-uk.org"
+    
+    # CORS Configuration for test environment
+    CORS_ORIGINS = "https://staff-test.ashinaga-uk.org,https://scholar-test.ashinaga-uk.org,http://localhost:4001,http://localhost:4002"
+    
+    # Email Configuration (optional - will log to console if not set)
+    RESEND_API_KEY = ""
+    EMAIL_FROM     = "noreply@ashinaga-uk.org"
   }
 }
 
