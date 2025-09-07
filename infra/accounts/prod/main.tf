@@ -40,6 +40,21 @@ module "better_auth_secret" {
   }
 }
 
+# Resend API Key stored in AWS Secrets Manager
+module "resend_api_key" {
+  source = "../../modules/secrets_manager"
+
+  secret_name_prefix = "${var.project_name}-resend-api-key-${var.environment}-"
+  description        = "Resend API key for ${var.project_name} ${var.environment} environment"
+  environment        = var.environment
+  password_length    = 32
+
+  additional_tags = {
+    Purpose = "EmailService"
+    Service = "Resend"
+  }
+}
+
 # VPC and networking
 module "vpc" {
   source = "../../modules/vpc"
@@ -274,7 +289,7 @@ module "api_app_runner" {
     CORS_ORIGINS = "https://staff.ashinaga-uk.org,https://scholar.ashinaga-uk.org,http://localhost:4001,http://localhost:4002"
     
     # Email Configuration (optional - will log to console if not set)
-    RESEND_API_KEY = ""
+    RESEND_API_KEY = module.resend_api_key.secret_value
     EMAIL_FROM     = "noreply@ashinaga-uk.org"
   }
 }
