@@ -22,6 +22,14 @@ resource "aws_secretsmanager_secret" "secret" {
     },
     var.additional_tags
   )
+
+  lifecycle {
+    ignore_changes = [
+      description,
+      kms_key_id,
+      tags
+    ]
+  }
 }
 
 # Store the secret value
@@ -30,6 +38,6 @@ resource "aws_secretsmanager_secret_version" "secret_version" {
   secret_string = var.secret_value != null ? var.secret_value : random_password.password[0].result
 
   lifecycle {
-    ignore_changes = [secret_string]
+    ignore_changes = all
   }
 }

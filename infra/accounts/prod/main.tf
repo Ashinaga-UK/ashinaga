@@ -35,53 +35,53 @@ module "vpc" {
   }
 }
 
-# Security group for App Runner VPC connector
-resource "aws_security_group" "app_runner" {
-  name_prefix = "${var.project_name}-apprunner-${var.environment}-"
-  vpc_id      = module.vpc.vpc_id
-
-  # Allow outbound traffic to RDS
-  egress {
-    from_port   = 5432
-    to_port     = 5432
-    protocol    = "tcp"
-    cidr_blocks = [module.vpc.vpc_cidr_block]
-  }
-
-  # Allow outbound HTTPS for ECR and other AWS services
-  egress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  # Allow outbound HTTP for package downloads
-  egress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name        = "${var.project_name}-apprunner-${var.environment}"
-    Environment = var.environment
-  }
-}
+# Security group for App Runner VPC connector - commented out since VPC connector is not used
+# resource "aws_security_group" "app_runner" {
+#   name_prefix = "${var.project_name}-apprunner-${var.environment}-"
+#   vpc_id      = module.vpc.vpc_id
+#
+#   # Allow outbound traffic to RDS
+#   egress {
+#     from_port   = 5432
+#     to_port     = 5432
+#     protocol    = "tcp"
+#     cidr_blocks = [module.vpc.vpc_cidr_block]
+#   }
+#
+#   # Allow outbound HTTPS for ECR and other AWS services
+#   egress {
+#     from_port   = 443
+#     to_port     = 443
+#     protocol    = "tcp"
+#     cidr_blocks = ["0.0.0.0/0"]
+#   }
+#
+#   # Allow outbound HTTP for package downloads
+#   egress {
+#     from_port   = 80
+#     to_port     = 80
+#     protocol    = "tcp"
+#     cidr_blocks = ["0.0.0.0/0"]
+#   }
+#
+#   tags = {
+#     Name        = "${var.project_name}-apprunner-${var.environment}"
+#     Environment = var.environment
+#   }
+# }
 
 # Security group for RDS - simple configuration
 resource "aws_security_group" "rds" {
   name_prefix = "${var.project_name}-rds-${var.environment}-"
   vpc_id      = module.vpc.vpc_id
 
-  # Allow inbound traffic from App Runner
-  ingress {
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "tcp"
-    security_groups = [aws_security_group.app_runner.id]
-  }
+  # Allow inbound traffic from App Runner - commented out since VPC connector is not used
+  # ingress {
+  #   from_port       = 5432
+  #   to_port         = 5432
+  #   protocol        = "tcp"
+  #   security_groups = [aws_security_group.app_runner.id]
+  # }
 
   # Allow all ingress on 5432 - controlled by terraform.tfvars
   ingress {
@@ -236,11 +236,11 @@ module "api_app_runner" {
   cpu              = var.app_runner_cpu
   memory           = var.app_runner_memory
 
-  # VPC connector configuration for private database access
-  vpc_connector_name   = "${var.project_name}-vpc-connector-${var.environment}"
-  vpc_id              = module.vpc.vpc_id
-  subnet_ids          = module.vpc.subnet_ids
-  security_group_ids  = [aws_security_group.app_runner.id]
+  # VPC connector removed - using public database access
+  # vpc_connector_name   = "${var.project_name}-vpc-connector-${var.environment}"
+  # vpc_id              = module.vpc.vpc_id
+  # subnet_ids          = module.vpc.subnet_ids
+  # security_group_ids  = [aws_security_group.app_runner.id]
 
   env_vars = {
     NODE_ENV    = "production"
@@ -257,6 +257,6 @@ module "api_app_runner" {
 # This creates the association between App Runner and the custom domain
 # You'll need to add the CNAME record in your DNS provider (Cloudflare/Route53)
 resource "aws_apprunner_custom_domain_association" "api" {
-  domain_name = "api.ashinaga.com"
+  domain_name = "api.ashinaga-uk.org"
   service_arn = module.api_app_runner.service_arn
 }

@@ -128,6 +128,12 @@ resource "aws_apprunner_service" "this" {
     Name        = var.service_name
     Environment = var.environment
   }
+
+  lifecycle {
+    ignore_changes = [
+      source_configuration[0].image_repository[0].image_configuration[0].runtime_environment_variables["DB_PASSWORD"]
+    ]
+  }
 }
 
 output "service_arn" {

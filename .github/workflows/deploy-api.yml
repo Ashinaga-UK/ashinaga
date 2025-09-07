@@ -1,15 +1,13 @@
 name: Deploy API
 
 # This workflow deploys the API to different environments based on branch:
-# - Push to 'test' branch -> Deploy to test environment
-# - Push to 'main' branch -> Deploy to prod environment
+# - Push to 'test' branch -> Deploy to test environment (same AWS account)
+# - Push to 'main' branch -> Deploy to prod environment (same AWS account)
 # - Manual workflow_dispatch -> Deploy to selected environment
 #
 # Required GitHub Secrets:
-# - AWS_ROLE_ARN_TEST: IAM role for test environment
-# - AWS_ROLE_ARN_PROD: IAM role for prod environment
-# Note: Database passwords are retrieved from AWS Secrets Manager for test/prod,
-#       playground uses hardcoded password from Terraform variables
+# - AWS_ROLE_ARN: IAM role for the single AWS account
+# Note: Database passwords are retrieved from AWS Secrets Manager for test/prod
 #
 # Environment Protection Rules:
 # Configure in GitHub Settings > Environments:
@@ -79,7 +77,7 @@ jobs:
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        role-to-assume: ${{ needs.determine-environment.outputs.environment == 'test' && secrets.AWS_ROLE_ARN_TEST || secrets.AWS_ROLE_ARN_PROD }}
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
         aws-region: ${{ env.AWS_REGION }}
 
     - name: Login to Amazon ECR
@@ -183,32 +181,26 @@ jobs:
         export DB_NAME="$DB_NAME" 
         export DB_USER="$DB_USER"
         
-        # Get database password based on environment
-        if [ "$ENVIRONMENT" = "playground" ]; then
-          # Playground uses hardcoded password in Terraform variables
-          export DB_PASSWORD="ashinaga-password-123"
-        else
-          # Test and prod use AWS Secrets Manager
-          echo "Retrieving database password from AWS Secrets Manager..."
-          SECRET_NAME="ashinaga-db-password-${ENVIRONMENT}"
-          
-          # Get the most recent secret ARN (in case there are duplicates)
-          SECRET_ARN=$(aws secretsmanager list-secrets \
-            --query "SecretList[?contains(Name, '${SECRET_NAME}')] | sort_by(@, &CreatedDate) | [-1].ARN" \
-            --output text)
-          
-          if [ -z "$SECRET_ARN" ]; then
-            echo "ERROR: Could not find secret with name containing: ${SECRET_NAME}"
-            echo "Available secrets:"
-            aws secretsmanager list-secrets --query "SecretList[].Name" --output table
-            exit 1
-          fi
-          
-          echo "Found secret: $SECRET_ARN"
-          export DB_PASSWORD=$(aws secretsmanager get-secret-value \
-            --secret-id "$SECRET_ARN" \
-            --query SecretString --output text)
+        # Get database password from AWS Secrets Manager
+        echo "Retrieving database password from AWS Secrets Manager..."
+        SECRET_NAME="ashinaga-db-password-${ENVIRONMENT}"
+        
+        # Get the most recent secret ARN (in case there are duplicates)
+        SECRET_ARN=$(aws secretsmanager list-secrets \
+          --query "SecretList[?contains(Name, '${SECRET_NAME}')] | sort_by(@, &CreatedDate) | [-1].ARN" \
+          --output text)
+        
+        if [ -z "$SECRET_ARN" ]; then
+          echo "ERROR: Could not find secret with name containing: ${SECRET_NAME}"
+          echo "Available secrets:"
+          aws secretsmanager list-secrets --query "SecretList[].Name" --output table
+          exit 1
         fi
+        
+        echo "Found secret: $SECRET_ARN"
+        export DB_PASSWORD=$(aws secretsmanager get-secret-value \
+          --secret-id "$SECRET_ARN" \
+          --query SecretString --output text)
         
         # Run Drizzle migrations
         echo "Running Drizzle migrations with verbose output..."
