@@ -1,0 +1,125 @@
+name: Populate Test Data
+
+# Manual workflow to populate test data in the TEST environment
+# Creates test scholars, staff users, goals, tasks, and requests with demo data
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: populate-test-data
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: eu-west-3
+
+jobs:
+  populate:
+    runs-on: ubuntu-latest
+    environment: test
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: Install pnpm
+      run: npm install -g pnpm
+
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Get database connection
+      run: |
+        # Get database connection details
+        DB_IDENTIFIER="ashinaga-postgres-test"
+        
+        DB_HOST=$(aws rds describe-db-instances \
+          --db-instance-identifier ${DB_IDENTIFIER} \
+          --query 'DBInstances[0].Endpoint.Address' \
+          --output text)
+        
+        DB_NAME=$(aws rds describe-db-instances \
+          --db-instance-identifier ${DB_IDENTIFIER} \
+          --query 'DBInstances[0].DBName' \
+          --output text)
+          
+        DB_USER=$(aws rds describe-db-instances \
+          --db-instance-identifier ${DB_IDENTIFIER} \
+          --query 'DBInstances[0].MasterUsername' \
+          --output text)
+        
+        # Get password from Secrets Manager
+        SECRET_ARN=$(aws secretsmanager list-secrets \
+          --query "SecretList[?contains(Name, 'ashinaga-db-password-test')] | sort_by(@, &CreatedDate) | [-1].ARN" \
+          --output text)
+        
+        DB_PASSWORD=$(aws secretsmanager get-secret-value \
+          --secret-id "$SECRET_ARN" \
+          --query SecretString --output text)
+        
+        # Export for next step
+        echo "::add-mask::$DB_PASSWORD"
+        echo "DB_HOST=${DB_HOST}" >> $GITHUB_ENV
+        echo "DB_PORT=5432" >> $GITHUB_ENV
+        echo "DB_NAME=${DB_NAME}" >> $GITHUB_ENV
+        echo "DB_USER=${DB_USER}" >> $GITHUB_ENV
+        echo "DB_PASSWORD=${DB_PASSWORD}" >> $GITHUB_ENV
+
+    - name: Run test data population
+      run: |
+        cd apps/api
+        
+        # Set environment variables
+        export NODE_ENV="test"
+        export DB_HOST="${DB_HOST}"
+        export DB_PORT="${DB_PORT}"
+        export DB_NAME="${DB_NAME}"
+        export DB_USER="${DB_USER}"
+        export DB_PASSWORD="${DB_PASSWORD}"
+        
+        # Better Auth configuration
+        export BETTER_AUTH_SECRET="test-secret-key-ashinaga-32-characters-long-minimum"
+        export BETTER_AUTH_URL="https://api-test.ashinaga-uk.org"
+        
+        # Run the population script
+        pnpm db:populate-dev
+        
+        echo "✅ Test data populated successfully!"
+        echo ""
+        echo "Test accounts created:"
+        echo "Staff: staff@ashinaga-uk.org / TestPassword123!"
+        echo "Scholars: scholar1@ashinaga-uk.org, scholar2@ashinaga-uk.org, etc."
+        echo "Password for all test accounts: TestPassword123!"
+
+    - name: Summary
+      run: |
+        echo "## 🎉 Test Data Population Complete" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Database" >> $GITHUB_STEP_SUMMARY
+        echo "- **Host**: ${DB_HOST}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Database**: ${DB_NAME}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Test Accounts" >> $GITHUB_STEP_SUMMARY
+        echo "| Role | Email | Password |" >> $GITHUB_STEP_SUMMARY
+        echo "|------|-------|----------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Staff | staff@ashinaga-uk.org | TestPassword123! |" >> $GITHUB_STEP_SUMMARY
+        echo "| Scholar | scholar1@ashinaga-uk.org | TestPassword123! |" >> $GITHUB_STEP_SUMMARY
+        echo "| Scholar | scholar2@ashinaga-uk.org | TestPassword123! |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+        echo "1. Visit https://staff-test.ashinaga-uk.org to login as staff" >> $GITHUB_STEP_SUMMARY
+        echo "2. Visit https://scholar-test.ashinaga-uk.org to login as scholar" >> $GITHUB_STEP_SUMMARY
