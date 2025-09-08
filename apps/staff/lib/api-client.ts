@@ -1,8 +1,6 @@
 // API client for making authenticated requests to the backend
 // Works alongside better-auth for non-auth endpoints
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-
 export interface ScholarGoalsStats {
   total: number;
   completed: number;
@@ -133,26 +131,50 @@ export interface GetScholarsParams {
 }
 
 async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  // Remove trailing slash from base URL and ensure endpoint starts with slash
-  const baseUrl = API_BASE_URL.replace(/\/$/, '');
+  const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace(/\/$/, '');
   const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = `${baseUrl}${normalizedEndpoint}`;
 
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-    credentials: 'include', // Include cookies for authentication
+  console.log('[fetchAPI] About to fetch:', {
+    url,
+    method: options.method || 'GET',
+    body: options.body,
+    headers: options.headers,
   });
 
-  if (!response.ok) {
-    const error = await response.text().catch(() => 'Unknown error');
-    throw new Error(`API Error: ${response.status} - ${error}`);
-  }
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      credentials: 'include', // Include cookies for authentication
+    });
 
-  return response.json();
+    console.log('[fetchAPI] Response received:', {
+      status: response.status,
+      ok: response.ok,
+      statusText: response.statusText,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Unknown error');
+      console.error(`API Error: ${response.status} - ${errorText}`);
+      throw new Error(`API Error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('[fetchAPI] Response data:', data);
+    return data;
+  } catch (error) {
+    console.error('[fetchAPI] FETCH FAILED:', error);
+    console.error('[fetchAPI] Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    throw error;
+  }
 }
 
 export async function getScholars(params?: GetScholarsParams): Promise<GetScholarsResponse> {
@@ -390,6 +412,9 @@ export interface UpdateUserData {
 export async function updateUser(data: UpdateUserData): Promise<any> {
   return fetchAPI('/api/users/me', {
     method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify(data),
   });
 }

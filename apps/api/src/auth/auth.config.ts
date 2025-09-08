@@ -83,6 +83,46 @@ const authConfig = betterAuth({
     },
   },
   callbacks: {
+    session: {
+      fetchUser: async ({ user }) => {
+        // Add staff data to the user object when fetching session
+        if (user.userType === 'staff') {
+          const db = getDatabase();
+          const staffResults = await db
+            .select()
+            .from(schema.staff)
+            .where(eq(schema.staff.userId, user.id))
+            .limit(1);
+
+          const staffData = staffResults[0];
+          if (staffData) {
+            // Parse the department field to extract job title and department
+            // Format is "JobTitle - Department" or just one of them
+            let jobTitle = 'Staff Member';
+            let department = 'Student Services';
+
+            if (staffData.department) {
+              if (staffData.department.includes(' - ')) {
+                const parts = staffData.department.split(' - ');
+                jobTitle = parts[0] || jobTitle;
+                department = parts[1] || department;
+              } else {
+                // If no separator, treat it as job title
+                jobTitle = staffData.department;
+              }
+            }
+
+            return {
+              ...user,
+              phone: staffData.phone,
+              department: department,
+              role: jobTitle,
+            };
+          }
+        }
+        return user;
+      },
+    },
     signUp: {
       before: async ({ email }) => {
         console.log('SignUp Before Hook - Email:', email);

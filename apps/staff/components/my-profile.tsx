@@ -77,8 +77,12 @@ export function MyProfile({ onBack }: MyProfileProps) {
       });
 
       setIsEditing(false);
-      // TODO: Refresh session to get updated user data
-      // Better Auth doesn't have a refetch method on session
+
+      // Force a page reload to get fresh session data
+      // This ensures the header and all components get the updated user data
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
     } catch (error) {
       console.error('Error updating profile:', error);
       toast({

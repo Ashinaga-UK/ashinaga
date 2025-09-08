@@ -415,7 +415,7 @@ export default function StaffDashboard() {
                   scholarId={selectedScholarId}
                   initialTab={scholarProfileTab}
                   onBack={() => {
-                    router.push('?tab=scholars');
+                    router.push('?tab=scholars&view=dashboard');
                   }}
                 />
               ) : (
@@ -427,7 +427,7 @@ export default function StaffDashboard() {
                   <CardContent>
                     <ScholarManagementTable
                       onViewProfile={(scholarId) => {
-                        router.push(`?view=scholar-profile&scholarId=${scholarId}`);
+                        router.push(`?tab=scholars&view=scholar-profile&scholarId=${scholarId}`);
                       }}
                       onOnboardScholar={() => router.push('?view=onboarding')}
                     />
