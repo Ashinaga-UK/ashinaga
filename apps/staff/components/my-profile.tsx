@@ -2,8 +2,8 @@
 
 import { ArrowLeft, Save } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { updateUser } from '../lib/api-client';
 import { useSession } from '../lib/auth-client';
+import { useUpdateUser } from '../lib/hooks/use-queries';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -18,17 +18,14 @@ interface MyProfileProps {
 export function MyProfile({ onBack }: MyProfileProps) {
   const session = useSession();
   const { toast } = useToast();
+  const updateUserMutation = useUpdateUser();
   const user = session.data?.user;
 
   const [profileData, setProfileData] = useState({
     name: '',
     email: '',
-    role: '',
-    phone: '',
-    department: '',
   });
   const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
 
   // Initialize form with user data
   useEffect(() => {
@@ -36,9 +33,6 @@ export function MyProfile({ onBack }: MyProfileProps) {
       setProfileData({
         name: user.name || '',
         email: user.email || '',
-        role: (user as any).role || 'Staff Member',
-        phone: (user as any).phone || '',
-        department: (user as any).department || 'Student Services',
       });
     }
   }, [user]);
@@ -53,46 +47,34 @@ export function MyProfile({ onBack }: MyProfileProps) {
       setProfileData({
         name: user.name || '',
         email: user.email || '',
-        role: (user as any).role || 'Staff Member',
-        phone: (user as any).phone || '',
-        department: (user as any).department || 'Student Services',
       });
     }
     setIsEditing(false);
   };
 
   const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      await updateUser({
+    updateUserMutation.mutate(
+      {
         name: profileData.name,
-        phone: profileData.phone,
-        role: profileData.role,
-        department: profileData.department,
-      });
-
-      toast({
-        title: 'Success',
-        description: 'Your profile has been updated successfully.',
-      });
-
-      setIsEditing(false);
-
-      // Force a page reload to get fresh session data
-      // This ensures the header and all components get the updated user data
-      setTimeout(() => {
-        window.location.reload();
-      }, 500);
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update profile. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSaving(false);
-    }
+      },
+      {
+        onSuccess: () => {
+          toast({
+            title: 'Success',
+            description: 'Your profile has been updated successfully.',
+          });
+          setIsEditing(false);
+        },
+        onError: (error) => {
+          console.error('Error updating profile:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to update profile. Please try again.',
+            variant: 'destructive',
+          });
+        },
+      }
+    );
   };
 
   return (
@@ -123,63 +105,30 @@ export function MyProfile({ onBack }: MyProfileProps) {
             </Avatar>
             <div>
               <h3 className="text-lg font-medium">{profileData.name}</h3>
-              <p className="text-sm text-gray-600">{profileData.role}</p>
-              <p className="text-sm text-gray-500">{profileData.department}</p>
+              <p className="text-sm text-gray-600">{profileData.email}</p>
             </div>
           </div>
 
           {/* Profile Information */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="name">Full Name</Label>
-                <Input
-                  id="name"
-                  value={profileData.name}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
-                  disabled={!isEditing}
-                />
-              </div>
-              <div>
-                <Label htmlFor="email">Email Address</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={profileData.email}
-                  disabled
-                  title="Email cannot be changed"
-                />
-              </div>
-              <div>
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input
-                  id="phone"
-                  value={profileData.phone}
-                  onChange={(e) => handleInputChange('phone', e.target.value)}
-                  disabled={!isEditing}
-                />
-              </div>
+          <div className="space-y-4 max-w-md">
+            <div>
+              <Label htmlFor="name">Full Name</Label>
+              <Input
+                id="name"
+                value={profileData.name}
+                onChange={(e) => handleInputChange('name', e.target.value)}
+                disabled={!isEditing}
+              />
             </div>
-
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="role">Job Title</Label>
-                <Input
-                  id="role"
-                  value={profileData.role}
-                  onChange={(e) => handleInputChange('role', e.target.value)}
-                  disabled={!isEditing}
-                />
-              </div>
-              <div>
-                <Label htmlFor="department">Department</Label>
-                <Input
-                  id="department"
-                  value={profileData.department}
-                  onChange={(e) => handleInputChange('department', e.target.value)}
-                  disabled={!isEditing}
-                />
-              </div>
+            <div>
+              <Label htmlFor="email">Email Address</Label>
+              <Input
+                id="email"
+                type="email"
+                value={profileData.email}
+                disabled
+                title="Email cannot be changed"
+              />
             </div>
           </div>
 
@@ -192,11 +141,11 @@ export function MyProfile({ onBack }: MyProfileProps) {
                 </Button>
                 <Button
                   onClick={handleSave}
-                  disabled={isSaving}
+                  disabled={updateUserMutation.isPending}
                   className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
                 >
                   <Save className="h-4 w-4 mr-2" />
-                  {isSaving ? 'Saving...' : 'Save Changes'}
+                  {updateUserMutation.isPending ? 'Saving...' : 'Save Changes'}
                 </Button>
               </>
             ) : (

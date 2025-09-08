@@ -12,8 +12,7 @@ import {
   Phone,
   Plus,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
-import { getScholarProfile, type ScholarProfile } from '../lib/api-client';
+import { useScholarProfile } from '../lib/hooks/use-queries';
 import { TaskAssignment } from './task-assignment';
 import { Alert, AlertDescription } from './ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -34,27 +33,7 @@ export function ScholarProfilePage({
   onBack,
   initialTab = 'goals',
 }: ScholarProfileProps) {
-  const [scholar, setScholar] = useState<ScholarProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchScholarProfile = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await getScholarProfile(scholarId);
-      setScholar(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load scholar profile');
-      console.error('Error fetching scholar profile:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [scholarId]);
-
-  useEffect(() => {
-    fetchScholarProfile();
-  }, [fetchScholarProfile]);
+  const { data: scholar, isLoading, error } = useScholarProfile(scholarId);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -109,7 +88,11 @@ export function ScholarProfilePage({
           </Button>
         </div>
         <Alert>
-          <AlertDescription>{error || 'Failed to load scholar profile'}</AlertDescription>
+          <AlertDescription>
+            {error
+              ? error.message || 'Failed to load scholar profile'
+              : 'Failed to load scholar profile'}
+          </AlertDescription>
         </Alert>
       </div>
     );

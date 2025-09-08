@@ -404,9 +404,6 @@ export async function getFilterOptions(): Promise<ScholarFilterOptions> {
 // User management functions
 export interface UpdateUserData {
   name?: string;
-  phone?: string;
-  role?: string;
-  department?: string;
 }
 
 export async function updateUser(data: UpdateUserData): Promise<any> {

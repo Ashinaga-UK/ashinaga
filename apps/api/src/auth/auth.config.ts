@@ -95,29 +95,37 @@ const authConfig = betterAuth({
             .limit(1);
 
           const staffData = staffResults[0];
+          console.log('[Session fetchUser] Staff data from DB:', staffData);
+          
           if (staffData) {
             // Parse the department field to extract job title and department
             // Format is "JobTitle - Department" or just one of them
-            let jobTitle = 'Staff Member';
-            let department = 'Student Services';
+            let jobTitle = null;
+            let department = null;
 
             if (staffData.department) {
               if (staffData.department.includes(' - ')) {
                 const parts = staffData.department.split(' - ');
-                jobTitle = parts[0] || jobTitle;
-                department = parts[1] || department;
+                jobTitle = parts[0] || null;
+                department = parts[1] || null;
               } else {
                 // If no separator, treat it as job title
                 jobTitle = staffData.department;
+                department = null;
               }
             }
+            
+            console.log('[Session fetchUser] Parsed - jobTitle:', jobTitle, 'department:', department);
 
-            return {
+            const result = {
               ...user,
-              phone: staffData.phone,
-              department: department,
-              role: jobTitle,
+              phone: staffData.phone || null,
+              department: department || null,
+              role: jobTitle || null,
             };
+            
+            console.log('[Session fetchUser] Returning user with staff data:', result);
+            return result;
           }
         }
         return user;
@@ -278,6 +286,48 @@ const authConfig = betterAuth({
         }
 
         return true;
+      },
+      after: async ({ user }) => {
+        // Add staff data to user object after sign in
+        if (user.userType === 'staff') {
+          const db = getDatabase();
+          const staffResults = await db
+            .select()
+            .from(schema.staff)
+            .where(eq(schema.staff.userId, user.id))
+            .limit(1);
+
+          const staffData = staffResults[0];
+          console.log('[SignIn After] Staff data from DB:', staffData);
+          
+          if (staffData) {
+            // Parse the department field to extract job title and department
+            let jobTitle = null;
+            let department = null;
+
+            if (staffData.department) {
+              if (staffData.department.includes(' - ')) {
+                const parts = staffData.department.split(' - ');
+                jobTitle = parts[0] || null;
+                department = parts[1] || null;
+              } else {
+                // If no separator, treat it as job title
+                jobTitle = staffData.department;
+                department = null;
+              }
+            }
+            
+            console.log('[SignIn After] Parsed - jobTitle:', jobTitle, 'department:', department);
+
+            // Add staff fields to user object
+            (user as any).phone = staffData.phone || null;
+            (user as any).department = department || null;
+            (user as any).role = jobTitle || null;
+            
+            console.log('[SignIn After] Updated user object:', user);
+          }
+        }
+        return user;
       },
     },
   },

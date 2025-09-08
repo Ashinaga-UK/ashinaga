@@ -3,7 +3,8 @@
 import { Plus } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useState } from 'react';
-import { type CreateTaskData, createTask, getScholars, type Scholar } from '../lib/api-client';
+import { type CreateTaskData, getScholars, type Scholar } from '../lib/api-client';
+import { useCreateTask } from '../lib/hooks/use-queries';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -48,6 +49,7 @@ export function TaskAssignment({
   mode = 'create',
 }: TaskAssignmentProps) {
   const { toast } = useToast();
+  const createTaskMutation = useCreateTask();
   const [open, setOpen] = useState(false);
   const [scholars, setScholars] = useState<Scholar[]>([]);
   const [loadingScholars, setLoadingScholars] = useState(false);
@@ -57,7 +59,6 @@ export function TaskAssignment({
   const [dueDate, setDueDate] = useState('');
   const [priority, setPriority] = useState<'high' | 'medium' | 'low'>('medium');
   const [taskType, setTaskType] = useState<CreateTaskData['type']>('other');
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Initialize form with existing task data if in edit mode
   useEffect(() => {
@@ -109,57 +110,56 @@ export function TaskAssignment({
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      const taskData: CreateTaskData = {
-        title: taskTitle,
-        description: taskDescription || undefined,
-        type: taskType,
-        priority: priority || 'medium',
-        dueDate,
-        scholarId: selectedScholarId,
-      };
+    const taskData: CreateTaskData = {
+      title: taskTitle,
+      description: taskDescription || undefined,
+      type: taskType,
+      priority: priority || 'medium',
+      dueDate,
+      scholarId: selectedScholarId,
+    };
 
-      if (mode === 'edit' && existingTask) {
-        // TODO: Implement update task API call
-        // For now, we'll just show a message
-        toast({
-          title: 'Info',
-          description: 'Task update functionality coming soon.',
-          variant: 'default',
-        });
-      } else {
-        await createTask(taskData);
-        toast({
-          title: 'Success',
-          description: 'Task has been assigned successfully.',
-        });
-
-        // Call onSuccess callback after successful creation
-        if (onSuccess && mode === 'create') {
-          onSuccess(selectedScholarId);
-        }
-      }
-
-      // Reset form
-      setTaskTitle('');
-      setTaskDescription('');
-      setDueDate('');
-      setPriority('medium');
-      setTaskType('other');
-      if (!preselectedScholarId) {
-        setSelectedScholarId('');
-      }
-      setOpen(false);
-    } catch (error) {
-      console.error('Error creating task:', error);
+    if (mode === 'edit' && existingTask) {
+      // TODO: Implement update task API call
+      // For now, we'll just show a message
       toast({
-        title: 'Error',
-        description: 'Failed to assign task. Please try again.',
-        variant: 'destructive',
+        title: 'Info',
+        description: 'Task update functionality coming soon.',
+        variant: 'default',
       });
-    } finally {
-      setIsSubmitting(false);
+    } else {
+      createTaskMutation.mutate(taskData, {
+        onSuccess: () => {
+          toast({
+            title: 'Success',
+            description: 'Task has been assigned successfully.',
+          });
+
+          // Call onSuccess callback after successful creation
+          if (onSuccess && mode === 'create') {
+            onSuccess(selectedScholarId);
+          }
+
+          // Reset form
+          setTaskTitle('');
+          setTaskDescription('');
+          setDueDate('');
+          setPriority('medium');
+          setTaskType('other');
+          if (!preselectedScholarId) {
+            setSelectedScholarId('');
+          }
+          setOpen(false);
+        },
+        onError: (error) => {
+          console.error('Error creating task:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to assign task. Please try again.',
+            variant: 'destructive',
+          });
+        },
+      });
     }
   };
 
@@ -319,10 +319,12 @@ export function TaskAssignment({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!selectedScholarId || !taskTitle || !taskDescription || isSubmitting}
+            disabled={
+              !selectedScholarId || !taskTitle || !taskDescription || createTaskMutation.isPending
+            }
             className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
           >
-            {isSubmitting
+            {createTaskMutation.isPending
               ? mode === 'edit'
                 ? 'Updating...'
                 : 'Assigning...'
