@@ -1,29 +1,47 @@
 'use client';
 
-import { ArrowLeft, Save, Upload } from 'lucide-react';
-import type React from 'react';
-import { useState } from 'react';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { ArrowLeft, Save } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useSession } from '../lib/auth-client';
+import { updateUser } from '../lib/api-client';
+import { Avatar, AvatarFallback } from './ui/avatar';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { useToast } from './ui/use-toast';
 
 interface MyProfileProps {
   onBack: () => void;
 }
 
 export function MyProfile({ onBack }: MyProfileProps) {
+  const session = useSession();
+  const { toast } = useToast();
+  const user = session.data?.user;
+
   const [profileData, setProfileData] = useState({
-    name: 'John Doe',
-    email: 'john.doe@ashinaga.org',
-    role: 'Student Support Coordinator',
-    phone: '+44 7123 456789',
-    department: 'Student Services',
-    avatar: '/placeholder.svg?height=80&width=80',
+    name: '',
+    email: '',
+    role: '',
+    phone: '',
+    department: '',
   });
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Initialize form with user data
+  useEffect(() => {
+    if (user) {
+      setProfileData({
+        name: user.name || '',
+        email: user.email || '',
+        role: user.role || 'Staff Member',
+        phone: user.phone || '',
+        department: user.department || 'Student Services',
+      });
+    }
+  }, [user]);
 
   const handleInputChange = (field: string, value: string) => {
     setProfileData((prev) => ({ ...prev, [field]: value }));
@@ -31,21 +49,31 @@ export function MyProfile({ onBack }: MyProfileProps) {
 
   const handleSave = async () => {
     setIsSaving(true);
-    // Mock API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsSaving(false);
-    setIsEditing(false);
-  };
+    try {
+      await updateUser({
+        name: profileData.name,
+        phone: profileData.phone,
+        role: profileData.role,
+        department: profileData.department,
+      });
 
-  const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      // In real app, you'd upload to your storage service
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setProfileData((prev) => ({ ...prev, avatar: e.target?.result as string }));
-      };
-      reader.readAsDataURL(file);
+      toast({
+        title: 'Success',
+        description: 'Your profile has been updated successfully.',
+      });
+
+      setIsEditing(false);
+      // Refresh session to get updated user data
+      await session.refetch();
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update profile. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -67,34 +95,18 @@ export function MyProfile({ onBack }: MyProfileProps) {
           {/* Avatar Section */}
           <div className="flex items-center gap-6">
             <Avatar className="h-20 w-20">
-              <AvatarImage src={profileData.avatar || '/placeholder.svg'} />
-              <AvatarFallback className="text-lg">
+              <AvatarFallback className="text-lg bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 text-white">
                 {profileData.name
-                  .split(' ')
+                  ?.split(' ')
                   .map((n) => n[0])
-                  .join('')}
+                  .join('')
+                  .toUpperCase() || 'U'}
               </AvatarFallback>
             </Avatar>
             <div>
-              <h3 className="font-medium mb-2">Profile Picture</h3>
-              <div className="flex gap-2">
-                <Label htmlFor="avatar-upload" className="cursor-pointer">
-                  <Button variant="outline" size="sm" asChild>
-                    <span>
-                      <Upload className="h-4 w-4 mr-2" />
-                      Upload New Photo
-                    </span>
-                  </Button>
-                </Label>
-                <input
-                  id="avatar-upload"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarUpload}
-                  className="hidden"
-                />
-              </div>
-              <p className="text-sm text-gray-500 mt-1">JPG, PNG or GIF. Max size 2MB.</p>
+              <h3 className="text-lg font-medium">{profileData.name}</h3>
+              <p className="text-sm text-gray-600">{profileData.role}</p>
+              <p className="text-sm text-gray-500">{profileData.department}</p>
             </div>
           </div>
 
@@ -116,8 +128,8 @@ export function MyProfile({ onBack }: MyProfileProps) {
                   id="email"
                   type="email"
                   value={profileData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  disabled={!isEditing}
+                  disabled
+                  title="Email cannot be changed"
                 />
               </div>
               <div>

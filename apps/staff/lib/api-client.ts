@@ -379,6 +379,21 @@ export async function getFilterOptions(): Promise<ScholarFilterOptions> {
   return fetchAPI<ScholarFilterOptions>('/api/scholars/filters');
 }
 
+// User management functions
+export interface UpdateUserData {
+  name?: string;
+  phone?: string;
+  role?: string;
+  department?: string;
+}
+
+export async function updateUser(data: UpdateUserData): Promise<any> {
+  return fetchAPI('/api/users/me', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
 // Task management functions
 export interface CreateTaskData {
   title: string;

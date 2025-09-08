@@ -1,7 +1,7 @@
 'use client';
 
 import { AlertCircle, FileText, Loader2, MessageSquare, Plus, Users } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { AnnouncementCreator } from '../components/announcement-creator';
 import { LoginPage } from '../components/login-page';
@@ -37,12 +37,23 @@ import { signOut, useSession } from '../lib/auth-client';
 
 export default function StaffDashboard() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const session = useSession();
-  const [activeTab, setActiveTab] = useState('overview');
+
+  // Get values from URL or use defaults
+  const tabFromUrl = searchParams.get('tab') || 'overview';
+  const viewFromUrl = searchParams.get('view') || 'dashboard';
+  const scholarIdFromUrl = searchParams.get('scholarId');
+  const scholarTabFromUrl = searchParams.get('scholarTab') || 'goals';
+
+  const [activeTab, setActiveTab] = useState(tabFromUrl);
   const [currentView, setCurrentView] = useState<
     'dashboard' | 'scholar-profile' | 'onboarding' | 'task-assignment' | 'my-profile'
-  >('dashboard');
-  const [selectedScholarId, setSelectedScholarId] = useState<string | null>(null);
+  >(viewFromUrl as any);
+  const [selectedScholarId, setSelectedScholarId] = useState<string | null>(scholarIdFromUrl);
+  const [scholarProfileTab, setScholarProfileTab] = useState<'goals' | 'tasks' | 'documents'>(
+    scholarTabFromUrl as any
+  );
   const [requestStatusFilter, setRequestStatusFilter] = useState('all');
   const [requests, setRequests] = useState<Request[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(true);
@@ -54,6 +65,26 @@ export default function StaffDashboard() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [announcementsLoading, setAnnouncementsLoading] = useState(true);
   const [announcementsError, setAnnouncementsError] = useState<string | null>(null);
+
+  // Update state when URL changes
+  useEffect(() => {
+    const newTab = searchParams.get('tab') || 'overview';
+    const newView = searchParams.get('view') || 'dashboard';
+    const newScholarId = searchParams.get('scholarId');
+    const newScholarTab = searchParams.get('scholarTab') || 'goals';
+
+    setActiveTab(newTab);
+    setCurrentView(
+      (newView || 'dashboard') as
+        | 'dashboard'
+        | 'scholar-profile'
+        | 'onboarding'
+        | 'task-assignment'
+        | 'my-profile'
+    );
+    setSelectedScholarId(newScholarId);
+    setScholarProfileTab((newScholarTab || 'goals') as 'goals' | 'tasks' | 'documents');
+  }, [searchParams]);
 
   // Get user data from session
   const user = session.data?.user;
@@ -174,11 +205,11 @@ export default function StaffDashboard() {
   };
 
   const navigateToScholars = () => {
-    setActiveTab('scholars');
+    router.push('?tab=scholars');
   };
 
   const navigateToRequests = () => {
-    setActiveTab('requests');
+    router.push('?tab=requests');
   };
 
   const handleSignOut = async () => {
@@ -228,8 +259,13 @@ export default function StaffDashboard() {
               Logout
             </Button>
             <Avatar>
-              <AvatarImage src={user?.image || '/placeholder.svg?height=32&width=32'} />
-              <AvatarFallback>{user?.name?.slice(0, 2).toUpperCase() || 'U'}</AvatarFallback>
+              <AvatarFallback>
+                {user?.name
+                  ?.split(' ')
+                  .map((n) => n[0])
+                  .join('')
+                  .toUpperCase() || 'U'}
+              </AvatarFallback>
             </Avatar>
           </div>
         </div>
@@ -237,11 +273,15 @@ export default function StaffDashboard() {
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         {currentView === 'onboarding' ? (
-          <ScholarOnboarding onBack={() => setCurrentView('dashboard')} />
+          <ScholarOnboarding onBack={() => router.push('/')} />
         ) : currentView === 'my-profile' ? (
-          <MyProfile onBack={() => setCurrentView('dashboard')} />
+          <MyProfile onBack={() => router.push('/')} />
         ) : (
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <Tabs
+            value={activeTab}
+            onValueChange={(tab) => router.push(tab === 'overview' ? '/' : `?tab=${tab}`)}
+            className="space-y-6"
+          >
             <TabsList className="grid w-full grid-cols-4 lg:w-[600px]">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="scholars">Scholars</TabsTrigger>
@@ -326,7 +366,7 @@ export default function StaffDashboard() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <Button
                       className="h-20 flex-col gap-2 bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
-                      onClick={() => setCurrentView('onboarding')}
+                      onClick={() => router.push('?view=onboarding')}
                     >
                       <Users className="h-6 w-6" />
                       Onboard Scholar
@@ -341,11 +381,17 @@ export default function StaffDashboard() {
                           Assign Task to Scholar
                         </Button>
                       }
+                      onSuccess={(scholarId) => {
+                        // Use URL navigation for proper routing
+                        router.push(
+                          `?view=scholar-profile&scholarId=${scholarId}&scholarTab=tasks`
+                        );
+                      }}
                     />
                     <Button
                       variant="outline"
                       className="h-20 flex-col gap-2 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent"
-                      onClick={() => setActiveTab('announcements')}
+                      onClick={() => router.push('?tab=announcements')}
                     >
                       <MessageSquare className="h-6 w-6" />
                       Create Announcement
@@ -353,7 +399,7 @@ export default function StaffDashboard() {
                     <Button
                       variant="outline"
                       className="h-20 flex-col gap-2 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent"
-                      onClick={() => setActiveTab('requests')}
+                      onClick={() => router.push('?tab=requests')}
                     >
                       <FileText className="h-6 w-6" />
                       Review Requests
@@ -367,9 +413,9 @@ export default function StaffDashboard() {
               {currentView === 'scholar-profile' && selectedScholarId ? (
                 <ScholarProfilePage
                   scholarId={selectedScholarId}
+                  initialTab={scholarProfileTab}
                   onBack={() => {
-                    setCurrentView('dashboard');
-                    setSelectedScholarId(null);
+                    router.push('?tab=scholars');
                   }}
                 />
               ) : (
@@ -381,10 +427,9 @@ export default function StaffDashboard() {
                   <CardContent>
                     <ScholarManagementTable
                       onViewProfile={(scholarId) => {
-                        setSelectedScholarId(scholarId);
-                        setCurrentView('scholar-profile');
+                        router.push(`?view=scholar-profile&scholarId=${scholarId}`);
                       }}
-                      onOnboardScholar={() => setCurrentView('onboarding')}
+                      onOnboardScholar={() => router.push('?view=onboarding')}
                     />
                   </CardContent>
                 </Card>

@@ -26,9 +26,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 interface ScholarProfileProps {
   scholarId: string;
   onBack: () => void;
+  initialTab?: 'goals' | 'tasks' | 'documents';
 }
 
-export function ScholarProfilePage({ scholarId, onBack }: ScholarProfileProps) {
+export function ScholarProfilePage({
+  scholarId,
+  onBack,
+  initialTab = 'goals',
+}: ScholarProfileProps) {
   const [scholar, setScholar] = useState<ScholarProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -171,7 +176,7 @@ export function ScholarProfilePage({ scholarId, onBack }: ScholarProfileProps) {
       </Card>
 
       {/* Tabs */}
-      <Tabs defaultValue="goals" className="space-y-4">
+      <Tabs defaultValue={initialTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="goals">Goals & Progress</TabsTrigger>
           <TabsTrigger value="tasks">Tasks</TabsTrigger>
@@ -277,6 +282,16 @@ export function ScholarProfilePage({ scholarId, onBack }: ScholarProfileProps) {
                           </Button>
                         }
                         preselectedScholarId={scholar.id}
+                        existingTask={{
+                          id: task.id,
+                          title: task.title,
+                          description: task.description,
+                          type: task.type,
+                          priority: task.priority,
+                          dueDate: task.dueDate,
+                          status: task.status,
+                        }}
+                        mode="edit"
                       />
                     </div>
                   </CardContent>
