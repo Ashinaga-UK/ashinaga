@@ -378,3 +378,44 @@ export interface ScholarFilterOptions {
 export async function getFilterOptions(): Promise<ScholarFilterOptions> {
   return fetchAPI<ScholarFilterOptions>('/api/scholars/filters');
 }
+
+// Task management functions
+export interface CreateTaskData {
+  title: string;
+  description?: string;
+  type:
+    | 'document_upload'
+    | 'form_completion'
+    | 'meeting_attendance'
+    | 'goal_update'
+    | 'feedback_submission'
+    | 'other';
+  priority?: 'high' | 'medium' | 'low';
+  dueDate: string;
+  scholarId: string;
+}
+
+export async function createTask(data: CreateTaskData): Promise<{
+  id: string;
+  title: string;
+  description?: string;
+  type: string;
+  priority: string;
+  dueDate: string;
+  status: string;
+  scholarId: string;
+  assignedBy: string;
+  createdAt: string;
+}> {
+  return fetchAPI('/api/tasks', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getTasksByScholar(scholarId: string): Promise<Task[]> {
+  return fetchAPI<Task[]>(`/api/tasks/scholar/${scholarId}`);
+}

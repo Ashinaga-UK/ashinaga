@@ -8,6 +8,7 @@ import { EmailModule } from './email/email.module';
 import { HealthModule } from './health/health.module';
 import { RequestsModule } from './requests/requests.module';
 import { ScholarsModule } from './scholars/scholars.module';
+import { TasksModule } from './tasks/tasks.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { ScholarsModule } from './scholars/scholars.module';
     ScholarsModule,
     RequestsModule,
     AnnouncementsModule,
+    TasksModule,
   ],
   controllers: [AppController],
   providers: [AppService],
