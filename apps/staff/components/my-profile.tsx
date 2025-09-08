@@ -47,6 +47,20 @@ export function MyProfile({ onBack }: MyProfileProps) {
     setProfileData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handleCancel = () => {
+    // Reset form data to original user data
+    if (user) {
+      setProfileData({
+        name: user.name || '',
+        email: user.email || '',
+        role: (user as any).role || 'Staff Member',
+        phone: (user as any).phone || '',
+        department: (user as any).department || 'Student Services',
+      });
+    }
+    setIsEditing(false);
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -169,7 +183,7 @@ export function MyProfile({ onBack }: MyProfileProps) {
           <div className="flex justify-end gap-2 pt-4 border-t">
             {isEditing ? (
               <>
-                <Button variant="outline" onClick={() => setIsEditing(false)}>
+                <Button variant="outline" onClick={handleCancel}>
                   Cancel
                 </Button>
                 <Button

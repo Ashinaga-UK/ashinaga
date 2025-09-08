@@ -252,7 +252,7 @@ export default function StaffDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setCurrentView('my-profile')}>
+            <Button variant="ghost" size="sm" onClick={() => router.push('?view=my-profile')}>
               My Profile
             </Button>
             <Button variant="outline" size="sm" onClick={handleSignOut}>
