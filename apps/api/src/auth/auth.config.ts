@@ -96,7 +96,7 @@ const authConfig = betterAuth({
 
           const staffData = staffResults[0];
           console.log('[Session fetchUser] Staff data from DB:', staffData);
-          
+
           if (staffData) {
             // Parse the department field to extract job title and department
             // Format is "JobTitle - Department" or just one of them
@@ -114,8 +114,13 @@ const authConfig = betterAuth({
                 department = null;
               }
             }
-            
-            console.log('[Session fetchUser] Parsed - jobTitle:', jobTitle, 'department:', department);
+
+            console.log(
+              '[Session fetchUser] Parsed - jobTitle:',
+              jobTitle,
+              'department:',
+              department
+            );
 
             const result = {
               ...user,
@@ -123,7 +128,7 @@ const authConfig = betterAuth({
               department: department || null,
               role: jobTitle || null,
             };
-            
+
             console.log('[Session fetchUser] Returning user with staff data:', result);
             return result;
           }
@@ -299,7 +304,7 @@ const authConfig = betterAuth({
 
           const staffData = staffResults[0];
           console.log('[SignIn After] Staff data from DB:', staffData);
-          
+
           if (staffData) {
             // Parse the department field to extract job title and department
             let jobTitle = null;
@@ -316,14 +321,14 @@ const authConfig = betterAuth({
                 department = null;
               }
             }
-            
+
             console.log('[SignIn After] Parsed - jobTitle:', jobTitle, 'department:', department);
 
             // Add staff fields to user object
             (user as any).phone = staffData.phone || null;
             (user as any).department = department || null;
             (user as any).role = jobTitle || null;
-            
+
             console.log('[SignIn After] Updated user object:', user);
           }
         }
