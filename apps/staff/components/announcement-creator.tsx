@@ -6,10 +6,8 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   type CreateAnnouncementData,
   createAnnouncement,
-  getFilterOptions,
   getScholarsForFiltering,
   type ScholarFilter,
-  type ScholarFilterOptions,
 } from '../lib/api-client';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -42,7 +40,6 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
   const [currentFilterValue, setCurrentFilterValue] = useState('');
   const [previewStudents, setPreviewStudents] = useState<ScholarFilter[]>([]);
   const [allStudents, setAllStudents] = useState<ScholarFilter[]>([]);
-  const [filterOptions, setFilterOptions] = useState<ScholarFilterOptions | null>(null);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
 
@@ -62,12 +59,8 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [scholarsData, filterOptionsData] = await Promise.all([
-        getScholarsForFiltering(),
-        getFilterOptions(),
-      ]);
+      const scholarsData = await getScholarsForFiltering();
       setAllStudents(scholarsData);
-      setFilterOptions(filterOptionsData);
       setPreviewStudents(scholarsData); // Show all students by default
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -96,6 +89,35 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
       });
     });
   }, [filters, allStudents]);
+
+  // Get dynamic filter options based on currently filtered students
+  const getDynamicFilterOptions = useCallback(
+    (filterType: string) => {
+      // Start with the currently filtered students (based on existing filters)
+      const studentsToConsider = getFilteredStudents();
+
+      // Extract unique values for the requested filter type
+      const uniqueValues = new Set<string>();
+
+      for (const student of studentsToConsider) {
+        switch (filterType) {
+          case 'year':
+            uniqueValues.add(student.year);
+            break;
+          case 'program':
+            uniqueValues.add(student.program);
+            break;
+          case 'university':
+            uniqueValues.add(student.university);
+            break;
+        }
+      }
+
+      // Convert to sorted array
+      return Array.from(uniqueValues).sort();
+    },
+    [getFilteredStudents]
+  );
 
   useEffect(() => {
     setPreviewStudents(getFilteredStudents());
@@ -200,7 +222,13 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
               <CardContent className="space-y-4">
                 {/* Add Filter */}
                 <div className="flex gap-2">
-                  <Select value={currentFilter} onValueChange={setCurrentFilter}>
+                  <Select
+                    value={currentFilter}
+                    onValueChange={(value) => {
+                      setCurrentFilter(value);
+                      setCurrentFilterValue(''); // Clear the value when filter type changes
+                    }}
+                  >
                     <SelectTrigger className="w-[180px]">
                       <SelectValue placeholder="Select filter" />
                     </SelectTrigger>
@@ -213,36 +241,17 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
                     </SelectContent>
                   </Select>
 
-                  {currentFilter && filterOptions && (
+                  {currentFilter && (
                     <Select value={currentFilterValue} onValueChange={setCurrentFilterValue}>
                       <SelectTrigger className="w-[200px]">
                         <SelectValue placeholder="Select value" />
                       </SelectTrigger>
                       <SelectContent>
-                        {(() => {
-                          switch (currentFilter) {
-                            case 'program':
-                              return filterOptions.programs?.map((value) => (
-                                <SelectItem key={value} value={value}>
-                                  {value}
-                                </SelectItem>
-                              ));
-                            case 'year':
-                              return filterOptions.years?.map((value) => (
-                                <SelectItem key={value} value={value}>
-                                  {value}
-                                </SelectItem>
-                              ));
-                            case 'university':
-                              return filterOptions.universities?.map((value) => (
-                                <SelectItem key={value} value={value}>
-                                  {value}
-                                </SelectItem>
-                              ));
-                            default:
-                              return null;
-                          }
-                        })()}
+                        {getDynamicFilterOptions(currentFilter).map((value) => (
+                          <SelectItem key={value} value={value}>
+                            {value}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   )}
