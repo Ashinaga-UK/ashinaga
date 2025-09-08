@@ -109,6 +109,7 @@ jobs:
         export DB_NAME="${DB_NAME}"
         export DB_USER="${DB_USER}"
         export DB_PASSWORD="${DB_PASSWORD}"
+        export DB_SSL="true"
         
         # Better Auth configuration (from Secrets Manager)
         export BETTER_AUTH_SECRET="${BETTER_AUTH_SECRET}"

@@ -2,14 +2,14 @@
 
 import { Button } from '@workspace/ui';
 import Link from 'next/link';
+import type { FC } from 'react';
 
-export default function ErrorBoundary({
-  error,
-  reset,
-}: {
+interface ErrorBoundaryProps {
   error: Error & { digest?: string };
   reset: () => void;
-}) {
+}
+
+const ErrorBoundary: FC<ErrorBoundaryProps> = ({ error, reset }) => {
   console.error(error);
 
   return (
@@ -34,4 +34,6 @@ export default function ErrorBoundary({
       </div>
     </div>
   );
-}
+};
+
+export default ErrorBoundary;

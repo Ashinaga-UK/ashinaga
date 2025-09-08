@@ -133,7 +133,10 @@ export interface GetScholarsParams {
 }
 
 async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
+  // Remove trailing slash from base URL and ensure endpoint starts with slash
+  const baseUrl = API_BASE_URL.replace(/\/$/, '');
+  const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const url = `${baseUrl}${normalizedEndpoint}`;
 
   const response = await fetch(url, {
     ...options,

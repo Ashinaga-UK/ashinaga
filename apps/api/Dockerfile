@@ -32,4 +32,4 @@ RUN echo "Build completed, checking dist folder:" && ls -la dist/ || echo "No di
 EXPOSE 3000
 
 # Start the application (we're already in the right directory)
-CMD ["node", "dist/src/main.js"]
+CMD ["node", "dist/main.js"]
