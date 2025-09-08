@@ -9,6 +9,7 @@ import { HealthModule } from './health/health.module';
 import { RequestsModule } from './requests/requests.module';
 import { ScholarsModule } from './scholars/scholars.module';
 import { TasksModule } from './tasks/tasks.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { TasksModule } from './tasks/tasks.module';
     RequestsModule,
     AnnouncementsModule,
     TasksModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

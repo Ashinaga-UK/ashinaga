@@ -2,8 +2,8 @@
 
 import { ArrowLeft, Save } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useSession } from '../lib/auth-client';
 import { updateUser } from '../lib/api-client';
+import { useSession } from '../lib/auth-client';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
