@@ -114,15 +114,14 @@ resource "aws_apprunner_service" "this" {
     }
   }
 
-  # Temporarily removed health check to simplify debugging
-  # health_check_configuration {
-  #   healthy_threshold   = 1
-  #   interval            = 10
-  #   path                = "/health"
-  #   protocol            = "HTTP"
-  #   timeout             = 5
-  #   unhealthy_threshold = 5
-  # }
+  health_check_configuration {
+    healthy_threshold   = 1
+    interval            = 30
+    path                = "/health"
+    protocol            = "HTTP"
+    timeout             = 10
+    unhealthy_threshold = 3
+  }
 
   tags = {
     Name        = var.service_name

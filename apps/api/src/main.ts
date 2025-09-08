@@ -61,7 +61,30 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
-  await app.listen(process.env.PORT || 3000, '0.0.0.0');
-  console.log(`Application is running on: http://localhost:${process.env.PORT || 3000}`);
+  const port = process.env.PORT || 3000;
+  await app.listen(port, '0.0.0.0');
+
+  logger.log(`Application is running on: http://0.0.0.0:${port}`);
+  logger.log(`Swagger documentation available at: http://0.0.0.0:${port}/api`);
+  logger.log(`Health check endpoint: http://0.0.0.0:${port}/health`);
+
+  // Handle graceful shutdown
+  process.on('SIGTERM', async () => {
+    logger.warn('SIGTERM signal received: closing HTTP server');
+    await app.close();
+    logger.warn('HTTP server closed');
+    process.exit(0);
+  });
+
+  process.on('SIGINT', async () => {
+    logger.warn('SIGINT signal received: closing HTTP server');
+    await app.close();
+    logger.warn('HTTP server closed');
+    process.exit(0);
+  });
 }
-bootstrap();
+
+bootstrap().catch((error) => {
+  console.error('Failed to start application:', error);
+  process.exit(1);
+});
