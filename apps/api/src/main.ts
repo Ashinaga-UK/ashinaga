@@ -1,12 +1,27 @@
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 
 async function bootstrap() {
-  const fastifyAdapter = new FastifyAdapter();
-  const app = await NestFactory.create<NestFastifyApplication>(AppModule, fastifyAdapter);
+  const logger = new Logger('Bootstrap');
+
+  // Log startup information
+  logger.log(`Starting API in ${process.env.NODE_ENV || 'development'} mode`);
+  logger.log(`Port: ${process.env.PORT || 3000}`);
+
+  const fastifyAdapter = new FastifyAdapter({
+    logger: true, // Enable Fastify's built-in logger
+  });
+
+  const app = await NestFactory.create<NestFastifyApplication>(AppModule, fastifyAdapter, {
+    logger: ['error', 'warn', 'log', 'debug', 'verbose'],
+  });
+
+  // Global logging interceptor
+  app.useGlobalInterceptors(new LoggingInterceptor());
 
   // Enable CORS
   const corsOrigins = process.env.CORS_ORIGINS
