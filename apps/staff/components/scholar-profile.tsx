@@ -12,6 +12,7 @@ import {
   Phone,
   Plus,
 } from 'lucide-react';
+import type { CreateTaskData } from '../lib/api-client';
 import { useScholarProfile } from '../lib/hooks/use-queries';
 import { TaskAssignment } from './task-assignment';
 import { Alert, AlertDescription } from './ui/alert';
@@ -269,12 +270,15 @@ export function ScholarProfilePage({
                           id: task.id,
                           title: task.title,
                           description: task.description,
-                          type: task.type,
+                          type: task.type as CreateTaskData['type'],
                           priority: task.priority,
                           dueDate: task.dueDate,
                           status: task.status,
                         }}
                         mode="edit"
+                        onSuccess={() => {
+                          // Tasks will be refetched automatically via React Query
+                        }}
                       />
                     </div>
                   </CardContent>

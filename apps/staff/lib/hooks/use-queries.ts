@@ -1,12 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  type Announcement,
+  type CreateAnnouncementData,
+  type CreateTaskData,
+  createAnnouncement,
   createTask,
+  getAnnouncements,
   getScholarProfile,
   getTasksByScholar,
-  updateUser,
-  type CreateTaskData,
   type ScholarProfile,
   type Task,
+  type UpdateTaskData,
+  updateTask,
+  updateUser,
 } from '../api-client';
 
 // Query keys
@@ -14,6 +20,7 @@ export const queryKeys = {
   scholarProfile: (id: string) => ['scholar', id, 'profile'] as const,
   scholarTasks: (id: string) => ['scholar', id, 'tasks'] as const,
   user: ['user'] as const,
+  announcements: ['announcements'] as const,
 };
 
 // Scholar profile query
@@ -62,8 +69,6 @@ export function useCreateTask() {
 
 // Update user mutation
 export function useUpdateUser() {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: updateUser,
     onSuccess: () => {
@@ -72,6 +77,51 @@ export function useUpdateUser() {
       setTimeout(() => {
         window.location.reload();
       }, 500);
+    },
+  });
+}
+
+// Announcements query
+export function useAnnouncements() {
+  return useQuery({
+    queryKey: queryKeys.announcements,
+    queryFn: getAnnouncements,
+  });
+}
+
+// Create announcement mutation
+export function useCreateAnnouncement() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createAnnouncement,
+    onSuccess: () => {
+      // Invalidate and refetch announcements
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.announcements,
+      });
+    },
+  });
+}
+
+// Update task mutation
+export function useUpdateTask() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ taskId, data }: { taskId: string; data: UpdateTaskData }) =>
+      updateTask(taskId, data),
+    onSuccess: (updatedTask, variables) => {
+      // Invalidate tasks for the scholar
+      // We need to find the scholar ID from the task
+      if (updatedTask && 'scholarId' in updatedTask) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.scholarTasks((updatedTask as any).scholarId),
+        });
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.scholarProfile((updatedTask as any).scholarId),
+        });
+      }
     },
   });
 }

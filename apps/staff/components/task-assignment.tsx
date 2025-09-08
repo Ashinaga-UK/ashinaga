@@ -3,8 +3,13 @@
 import { Plus } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useState } from 'react';
-import { type CreateTaskData, getScholars, type Scholar } from '../lib/api-client';
-import { useCreateTask } from '../lib/hooks/use-queries';
+import {
+  type CreateTaskData,
+  getScholars,
+  type Scholar,
+  type UpdateTaskData,
+} from '../lib/api-client';
+import { useCreateTask, useUpdateTask } from '../lib/hooks/use-queries';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -50,6 +55,7 @@ export function TaskAssignment({
 }: TaskAssignmentProps) {
   const { toast } = useToast();
   const createTaskMutation = useCreateTask();
+  const updateTaskMutation = useUpdateTask();
   const [open, setOpen] = useState(false);
   const [scholars, setScholars] = useState<Scholar[]>([]);
   const [loadingScholars, setLoadingScholars] = useState(false);
@@ -120,13 +126,40 @@ export function TaskAssignment({
     };
 
     if (mode === 'edit' && existingTask) {
-      // TODO: Implement update task API call
-      // For now, we'll just show a message
-      toast({
-        title: 'Info',
-        description: 'Task update functionality coming soon.',
-        variant: 'default',
-      });
+      const updateData: UpdateTaskData = {
+        title: taskTitle,
+        description: taskDescription || undefined,
+        type: taskType,
+        priority: priority,
+        dueDate,
+      };
+
+      updateTaskMutation.mutate(
+        { taskId: existingTask.id, data: updateData },
+        {
+          onSuccess: () => {
+            toast({
+              title: 'Success',
+              description: 'Task has been updated successfully.',
+            });
+
+            // Call onSuccess callback after successful update
+            if (onSuccess && preselectedScholarId) {
+              onSuccess(preselectedScholarId);
+            }
+
+            setOpen(false);
+          },
+          onError: (error) => {
+            console.error('Error updating task:', error);
+            toast({
+              title: 'Error',
+              description: 'Failed to update task. Please try again.',
+              variant: 'destructive',
+            });
+          },
+        }
+      );
     } else {
       createTaskMutation.mutate(taskData, {
         onSuccess: () => {
@@ -320,11 +353,15 @@ export function TaskAssignment({
           <Button
             onClick={handleSubmit}
             disabled={
-              !selectedScholarId || !taskTitle || !taskDescription || createTaskMutation.isPending
+              !selectedScholarId ||
+              !taskTitle ||
+              !taskDescription ||
+              createTaskMutation.isPending ||
+              updateTaskMutation.isPending
             }
             className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
           >
-            {createTaskMutation.isPending
+            {createTaskMutation.isPending || updateTaskMutation.isPending
               ? mode === 'edit'
                 ? 'Updating...'
                 : 'Assigning...'

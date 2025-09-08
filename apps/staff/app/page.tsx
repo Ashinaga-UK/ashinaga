@@ -25,7 +25,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import {
   type Announcement,
-  getAnnouncements,
   getRequestStats,
   getRequests,
   getScholarStats,
@@ -34,6 +33,7 @@ import {
   type ScholarStats,
 } from '../lib/api-client';
 import { signOut, useSession } from '../lib/auth-client';
+import { useAnnouncements } from '../lib/hooks/use-queries';
 
 export default function StaffDashboard() {
   const router = useRouter();
@@ -62,9 +62,12 @@ export default function StaffDashboard() {
   const [scholarStatsLoading, setScholarStatsLoading] = useState(true);
   const [requestStats, setRequestStats] = useState<RequestStats | null>(null);
   const [requestStatsLoading, setRequestStatsLoading] = useState(true);
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [announcementsLoading, setAnnouncementsLoading] = useState(true);
-  const [announcementsError, setAnnouncementsError] = useState<string | null>(null);
+  // Use React Query for announcements
+  const {
+    data: announcements = [],
+    isLoading: announcementsLoading,
+    error: announcementsError,
+  } = useAnnouncements();
 
   // Update state when URL changes
   useEffect(() => {
@@ -173,19 +176,7 @@ export default function StaffDashboard() {
     }
   }, []);
 
-  const fetchAnnouncements = useCallback(async () => {
-    setAnnouncementsLoading(true);
-    setAnnouncementsError(null);
-    try {
-      const data = await getAnnouncements();
-      setAnnouncements(data);
-    } catch (err) {
-      setAnnouncementsError(err instanceof Error ? err.message : 'Failed to load announcements');
-      console.error('Error fetching announcements:', err);
-    } finally {
-      setAnnouncementsLoading(false);
-    }
-  }, []);
+  // Announcements are now fetched via React Query
 
   useEffect(() => {
     // Only fetch data if user is authenticated
@@ -193,9 +184,9 @@ export default function StaffDashboard() {
       fetchRequests();
       fetchScholarStats();
       fetchRequestStats();
-      fetchAnnouncements();
+      // Announcements are now auto-fetched by React Query
     }
-  }, [isAuthenticated, fetchRequests, fetchScholarStats, fetchRequestStats, fetchAnnouncements]);
+  }, [isAuthenticated, fetchRequests, fetchScholarStats, fetchRequestStats]);
 
   const handleRequestStatusUpdate = (requestId: string, status: string, comment?: string) => {
     console.log('Request updated:', { requestId, status, comment });
@@ -382,9 +373,9 @@ export default function StaffDashboard() {
                         </Button>
                       }
                       onSuccess={(scholarId) => {
-                        // Use URL navigation for proper routing
+                        // Navigate to scholar profile with tasks tab open
                         router.push(
-                          `?view=scholar-profile&scholarId=${scholarId}&scholarTab=tasks`
+                          `?tab=scholars&view=scholar-profile&scholarId=${scholarId}&scholarTab=tasks`
                         );
                       }}
                     />
@@ -511,7 +502,9 @@ export default function StaffDashboard() {
                   ) : announcementsError ? (
                     <div className="text-center py-12">
                       <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-500" />
-                      <p className="text-red-600">{announcementsError}</p>
+                      <p className="text-red-600">
+                        {announcementsError?.message || 'Failed to load announcements'}
+                      </p>
                     </div>
                   ) : announcements.length === 0 ? (
                     <div className="text-center py-12 text-gray-500">

@@ -5,6 +5,7 @@ import { scholars } from '../db/schema/scholars';
 import { tasks } from '../db/schema/tasks';
 import { users } from '../db/schema/users';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { UpdateTaskDto } from './dto/update-task.dto';
 
 @Injectable()
 export class TasksService {
@@ -55,6 +56,26 @@ export class TasksService {
     const updateData: any = { status, updatedAt: new Date() };
     if (status === 'completed') {
       updateData.completedAt = new Date();
+    }
+
+    const [task] = await this.db
+      .update(tasks)
+      .set(updateData)
+      .where(eq(tasks.id, taskId))
+      .returning();
+
+    return task;
+  }
+
+  async updateTask(taskId: string, updateTaskDto: UpdateTaskDto) {
+    const updateData: any = {
+      ...updateTaskDto,
+      updatedAt: new Date(),
+    };
+
+    // Convert dueDate string to Date object if provided
+    if (updateTaskDto.dueDate) {
+      updateData.dueDate = new Date(updateTaskDto.dueDate);
     }
 
     const [task] = await this.db

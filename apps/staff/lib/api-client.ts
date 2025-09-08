@@ -456,3 +456,27 @@ export async function createTask(data: CreateTaskData): Promise<{
 export async function getTasksByScholar(scholarId: string): Promise<Task[]> {
   return fetchAPI<Task[]>(`/api/tasks/scholar/${scholarId}`);
 }
+
+export interface UpdateTaskData {
+  title?: string;
+  description?: string;
+  type?:
+    | 'document_upload'
+    | 'form_completion'
+    | 'meeting_attendance'
+    | 'goal_update'
+    | 'feedback_submission'
+    | 'other';
+  priority?: 'high' | 'medium' | 'low';
+  dueDate?: string;
+}
+
+export async function updateTask(taskId: string, data: UpdateTaskData): Promise<Task> {
+  return fetchAPI<Task>(`/api/tasks/${taskId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+}

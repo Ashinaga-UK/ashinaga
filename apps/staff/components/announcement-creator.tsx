@@ -5,10 +5,10 @@ import type React from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import {
   type CreateAnnouncementData,
-  createAnnouncement,
   getScholarsForFiltering,
   type ScholarFilter,
 } from '../lib/api-client';
+import { useCreateAnnouncement } from '../lib/hooks/use-queries';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -32,6 +32,7 @@ interface AnnouncementCreatorProps {
 }
 
 export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
+  const createAnnouncementMutation = useCreateAnnouncement();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -41,7 +42,6 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
   const [previewStudents, setPreviewStudents] = useState<ScholarFilter[]>([]);
   const [allStudents, setAllStudents] = useState<ScholarFilter[]>([]);
   const [loading, setLoading] = useState(false);
-  const [sending, setSending] = useState(false);
 
   const filterTypeOptions = [
     { value: 'year', label: 'Year' },
@@ -138,29 +138,28 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
     setFilters(filters.filter((filter) => filter !== filterToRemove));
   };
 
-  const handleSend = async () => {
-    setSending(true);
-    try {
-      const announcementData: CreateAnnouncementData = {
-        title,
-        content,
-        filters: filters.map((filter) => {
-          const [filterType, filterValue] = filter.split(': ');
-          return { filterType: filterType!, filterValue: filterValue! };
-        }),
-      };
+  const handleSend = () => {
+    const announcementData: CreateAnnouncementData = {
+      title,
+      content,
+      filters: filters.map((filter) => {
+        const [filterType, filterValue] = filter.split(': ');
+        return { filterType: filterType!, filterValue: filterValue! };
+      }),
+    };
 
-      await createAnnouncement(announcementData);
-      console.log('Announcement sent successfully');
-      setOpen(false);
-      setTitle('');
-      setContent('');
-      setFilters([]);
-    } catch (error) {
-      console.error('Error sending announcement:', error);
-    } finally {
-      setSending(false);
-    }
+    createAnnouncementMutation.mutate(announcementData, {
+      onSuccess: () => {
+        console.log('Announcement sent successfully');
+        setOpen(false);
+        setTitle('');
+        setContent('');
+        setFilters([]);
+      },
+      onError: (error) => {
+        console.error('Error sending announcement:', error);
+      },
+    });
   };
 
   return (
@@ -344,10 +343,15 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
           </Button>
           <Button
             onClick={handleSend}
-            disabled={!title || !content || previewStudents.length === 0 || sending}
+            disabled={
+              !title ||
+              !content ||
+              previewStudents.length === 0 ||
+              createAnnouncementMutation.isPending
+            }
             className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
           >
-            {sending ? (
+            {createAnnouncementMutation.isPending ? (
               <>
                 <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
                 Sending...
