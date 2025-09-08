@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, Res } from '@nestjs/common';
+import { All, Body, Controller, Get, Post, Req, Res } from '@nestjs/common';
 import { ApiOperation, ApiTags, ApiBody, ApiResponse } from '@nestjs/swagger';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { auth } from './auth.config';
@@ -124,6 +124,14 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'No active session' })
   async getSession(@Req() req: FastifyRequest, @Res() res: FastifyReply) {
     return this.forwardToAuth(req, res, '/session');
+  }
+
+  @Get('get-session')
+  @ApiOperation({ summary: 'Get current user session (alias)' })
+  @ApiResponse({ status: 200, description: 'Current session information' })
+  @ApiResponse({ status: 401, description: 'No active session' })
+  async getSessionAlias(@Req() req: FastifyRequest, @Res() res: FastifyReply) {
+    return this.forwardToAuth(req, res, '/get-session');
   }
 
   @Post('sign-out')
@@ -276,5 +284,16 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async revokeAllSessions(@Req() req: FastifyRequest, @Res() res: FastifyReply) {
     return this.forwardToAuth(req, res, '/revoke-all-sessions');
+  }
+
+  // Catch-all handler for any Better Auth routes we haven't explicitly defined
+  // This should be the last route in the controller
+  @All('*')
+  @ApiOperation({ summary: 'Fallback for other Better Auth endpoints' })
+  async handleAuthFallback(@Req() req: FastifyRequest, @Res() res: FastifyReply) {
+    // Extract the path after /api/auth
+    const path = req.url.replace(/^\/api\/auth/, '');
+    console.log('Auth fallback handling path:', path);
+    return this.forwardToAuth(req, res, path);
   }
 }

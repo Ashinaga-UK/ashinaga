@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
+import { AuthGuard } from '../auth/auth.guard';
 import { TasksController } from './tasks.controller';
 import { TasksService } from './tasks.service';
 
 @Module({
   controllers: [TasksController],
-  providers: [TasksService],
+  providers: [TasksService, AuthGuard],
   exports: [TasksService],
 })
 export class TasksModule {}

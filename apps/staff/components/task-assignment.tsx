@@ -3,7 +3,7 @@
 import { Plus } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useState } from 'react';
-import { createTask, getScholars, type CreateTaskData, type Scholar } from '../lib/api-client';
+import { type CreateTaskData, createTask, getScholars, type Scholar } from '../lib/api-client';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -22,12 +22,31 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Textarea } from './ui/textarea';
 import { useToast } from './ui/use-toast';
 
+interface ExistingTask {
+  id: string;
+  title: string;
+  description?: string | null;
+  type: CreateTaskData['type'];
+  priority: 'high' | 'medium' | 'low';
+  dueDate: string;
+  status: string;
+}
+
 interface TaskAssignmentProps {
   trigger?: React.ReactNode;
   preselectedScholarId?: string;
+  onSuccess?: (scholarId: string) => void;
+  existingTask?: ExistingTask;
+  mode?: 'create' | 'edit';
 }
 
-export function TaskAssignment({ trigger, preselectedScholarId }: TaskAssignmentProps) {
+export function TaskAssignment({
+  trigger,
+  preselectedScholarId,
+  onSuccess,
+  existingTask,
+  mode = 'create',
+}: TaskAssignmentProps) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [scholars, setScholars] = useState<Scholar[]>([]);
@@ -39,6 +58,20 @@ export function TaskAssignment({ trigger, preselectedScholarId }: TaskAssignment
   const [priority, setPriority] = useState<'high' | 'medium' | 'low'>('medium');
   const [taskType, setTaskType] = useState<CreateTaskData['type']>('other');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Initialize form with existing task data if in edit mode
+  useEffect(() => {
+    if (existingTask && mode === 'edit') {
+      setTaskTitle(existingTask.title);
+      setTaskDescription(existingTask.description ?? '');
+      setTaskType(existingTask.type);
+      setPriority(existingTask.priority);
+      // Format date for input field (YYYY-MM-DD)
+      const date = new Date(existingTask.dueDate);
+      const formattedDate = date.toISOString().split('T')[0];
+      setDueDate(formattedDate);
+    }
+  }, [existingTask, mode]);
 
   // Fetch scholars when dialog opens
   useEffect(() => {
@@ -87,12 +120,26 @@ export function TaskAssignment({ trigger, preselectedScholarId }: TaskAssignment
         scholarId: selectedScholarId,
       };
 
-      await createTask(taskData);
+      if (mode === 'edit' && existingTask) {
+        // TODO: Implement update task API call
+        // For now, we'll just show a message
+        toast({
+          title: 'Info',
+          description: 'Task update functionality coming soon.',
+          variant: 'default',
+        });
+      } else {
+        await createTask(taskData);
+        toast({
+          title: 'Success',
+          description: 'Task has been assigned successfully.',
+        });
 
-      toast({
-        title: 'Success',
-        description: 'Task has been assigned successfully.',
-      });
+        // Call onSuccess callback after successful creation
+        if (onSuccess && mode === 'create') {
+          onSuccess(selectedScholarId);
+        }
+      }
 
       // Reset form
       setTaskTitle('');
@@ -128,13 +175,17 @@ export function TaskAssignment({ trigger, preselectedScholarId }: TaskAssignment
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Assign Task to Student</DialogTitle>
-          <DialogDescription>Create and assign a new task to a student</DialogDescription>
+          <DialogTitle>{mode === 'edit' ? 'Edit Task' : 'Assign Task to Student'}</DialogTitle>
+          <DialogDescription>
+            {mode === 'edit'
+              ? 'Update the task details'
+              : 'Create and assign a new task to a student'}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Student Selection */}
-          {!preselectedScholarId && (
+          {/* Student Selection - Hide in edit mode since we can't change the assigned student */}
+          {!preselectedScholarId && mode !== 'edit' && (
             <div className="space-y-2">
               <Label>Select Student *</Label>
               <Select value={selectedScholarId} onValueChange={setSelectedScholarId}>
@@ -271,7 +322,13 @@ export function TaskAssignment({ trigger, preselectedScholarId }: TaskAssignment
             disabled={!selectedScholarId || !taskTitle || !taskDescription || isSubmitting}
             className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
           >
-            {isSubmitting ? 'Assigning...' : 'Assign Task'}
+            {isSubmitting
+              ? mode === 'edit'
+                ? 'Updating...'
+                : 'Assigning...'
+              : mode === 'edit'
+                ? 'Update Task'
+                : 'Assign Task'}
           </Button>
         </DialogFooter>
       </DialogContent>

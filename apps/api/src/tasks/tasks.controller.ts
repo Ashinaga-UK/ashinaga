@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Param, Patch, Post, Req } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { ApiOperation, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { AuthGuard } from '../auth/auth.guard';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { TasksService } from './tasks.service';
 
@@ -9,11 +10,15 @@ export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 
   @Post()
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new task for a scholar' })
   async createTask(@Body() createTaskDto: CreateTaskDto, @Req() req: any) {
-    // Get the current user ID from the session
-    // For now, we'll use a placeholder - this should come from the auth session
-    const assignedBy = req.session?.userId || 'system';
+    // Get the current user ID from the authenticated user
+    const assignedBy = req.user?.id;
+    if (!assignedBy) {
+      throw new Error('User not authenticated');
+    }
     return this.tasksService.createTask(createTaskDto, assignedBy);
   }
 
