@@ -2,7 +2,7 @@
 
 import { AlertCircle, FileText, Loader2, MessageSquare, Plus, Users } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { AnnouncementCreator } from '../components/announcement-creator';
 import { LoginPage } from '../components/login-page';
 import { MyProfile } from '../components/my-profile';
@@ -35,7 +35,7 @@ import {
 import { signOut, useSession } from '../lib/auth-client';
 import { useAnnouncements } from '../lib/hooks/use-queries';
 
-export default function StaffDashboard() {
+function StaffDashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const session = useSession();
@@ -561,5 +561,13 @@ export default function StaffDashboard() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function StaffDashboard() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <StaffDashboardContent />
+    </Suspense>
   );
 }

@@ -76,7 +76,7 @@ export function TaskAssignment({
       // Format date for input field (YYYY-MM-DD)
       const date = new Date(existingTask.dueDate);
       const formattedDate = date.toISOString().split('T')[0];
-      setDueDate(formattedDate);
+      setDueDate(formattedDate || '');
     }
   }, [existingTask, mode]);
 

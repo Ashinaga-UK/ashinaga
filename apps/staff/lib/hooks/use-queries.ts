@@ -60,8 +60,8 @@ export function useCreateTask() {
 
       // Optionally, optimistically update the tasks list
       queryClient.setQueryData<Task[]>(queryKeys.scholarTasks(variables.scholarId), (old) => {
-        if (!old) return [newTask as Task];
-        return [...old, newTask as Task];
+        if (!old) return [{ ...newTask, updatedAt: newTask.createdAt } as Task];
+        return [...old, { ...newTask, updatedAt: newTask.createdAt } as Task];
       });
     },
   });
