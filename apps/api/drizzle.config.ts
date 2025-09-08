@@ -10,6 +10,11 @@ export default defineConfig({
     user: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
     database: process.env.DB_NAME || 'postgres',
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    ssl:
+      process.env.DB_SSL === 'true' ||
+      process.env.NODE_ENV === 'production' ||
+      process.env.NODE_ENV === 'test'
+        ? { rejectUnauthorized: false }
+        : false,
   },
 });
