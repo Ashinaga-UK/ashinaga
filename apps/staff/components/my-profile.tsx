@@ -36,9 +36,9 @@ export function MyProfile({ onBack }: MyProfileProps) {
       setProfileData({
         name: user.name || '',
         email: user.email || '',
-        role: user.role || 'Staff Member',
-        phone: user.phone || '',
-        department: user.department || 'Student Services',
+        role: (user as any).role || 'Staff Member',
+        phone: (user as any).phone || '',
+        department: (user as any).department || 'Student Services',
       });
     }
   }, [user]);
@@ -63,8 +63,8 @@ export function MyProfile({ onBack }: MyProfileProps) {
       });
 
       setIsEditing(false);
-      // Refresh session to get updated user data
-      await session.refetch();
+      // TODO: Refresh session to get updated user data
+      // Better Auth doesn't have a refetch method on session
     } catch (error) {
       console.error('Error updating profile:', error);
       toast({

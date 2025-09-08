@@ -1,4 +1,5 @@
 import { Controller, Get, Param, ParseUUIDPipe, Query, ValidationPipe } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import {
   GetScholarsQueryDto,
   GetScholarsResponseDto,
@@ -7,6 +8,7 @@ import {
 } from './dto/get-scholars.dto';
 import { ScholarsService } from './scholars.service';
 
+@ApiTags('scholars')
 @Controller('api/scholars')
 export class ScholarsController {
   constructor(private readonly scholarsService: ScholarsService) {}

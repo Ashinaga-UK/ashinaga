@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
 import { AnnouncementsService } from './announcements.service';
@@ -12,6 +13,7 @@ interface AuthenticatedRequest extends Request {
   };
 }
 
+@ApiTags('announcements')
 @Controller('api/announcements')
 @UseGuards(AuthGuard)
 export class AnnouncementsController {
