@@ -1,8 +1,8 @@
 'use client';
 
 import { AlertCircle, FileText, Loader2, MessageSquare, Plus, Users } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { AnnouncementCreator } from '../components/announcement-creator';
 import { LoginPage } from '../components/login-page';
 import { MyProfile } from '../components/my-profile';
@@ -25,7 +25,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import {
   type Announcement,
-  getAnnouncements,
   getRequestStats,
   getRequests,
   getScholarStats,
@@ -34,15 +33,27 @@ import {
   type ScholarStats,
 } from '../lib/api-client';
 import { signOut, useSession } from '../lib/auth-client';
+import { useAnnouncements } from '../lib/hooks/use-queries';
 
-export default function StaffDashboard() {
+function StaffDashboardContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const session = useSession();
-  const [activeTab, setActiveTab] = useState('overview');
+
+  // Get values from URL or use defaults
+  const tabFromUrl = searchParams.get('tab') || 'overview';
+  const viewFromUrl = searchParams.get('view') || 'dashboard';
+  const scholarIdFromUrl = searchParams.get('scholarId');
+  const scholarTabFromUrl = searchParams.get('scholarTab') || 'goals';
+
+  const [activeTab, setActiveTab] = useState(tabFromUrl);
   const [currentView, setCurrentView] = useState<
     'dashboard' | 'scholar-profile' | 'onboarding' | 'task-assignment' | 'my-profile'
-  >('dashboard');
-  const [selectedScholarId, setSelectedScholarId] = useState<string | null>(null);
+  >(viewFromUrl as any);
+  const [selectedScholarId, setSelectedScholarId] = useState<string | null>(scholarIdFromUrl);
+  const [scholarProfileTab, setScholarProfileTab] = useState<'goals' | 'tasks' | 'documents'>(
+    scholarTabFromUrl as any
+  );
   const [requestStatusFilter, setRequestStatusFilter] = useState('all');
   const [requests, setRequests] = useState<Request[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(true);
@@ -51,9 +62,32 @@ export default function StaffDashboard() {
   const [scholarStatsLoading, setScholarStatsLoading] = useState(true);
   const [requestStats, setRequestStats] = useState<RequestStats | null>(null);
   const [requestStatsLoading, setRequestStatsLoading] = useState(true);
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [announcementsLoading, setAnnouncementsLoading] = useState(true);
-  const [announcementsError, setAnnouncementsError] = useState<string | null>(null);
+  // Use React Query for announcements
+  const {
+    data: announcements = [],
+    isLoading: announcementsLoading,
+    error: announcementsError,
+  } = useAnnouncements();
+
+  // Update state when URL changes
+  useEffect(() => {
+    const newTab = searchParams.get('tab') || 'overview';
+    const newView = searchParams.get('view') || 'dashboard';
+    const newScholarId = searchParams.get('scholarId');
+    const newScholarTab = searchParams.get('scholarTab') || 'goals';
+
+    setActiveTab(newTab);
+    setCurrentView(
+      (newView || 'dashboard') as
+        | 'dashboard'
+        | 'scholar-profile'
+        | 'onboarding'
+        | 'task-assignment'
+        | 'my-profile'
+    );
+    setSelectedScholarId(newScholarId);
+    setScholarProfileTab((newScholarTab || 'goals') as 'goals' | 'tasks' | 'documents');
+  }, [searchParams]);
 
   // Get user data from session
   const user = session.data?.user;
@@ -142,19 +176,7 @@ export default function StaffDashboard() {
     }
   }, []);
 
-  const fetchAnnouncements = useCallback(async () => {
-    setAnnouncementsLoading(true);
-    setAnnouncementsError(null);
-    try {
-      const data = await getAnnouncements();
-      setAnnouncements(data);
-    } catch (err) {
-      setAnnouncementsError(err instanceof Error ? err.message : 'Failed to load announcements');
-      console.error('Error fetching announcements:', err);
-    } finally {
-      setAnnouncementsLoading(false);
-    }
-  }, []);
+  // Announcements are now fetched via React Query
 
   useEffect(() => {
     // Only fetch data if user is authenticated
@@ -162,9 +184,9 @@ export default function StaffDashboard() {
       fetchRequests();
       fetchScholarStats();
       fetchRequestStats();
-      fetchAnnouncements();
+      // Announcements are now auto-fetched by React Query
     }
-  }, [isAuthenticated, fetchRequests, fetchScholarStats, fetchRequestStats, fetchAnnouncements]);
+  }, [isAuthenticated, fetchRequests, fetchScholarStats, fetchRequestStats]);
 
   const handleRequestStatusUpdate = (requestId: string, status: string, comment?: string) => {
     console.log('Request updated:', { requestId, status, comment });
@@ -174,11 +196,11 @@ export default function StaffDashboard() {
   };
 
   const navigateToScholars = () => {
-    setActiveTab('scholars');
+    router.push('?tab=scholars');
   };
 
   const navigateToRequests = () => {
-    setActiveTab('requests');
+    router.push('?tab=requests');
   };
 
   const handleSignOut = async () => {
@@ -221,15 +243,20 @@ export default function StaffDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setCurrentView('my-profile')}>
+            <Button variant="ghost" size="sm" onClick={() => router.push('?view=my-profile')}>
               My Profile
             </Button>
             <Button variant="outline" size="sm" onClick={handleSignOut}>
               Logout
             </Button>
             <Avatar>
-              <AvatarImage src={user?.image || '/placeholder.svg?height=32&width=32'} />
-              <AvatarFallback>{user?.name?.slice(0, 2).toUpperCase() || 'U'}</AvatarFallback>
+              <AvatarFallback>
+                {user?.name
+                  ?.split(' ')
+                  .map((n: string) => n[0])
+                  .join('')
+                  .toUpperCase() || 'U'}
+              </AvatarFallback>
             </Avatar>
           </div>
         </div>
@@ -237,11 +264,15 @@ export default function StaffDashboard() {
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         {currentView === 'onboarding' ? (
-          <ScholarOnboarding onBack={() => setCurrentView('dashboard')} />
+          <ScholarOnboarding onBack={() => router.push('/')} />
         ) : currentView === 'my-profile' ? (
-          <MyProfile onBack={() => setCurrentView('dashboard')} />
+          <MyProfile onBack={() => router.push('/')} />
         ) : (
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <Tabs
+            value={activeTab}
+            onValueChange={(tab) => router.push(tab === 'overview' ? '/' : `?tab=${tab}`)}
+            className="space-y-6"
+          >
             <TabsList className="grid w-full grid-cols-4 lg:w-[600px]">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="scholars">Scholars</TabsTrigger>
@@ -326,7 +357,7 @@ export default function StaffDashboard() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <Button
                       className="h-20 flex-col gap-2 bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
-                      onClick={() => setCurrentView('onboarding')}
+                      onClick={() => router.push('?view=onboarding')}
                     >
                       <Users className="h-6 w-6" />
                       Onboard Scholar
@@ -341,11 +372,17 @@ export default function StaffDashboard() {
                           Assign Task to Scholar
                         </Button>
                       }
+                      onSuccess={(scholarId) => {
+                        // Navigate to scholar profile with tasks tab open
+                        router.push(
+                          `?tab=scholars&view=scholar-profile&scholarId=${scholarId}&scholarTab=tasks`
+                        );
+                      }}
                     />
                     <Button
                       variant="outline"
                       className="h-20 flex-col gap-2 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent"
-                      onClick={() => setActiveTab('announcements')}
+                      onClick={() => router.push('?tab=announcements')}
                     >
                       <MessageSquare className="h-6 w-6" />
                       Create Announcement
@@ -353,7 +390,7 @@ export default function StaffDashboard() {
                     <Button
                       variant="outline"
                       className="h-20 flex-col gap-2 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent"
-                      onClick={() => setActiveTab('requests')}
+                      onClick={() => router.push('?tab=requests')}
                     >
                       <FileText className="h-6 w-6" />
                       Review Requests
@@ -367,9 +404,9 @@ export default function StaffDashboard() {
               {currentView === 'scholar-profile' && selectedScholarId ? (
                 <ScholarProfilePage
                   scholarId={selectedScholarId}
+                  initialTab={scholarProfileTab}
                   onBack={() => {
-                    setCurrentView('dashboard');
-                    setSelectedScholarId(null);
+                    router.push('?tab=scholars&view=dashboard');
                   }}
                 />
               ) : (
@@ -381,10 +418,9 @@ export default function StaffDashboard() {
                   <CardContent>
                     <ScholarManagementTable
                       onViewProfile={(scholarId) => {
-                        setSelectedScholarId(scholarId);
-                        setCurrentView('scholar-profile');
+                        router.push(`?tab=scholars&view=scholar-profile&scholarId=${scholarId}`);
                       }}
-                      onOnboardScholar={() => setCurrentView('onboarding')}
+                      onOnboardScholar={() => router.push('?view=onboarding')}
                     />
                   </CardContent>
                 </Card>
@@ -466,7 +502,9 @@ export default function StaffDashboard() {
                   ) : announcementsError ? (
                     <div className="text-center py-12">
                       <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-500" />
-                      <p className="text-red-600">{announcementsError}</p>
+                      <p className="text-red-600">
+                        {announcementsError?.message || 'Failed to load announcements'}
+                      </p>
                     </div>
                   ) : announcements.length === 0 ? (
                     <div className="text-center py-12 text-gray-500">
@@ -523,5 +561,13 @@ export default function StaffDashboard() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function StaffDashboard() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <StaffDashboardContent />
+    </Suspense>
   );
 }
