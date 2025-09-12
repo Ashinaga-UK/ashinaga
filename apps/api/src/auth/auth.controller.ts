@@ -1,5 +1,5 @@
 import { All, Body, Controller, Get, Post, Req, Res } from '@nestjs/common';
-import { ApiOperation, ApiTags, ApiBody, ApiResponse } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { auth } from './auth.config';
 

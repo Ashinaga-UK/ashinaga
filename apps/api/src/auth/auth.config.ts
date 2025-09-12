@@ -72,8 +72,8 @@ const authConfig = betterAuth({
     additionalFields: {
       userType: {
         type: 'string',
-        required: true,
-        defaultValue: 'scholar',
+        required: false,
+        // userType is determined from invitation during signup
       },
     },
   },
@@ -158,10 +158,13 @@ const authConfig = betterAuth({
           const db = getDatabase();
           console.log('Got database connection');
 
+          // Always use lowercase for email comparison
+          const emailLower = email.toLowerCase();
+
           const invitations = await db
             .select()
             .from(schema.invitations)
-            .where(eq(schema.invitations.email, email))
+            .where(eq(schema.invitations.email, emailLower))
             .limit(1);
 
           console.log('Invitations found:', invitations.length);
@@ -169,7 +172,7 @@ const authConfig = betterAuth({
           const invitation = invitations[0];
 
           if (!invitation) {
-            console.error('No invitation found for email:', email);
+            console.error('No invitation found for email:', emailLower);
             throw new Error('Invalid invitation. You must be invited to join this platform.');
           }
 
@@ -198,31 +201,61 @@ const authConfig = betterAuth({
         }
       },
       after: async ({ user }) => {
-        // Mark invitation as accepted and link to user
-        const db = getDatabase();
-        await db
-          .update(schema.invitations)
-          .set({
-            status: 'accepted',
-            acceptedAt: new Date(),
-            userId: user.id,
-            updatedAt: new Date(),
-          })
-          .where(eq(schema.invitations.email, user.email));
+        console.log('SignUp After Hook - User:', user.email, 'UserType:', user.userType);
+
+        try {
+          // Mark invitation as accepted and link to user
+          const db = getDatabase();
+
+          // Use lowercase for consistent email comparison
+          const emailLower = user.email.toLowerCase();
+
+          const updateResult = await db
+            .update(schema.invitations)
+            .set({
+              status: 'accepted',
+              acceptedAt: new Date(),
+              userId: user.id,
+              updatedAt: new Date(),
+            })
+            .where(eq(schema.invitations.email, emailLower))
+            .returning();
+
+          console.log('Invitation update result:', updateResult);
+
+          if (updateResult.length === 0) {
+            console.error('Failed to update invitation - no rows affected');
+          } else {
+            console.log(
+              'Invitation marked as accepted for user:',
+              user.email,
+              'Result:',
+              updateResult[0]
+            );
+          }
+        } catch (error) {
+          console.error('Error updating invitation status:', error);
+          // Don't throw - allow user creation to continue even if invitation update fails
+        }
 
         // Create staff or scholar profile based on userType
+        const db = getDatabase();
         if (user.userType === 'staff') {
+          console.log('Creating staff profile for user:', user.id);
           await db.insert(schema.staff).values({
             userId: user.id,
             role: 'viewer', // Default role, admin can upgrade later
             isActive: true,
           });
+          console.log('Staff profile created successfully');
         } else if (user.userType === 'scholar') {
+          console.log('Creating scholar profile for user:', user.id);
           // Parse any pre-filled scholar data from invitation
+          const emailLower = user.email.toLowerCase();
           const invitations = await db
             .select()
             .from(schema.invitations)
-            .where(eq(schema.invitations.email, user.email))
+            .where(eq(schema.invitations.email, emailLower))
             .limit(1);
 
           const invitation = invitations[0];
