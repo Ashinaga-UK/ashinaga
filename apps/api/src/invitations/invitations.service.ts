@@ -1,21 +1,22 @@
 import {
-  Injectable,
-  ConflictException,
-  NotFoundException,
   BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { and, desc, eq } from 'drizzle-orm';
+import { generateInvitationToken } from '../auth/auth.config';
 import { getDatabase } from '../db/connection';
 import { invitations, users } from '../db/schema';
-import { eq, and, or, desc } from 'drizzle-orm';
-import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { EmailService } from '../email/email.service';
-import { generateInvitationToken } from '../auth/auth.config';
+import { CreateInvitationDto } from './dto/create-invitation.dto';
 
 @Injectable()
 export class InvitationsService {
   private readonly emailService: EmailService;
 
-  constructor() {
+  constructor(private readonly configService: ConfigService) {
     this.emailService = new EmailService();
   }
 
@@ -198,10 +199,15 @@ export class InvitationsService {
 
   private buildInviteUrl(token: string, userType: string): string {
     // Determine the correct frontend URL based on user type
-    const baseUrl =
-      userType === 'staff'
-        ? process.env.STAFF_APP_URL || 'http://localhost:3001'
-        : process.env.SCHOLAR_APP_URL || 'http://localhost:3002';
+    const envVar = userType === 'staff' ? 'STAFF_APP_URL' : 'SCHOLAR_APP_URL';
+    const defaultUrl = userType === 'staff' ? 'http://localhost:4001' : 'http://localhost:4002';
+    const baseUrl = this.configService.get<string>(envVar, defaultUrl);
+
+    console.log(`[InvitationService] Building invite URL for ${userType}:`);
+    console.log(`  - Environment variable: ${envVar}`);
+    console.log(`  - Value from env: ${this.configService.get<string>(envVar) || 'NOT SET'}`);
+    console.log(`  - Using URL: ${baseUrl}`);
+    console.log(`  - Full invite URL: ${baseUrl}/signup?token=${token}`);
 
     return `${baseUrl}/signup?token=${token}`;
   }

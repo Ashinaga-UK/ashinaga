@@ -558,18 +558,7 @@ async function populateDevData() {
     // Note: We create system users with accepted invitations for consistency
     console.log('👥 Creating system admin user for seed data...');
 
-    // Create accepted invitation for system admin
-    await upsertInvitationByEmail({
-      email: 'system@ashinaga.org',
-      userType: 'staff',
-      invitedBy: generateId(), // system invitation
-      token: generateInvitationToken(),
-      expiresAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // expired yesterday
-      sentAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-      status: 'accepted',
-      acceptedAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-    });
-
+    // First create the admin user (needed as invitedBy reference)
     const adminUser = await upsertUserByEmail({
       name: 'System Admin',
       email: 'system@ashinaga.org',
@@ -578,11 +567,18 @@ async function populateDevData() {
       userType: 'staff',
     });
 
-    // Update invitation with userId
-    await db
-      .update(schema.invitations)
-      .set({ userId: adminUser.id })
-      .where(eq(schema.invitations.email, 'system@ashinaga.org'));
+    // Then create accepted invitation for system admin (self-invited for bootstrap)
+    await upsertInvitationByEmail({
+      email: 'system@ashinaga.org',
+      userType: 'staff',
+      invitedBy: adminUser.id, // self-invited for bootstrap
+      token: generateInvitationToken(),
+      expiresAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // expired yesterday
+      sentAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+      status: 'accepted',
+      acceptedAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      userId: adminUser.id,
+    });
 
     await upsertStaffByUserId({
       userId: adminUser.id,
@@ -590,6 +586,15 @@ async function populateDevData() {
       phone: null,
       department: 'System',
       isActive: true,
+    });
+
+    // Create system viewer user
+    const viewerUser = await upsertUserByEmail({
+      name: 'System Viewer',
+      email: 'system-viewer@ashinaga.org',
+      emailVerified: true,
+      image: null,
+      userType: 'staff',
     });
 
     // Create accepted invitation for system viewer
@@ -602,21 +607,8 @@ async function populateDevData() {
       sentAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
       status: 'accepted',
       acceptedAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      userId: viewerUser.id,
     });
-
-    const viewerUser = await upsertUserByEmail({
-      name: 'System Viewer',
-      email: 'system-viewer@ashinaga.org',
-      emailVerified: true,
-      image: null,
-      userType: 'staff',
-    });
-
-    // Update invitation with userId
-    await db
-      .update(schema.invitations)
-      .set({ userId: viewerUser.id })
-      .where(eq(schema.invitations.email, 'system-viewer@ashinaga.org'));
 
     await upsertStaffByUserId({
       userId: viewerUser.id,
@@ -751,7 +743,17 @@ async function populateDevData() {
       const year = years[(i + 1) % years.length];
       const status = statuses[i % statuses.length];
       const location = locations[(i * 2) % locations.length];
-      // Create accepted invitation for scholar
+
+      // Create scholar user first
+      const user = await upsertUserByEmail({
+        name: fullName,
+        email,
+        emailVerified: true, // All demo scholars have verified emails
+        image: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(first)}`,
+        userType: 'scholar',
+      });
+
+      // Then create accepted invitation for scholar
       await upsertInvitationByEmail({
         email,
         userType: 'scholar',
@@ -761,6 +763,7 @@ async function populateDevData() {
         sentAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
         status: 'accepted',
         acceptedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+        userId: user.id,
         scholarData: JSON.stringify({
           program,
           year,
@@ -768,20 +771,6 @@ async function populateDevData() {
           location,
         }),
       });
-
-      const user = await upsertUserByEmail({
-        name: fullName,
-        email,
-        emailVerified: i % 5 !== 0,
-        image: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(first)}`,
-        userType: 'scholar',
-      });
-
-      // Update invitation with userId
-      await db
-        .update(schema.invitations)
-        .set({ userId: user.id })
-        .where(eq(schema.invitations.email, email.toLowerCase()));
 
       const scholar = await upsertScholarByUserId({
         userId: user.id,
