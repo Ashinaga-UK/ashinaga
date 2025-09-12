@@ -26,6 +26,13 @@ export class InvitationsService {
     // Always use lowercase email for consistency
     const emailLower = dto.email.toLowerCase();
 
+    console.log('==========================================');
+    console.log('[InvitationService] Creating invitation:');
+    console.log('  - Original email:', dto.email);
+    console.log('  - Lowercase email:', emailLower);
+    console.log('  - User type:', dto.userType);
+    console.log('==========================================');
+
     // Check if user already exists
     const existingUser = await db.select().from(users).where(eq(users.email, emailLower)).limit(1);
 
@@ -73,6 +80,11 @@ export class InvitationsService {
         resentCount: '0',
       })
       .returning();
+
+    console.log('[InvitationService] Invitation created in DB:');
+    console.log('  - Stored email:', invitation.email);
+    console.log('  - Invitation ID:', invitation.id);
+    console.log('  - Status:', invitation.status);
 
     // Send invitation email
     const inviteUrl = this.buildInviteUrl(token, dto.userType);
