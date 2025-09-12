@@ -1,7 +1,9 @@
 import { Body, Controller, Get, Param, Post, Query, ValidationPipe } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { GetRequestsQueryDto, GetRequestsResponseDto } from './dto/get-requests.dto';
 import { RequestsService } from './requests.service';
 
+@ApiTags('requests')
 @Controller('api/requests')
 export class RequestsController {
   constructor(private readonly requestsService: RequestsService) {}

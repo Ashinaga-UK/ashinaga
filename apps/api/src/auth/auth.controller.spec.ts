@@ -27,9 +27,9 @@ describe('AuthController', () => {
     expect(controller).toBeDefined();
   });
 
-  it('should handle auth requests', async () => {
+  it('should handle sign in requests', async () => {
     const mockReq = {
-      url: '/api/auth/login',
+      url: '/api/auth/sign-in/email',
       method: 'POST',
       body: { email: 'test@example.com', password: 'password' },
       headers: {
@@ -46,7 +46,7 @@ describe('AuthController', () => {
       redirect: jest.fn(),
     };
 
-    await controller.handleAuth(mockReq as never, mockRes as never);
+    await controller.signInWithEmail(mockReq as never, mockRes as never);
 
     const { auth } = require('./auth.config');
     expect(auth.handler).toHaveBeenCalled();

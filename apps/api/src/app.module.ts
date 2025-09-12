@@ -8,6 +8,8 @@ import { EmailModule } from './email/email.module';
 import { HealthModule } from './health/health.module';
 import { RequestsModule } from './requests/requests.module';
 import { ScholarsModule } from './scholars/scholars.module';
+import { TasksModule } from './tasks/tasks.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -20,6 +22,8 @@ import { ScholarsModule } from './scholars/scholars.module';
     ScholarsModule,
     RequestsModule,
     AnnouncementsModule,
+    TasksModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -181,6 +181,7 @@ export function ScholarManagementTable({
               }
             />
           )}
+          {/* TODO: Enable "Assign to All Filtered" button later
           <BulkTaskAssignment
             filteredScholars={scholars}
             trigger={
@@ -190,6 +191,7 @@ export function ScholarManagementTable({
               </Button>
             }
           />
+          */}
           <Button
             className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
             onClick={onOnboardScholar}

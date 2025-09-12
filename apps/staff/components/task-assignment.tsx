@@ -2,7 +2,14 @@
 
 import { Plus } from 'lucide-react';
 import type React from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import {
+  type CreateTaskData,
+  getScholars,
+  type Scholar,
+  type UpdateTaskData,
+} from '../lib/api-client';
+import { useCreateTask, useUpdateTask } from '../lib/hooks/use-queries';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -19,78 +26,173 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Textarea } from './ui/textarea';
+import { useToast } from './ui/use-toast';
+
+interface ExistingTask {
+  id: string;
+  title: string;
+  description?: string | null;
+  type: CreateTaskData['type'];
+  priority: 'high' | 'medium' | 'low';
+  dueDate: string;
+  status: string;
+}
 
 interface TaskAssignmentProps {
   trigger?: React.ReactNode;
   preselectedScholarId?: string;
+  onSuccess?: (scholarId: string) => void;
+  existingTask?: ExistingTask;
+  mode?: 'create' | 'edit';
 }
 
-// Mock students data
-const mockScholars = [
-  {
-    id: 'SC001',
-    name: 'Sarah Chen',
-    program: 'Computer Science',
-    year: 'Year 2',
-    avatar: '/placeholder.svg?height=32&width=32',
-  },
-  {
-    id: 'MJ002',
-    name: 'Marcus Johnson',
-    program: 'Medicine',
-    year: 'Year 4',
-    avatar: '/placeholder.svg?height=32&width=32',
-  },
-  {
-    id: 'AO003',
-    name: 'Amara Okafor',
-    program: 'International Relations',
-    year: 'Year 1',
-    avatar: '/placeholder.svg?height=32&width=32',
-  },
-  {
-    id: 'DK004',
-    name: 'David Kim',
-    program: 'Engineering',
-    year: 'Year 3',
-    avatar: '/placeholder.svg?height=32&width=32',
-  },
-];
-
-export function TaskAssignment({ trigger, preselectedScholarId }: TaskAssignmentProps) {
+export function TaskAssignment({
+  trigger,
+  preselectedScholarId,
+  onSuccess,
+  existingTask,
+  mode = 'create',
+}: TaskAssignmentProps) {
+  const { toast } = useToast();
+  const createTaskMutation = useCreateTask();
+  const updateTaskMutation = useUpdateTask();
   const [open, setOpen] = useState(false);
+  const [scholars, setScholars] = useState<Scholar[]>([]);
+  const [loadingScholars, setLoadingScholars] = useState(false);
   const [selectedScholarId, setSelectedScholarId] = useState(preselectedScholarId || '');
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDescription, setTaskDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
-  const [priority, setPriority] = useState('');
-  const [taskType, setTaskType] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [priority, setPriority] = useState<'high' | 'medium' | 'low'>('medium');
+  const [taskType, setTaskType] = useState<CreateTaskData['type']>('other');
 
-  const selectedScholar = mockScholars.find((s) => s.id === selectedScholarId);
+  // Initialize form with existing task data if in edit mode
+  useEffect(() => {
+    if (existingTask && mode === 'edit') {
+      setTaskTitle(existingTask.title);
+      setTaskDescription(existingTask.description ?? '');
+      setTaskType(existingTask.type);
+      setPriority(existingTask.priority);
+      // Format date for input field (YYYY-MM-DD)
+      const date = new Date(existingTask.dueDate);
+      const formattedDate = date.toISOString().split('T')[0];
+      setDueDate(formattedDate || '');
+    }
+  }, [existingTask, mode]);
+
+  // Fetch scholars when dialog opens
+  useEffect(() => {
+    if (open && !preselectedScholarId) {
+      fetchScholars();
+    }
+  }, [open, preselectedScholarId]);
+
+  const fetchScholars = async () => {
+    setLoadingScholars(true);
+    try {
+      const response = await getScholars({ limit: 100, status: 'active' });
+      setScholars(response.data);
+    } catch (error) {
+      console.error('Error fetching scholars:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load scholars. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingScholars(false);
+    }
+  };
+
+  const selectedScholar = scholars.find((s) => s.id === selectedScholarId);
 
   const handleSubmit = async () => {
-    setIsSubmitting(true);
-    // Mock API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    console.log('Task assigned:', {
-      scholarId: selectedScholarId,
+    if (!selectedScholarId || !taskTitle || !dueDate || !taskType) {
+      toast({
+        title: 'Missing Information',
+        description: 'Please fill in all required fields.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const taskData: CreateTaskData = {
       title: taskTitle,
-      description: taskDescription,
-      dueDate,
-      priority,
+      description: taskDescription || undefined,
       type: taskType,
-    });
-    setOpen(false);
-    setIsSubmitting(false);
-    // Reset form
-    setTaskTitle('');
-    setTaskDescription('');
-    setDueDate('');
-    setPriority('');
-    setTaskType('');
-    if (!preselectedScholarId) {
-      setSelectedScholarId('');
+      priority: priority || 'medium',
+      dueDate,
+      scholarId: selectedScholarId,
+    };
+
+    if (mode === 'edit' && existingTask) {
+      const updateData: UpdateTaskData = {
+        title: taskTitle,
+        description: taskDescription || undefined,
+        type: taskType,
+        priority: priority,
+        dueDate,
+      };
+
+      updateTaskMutation.mutate(
+        { taskId: existingTask.id, data: updateData },
+        {
+          onSuccess: () => {
+            toast({
+              title: 'Success',
+              description: 'Task has been updated successfully.',
+            });
+
+            // Call onSuccess callback after successful update
+            if (onSuccess && preselectedScholarId) {
+              onSuccess(preselectedScholarId);
+            }
+
+            setOpen(false);
+          },
+          onError: (error) => {
+            console.error('Error updating task:', error);
+            toast({
+              title: 'Error',
+              description: 'Failed to update task. Please try again.',
+              variant: 'destructive',
+            });
+          },
+        }
+      );
+    } else {
+      createTaskMutation.mutate(taskData, {
+        onSuccess: () => {
+          toast({
+            title: 'Success',
+            description: 'Task has been assigned successfully.',
+          });
+
+          // Call onSuccess callback after successful creation
+          if (onSuccess && mode === 'create') {
+            onSuccess(selectedScholarId);
+          }
+
+          // Reset form
+          setTaskTitle('');
+          setTaskDescription('');
+          setDueDate('');
+          setPriority('medium');
+          setTaskType('other');
+          if (!preselectedScholarId) {
+            setSelectedScholarId('');
+          }
+          setOpen(false);
+        },
+        onError: (error) => {
+          console.error('Error creating task:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to assign task. Please try again.',
+            variant: 'destructive',
+          });
+        },
+      });
     }
   };
 
@@ -106,25 +208,29 @@ export function TaskAssignment({ trigger, preselectedScholarId }: TaskAssignment
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Assign Task to Student</DialogTitle>
-          <DialogDescription>Create and assign a new task to a student</DialogDescription>
+          <DialogTitle>{mode === 'edit' ? 'Edit Task' : 'Assign Task to Student'}</DialogTitle>
+          <DialogDescription>
+            {mode === 'edit'
+              ? 'Update the task details'
+              : 'Create and assign a new task to a student'}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Student Selection */}
-          {!preselectedScholarId && (
+          {/* Student Selection - Hide in edit mode since we can't change the assigned student */}
+          {!preselectedScholarId && mode !== 'edit' && (
             <div className="space-y-2">
               <Label>Select Student *</Label>
               <Select value={selectedScholarId} onValueChange={setSelectedScholarId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Choose a student" />
+                  <SelectValue placeholder={loadingScholars ? 'Loading...' : 'Choose a student'} />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockScholars.map((scholar) => (
+                  {scholars.map((scholar) => (
                     <SelectItem key={scholar.id} value={scholar.id}>
                       <div className="flex items-center gap-2">
                         <Avatar className="h-6 w-6">
-                          <AvatarImage src={scholar.avatar || '/placeholder.svg'} />
+                          <AvatarImage src={scholar.image || '/placeholder.svg'} />
                           <AvatarFallback>
                             {scholar.name
                               .split(' ')
@@ -149,7 +255,7 @@ export function TaskAssignment({ trigger, preselectedScholarId }: TaskAssignment
             <div className="bg-ashinaga-teal-50 p-4 rounded-lg">
               <div className="flex items-center gap-3">
                 <Avatar>
-                  <AvatarImage src={selectedScholar.avatar || '/placeholder.svg'} />
+                  <AvatarImage src={selectedScholar.image || '/placeholder.svg'} />
                   <AvatarFallback>
                     {selectedScholar.name
                       .split(' ')
@@ -181,23 +287,29 @@ export function TaskAssignment({ trigger, preselectedScholarId }: TaskAssignment
               </div>
               <div>
                 <Label htmlFor="taskType">Task Type</Label>
-                <Select value={taskType} onValueChange={setTaskType}>
+                <Select
+                  value={taskType}
+                  onValueChange={(value) => setTaskType(value as CreateTaskData['type'])}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select task type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="document-upload">Document Upload</SelectItem>
-                    <SelectItem value="form-completion">Form Completion</SelectItem>
-                    <SelectItem value="meeting-attendance">Meeting Attendance</SelectItem>
-                    <SelectItem value="goal-update">Goal Update</SelectItem>
-                    <SelectItem value="feedback-submission">Feedback Submission</SelectItem>
+                    <SelectItem value="document_upload">Document Upload</SelectItem>
+                    <SelectItem value="form_completion">Form Completion</SelectItem>
+                    <SelectItem value="meeting_attendance">Meeting Attendance</SelectItem>
+                    <SelectItem value="goal_update">Goal Update</SelectItem>
+                    <SelectItem value="feedback_submission">Feedback Submission</SelectItem>
                     <SelectItem value="other">Other</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
                 <Label htmlFor="priority">Priority</Label>
-                <Select value={priority} onValueChange={setPriority}>
+                <Select
+                  value={priority}
+                  onValueChange={(value) => setPriority(value as 'high' | 'medium' | 'low')}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select priority" />
                   </SelectTrigger>
@@ -240,10 +352,22 @@ export function TaskAssignment({ trigger, preselectedScholarId }: TaskAssignment
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!selectedScholarId || !taskTitle || !taskDescription || isSubmitting}
+            disabled={
+              !selectedScholarId ||
+              !taskTitle ||
+              !taskDescription ||
+              createTaskMutation.isPending ||
+              updateTaskMutation.isPending
+            }
             className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
           >
-            {isSubmitting ? 'Assigning...' : 'Assign Task'}
+            {createTaskMutation.isPending || updateTaskMutation.isPending
+              ? mode === 'edit'
+                ? 'Updating...'
+                : 'Assigning...'
+              : mode === 'edit'
+                ? 'Update Task'
+                : 'Assign Task'}
           </Button>
         </DialogFooter>
       </DialogContent>

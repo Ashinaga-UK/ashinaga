@@ -12,8 +12,8 @@ import {
   Phone,
   Plus,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
-import { getScholarProfile, type ScholarProfile } from '../lib/api-client';
+import type { CreateTaskData } from '../lib/api-client';
+import { useScholarProfile } from '../lib/hooks/use-queries';
 import { TaskAssignment } from './task-assignment';
 import { Alert, AlertDescription } from './ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -26,30 +26,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 interface ScholarProfileProps {
   scholarId: string;
   onBack: () => void;
+  initialTab?: 'goals' | 'tasks' | 'documents';
 }
 
-export function ScholarProfilePage({ scholarId, onBack }: ScholarProfileProps) {
-  const [scholar, setScholar] = useState<ScholarProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchScholarProfile = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await getScholarProfile(scholarId);
-      setScholar(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load scholar profile');
-      console.error('Error fetching scholar profile:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [scholarId]);
-
-  useEffect(() => {
-    fetchScholarProfile();
-  }, [fetchScholarProfile]);
+export function ScholarProfilePage({
+  scholarId,
+  onBack,
+  initialTab = 'goals',
+}: ScholarProfileProps) {
+  const { data: scholar, isLoading, error } = useScholarProfile(scholarId);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -104,7 +89,11 @@ export function ScholarProfilePage({ scholarId, onBack }: ScholarProfileProps) {
           </Button>
         </div>
         <Alert>
-          <AlertDescription>{error || 'Failed to load scholar profile'}</AlertDescription>
+          <AlertDescription>
+            {error
+              ? error.message || 'Failed to load scholar profile'
+              : 'Failed to load scholar profile'}
+          </AlertDescription>
         </Alert>
       </div>
     );
@@ -171,7 +160,7 @@ export function ScholarProfilePage({ scholarId, onBack }: ScholarProfileProps) {
       </Card>
 
       {/* Tabs */}
-      <Tabs defaultValue="goals" className="space-y-4">
+      <Tabs defaultValue={initialTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="goals">Goals & Progress</TabsTrigger>
           <TabsTrigger value="tasks">Tasks</TabsTrigger>
@@ -277,6 +266,19 @@ export function ScholarProfilePage({ scholarId, onBack }: ScholarProfileProps) {
                           </Button>
                         }
                         preselectedScholarId={scholar.id}
+                        existingTask={{
+                          id: task.id,
+                          title: task.title,
+                          description: task.description,
+                          type: task.type as CreateTaskData['type'],
+                          priority: task.priority,
+                          dueDate: task.dueDate,
+                          status: task.status,
+                        }}
+                        mode="edit"
+                        onSuccess={() => {
+                          // Tasks will be refetched automatically via React Query
+                        }}
                       />
                     </div>
                   </CardContent>

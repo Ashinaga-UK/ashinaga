@@ -1,52 +1,80 @@
 'use client';
 
-import { ArrowLeft, Save, Upload } from 'lucide-react';
-import type React from 'react';
-import { useState } from 'react';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { ArrowLeft, Save } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useSession } from '../lib/auth-client';
+import { useUpdateUser } from '../lib/hooks/use-queries';
+import { Avatar, AvatarFallback } from './ui/avatar';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { useToast } from './ui/use-toast';
 
 interface MyProfileProps {
   onBack: () => void;
 }
 
 export function MyProfile({ onBack }: MyProfileProps) {
+  const session = useSession();
+  const { toast } = useToast();
+  const updateUserMutation = useUpdateUser();
+  const user = session.data?.user;
+
   const [profileData, setProfileData] = useState({
-    name: 'John Doe',
-    email: 'john.doe@ashinaga.org',
-    role: 'Student Support Coordinator',
-    phone: '+44 7123 456789',
-    department: 'Student Services',
-    avatar: '/placeholder.svg?height=80&width=80',
+    name: '',
+    email: '',
   });
   const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+
+  // Initialize form with user data
+  useEffect(() => {
+    if (user) {
+      setProfileData({
+        name: user.name || '',
+        email: user.email || '',
+      });
+    }
+  }, [user]);
 
   const handleInputChange = (field: string, value: string) => {
     setProfileData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = async () => {
-    setIsSaving(true);
-    // Mock API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsSaving(false);
+  const handleCancel = () => {
+    // Reset form data to original user data
+    if (user) {
+      setProfileData({
+        name: user.name || '',
+        email: user.email || '',
+      });
+    }
     setIsEditing(false);
   };
 
-  const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      // In real app, you'd upload to your storage service
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setProfileData((prev) => ({ ...prev, avatar: e.target?.result as string }));
-      };
-      reader.readAsDataURL(file);
-    }
+  const handleSave = async () => {
+    updateUserMutation.mutate(
+      {
+        name: profileData.name,
+      },
+      {
+        onSuccess: () => {
+          toast({
+            title: 'Success',
+            description: 'Your profile has been updated successfully.',
+          });
+          setIsEditing(false);
+        },
+        onError: (error) => {
+          console.error('Error updating profile:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to update profile. Please try again.',
+            variant: 'destructive',
+          });
+        },
+      }
+    );
   };
 
   return (
@@ -67,89 +95,40 @@ export function MyProfile({ onBack }: MyProfileProps) {
           {/* Avatar Section */}
           <div className="flex items-center gap-6">
             <Avatar className="h-20 w-20">
-              <AvatarImage src={profileData.avatar || '/placeholder.svg'} />
-              <AvatarFallback className="text-lg">
+              <AvatarFallback className="text-lg bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 text-white">
                 {profileData.name
-                  .split(' ')
+                  ?.split(' ')
                   .map((n) => n[0])
-                  .join('')}
+                  .join('')
+                  .toUpperCase() || 'U'}
               </AvatarFallback>
             </Avatar>
             <div>
-              <h3 className="font-medium mb-2">Profile Picture</h3>
-              <div className="flex gap-2">
-                <Label htmlFor="avatar-upload" className="cursor-pointer">
-                  <Button variant="outline" size="sm" asChild>
-                    <span>
-                      <Upload className="h-4 w-4 mr-2" />
-                      Upload New Photo
-                    </span>
-                  </Button>
-                </Label>
-                <input
-                  id="avatar-upload"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarUpload}
-                  className="hidden"
-                />
-              </div>
-              <p className="text-sm text-gray-500 mt-1">JPG, PNG or GIF. Max size 2MB.</p>
+              <h3 className="text-lg font-medium">{profileData.name}</h3>
+              <p className="text-sm text-gray-600">{profileData.email}</p>
             </div>
           </div>
 
           {/* Profile Information */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="name">Full Name</Label>
-                <Input
-                  id="name"
-                  value={profileData.name}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
-                  disabled={!isEditing}
-                />
-              </div>
-              <div>
-                <Label htmlFor="email">Email Address</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={profileData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  disabled={!isEditing}
-                />
-              </div>
-              <div>
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input
-                  id="phone"
-                  value={profileData.phone}
-                  onChange={(e) => handleInputChange('phone', e.target.value)}
-                  disabled={!isEditing}
-                />
-              </div>
+          <div className="space-y-4 max-w-md">
+            <div>
+              <Label htmlFor="name">Full Name</Label>
+              <Input
+                id="name"
+                value={profileData.name}
+                onChange={(e) => handleInputChange('name', e.target.value)}
+                disabled={!isEditing}
+              />
             </div>
-
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="role">Job Title</Label>
-                <Input
-                  id="role"
-                  value={profileData.role}
-                  onChange={(e) => handleInputChange('role', e.target.value)}
-                  disabled={!isEditing}
-                />
-              </div>
-              <div>
-                <Label htmlFor="department">Department</Label>
-                <Input
-                  id="department"
-                  value={profileData.department}
-                  onChange={(e) => handleInputChange('department', e.target.value)}
-                  disabled={!isEditing}
-                />
-              </div>
+            <div>
+              <Label htmlFor="email">Email Address</Label>
+              <Input
+                id="email"
+                type="email"
+                value={profileData.email}
+                disabled
+                title="Email cannot be changed"
+              />
             </div>
           </div>
 
@@ -157,16 +136,16 @@ export function MyProfile({ onBack }: MyProfileProps) {
           <div className="flex justify-end gap-2 pt-4 border-t">
             {isEditing ? (
               <>
-                <Button variant="outline" onClick={() => setIsEditing(false)}>
+                <Button variant="outline" onClick={handleCancel}>
                   Cancel
                 </Button>
                 <Button
                   onClick={handleSave}
-                  disabled={isSaving}
+                  disabled={updateUserMutation.isPending}
                   className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
                 >
                   <Save className="h-4 w-4 mr-2" />
-                  {isSaving ? 'Saving...' : 'Save Changes'}
+                  {updateUserMutation.isPending ? 'Saving...' : 'Save Changes'}
                 </Button>
               </>
             ) : (
