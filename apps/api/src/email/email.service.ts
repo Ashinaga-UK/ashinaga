@@ -118,6 +118,50 @@ export class EmailService {
     }
   }
 
+  async sendEmail(options: {
+    to: string;
+    subject: string;
+    html: string;
+    text?: string;
+  }): Promise<void> {
+    const fromEmail = process.env.EMAIL_FROM || 'noreply@ashinaga.org';
+
+    // If Resend is not configured, fallback to console logging
+    if (!this.resend) {
+      console.log('═══════════════════════════════════════════════════════════════');
+      console.log('EMAIL (Resend not configured)');
+      console.log('═══════════════════════════════════════════════════════════════');
+      console.log(`To: ${options.to}`);
+      console.log(`From: ${fromEmail}`);
+      console.log(`Subject: ${options.subject}`);
+      console.log('Body (text):');
+      console.log(options.text || 'No text version provided');
+      console.log('═══════════════════════════════════════════════════════════════');
+      return;
+    }
+
+    // Send actual email via Resend
+    try {
+      const { data, error } = await this.resend.emails.send({
+        from: fromEmail,
+        to: options.to,
+        subject: options.subject,
+        html: options.html,
+        text: options.text,
+      });
+
+      if (error) {
+        console.error('Failed to send email:', error);
+        throw new Error('Failed to send email');
+      }
+
+      console.log('Email sent successfully:', data);
+    } catch (error) {
+      console.error('Error sending email:', error);
+      throw error;
+    }
+  }
+
   async sendWelcomeEmail(_email: string, _name: string): Promise<void> {
     // Similar implementation for welcome emails
     // This can be extended later

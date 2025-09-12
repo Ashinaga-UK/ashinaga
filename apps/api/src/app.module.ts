@@ -10,6 +10,7 @@ import { RequestsModule } from './requests/requests.module';
 import { ScholarsModule } from './scholars/scholars.module';
 import { TasksModule } from './tasks/tasks.module';
 import { UsersModule } from './users/users.module';
+import { InvitationsModule } from './invitations/invitations.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { UsersModule } from './users/users.module';
     AnnouncementsModule,
     TasksModule,
     UsersModule,
+    InvitationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
