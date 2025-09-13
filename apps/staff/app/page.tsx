@@ -62,12 +62,19 @@ function StaffDashboardContent() {
   const [scholarStatsLoading, setScholarStatsLoading] = useState(true);
   const [requestStats, setRequestStats] = useState<RequestStats | null>(null);
   const [requestStatsLoading, setRequestStatsLoading] = useState(true);
-  // Use React Query for announcements
+
+  // Get user data from session
+  const user = session.data?.user;
+  const isLoading = session.isPending;
+  const isAuthenticated = !!user;
+  const isStaff = user?.userType === 'staff';
+
+  // Use React Query for announcements (only when authenticated)
   const {
     data: announcements = [],
     isLoading: announcementsLoading,
     error: announcementsError,
-  } = useAnnouncements();
+  } = useAnnouncements(isAuthenticated);
 
   // Update state when URL changes
   useEffect(() => {
@@ -88,11 +95,6 @@ function StaffDashboardContent() {
     setSelectedScholarId(newScholarId);
     setScholarProfileTab((newScholarTab || 'goals') as 'goals' | 'tasks' | 'documents');
   }, [searchParams]);
-
-  // Get user data from session
-  const user = session.data?.user;
-  const isLoading = session.isPending;
-  const isAuthenticated = !!user;
 
   const _getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -226,6 +228,26 @@ function StaffDashboardContent() {
   // Show login page if not authenticated
   if (!isAuthenticated) {
     return <LoginPage />;
+  }
+
+  // Check if user is staff after authentication
+  if (isAuthenticated && !isStaff) {
+    // Sign out non-staff users
+    signOut();
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="py-8">
+            <div className="text-center">
+              <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-500" />
+              <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+              <p className="text-gray-600 mb-4">This portal is for staff members only.</p>
+              <Button onClick={() => router.push('/login')}>Return to Login</Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (

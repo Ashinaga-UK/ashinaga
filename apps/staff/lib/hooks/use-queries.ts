@@ -82,10 +82,11 @@ export function useUpdateUser() {
 }
 
 // Announcements query
-export function useAnnouncements() {
+export function useAnnouncements(enabled = true) {
   return useQuery({
     queryKey: queryKeys.announcements,
     queryFn: getAnnouncements,
+    enabled,
   });
 }
 

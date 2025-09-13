@@ -160,7 +160,10 @@ async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error');
-      console.error(`API Error: ${response.status} - ${errorText}`);
+      // Don't log 401 errors as they're expected when not authenticated
+      if (response.status !== 401) {
+        console.error(`API Error: ${response.status} - ${errorText}`);
+      }
       throw new Error(`API Error: ${response.status} - ${errorText}`);
     }
 

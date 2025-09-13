@@ -136,26 +136,14 @@ export function LoginPage() {
             </Button>
           </form>
 
-          <div className="text-center space-y-2">
-            <div>
-              <span className="text-sm text-gray-600">Have an invitation? </span>
-              <Button
-                variant="link"
-                className="p-0 h-auto text-sm font-normal text-ashinaga-teal hover:text-ashinaga-teal/80"
-                onClick={() => router.push('/signup')}
-              >
-                Complete your registration
-              </Button>
-            </div>
-            <div>
-              <Button
-                variant="link"
-                className="text-sm text-gray-600"
-                onClick={() => router.push('/forgot-password')}
-              >
-                Forgot your password?
-              </Button>
-            </div>
+          <div className="text-center">
+            <Button
+              variant="link"
+              className="text-sm text-gray-600"
+              onClick={() => router.push('/forgot-password')}
+            >
+              Forgot your password?
+            </Button>
           </div>
         </CardContent>
       </Card>
