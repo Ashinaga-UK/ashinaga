@@ -4,7 +4,7 @@ import { AlertCircle, Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type React from 'react';
 import { useState } from 'react';
-import { signIn } from '../lib/auth-client';
+import { signIn, signOut } from '../lib/auth-client';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
@@ -39,6 +39,15 @@ export function LoginPage() {
       }
 
       if (data) {
+        // Check if user is staff
+        if (data.user?.userType !== 'staff') {
+          // Sign out immediately if not staff
+          await signOut();
+          setError('Access denied. This portal is for staff members only.');
+          setIsLoading(false);
+          return;
+        }
+
         // Redirect to dashboard on successful login
         router.push('/');
         router.refresh();

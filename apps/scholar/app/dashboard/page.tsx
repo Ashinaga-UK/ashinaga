@@ -33,8 +33,16 @@ export default function ScholarDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
-    if (!isPending && !session?.user) {
-      router.push('/');
+    if (!isPending) {
+      if (!session?.user) {
+        router.push('/');
+      } else if (session.user.userType !== 'scholar') {
+        // If user is not a scholar, sign them out and redirect
+        signOut().then(() => {
+          router.push('/');
+          router.refresh();
+        });
+      }
     }
   }, [session, isPending, router]);
 
