@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  AlertCircle,
   ArrowRight,
   Bell,
   Calendar,
@@ -26,6 +27,7 @@ import {
 } from '../../components/ui/card';
 import { Progress } from '../../components/ui/progress';
 import { signOut, useSession } from '../../lib/auth-client';
+import { useMyAnnouncements } from '../../lib/hooks/use-queries';
 
 export default function ScholarDashboard() {
   const router = useRouter();
@@ -99,7 +101,9 @@ function OverviewContent({ session }: { session: any }) {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Welcome back, {session.user.name || 'Scholar'}!</h1>
+        <h1 className="text-3xl font-bold text-gray-900">
+          Welcome back, {session.user.name || 'Scholar'}!
+        </h1>
         <p className="text-gray-600 mt-1">Here's your overview for today</p>
       </div>
 
@@ -198,21 +202,30 @@ function OverviewContent({ session }: { session: any }) {
                 <p className="text-sm font-medium">Academic Excellence</p>
                 <span className="text-sm text-muted-foreground">75%</span>
               </div>
-              <Progress value={75} className="h-2 bg-gray-200 [&>div]:bg-gradient-to-r [&>div]:from-ashinaga-teal-600 [&>div]:to-ashinaga-green-600" />
+              <Progress
+                value={75}
+                className="h-2 bg-gray-200 [&>div]:bg-gradient-to-r [&>div]:from-ashinaga-teal-600 [&>div]:to-ashinaga-green-600"
+              />
             </div>
             <div>
               <div className="flex justify-between mb-1">
                 <p className="text-sm font-medium">Research Project</p>
                 <span className="text-sm text-muted-foreground">60%</span>
               </div>
-              <Progress value={60} className="h-2 bg-gray-200 [&>div]:bg-gradient-to-r [&>div]:from-ashinaga-teal-600 [&>div]:to-ashinaga-green-600" />
+              <Progress
+                value={60}
+                className="h-2 bg-gray-200 [&>div]:bg-gradient-to-r [&>div]:from-ashinaga-teal-600 [&>div]:to-ashinaga-green-600"
+              />
             </div>
             <div>
               <div className="flex justify-between mb-1">
                 <p className="text-sm font-medium">Community Service</p>
                 <span className="text-sm text-muted-foreground">90%</span>
               </div>
-              <Progress value={90} className="h-2 bg-gray-200 [&>div]:bg-gradient-to-r [&>div]:from-ashinaga-teal-600 [&>div]:to-ashinaga-green-600" />
+              <Progress
+                value={90}
+                className="h-2 bg-gray-200 [&>div]:bg-gradient-to-r [&>div]:from-ashinaga-teal-600 [&>div]:to-ashinaga-green-600"
+              />
             </div>
           </CardContent>
         </Card>
@@ -263,19 +276,31 @@ function OverviewContent({ session }: { session: any }) {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Button variant="outline" className="h-auto flex-col py-4 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent">
+            <Button
+              variant="outline"
+              className="h-auto flex-col py-4 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent"
+            >
               <CheckSquare className="h-5 w-5 mb-2" />
               <span className="text-sm">View My Tasks</span>
             </Button>
-            <Button variant="outline" className="h-auto flex-col py-4 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent">
+            <Button
+              variant="outline"
+              className="h-auto flex-col py-4 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent"
+            >
               <Plus className="h-5 w-5 mb-2" />
               <span className="text-sm">Create Request</span>
             </Button>
-            <Button variant="outline" className="h-auto flex-col py-4 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent">
+            <Button
+              variant="outline"
+              className="h-auto flex-col py-4 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent"
+            >
               <Bell className="h-5 w-5 mb-2" />
               <span className="text-sm">View Announcements</span>
             </Button>
-            <Button variant="outline" className="h-auto flex-col py-4 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent">
+            <Button
+              variant="outline"
+              className="h-auto flex-col py-4 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent"
+            >
               <Target className="h-5 w-5 mb-2" />
               <span className="text-sm">My Goals & Progress</span>
             </Button>
@@ -292,9 +317,7 @@ function GoalsContent() {
       <h2 className="text-2xl font-bold mb-4 text-gray-900">My Goals</h2>
       <Card className="border-ashinaga-teal-100">
         <CardContent className="pt-6">
-          <p className="text-gray-600">
-            Your goals and progress tracking will appear here.
-          </p>
+          <p className="text-gray-600">Your goals and progress tracking will appear here.</p>
         </CardContent>
       </Card>
     </div>
@@ -334,14 +357,73 @@ function RequestsContent() {
 }
 
 function AnnouncementsContent() {
+  const { data: announcements, isLoading, error } = useMyAnnouncements();
+
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-4 text-gray-900">Announcements</h2>
-      <Card className="border-ashinaga-teal-100">
-        <CardContent className="pt-6">
-          <p className="text-gray-600">Announcements from staff will appear here.</p>
-        </CardContent>
-      </Card>
+    <div className="p-6 space-y-4">
+      <h2 className="text-2xl font-bold text-gray-900">Announcements</h2>
+
+      {isLoading ? (
+        <Card className="border-ashinaga-teal-100">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <div className="w-12 h-12 mx-auto mb-4">
+                  <div className="w-full h-full rounded-full border-4 border-ashinaga-teal-200 border-t-ashinaga-teal-600 animate-spin" />
+                </div>
+                <p className="text-gray-600">Loading announcements...</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : error ? (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+              <p className="text-red-600">Failed to load announcements. Please try again later.</p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : !announcements || announcements.length === 0 ? (
+        <Card className="border-ashinaga-teal-100">
+          <CardContent className="pt-6">
+            <div className="text-center py-8">
+              <Bell className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+              <p className="text-gray-600">No announcements yet</p>
+              <p className="text-sm text-gray-500 mt-2">Check back later for updates from staff</p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {announcements.map((announcement) => (
+            <Card key={announcement.id} className="border-ashinaga-teal-100">
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <CardTitle className="text-lg">{announcement.title}</CardTitle>
+                    <div className="flex items-center gap-2 mt-2 text-sm text-gray-600">
+                      <span>From {announcement.createdBy}</span>
+                      <span>•</span>
+                      <span>
+                        {new Date(announcement.createdAt).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-700 whitespace-pre-wrap">{announcement.content}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

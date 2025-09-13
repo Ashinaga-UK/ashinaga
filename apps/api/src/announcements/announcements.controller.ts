@@ -45,4 +45,13 @@ export class AnnouncementsController {
   async getFilterOptions() {
     return this.announcementsService.getFilterOptions();
   }
+
+  @Get('my-announcements')
+  async getMyAnnouncements(@Req() req: AuthenticatedRequest) {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new Error('User not authenticated');
+    }
+    return this.announcementsService.getAnnouncementsForScholar(userId);
+  }
 }

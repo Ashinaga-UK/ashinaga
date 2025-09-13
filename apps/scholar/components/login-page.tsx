@@ -76,7 +76,8 @@ export function LoginPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    window.location.href = process.env.NEXT_PUBLIC_STAFF_APP_URL || 'http://localhost:4001';
+                    window.location.href =
+                      process.env.NEXT_PUBLIC_STAFF_APP_URL || 'http://localhost:4001';
                   }}
                   className="w-full"
                 >

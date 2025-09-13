@@ -66,8 +66,9 @@ export function SidebarLayout({ children, activeTab, onTabChange, onLogout }: Si
                     <Button
                       variant="ghost"
                       className={cn(
-                        "w-full justify-start",
-                        activeTab === item.id && "bg-ashinaga-teal-50 text-ashinaga-teal-700 hover:bg-ashinaga-teal-100"
+                        'w-full justify-start',
+                        activeTab === item.id &&
+                          'bg-ashinaga-teal-50 text-ashinaga-teal-700 hover:bg-ashinaga-teal-100'
                       )}
                       onClick={() => {
                         onTabChange(item.id);

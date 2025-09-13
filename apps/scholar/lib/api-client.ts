@@ -1,7 +1,7 @@
 // API client for making authenticated requests to the backend
 // Works alongside better-auth for non-auth endpoints
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   // Remove trailing slash from base URL and ensure endpoint starts with slash
@@ -28,6 +28,20 @@ async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise
   }
 
   return response.json();
+}
+
+// Announcement types and functions
+export interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getMyAnnouncements(): Promise<Announcement[]> {
+  return fetchAPI<Announcement[]>('/api/announcements/my-announcements');
 }
 
 // Export the fetchAPI function and any other API functions as needed
