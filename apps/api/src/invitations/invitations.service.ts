@@ -209,6 +209,50 @@ export class InvitationsService {
     };
   }
 
+  async validateInvitationToken(token: string) {
+    const db = getDatabase();
+
+    const [invitation] = await db
+      .select()
+      .from(invitations)
+      .where(eq(invitations.token, token))
+      .limit(1);
+
+    if (!invitation) {
+      throw new NotFoundException('Invalid invitation token');
+    }
+
+    if (invitation.status !== 'pending') {
+      throw new BadRequestException(`This invitation has already been ${invitation.status}`);
+    }
+
+    if (new Date() > new Date(invitation.expiresAt)) {
+      await db
+        .update(invitations)
+        .set({ status: 'expired', updatedAt: new Date() })
+        .where(eq(invitations.id, invitation.id));
+      throw new BadRequestException('This invitation has expired');
+    }
+
+    // Parse scholar data if it exists
+    let scholarData = null;
+    if (invitation.scholarData) {
+      try {
+        scholarData = JSON.parse(invitation.scholarData);
+      } catch (error) {
+        console.error('Failed to parse scholar data:', error);
+      }
+    }
+
+    return {
+      id: invitation.id,
+      email: invitation.email,
+      userType: invitation.userType,
+      scholarData,
+      expiresAt: invitation.expiresAt,
+    };
+  }
+
   private buildInviteUrl(token: string, userType: string): string {
     // Determine the correct frontend URL based on user type
     const envVar = userType === 'staff' ? 'STAFF_APP_URL' : 'SCHOLAR_APP_URL';

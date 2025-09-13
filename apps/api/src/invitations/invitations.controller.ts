@@ -18,12 +18,23 @@ import { StaffGuard } from '../auth/staff.guard';
 
 @ApiTags('invitations')
 @Controller('api/invitations')
-@UseGuards(StaffGuard)
-@ApiBearerAuth()
 export class InvitationsController {
   constructor(private readonly invitationsService: InvitationsService) {}
 
+  // Public endpoint - no auth required
+  @Get('validate/:token')
+  @ApiOperation({ summary: 'Validate an invitation token' })
+  @ApiResponse({ status: 200, description: 'Invitation details' })
+  @ApiResponse({ status: 404, description: 'Invalid invitation token' })
+  @ApiResponse({ status: 400, description: 'Invitation expired or already used' })
+  async validateToken(@Param('token') token: string) {
+    return this.invitationsService.validateInvitationToken(token);
+  }
+
+  // Protected endpoints - staff only
   @Post()
+  @UseGuards(StaffGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new invitation' })
   @ApiResponse({ status: 201, description: 'Invitation created successfully' })
   @ApiResponse({ status: 409, description: 'User already exists or invitation already active' })
@@ -34,6 +45,8 @@ export class InvitationsController {
   }
 
   @Post('resend')
+  @UseGuards(StaffGuard)
+  @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Resend an invitation email' })
   @ApiResponse({ status: 200, description: 'Invitation resent successfully' })
@@ -45,6 +58,8 @@ export class InvitationsController {
   }
 
   @Get()
+  @UseGuards(StaffGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'List all invitations' })
   @ApiQuery({
     name: 'status',
@@ -60,6 +75,8 @@ export class InvitationsController {
   }
 
   @Delete(':id')
+  @UseGuards(StaffGuard)
+  @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Cancel a pending invitation' })
   @ApiResponse({ status: 200, description: 'Invitation cancelled successfully' })

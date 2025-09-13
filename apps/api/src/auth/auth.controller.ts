@@ -127,7 +127,19 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Successfully signed up' })
   @ApiResponse({ status: 400, description: 'Email already exists' })
   async signUpWithEmail(@Req() req: FastifyRequest, @Res() res: FastifyReply) {
-    const body = req.body as { email: string; password: string; name: string };
+    const body = req.body as {
+      email: string;
+      password: string;
+      name: string;
+      invitationToken?: string;
+      // Scholar-specific fields
+      program?: string;
+      year?: string;
+      university?: string;
+      location?: string;
+      phone?: string;
+      bio?: string;
+    };
     const emailLower = body.email.toLowerCase();
 
     // First, check the invitation to get userType
@@ -192,15 +204,26 @@ export class AuthController {
             });
             console.log('Staff profile created');
           } else if (userType === 'scholar') {
+            // Use the form data provided during signup, fallback to defaults if not provided
             await db.insert(scholars).values({
               userId: userId,
               status: 'active',
               startDate: new Date(),
-              program: 'TBD',
-              year: 'TBD',
-              university: 'TBD',
+              program: body.program || 'TBD',
+              year: body.year || 'TBD',
+              university: body.university || 'TBD',
+              location: body.location || null,
+              phone: body.phone || null,
+              bio: body.bio || null,
             });
-            console.log('Scholar profile created');
+            console.log('Scholar profile created with data:', {
+              program: body.program,
+              year: body.year,
+              university: body.university,
+              location: body.location,
+              phone: body.phone,
+              bio: body.bio,
+            });
           }
         }
       } catch (error) {
