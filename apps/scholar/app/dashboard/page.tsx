@@ -32,17 +32,23 @@ export default function ScholarDashboard() {
   const { data: session, isPending } = useSession();
   const [activeTab, setActiveTab] = useState('overview');
 
+  // Get user data from session
+  const user = session?.user;
+  const isAuthenticated = !!user;
+  const isScholar = user?.userType === 'scholar';
+
+  // Handle non-scholar users
   useEffect(() => {
-    if (!isPending) {
-      if (!session?.user) {
-        router.push('/');
-      } else if (session.user.userType !== 'scholar') {
-        // If user is not a scholar, sign them out and redirect
-        signOut().then(() => {
-          router.push('/');
-          router.refresh();
-        });
-      }
+    if (isAuthenticated && !isScholar) {
+      // Sign out and redirect to login with access denied message
+      signOut();
+      router.push('/?accessDenied=true');
+    }
+  }, [isAuthenticated, isScholar, router]);
+
+  useEffect(() => {
+    if (!isPending && !session?.user) {
+      router.push('/');
     }
   }, [session, isPending, router]);
 
