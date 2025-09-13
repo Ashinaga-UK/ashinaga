@@ -27,6 +27,7 @@ import { Textarea } from './ui/textarea';
 import { Alert, AlertDescription } from './ui/alert';
 
 interface ScholarData {
+  name?: string;
   program?: string;
   year?: string;
   university?: string;
@@ -93,6 +94,7 @@ export function SignupPage() {
           email: data.email,
           ...(data.scholarData
             ? {
+                name: data.scholarData.name || '',
                 program: data.scholarData.program || '',
                 year: data.scholarData.year || '',
                 university: data.scholarData.university || '',

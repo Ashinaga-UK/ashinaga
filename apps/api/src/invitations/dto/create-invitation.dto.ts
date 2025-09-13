@@ -18,6 +18,7 @@ export class CreateInvitationDto {
   @ApiPropertyOptional({
     description: 'Pre-filled scholar data (only for scholar invitations)',
     example: {
+      name: 'John Doe',
       program: 'Engineering',
       year: '2024',
       university: 'MIT',
@@ -28,6 +29,7 @@ export class CreateInvitationDto {
   })
   @IsOptional()
   scholarData?: {
+    name?: string;
     program?: string;
     year?: string;
     university?: string;

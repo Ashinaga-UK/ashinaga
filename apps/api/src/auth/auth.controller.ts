@@ -205,6 +205,7 @@ export class AuthController {
             console.log('Staff profile created');
           } else if (userType === 'scholar') {
             // Use the form data provided during signup, fallback to defaults if not provided
+            // The name is already handled by Better Auth in the user record
             await db.insert(scholars).values({
               userId: userId,
               status: 'active',
