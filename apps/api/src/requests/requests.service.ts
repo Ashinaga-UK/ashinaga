@@ -226,6 +226,61 @@ export class RequestsService {
     return stats;
   }
 
+  async getRequestsForScholar(userId: string) {
+    // First, get the scholar ID from the user ID
+    const scholar = await database
+      .select()
+      .from(scholars)
+      .where(eq(scholars.userId, userId))
+      .limit(1);
+
+    if (!scholar || scholar.length === 0) {
+      return []; // User is not a scholar, return empty array
+    }
+
+    const scholarId = scholar[0].id;
+
+    // Get requests for this scholar with user info
+    const requestsWithScholars = await database
+      .select({
+        request: requests,
+        scholar: scholars,
+        user: users,
+      })
+      .from(requests)
+      .innerJoin(scholars, eq(requests.scholarId, scholars.id))
+      .innerJoin(users, eq(scholars.userId, users.id))
+      .where(eq(requests.scholarId, scholarId))
+      .orderBy(desc(requests.submittedDate));
+
+    // Get attachments and audit logs for all requests
+    const requestIds = requestsWithScholars.map((row) => row.request.id);
+    const attachments = await this.getAttachments(requestIds);
+    const auditLogs = await this.getAuditLogs(requestIds);
+
+    // Format the response
+    const data: RequestResponseDto[] = requestsWithScholars.map((row) => ({
+      id: row.request.id,
+      scholarId: row.request.scholarId,
+      scholarName: row.user.name,
+      scholarEmail: row.user.email,
+      type: row.request.type,
+      description: row.request.description,
+      priority: row.request.priority,
+      status: row.request.status,
+      submittedDate: row.request.submittedDate,
+      reviewedBy: row.request.reviewedBy,
+      reviewComment: row.request.reviewComment,
+      reviewDate: row.request.reviewDate,
+      attachments: attachments.filter((a) => a.requestId === row.request.id),
+      auditLogs: auditLogs.filter((log) => log.requestId === row.request.id),
+      createdAt: row.request.createdAt,
+      updatedAt: row.request.updatedAt,
+    }));
+
+    return data;
+  }
+
   async updateRequestStatus(
     requestId: string,
     status: 'approved' | 'rejected' | 'reviewed' | 'commented',

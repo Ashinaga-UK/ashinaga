@@ -44,5 +44,49 @@ export async function getMyAnnouncements(): Promise<Announcement[]> {
   return fetchAPI<Announcement[]>('/api/announcements/my-announcements');
 }
 
+// Request types and functions
+export interface RequestAttachment {
+  id: string;
+  name: string;
+  size: string;
+  url: string;
+  mimeType: string;
+  uploadedAt: string;
+}
+
+export interface RequestAuditLog {
+  id: string;
+  action: string;
+  performedBy: string;
+  previousStatus?: 'pending' | 'approved' | 'rejected' | 'reviewed' | 'commented';
+  newStatus?: 'pending' | 'approved' | 'rejected' | 'reviewed' | 'commented';
+  comment?: string;
+  metadata?: string;
+  createdAt: string;
+}
+
+export interface Request {
+  id: string;
+  scholarId: string;
+  scholarName: string;
+  scholarEmail: string;
+  type: 'financial_support' | 'extenuating_circumstances' | 'academic_support';
+  description: string;
+  priority: 'high' | 'medium' | 'low';
+  status: 'pending' | 'approved' | 'rejected' | 'reviewed' | 'commented';
+  submittedDate: string;
+  reviewedBy?: string | null;
+  reviewComment?: string | null;
+  reviewDate?: string | null;
+  attachments: RequestAttachment[];
+  auditLogs: RequestAuditLog[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getMyRequests(): Promise<Request[]> {
+  return fetchAPI<Request[]>('/api/requests/my-requests');
+}
+
 // Export the fetchAPI function and any other API functions as needed
 export { fetchAPI };
