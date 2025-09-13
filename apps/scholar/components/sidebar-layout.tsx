@@ -24,9 +24,9 @@ export function SidebarLayout({ children, activeTab, onTabChange, onLogout }: Si
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50">
       {/* Mobile header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-card border-b border-border z-50 px-4 flex items-center justify-between">
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-ashinaga-teal-100 z-50 px-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
             {isSidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -38,20 +38,20 @@ export function SidebarLayout({ children, activeTab, onTabChange, onLogout }: Si
       {/* Sidebar */}
       <div
         className={cn(
-          'fixed left-0 top-0 bottom-0 w-64 bg-sidebar-background border-r border-sidebar-border transform transition-transform duration-200 ease-in-out z-40',
+          'fixed left-0 top-0 bottom-0 w-64 bg-white border-r border-ashinaga-teal-100 transform transition-transform duration-200 ease-in-out z-40',
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="p-6 border-b border-sidebar-border">
+          <div className="p-6 border-b border-ashinaga-teal-100">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-lg">A</span>
+              <div className="w-10 h-10 bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-lg">A</span>
               </div>
               <div>
                 <h1 className="font-semibold">Ashinaga</h1>
-                <p className="text-xs text-muted-foreground">Scholar Portal</p>
+                <p className="text-xs text-gray-600">Scholar Portal</p>
               </div>
             </div>
           </div>
@@ -64,8 +64,11 @@ export function SidebarLayout({ children, activeTab, onTabChange, onLogout }: Si
                 return (
                   <li key={item.id}>
                     <Button
-                      variant={activeTab === item.id ? 'secondary' : 'ghost'}
-                      className="w-full justify-start"
+                      variant="ghost"
+                      className={cn(
+                        "w-full justify-start",
+                        activeTab === item.id && "bg-ashinaga-teal-50 text-ashinaga-teal-700 hover:bg-ashinaga-teal-100"
+                      )}
                       onClick={() => {
                         onTabChange(item.id);
                         setIsSidebarOpen(false);
@@ -81,7 +84,7 @@ export function SidebarLayout({ children, activeTab, onTabChange, onLogout }: Si
           </nav>
 
           {/* Bottom section */}
-          <div className="p-4 border-t border-sidebar-border">
+          <div className="p-4 border-t border-ashinaga-teal-100">
             <Button
               variant="ghost"
               className="w-full justify-start text-muted-foreground hover:text-foreground"

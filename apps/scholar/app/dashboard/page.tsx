@@ -99,16 +99,16 @@ function OverviewContent({ session }: { session: any }) {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold">Welcome back, {session.user.name || 'Scholar'}!</h1>
-        <p className="text-muted-foreground mt-1">Here's your overview for today</p>
+        <h1 className="text-3xl font-bold text-gray-900">Welcome back, {session.user.name || 'Scholar'}!</h1>
+        <p className="text-gray-600 mt-1">Here's your overview for today</p>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
+        <Card className="border-ashinaga-teal-100">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Pending Tasks</CardTitle>
-            <CheckSquare className="h-4 w-4 text-muted-foreground" />
+            <CheckSquare className="h-4 w-4 text-ashinaga-teal-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">3</div>
@@ -116,10 +116,10 @@ function OverviewContent({ session }: { session: any }) {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-ashinaga-teal-100">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Goals</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
+            <Target className="h-4 w-4 text-ashinaga-green-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">5</div>
@@ -127,10 +127,10 @@ function OverviewContent({ session }: { session: any }) {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-ashinaga-teal-100">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Open Requests</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
+            <FileText className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">1</div>
@@ -138,10 +138,10 @@ function OverviewContent({ session }: { session: any }) {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-ashinaga-teal-100">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">New Announcements</CardTitle>
-            <Bell className="h-4 w-4 text-muted-foreground" />
+            <Bell className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">2</div>
@@ -152,7 +152,7 @@ function OverviewContent({ session }: { session: any }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Profile Information */}
-        <Card>
+        <Card className="border-ashinaga-teal-100">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />
@@ -161,26 +161,26 @@ function OverviewContent({ session }: { session: any }) {
           </CardHeader>
           <CardContent className="space-y-3">
             <div>
-              <p className="text-sm text-muted-foreground">Name</p>
+              <p className="text-sm text-gray-600">Name</p>
               <p className="font-medium">{session.user.name || 'Not set'}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Email</p>
+              <p className="text-sm text-gray-600">Email</p>
               <p className="font-medium">{session.user.email}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Program</p>
+              <p className="text-sm text-gray-600">Program</p>
               <p className="font-medium">Computer Science</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">University</p>
+              <p className="text-sm text-gray-600">University</p>
               <p className="font-medium">Tokyo University</p>
             </div>
           </CardContent>
         </Card>
 
         {/* Goals Progress */}
-        <Card>
+        <Card className="border-ashinaga-teal-100">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span className="flex items-center gap-2">
@@ -198,27 +198,27 @@ function OverviewContent({ session }: { session: any }) {
                 <p className="text-sm font-medium">Academic Excellence</p>
                 <span className="text-sm text-muted-foreground">75%</span>
               </div>
-              <Progress value={75} className="h-2" />
+              <Progress value={75} className="h-2 bg-gray-200 [&>div]:bg-gradient-to-r [&>div]:from-ashinaga-teal-600 [&>div]:to-ashinaga-green-600" />
             </div>
             <div>
               <div className="flex justify-between mb-1">
                 <p className="text-sm font-medium">Research Project</p>
                 <span className="text-sm text-muted-foreground">60%</span>
               </div>
-              <Progress value={60} className="h-2" />
+              <Progress value={60} className="h-2 bg-gray-200 [&>div]:bg-gradient-to-r [&>div]:from-ashinaga-teal-600 [&>div]:to-ashinaga-green-600" />
             </div>
             <div>
               <div className="flex justify-between mb-1">
                 <p className="text-sm font-medium">Community Service</p>
                 <span className="text-sm text-muted-foreground">90%</span>
               </div>
-              <Progress value={90} className="h-2" />
+              <Progress value={90} className="h-2 bg-gray-200 [&>div]:bg-gradient-to-r [&>div]:from-ashinaga-teal-600 [&>div]:to-ashinaga-green-600" />
             </div>
           </CardContent>
         </Card>
 
         {/* Recent Announcements */}
-        <Card>
+        <Card className="border-ashinaga-teal-100">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span className="flex items-center gap-2">
@@ -233,21 +233,21 @@ function OverviewContent({ session }: { session: any }) {
           <CardContent className="space-y-3">
             <div className="space-y-2">
               <div className="flex items-start gap-2">
-                <Badge variant="default" className="mt-0.5">
+                <Badge className="mt-0.5 bg-ashinaga-teal-600 hover:bg-ashinaga-teal-700">
                   New
                 </Badge>
                 <div className="flex-1">
                   <p className="text-sm font-medium">Scholarship Renewal</p>
-                  <p className="text-xs text-muted-foreground">Submit documents by Dec 15</p>
+                  <p className="text-xs text-gray-500">Submit documents by Dec 15</p>
                 </div>
               </div>
               <div className="flex items-start gap-2">
-                <Badge variant="default" className="mt-0.5">
+                <Badge className="mt-0.5 bg-ashinaga-teal-600 hover:bg-ashinaga-teal-700">
                   New
                 </Badge>
                 <div className="flex-1">
                   <p className="text-sm font-medium">Monthly Meeting</p>
-                  <p className="text-xs text-muted-foreground">Virtual meeting on Dec 20</p>
+                  <p className="text-xs text-gray-500">Virtual meeting on Dec 20</p>
                 </div>
               </div>
             </div>
@@ -256,26 +256,26 @@ function OverviewContent({ session }: { session: any }) {
       </div>
 
       {/* Quick Actions */}
-      <Card>
+      <Card className="border-ashinaga-teal-100">
         <CardHeader>
           <CardTitle>Quick Actions</CardTitle>
           <CardDescription>Common tasks and actions</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Button variant="outline" className="h-auto flex-col py-4">
+            <Button variant="outline" className="h-auto flex-col py-4 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent">
               <CheckSquare className="h-5 w-5 mb-2" />
               <span className="text-sm">View My Tasks</span>
             </Button>
-            <Button variant="outline" className="h-auto flex-col py-4">
+            <Button variant="outline" className="h-auto flex-col py-4 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent">
               <Plus className="h-5 w-5 mb-2" />
               <span className="text-sm">Create Request</span>
             </Button>
-            <Button variant="outline" className="h-auto flex-col py-4">
+            <Button variant="outline" className="h-auto flex-col py-4 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent">
               <Bell className="h-5 w-5 mb-2" />
               <span className="text-sm">View Announcements</span>
             </Button>
-            <Button variant="outline" className="h-auto flex-col py-4">
+            <Button variant="outline" className="h-auto flex-col py-4 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent">
               <Target className="h-5 w-5 mb-2" />
               <span className="text-sm">My Goals & Progress</span>
             </Button>
@@ -289,10 +289,10 @@ function OverviewContent({ session }: { session: any }) {
 function GoalsContent() {
   return (
     <div className="p-6">
-      <h2 className="text-2xl font-bold mb-4">My Goals</h2>
-      <Card>
+      <h2 className="text-2xl font-bold mb-4 text-gray-900">My Goals</h2>
+      <Card className="border-ashinaga-teal-100">
         <CardContent className="pt-6">
-          <p className="text-muted-foreground">
+          <p className="text-gray-600">
             Your goals and progress tracking will appear here.
           </p>
         </CardContent>
@@ -304,10 +304,10 @@ function GoalsContent() {
 function TasksContent() {
   return (
     <div className="p-6">
-      <h2 className="text-2xl font-bold mb-4">My Tasks</h2>
-      <Card>
+      <h2 className="text-2xl font-bold mb-4 text-gray-900">My Tasks</h2>
+      <Card className="border-ashinaga-teal-100">
         <CardContent className="pt-6">
-          <p className="text-muted-foreground">Your assigned tasks will appear here.</p>
+          <p className="text-gray-600">Your assigned tasks will appear here.</p>
         </CardContent>
       </Card>
     </div>
@@ -318,15 +318,15 @@ function RequestsContent() {
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">My Requests</h2>
-        <Button>
+        <h2 className="text-2xl font-bold text-gray-900">My Requests</h2>
+        <Button className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700">
           <Plus className="h-4 w-4 mr-2" />
           New Request
         </Button>
       </div>
-      <Card>
+      <Card className="border-ashinaga-teal-100">
         <CardContent className="pt-6">
-          <p className="text-muted-foreground">Your requests to staff will appear here.</p>
+          <p className="text-gray-600">Your requests to staff will appear here.</p>
         </CardContent>
       </Card>
     </div>
@@ -336,10 +336,10 @@ function RequestsContent() {
 function AnnouncementsContent() {
   return (
     <div className="p-6">
-      <h2 className="text-2xl font-bold mb-4">Announcements</h2>
-      <Card>
+      <h2 className="text-2xl font-bold mb-4 text-gray-900">Announcements</h2>
+      <Card className="border-ashinaga-teal-100">
         <CardContent className="pt-6">
-          <p className="text-muted-foreground">Announcements from staff will appear here.</p>
+          <p className="text-gray-600">Announcements from staff will appear here.</p>
         </CardContent>
       </Card>
     </div>
