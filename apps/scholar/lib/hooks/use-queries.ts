@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
-import { type Announcement, getMyAnnouncements, type Request, getMyRequests } from '../api-client';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { createRequest, getMyAnnouncements, getMyRequests } from '../api-client';
 
 // Query keys
 export const queryKeys = {
@@ -22,5 +22,20 @@ export function useMyRequests(enabled = true) {
     queryKey: queryKeys.myRequests,
     queryFn: getMyRequests,
     enabled,
+  });
+}
+
+// Create request mutation
+export function useCreateRequest() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createRequest,
+    onSuccess: () => {
+      // Invalidate and refetch requests
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.myRequests,
+      });
+    },
   });
 }

@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Post, Query, Req, UseGuards, ValidationPi
 import { ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
+import { CreateRequestDto, CreateRequestResponseDto } from './dto/create-request.dto';
 import { GetRequestsQueryDto, GetRequestsResponseDto } from './dto/get-requests.dto';
 import { RequestsService } from './requests.service';
 
@@ -63,5 +64,18 @@ export class RequestsController {
       throw new Error('User not authenticated');
     }
     return this.requestsService.getRequestsForScholar(userId);
+  }
+
+  @Post()
+  @UseGuards(AuthGuard)
+  async createRequest(
+    @Body() createRequestDto: CreateRequestDto,
+    @Req() req: AuthenticatedRequest
+  ): Promise<CreateRequestResponseDto> {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new Error('User not authenticated');
+    }
+    return this.requestsService.createRequest(createRequestDto, userId);
   }
 }

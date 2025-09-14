@@ -3,6 +3,7 @@ import { and, count, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 import { database } from '../db/connection';
 import { requestAttachments, requestAuditLogs, requests, scholars, users } from '../db/schema';
 import { EmailService } from '../email/email.service';
+import { CreateRequestDto, CreateRequestResponseDto } from './dto/create-request.dto';
 import {
   GetRequestsQueryDto,
   GetRequestsResponseDto,
@@ -272,13 +273,64 @@ export class RequestsService {
       reviewedBy: row.request.reviewedBy,
       reviewComment: row.request.reviewComment,
       reviewDate: row.request.reviewDate,
-      attachments: attachments.filter((a) => a.requestId === row.request.id),
-      auditLogs: auditLogs.filter((log) => log.requestId === row.request.id),
+      attachments: attachments[row.request.id] || [],
+      auditLogs: auditLogs[row.request.id] || [],
       createdAt: row.request.createdAt,
       updatedAt: row.request.updatedAt,
     }));
 
     return data;
+  }
+
+  async createRequest(
+    createRequestDto: CreateRequestDto,
+    userId: string
+  ): Promise<CreateRequestResponseDto> {
+    // First, get the scholar ID from the user ID
+    const scholar = await database
+      .select()
+      .from(scholars)
+      .where(eq(scholars.userId, userId))
+      .limit(1);
+
+    if (!scholar || scholar.length === 0) {
+      throw new NotFoundException('Scholar not found for this user');
+    }
+
+    const scholarId = scholar[0].id;
+
+    // Create the request
+    const [newRequest] = await database
+      .insert(requests)
+      .values({
+        scholarId,
+        type: createRequestDto.type,
+        description: createRequestDto.description,
+        priority: createRequestDto.priority || 'medium',
+        status: 'pending',
+      })
+      .returning();
+
+    // Create audit log for request creation
+    await database.insert(requestAuditLogs).values({
+      requestId: newRequest.id,
+      action: 'created',
+      performedBy: userId,
+      newStatus: 'pending',
+      comment: 'Request submitted by scholar',
+    });
+
+    return {
+      id: newRequest.id,
+      scholarId: newRequest.scholarId,
+      type: newRequest.type,
+      description: newRequest.description,
+      priority: newRequest.priority,
+      status: newRequest.status,
+      submittedDate: newRequest.submittedDate,
+      createdAt: newRequest.createdAt,
+      updatedAt: newRequest.updatedAt,
+    };
   }
 
   async updateRequestStatus(

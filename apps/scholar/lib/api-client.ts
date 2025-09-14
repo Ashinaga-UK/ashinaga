@@ -88,5 +88,18 @@ export async function getMyRequests(): Promise<Request[]> {
   return fetchAPI<Request[]>('/api/requests/my-requests');
 }
 
+export interface CreateRequestData {
+  type: 'financial_support' | 'extenuating_circumstances' | 'academic_support';
+  description: string;
+  priority?: 'high' | 'medium' | 'low';
+}
+
+export async function createRequest(data: CreateRequestData): Promise<Request> {
+  return fetchAPI<Request>('/api/requests', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
 // Export the fetchAPI function and any other API functions as needed
 export { fetchAPI };

@@ -29,6 +29,7 @@ import { Progress } from '../../components/ui/progress';
 import { signOut, useSession } from '../../lib/auth-client';
 import { useMyAnnouncements, useMyRequests } from '../../lib/hooks/use-queries';
 import { RequestCard } from '../../components/request-card';
+import { NewRequestDialog } from '../../components/new-request-dialog';
 
 export default function ScholarDashboard() {
   const router = useRouter();
@@ -98,6 +99,15 @@ export default function ScholarDashboard() {
 }
 
 function OverviewContent({ session }: { session: any }) {
+  const { data: requests } = useMyRequests();
+  const { data: announcements } = useMyAnnouncements();
+
+  // Calculate open requests (pending, reviewed, commented)
+  const openRequests =
+    requests?.filter(
+      (r) => r.status === 'pending' || r.status === 'reviewed' || r.status === 'commented'
+    ).length || 0;
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -138,8 +148,14 @@ function OverviewContent({ session }: { session: any }) {
             <FileText className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1</div>
-            <p className="text-xs text-muted-foreground">Awaiting response</p>
+            <div className="text-2xl font-bold">{openRequests}</div>
+            <p className="text-xs text-muted-foreground">
+              {openRequests === 0
+                ? 'All clear'
+                : openRequests === 1
+                  ? 'Awaiting response'
+                  : `${openRequests} awaiting response`}
+            </p>
           </CardContent>
         </Card>
 
@@ -284,13 +300,17 @@ function OverviewContent({ session }: { session: any }) {
               <CheckSquare className="h-5 w-5 mb-2" />
               <span className="text-sm">View My Tasks</span>
             </Button>
-            <Button
-              variant="outline"
-              className="h-auto flex-col py-4 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent"
-            >
-              <Plus className="h-5 w-5 mb-2" />
-              <span className="text-sm">Create Request</span>
-            </Button>
+            <NewRequestDialog
+              trigger={
+                <Button
+                  variant="outline"
+                  className="h-auto flex-col py-4 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent"
+                >
+                  <Plus className="h-5 w-5 mb-2" />
+                  <span className="text-sm">Create Request</span>
+                </Button>
+              }
+            />
             <Button
               variant="outline"
               className="h-auto flex-col py-4 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent"
@@ -339,16 +359,21 @@ function TasksContent() {
 }
 
 function RequestsContent() {
-  const { data: requests, isLoading, error } = useMyRequests();
+  const { data: requests, isLoading, error, refetch } = useMyRequests();
 
   return (
     <div className="p-6 space-y-4">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold text-gray-900">My Requests</h2>
-        <Button className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700">
-          <Plus className="h-4 w-4 mr-2" />
-          New Request
-        </Button>
+        <NewRequestDialog
+          trigger={
+            <Button className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700">
+              <Plus className="h-4 w-4 mr-2" />
+              New Request
+            </Button>
+          }
+          onSuccess={() => refetch()}
+        />
       </div>
 
       {isLoading ? (
