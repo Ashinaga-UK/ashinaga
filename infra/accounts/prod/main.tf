@@ -55,6 +55,16 @@ module "resend_api_key" {
   }
 }
 
+# S3 Bucket for Scholar Data
+module "scholar_data_bucket" {
+  source = "../../modules/s3_bucket"
+
+  bucket_name       = "${var.project_name}-scholar-data-${var.environment}"
+  environment       = var.environment
+  enable_versioning = true
+  lifecycle_days    = 90
+}
+
 # VPC and networking
 module "vpc" {
   source = "../../modules/vpc"
@@ -271,6 +281,9 @@ module "api_app_runner" {
   # vpc_id              = module.vpc.vpc_id
   # subnet_ids          = module.vpc.subnet_ids
   # security_group_ids  = [aws_security_group.app_runner.id]
+  
+  # S3 access policy for scholar data
+  additional_policy_arns = [module.scholar_data_bucket.s3_access_policy_arn]
 
   env_vars = {
     NODE_ENV    = "production"
@@ -291,6 +304,10 @@ module "api_app_runner" {
     # Email Configuration (optional - will log to console if not set)
     RESEND_API_KEY = module.resend_api_key.secret_value
     EMAIL_FROM     = "noreply@ashinaga-uk.org"
+    
+    # S3 Configuration
+    S3_BUCKET_NAME = module.scholar_data_bucket.bucket_name
+    AWS_REGION     = var.aws_region
   }
 }
 

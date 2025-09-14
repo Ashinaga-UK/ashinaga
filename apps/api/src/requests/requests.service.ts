@@ -320,6 +320,24 @@ export class RequestsService {
       comment: 'Request submitted by scholar',
     });
 
+    // Link attachments to the request if provided
+    if (createRequestDto.attachmentIds && createRequestDto.attachmentIds.length > 0) {
+      // Update attachments to link them to this request
+      await database
+        .update(requestAttachments)
+        .set({ requestId: newRequest.id })
+        .where(inArray(requestAttachments.id, createRequestDto.attachmentIds));
+
+      // Create audit log for attachments
+      await database.insert(requestAuditLogs).values({
+        requestId: newRequest.id,
+        action: 'attachment_added',
+        performedBy: userId,
+        comment: `${createRequestDto.attachmentIds.length} file(s) attached`,
+        metadata: JSON.stringify({ attachmentIds: createRequestDto.attachmentIds }),
+      });
+    }
+
     return {
       id: newRequest.id,
       scholarId: newRequest.scholarId,

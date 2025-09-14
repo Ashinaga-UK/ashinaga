@@ -103,7 +103,10 @@ export class AnnouncementsService {
         creator: users,
       })
       .from(announcements)
-      .innerJoin(announcementRecipients, eq(announcements.id, announcementRecipients.announcementId))
+      .innerJoin(
+        announcementRecipients,
+        eq(announcements.id, announcementRecipients.announcementId)
+      )
       .innerJoin(users, eq(announcements.createdBy, users.id))
       .where(eq(announcementRecipients.scholarId, scholarId))
       .orderBy(desc(announcements.createdAt));

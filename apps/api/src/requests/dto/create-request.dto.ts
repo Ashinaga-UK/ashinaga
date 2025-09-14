@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsArray, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateRequestDto {
   @IsEnum(['financial_support', 'extenuating_circumstances', 'academic_support'])
@@ -12,6 +12,11 @@ export class CreateRequestDto {
   @IsEnum(['high', 'medium', 'low'])
   @IsOptional()
   priority?: 'high' | 'medium' | 'low';
+
+  @IsArray()
+  @IsUUID('4', { each: true })
+  @IsOptional()
+  attachmentIds?: string[];
 }
 
 export class CreateRequestResponseDto {
