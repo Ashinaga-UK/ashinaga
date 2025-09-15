@@ -55,6 +55,16 @@ module "resend_api_key" {
   }
 }
 
+# S3 Bucket for Scholar Data
+module "scholar_data_bucket" {
+  source = "../../modules/s3_bucket"
+
+  bucket_name       = "${var.project_name}-scholar-data-${var.environment}"
+  environment       = var.environment
+  enable_versioning = true
+  lifecycle_days    = 90
+}
+
 # VPC and networking
 module "vpc" {
   source = "../../modules/vpc"
@@ -109,7 +119,7 @@ resource "aws_db_instance" "postgres" {
   max_allocated_storage = var.db_max_allocated_storage
   storage_type          = "gp3"
   engine                = "postgres"
-  engine_version        = "15.7"
+  engine_version        = "15.12"
   instance_class        = var.db_instance_class
   db_name               = var.db_name
   username              = var.db_username
@@ -223,6 +233,9 @@ module "api_app_runner" {
   port             = var.app_runner_port
   cpu              = var.app_runner_cpu
   memory           = var.app_runner_memory
+  
+  # S3 access policy for scholar data
+  additional_policy_arns = [module.scholar_data_bucket.s3_access_policy_arn]
 
   env_vars = {
     NODE_ENV    = "test"
@@ -243,6 +256,10 @@ module "api_app_runner" {
     # Email Configuration 
     RESEND_API_KEY = module.resend_api_key.secret_value
     EMAIL_FROM     = "noreply@ashinaga-uk.org"
+    
+    # S3 Configuration
+    S3_BUCKET_NAME = module.scholar_data_bucket.bucket_name
+    AWS_REGION     = var.aws_region
   }
 }
 

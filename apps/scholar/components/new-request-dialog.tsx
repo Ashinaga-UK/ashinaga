@@ -78,7 +78,7 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
       }
       return true;
     });
-    
+
     setSelectedFiles((prev) => [...prev, ...validFiles]);
     // Reset input
     if (fileInputRef.current) {
@@ -120,7 +120,7 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
         title: 'Request submitted',
         description: 'Your request has been submitted successfully. Staff will review it soon.',
       });
-      
+
       // Reset everything
       form.reset();
       setSelectedFiles([]);
@@ -263,7 +263,7 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
                   Add Files
                 </Button>
               </div>
-              
+
               <input
                 ref={fileInputRef}
                 type="file"
@@ -278,7 +278,10 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
                   {selectedFiles.map((file, index) => {
                     const progress = uploadProgress.find((p) => p.file === file);
                     return (
-                      <div key={index} className="flex items-center justify-between p-2 bg-white rounded border">
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-2 bg-white rounded border"
+                      >
                         <div className="flex items-center gap-2 flex-1">
                           <FileText className="h-4 w-4 text-gray-500" />
                           <div className="flex-1 min-w-0">
@@ -307,7 +310,7 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
                   })}
                 </div>
               )}
-              
+
               <p className="text-xs text-gray-500">
                 Accepted formats: PDF, Word, Excel, Text, Images. Max size: 10MB per file.
               </p>
@@ -331,7 +334,11 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
                 disabled={createRequest.isPending || isUploading}
                 className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
               >
-                {isUploading ? 'Uploading...' : createRequest.isPending ? 'Submitting...' : 'Submit Request'}
+                {isUploading
+                  ? 'Uploading...'
+                  : createRequest.isPending
+                    ? 'Submitting...'
+                    : 'Submit Request'}
               </Button>
             </DialogFooter>
           </form>

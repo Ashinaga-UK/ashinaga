@@ -86,20 +86,17 @@ export function useFileUpload() {
           });
 
           // Step 3: Confirm upload with backend
-          const { attachmentId } = await fetchAPI<{ attachmentId: string }>(
-            '/api/files/confirm',
-            {
-              method: 'POST',
-              body: JSON.stringify({
-                fileId,
-                fileKey,
-                requestId,
-                fileName: file.name,
-                fileSize: file.size.toString(),
-                mimeType: file.type,
-              }),
-            }
-          );
+          const { attachmentId } = await fetchAPI<{ attachmentId: string }>('/api/files/confirm', {
+            method: 'POST',
+            body: JSON.stringify({
+              fileId,
+              fileKey,
+              requestId,
+              fileName: file.name,
+              fileSize: file.size.toString(),
+              mimeType: file.type,
+            }),
+          });
 
           // Update progress to completed
           setUploadProgress((prev) =>
