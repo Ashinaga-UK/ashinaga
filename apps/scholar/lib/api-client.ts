@@ -92,6 +92,7 @@ export interface CreateRequestData {
   type: 'financial_support' | 'extenuating_circumstances' | 'academic_support';
   description: string;
   priority?: 'high' | 'medium' | 'low';
+  attachmentIds?: string[];
 }
 
 export async function createRequest(data: CreateRequestData): Promise<Request> {

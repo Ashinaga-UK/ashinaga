@@ -1,9 +1,11 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useState } from 'react';
+import { FileText, Paperclip, Trash2, Upload, X } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
+import { useFileUpload } from '../lib/hooks/use-file-upload';
 import { useCreateRequest } from '../lib/hooks/use-queries';
 import { Button } from './ui/button';
 import {
@@ -24,6 +26,7 @@ import {
   FormLabel,
   FormMessage,
 } from './ui/form';
+import { Progress } from './ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Textarea } from './ui/textarea';
 import { useToast } from './ui/use-toast';
@@ -46,8 +49,11 @@ interface NewRequestDialogProps {
 
 export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) {
   const [open, setOpen] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const createRequest = useCreateRequest();
+  const { uploadFiles, uploadProgress, isUploading, resetProgress } = useFileUpload();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -58,14 +64,67 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
     },
   });
 
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    const validFiles = files.filter((file) => {
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          title: 'File too large',
+          description: `${file.name} exceeds the 10MB limit`,
+          variant: 'destructive',
+        });
+        return false;
+      }
+      return true;
+    });
+    
+    setSelectedFiles((prev) => [...prev, ...validFiles]);
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const onSubmit = async (values: FormValues) => {
     try {
-      await createRequest.mutateAsync(values);
+      // First create the request
+      const newRequest = await createRequest.mutateAsync(values);
+
+      // Then upload files if any are selected
+      if (selectedFiles.length > 0 && newRequest.id) {
+        try {
+          await uploadFiles(selectedFiles, newRequest.id);
+        } catch (uploadError) {
+          // Files failed to upload but request was created
+          toast({
+            title: 'Request created',
+            description: 'Your request was submitted but some files failed to upload.',
+            variant: 'destructive',
+          });
+          // Still close dialog and reset since request was created
+          form.reset();
+          setSelectedFiles([]);
+          resetProgress();
+          setOpen(false);
+          onSuccess?.();
+          return;
+        }
+      }
+
       toast({
         title: 'Request submitted',
         description: 'Your request has been submitted successfully. Staff will review it soon.',
       });
+      
+      // Reset everything
       form.reset();
+      setSelectedFiles([]);
+      resetProgress();
       setOpen(false);
       onSuccess?.();
     } catch (error) {
@@ -75,6 +134,12 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
         variant: 'destructive',
       });
     }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
   const requestTypeOptions = [
@@ -183,12 +248,79 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
               )}
             />
 
+            {/* File Upload Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Attachments (Optional)</label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                >
+                  <Paperclip className="h-4 w-4 mr-2" />
+                  Add Files
+                </Button>
+              </div>
+              
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.xls,.xlsx"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+
+              {selectedFiles.length > 0 && (
+                <div className="space-y-2 p-3 bg-gray-50 rounded-lg">
+                  {selectedFiles.map((file, index) => {
+                    const progress = uploadProgress.find((p) => p.file === file);
+                    return (
+                      <div key={index} className="flex items-center justify-between p-2 bg-white rounded border">
+                        <div className="flex items-center gap-2 flex-1">
+                          <FileText className="h-4 w-4 text-gray-500" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{file.name}</p>
+                            <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+                            {progress && progress.status === 'uploading' && (
+                              <Progress value={progress.progress} className="h-1 mt-1" />
+                            )}
+                            {progress && progress.status === 'error' && (
+                              <p className="text-xs text-red-600 mt-1">{progress.error}</p>
+                            )}
+                          </div>
+                        </div>
+                        {!isUploading && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeFile(index)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              
+              <p className="text-xs text-gray-500">
+                Accepted formats: PDF, Word, Excel, Text, Images. Max size: 10MB per file.
+              </p>
+            </div>
+
             <DialogFooter>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => {
                   form.reset();
+                  setSelectedFiles([]);
+                  resetProgress();
                   setOpen(false);
                 }}
               >
@@ -196,10 +328,10 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
               </Button>
               <Button
                 type="submit"
-                disabled={createRequest.isPending}
+                disabled={createRequest.isPending || isUploading}
                 className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
               >
-                {createRequest.isPending ? 'Submitting...' : 'Submit Request'}
+                {isUploading ? 'Uploading...' : createRequest.isPending ? 'Submitting...' : 'Submit Request'}
               </Button>
             </DialogFooter>
           </form>
