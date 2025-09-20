@@ -82,6 +82,48 @@ export class AnnouncementsService {
     return announcementsWithDetails;
   }
 
+  async getAnnouncementsForScholar(userId: string) {
+    // First, get the scholar ID from the user ID
+    const scholar = await database
+      .select()
+      .from(scholars)
+      .where(eq(scholars.userId, userId))
+      .limit(1);
+
+    if (!scholar || scholar.length === 0) {
+      return []; // User is not a scholar, return empty array
+    }
+
+    const scholarId = scholar[0].id;
+
+    // Get announcements sent to this scholar
+    const result = await database
+      .select({
+        announcement: announcements,
+        creator: users,
+      })
+      .from(announcements)
+      .innerJoin(
+        announcementRecipients,
+        eq(announcements.id, announcementRecipients.announcementId)
+      )
+      .innerJoin(users, eq(announcements.createdBy, users.id))
+      .where(eq(announcementRecipients.scholarId, scholarId))
+      .orderBy(desc(announcements.createdAt));
+
+    // Format the announcements
+    const announcementsForScholar = result.map((row) => ({
+      id: row.announcement.id,
+      title: row.announcement.title,
+      content: row.announcement.content,
+      createdBy: row.creator.name,
+      createdAt: row.announcement.createdAt,
+      updatedAt: row.announcement.updatedAt,
+    }));
+
+    return announcementsForScholar;
+  }
+
   async getScholarsForFiltering(): Promise<ScholarFilterDto[]> {
     const result = await database
       .select({

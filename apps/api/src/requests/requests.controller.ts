@@ -1,7 +1,28 @@
-import { Body, Controller, Get, Param, Post, Query, ValidationPipe } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+  ValidationPipe,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import type { Request } from 'express';
+import { AuthGuard } from '../auth/auth.guard';
+import { CreateRequestDto, CreateRequestResponseDto } from './dto/create-request.dto';
 import { GetRequestsQueryDto, GetRequestsResponseDto } from './dto/get-requests.dto';
 import { RequestsService } from './requests.service';
+
+interface AuthenticatedRequest extends Request {
+  user?: {
+    id: string;
+    email?: string;
+    userType?: string;
+  };
+}
 
 @ApiTags('requests')
 @Controller('api/requests')
@@ -43,5 +64,28 @@ export class RequestsController {
       body.comment,
       body.reviewedBy
     );
+  }
+
+  @Get('my-requests')
+  @UseGuards(AuthGuard)
+  async getMyRequests(@Req() req: AuthenticatedRequest) {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new Error('User not authenticated');
+    }
+    return this.requestsService.getRequestsForScholar(userId);
+  }
+
+  @Post()
+  @UseGuards(AuthGuard)
+  async createRequest(
+    @Body() createRequestDto: CreateRequestDto,
+    @Req() req: AuthenticatedRequest
+  ): Promise<CreateRequestResponseDto> {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new Error('User not authenticated');
+    }
+    return this.requestsService.createRequest(createRequestDto, userId);
   }
 }

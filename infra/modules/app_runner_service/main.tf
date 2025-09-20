@@ -43,6 +43,12 @@ variable "security_group_ids" {
   default     = []
 }
 
+variable "additional_policy_arns" {
+  description = "Additional IAM policy ARNs to attach to the App Runner instance role"
+  type        = list(string)
+  default     = []
+}
+
 resource "aws_iam_role" "apprunner_access_role" {
   name = "${var.service_name}-apprunner-access-role"
 
@@ -63,6 +69,31 @@ resource "aws_iam_role" "apprunner_access_role" {
 resource "aws_iam_role_policy_attachment" "apprunner_access_role_policy" {
   role       = aws_iam_role.apprunner_access_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess"
+}
+
+# Instance role for App Runner service
+resource "aws_iam_role" "apprunner_instance_role" {
+  name = "${var.service_name}-apprunner-instance-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "tasks.apprunner.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+# Attach additional policies to the instance role
+resource "aws_iam_role_policy_attachment" "additional_policies" {
+  count      = length(var.additional_policy_arns)
+  role       = aws_iam_role.apprunner_instance_role.name
+  policy_arn = var.additional_policy_arns[count.index]
 }
 
 # VPC connector for private network access (optional)
@@ -99,8 +130,9 @@ resource "aws_apprunner_service" "this" {
   }
 
   instance_configuration {
-    cpu    = var.cpu
-    memory = var.memory
+    cpu               = var.cpu
+    memory            = var.memory
+    instance_role_arn = aws_iam_role.apprunner_instance_role.arn
   }
 
   # Network configuration for VPC connector (optional)

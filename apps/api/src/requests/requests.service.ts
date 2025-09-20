@@ -3,6 +3,7 @@ import { and, count, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 import { database } from '../db/connection';
 import { requestAttachments, requestAuditLogs, requests, scholars, users } from '../db/schema';
 import { EmailService } from '../email/email.service';
+import { CreateRequestDto, CreateRequestResponseDto } from './dto/create-request.dto';
 import {
   GetRequestsQueryDto,
   GetRequestsResponseDto,
@@ -224,6 +225,130 @@ export class RequestsService {
     }
 
     return stats;
+  }
+
+  async getRequestsForScholar(userId: string) {
+    // First, get the scholar ID from the user ID
+    const scholar = await database
+      .select()
+      .from(scholars)
+      .where(eq(scholars.userId, userId))
+      .limit(1);
+
+    if (!scholar || scholar.length === 0) {
+      return []; // User is not a scholar, return empty array
+    }
+
+    const scholarId = scholar[0].id;
+
+    // Get requests for this scholar with user info
+    const requestsWithScholars = await database
+      .select({
+        request: requests,
+        scholar: scholars,
+        user: users,
+      })
+      .from(requests)
+      .innerJoin(scholars, eq(requests.scholarId, scholars.id))
+      .innerJoin(users, eq(scholars.userId, users.id))
+      .where(eq(requests.scholarId, scholarId))
+      .orderBy(desc(requests.submittedDate));
+
+    // Get attachments and audit logs for all requests
+    const requestIds = requestsWithScholars.map((row) => row.request.id);
+    const attachments = await this.getAttachments(requestIds);
+    const auditLogs = await this.getAuditLogs(requestIds);
+
+    // Format the response
+    const data: RequestResponseDto[] = requestsWithScholars.map((row) => ({
+      id: row.request.id,
+      scholarId: row.request.scholarId,
+      scholarName: row.user.name,
+      scholarEmail: row.user.email,
+      type: row.request.type,
+      description: row.request.description,
+      priority: row.request.priority,
+      status: row.request.status,
+      submittedDate: row.request.submittedDate,
+      reviewedBy: row.request.reviewedBy,
+      reviewComment: row.request.reviewComment,
+      reviewDate: row.request.reviewDate,
+      attachments: attachments[row.request.id] || [],
+      auditLogs: auditLogs[row.request.id] || [],
+      createdAt: row.request.createdAt,
+      updatedAt: row.request.updatedAt,
+    }));
+
+    return data;
+  }
+
+  async createRequest(
+    createRequestDto: CreateRequestDto,
+    userId: string
+  ): Promise<CreateRequestResponseDto> {
+    // First, get the scholar ID from the user ID
+    const scholar = await database
+      .select()
+      .from(scholars)
+      .where(eq(scholars.userId, userId))
+      .limit(1);
+
+    if (!scholar || scholar.length === 0) {
+      throw new NotFoundException('Scholar not found for this user');
+    }
+
+    const scholarId = scholar[0].id;
+
+    // Create the request
+    const [newRequest] = await database
+      .insert(requests)
+      .values({
+        scholarId,
+        type: createRequestDto.type,
+        description: createRequestDto.description,
+        priority: createRequestDto.priority || 'medium',
+        status: 'pending',
+      })
+      .returning();
+
+    // Create audit log for request creation
+    await database.insert(requestAuditLogs).values({
+      requestId: newRequest.id,
+      action: 'created',
+      performedBy: userId,
+      newStatus: 'pending',
+      comment: 'Request submitted by scholar',
+    });
+
+    // Link attachments to the request if provided
+    if (createRequestDto.attachmentIds && createRequestDto.attachmentIds.length > 0) {
+      // Update attachments to link them to this request
+      await database
+        .update(requestAttachments)
+        .set({ requestId: newRequest.id })
+        .where(inArray(requestAttachments.id, createRequestDto.attachmentIds));
+
+      // Create audit log for attachments
+      await database.insert(requestAuditLogs).values({
+        requestId: newRequest.id,
+        action: 'attachment_added',
+        performedBy: userId,
+        comment: `${createRequestDto.attachmentIds.length} file(s) attached`,
+        metadata: JSON.stringify({ attachmentIds: createRequestDto.attachmentIds }),
+      });
+    }
+
+    return {
+      id: newRequest.id,
+      scholarId: newRequest.scholarId,
+      type: newRequest.type,
+      description: newRequest.description,
+      priority: newRequest.priority,
+      status: newRequest.status,
+      submittedDate: newRequest.submittedDate,
+      createdAt: newRequest.createdAt,
+      updatedAt: newRequest.updatedAt,
+    };
   }
 
   async updateRequestStatus(

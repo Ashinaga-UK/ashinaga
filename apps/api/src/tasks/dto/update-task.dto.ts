@@ -1,5 +1,5 @@
-import { IsString, IsOptional, IsEnum, IsDateString } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
 
 export class UpdateTaskDto {
   @ApiPropertyOptional({ description: 'The title of the task' })
