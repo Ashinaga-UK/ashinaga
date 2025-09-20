@@ -23,6 +23,18 @@ export class TasksController {
     return this.tasksService.createTask(createTaskDto, assignedBy);
   }
 
+  @Get('my-tasks')
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get tasks for the authenticated scholar' })
+  async getMyTasks(@Req() req: any) {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new Error('User not authenticated');
+    }
+    return this.tasksService.getTasksByUser(userId);
+  }
+
   @Get('scholar/:scholarId')
   @ApiOperation({ summary: 'Get all tasks for a specific scholar' })
   async getTasksByScholar(@Param('scholarId') scholarId: string) {

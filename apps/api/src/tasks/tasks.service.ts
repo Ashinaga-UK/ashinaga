@@ -29,6 +29,17 @@ export class TasksService {
     return task;
   }
 
+  async getTasksByUser(userId: string) {
+    // First get the scholar record for this user
+    const [scholar] = await this.db.select().from(scholars).where(eq(scholars.userId, userId));
+
+    if (!scholar) {
+      return [];
+    }
+
+    return this.getTasksByScholar(scholar.id);
+  }
+
   async getTasksByScholar(scholarId: string) {
     const results = await this.db
       .select({
