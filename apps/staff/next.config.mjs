@@ -6,10 +6,16 @@ const nextConfig = {
   // Strict mode for better development experience
   reactStrictMode: true,
 
-  // Disable static optimization to avoid build issues
-  experimental: {
-    workerThreads: false,
-    cpus: 1,
+  // Webpack configuration to address build issues
+  webpack: (config, { isServer }) => {
+    // Disable certain optimizations that might cause issues
+    if (!isServer) {
+      config.optimization = {
+        ...config.optimization,
+        minimize: false,
+      };
+    }
+    return config;
   },
 };
 

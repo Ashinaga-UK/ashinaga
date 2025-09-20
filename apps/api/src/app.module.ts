@@ -5,7 +5,9 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { EmailModule } from './email/email.module';
+import { FilesModule } from './files/files.module';
 import { HealthModule } from './health/health.module';
+import { InvitationsModule } from './invitations/invitations.module';
 import { RequestsModule } from './requests/requests.module';
 import { ScholarsModule } from './scholars/scholars.module';
 import { TasksModule } from './tasks/tasks.module';
@@ -24,6 +26,8 @@ import { UsersModule } from './users/users.module';
     AnnouncementsModule,
     TasksModule,
     UsersModule,
+    InvitationsModule,
+    FilesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

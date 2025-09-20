@@ -1,7 +1,7 @@
 'use client';
 
 import { AlertCircle, Eye, EyeOff, Lock, Mail } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import type React from 'react';
 import { useState } from 'react';
 import { signIn } from '../lib/auth-client';
@@ -12,6 +12,8 @@ import { Label } from './ui/label';
 
 export function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isAccessDenied = searchParams.get('accessDenied') === 'true';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -39,7 +41,8 @@ export function LoginPage() {
       }
 
       if (data) {
-        // Redirect to dashboard on successful login
+        // Login successful, redirect to dashboard
+        // The dashboard will handle checking if user is staff
         router.push('/');
         router.refresh();
       }
@@ -60,6 +63,38 @@ export function LoginPage() {
           <CardDescription>Sign in to your Ashinaga Staff Portal account</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Access Denied Message */}
+          {isAccessDenied && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                <AlertCircle className="h-4 w-4 text-orange-600" />
+                <p className="text-sm text-orange-600">This portal is for staff members only</p>
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-gray-600 mb-2">Looking for the Scholar Portal?</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    window.location.href =
+                      process.env.NEXT_PUBLIC_SCHOLAR_APP_URL || 'http://localhost:4002';
+                  }}
+                  className="w-full"
+                >
+                  Go to Scholar App →
+                </Button>
+              </div>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-gray-300" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-white px-2 text-gray-500">Or sign in as staff</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Microsoft Sign In - Hidden until OAuth credentials are configured */}
           {/* To enable Microsoft login:
               1. Register an app at https://portal.azure.com

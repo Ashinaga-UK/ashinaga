@@ -62,12 +62,28 @@ function StaffDashboardContent() {
   const [scholarStatsLoading, setScholarStatsLoading] = useState(true);
   const [requestStats, setRequestStats] = useState<RequestStats | null>(null);
   const [requestStatsLoading, setRequestStatsLoading] = useState(true);
-  // Use React Query for announcements
+
+  // Get user data from session
+  const user = session.data?.user;
+  const isLoading = session.isPending;
+  const isAuthenticated = !!user;
+  const isStaff = user?.userType === 'staff';
+
+  // Handle non-staff users
+  useEffect(() => {
+    if (isAuthenticated && !isStaff) {
+      // Sign out and redirect to login with access denied message
+      signOut();
+      router.push('/login?accessDenied=true');
+    }
+  }, [isAuthenticated, isStaff, router]);
+
+  // Use React Query for announcements (only when authenticated)
   const {
     data: announcements = [],
     isLoading: announcementsLoading,
     error: announcementsError,
-  } = useAnnouncements();
+  } = useAnnouncements(isAuthenticated);
 
   // Update state when URL changes
   useEffect(() => {
@@ -88,11 +104,6 @@ function StaffDashboardContent() {
     setSelectedScholarId(newScholarId);
     setScholarProfileTab((newScholarTab || 'goals') as 'goals' | 'tasks' | 'documents');
   }, [searchParams]);
-
-  // Get user data from session
-  const user = session.data?.user;
-  const isLoading = session.isPending;
-  const isAuthenticated = !!user;
 
   const _getPriorityColor = (priority: string) => {
     switch (priority) {

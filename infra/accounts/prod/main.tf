@@ -32,7 +32,7 @@ module "better_auth_secret" {
   secret_name_prefix = "${var.project_name}-auth-secret-${var.environment}-"
   description        = "Better Auth secret for ${var.project_name} ${var.environment} environment"
   environment        = var.environment
-  password_length    = 64  # Longer for auth secret
+  password_length    = 64 # Longer for auth secret
 
   additional_tags = {
     Purpose = "Authentication"
@@ -55,6 +55,16 @@ module "resend_api_key" {
   }
 }
 
+# S3 Bucket for Scholar Data
+module "scholar_data_bucket" {
+  source = "../../modules/s3_bucket"
+
+  bucket_name       = "${var.project_name}-scholar-data-${var.environment}"
+  environment       = var.environment
+  enable_versioning = true
+  lifecycle_days    = 90
+}
+
 # VPC and networking
 module "vpc" {
   source = "../../modules/vpc"
@@ -65,53 +75,10 @@ module "vpc" {
   }
 }
 
-# Security group for App Runner VPC connector - commented out since VPC connector is not used
-# resource "aws_security_group" "app_runner" {
-#   name_prefix = "${var.project_name}-apprunner-${var.environment}-"
-#   vpc_id      = module.vpc.vpc_id
-#
-#   # Allow outbound traffic to RDS
-#   egress {
-#     from_port   = 5432
-#     to_port     = 5432
-#     protocol    = "tcp"
-#     cidr_blocks = [module.vpc.vpc_cidr_block]
-#   }
-#
-#   # Allow outbound HTTPS for ECR and other AWS services
-#   egress {
-#     from_port   = 443
-#     to_port     = 443
-#     protocol    = "tcp"
-#     cidr_blocks = ["0.0.0.0/0"]
-#   }
-#
-#   # Allow outbound HTTP for package downloads
-#   egress {
-#     from_port   = 80
-#     to_port     = 80
-#     protocol    = "tcp"
-#     cidr_blocks = ["0.0.0.0/0"]
-#   }
-#
-#   tags = {
-#     Name        = "${var.project_name}-apprunner-${var.environment}"
-#     Environment = var.environment
-#   }
-# }
-
 # Security group for RDS - simple configuration
 resource "aws_security_group" "rds" {
   name_prefix = "${var.project_name}-rds-${var.environment}-"
   vpc_id      = module.vpc.vpc_id
-
-  # Allow inbound traffic from App Runner - commented out since VPC connector is not used
-  # ingress {
-  #   from_port       = 5432
-  #   to_port         = 5432
-  #   protocol        = "tcp"
-  #   security_groups = [aws_security_group.app_runner.id]
-  # }
 
   # Allow all ingress on 5432 - controlled by terraform.tfvars
   ingress {
@@ -265,12 +232,8 @@ module "api_app_runner" {
   port             = var.app_runner_port
   cpu              = var.app_runner_cpu
   memory           = var.app_runner_memory
-
-  # VPC connector removed - using public database access
-  # vpc_connector_name   = "${var.project_name}-vpc-connector-${var.environment}"
-  # vpc_id              = module.vpc.vpc_id
-  # subnet_ids          = module.vpc.subnet_ids
-  # security_group_ids  = [aws_security_group.app_runner.id]
+  # S3 access policy for scholar data
+  additional_policy_arns = [module.scholar_data_bucket.s3_access_policy_arn]
 
   env_vars = {
     NODE_ENV    = "production"
@@ -280,17 +243,21 @@ module "api_app_runner" {
     DB_NAME     = aws_db_instance.postgres.db_name
     DB_USER     = aws_db_instance.postgres.username
     DB_PASSWORD = module.db_password.secret_value
-    
+
     # Better Auth Configuration
     BETTER_AUTH_SECRET = module.better_auth_secret.secret_value
     BETTER_AUTH_URL    = "https://api.ashinaga-uk.org"
-    
+
     # CORS Configuration for production environment
     CORS_ORIGINS = "https://staff.ashinaga-uk.org,https://scholar.ashinaga-uk.org,http://localhost:4001,http://localhost:4002"
-    
+
     # Email Configuration (optional - will log to console if not set)
     RESEND_API_KEY = module.resend_api_key.secret_value
     EMAIL_FROM     = "noreply@ashinaga-uk.org"
+
+    # S3 Configuration
+    S3_BUCKET_NAME = module.scholar_data_bucket.bucket_name
+    AWS_REGION     = var.aws_region
   }
 }
 

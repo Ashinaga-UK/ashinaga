@@ -73,7 +73,7 @@ const authConfig = betterAuth({
       userType: {
         type: 'string',
         required: true,
-        defaultValue: 'scholar',
+        defaultValue: 'scholar', // Provide a default to avoid null
       },
     },
   },
@@ -137,8 +137,12 @@ const authConfig = betterAuth({
       },
     },
     signUp: {
-      before: async ({ email }) => {
-        console.log('SignUp Before Hook - Email:', email);
+      before: async ({ email, name }) => {
+        console.log('==========================================');
+        console.log('SignUp Before Hook - Email received:', email);
+        console.log('SignUp Before Hook - Name received:', name);
+        console.log('SignUp Before Hook - Email lowercase:', email.toLowerCase());
+        console.log('==========================================');
 
         // In test environment, allow any email to sign up without invitation
         if (process.env.NODE_ENV === 'test') {
@@ -147,8 +151,8 @@ const authConfig = betterAuth({
           const userType = email.endsWith('@ashinaga.org') ? 'staff' : 'scholar';
           return {
             email,
-            name: '',
-            userType,
+            name: name || '',
+            userType: userType,
             emailVerified: false,
           };
         }
@@ -156,20 +160,36 @@ const authConfig = betterAuth({
         try {
           // Check if user has a valid invitation (production behavior)
           const db = getDatabase();
-          console.log('Got database connection');
+          console.log('Got database connection, checking for invitation...');
+
+          // Always use lowercase for email comparison
+          const emailLower = email.toLowerCase();
+
+          console.log('Searching for invitation with email:', emailLower);
 
           const invitations = await db
             .select()
             .from(schema.invitations)
-            .where(eq(schema.invitations.email, email))
+            .where(eq(schema.invitations.email, emailLower))
             .limit(1);
 
-          console.log('Invitations found:', invitations.length);
+          console.log('Query result - Invitations found:', invitations.length);
 
           const invitation = invitations[0];
 
+          if (invitation) {
+            console.log('Invitation details:', {
+              id: invitation.id,
+              email: invitation.email,
+              status: invitation.status,
+              userType: invitation.userType,
+              expiresAt: invitation.expiresAt,
+            });
+          }
+
           if (!invitation) {
-            console.error('No invitation found for email:', email);
+            console.error('ERROR: No invitation found for email:', emailLower);
+            console.error('Make sure invitation was created with lowercase email');
             throw new Error('Invalid invitation. You must be invited to join this platform.');
           }
 
@@ -186,9 +206,10 @@ const authConfig = betterAuth({
           console.log('Invitation valid, returning user data');
 
           // Return user data with userType from invitation
+          console.log('Returning user data for signup with name:', name);
           return {
             email,
-            name: '',
+            name: name || '', // Use the name from signup form
             userType: invitation.userType,
             emailVerified: false,
           };
@@ -196,72 +217,6 @@ const authConfig = betterAuth({
           console.error('SignUp Before Hook Error:', error);
           throw error;
         }
-      },
-      after: async ({ user }) => {
-        // Mark invitation as accepted and link to user
-        const db = getDatabase();
-        await db
-          .update(schema.invitations)
-          .set({
-            status: 'accepted',
-            acceptedAt: new Date(),
-            userId: user.id,
-            updatedAt: new Date(),
-          })
-          .where(eq(schema.invitations.email, user.email));
-
-        // Create staff or scholar profile based on userType
-        if (user.userType === 'staff') {
-          await db.insert(schema.staff).values({
-            userId: user.id,
-            role: 'viewer', // Default role, admin can upgrade later
-            isActive: true,
-          });
-        } else if (user.userType === 'scholar') {
-          // Parse any pre-filled scholar data from invitation
-          const invitations = await db
-            .select()
-            .from(schema.invitations)
-            .where(eq(schema.invitations.email, user.email))
-            .limit(1);
-
-          const invitation = invitations[0];
-          let scholarData: {
-            program: string;
-            year: string;
-            university: string;
-            location?: string;
-            phone?: string;
-            bio?: string;
-          } = {
-            program: 'TBD',
-            year: 'TBD',
-            university: 'TBD',
-          };
-
-          if (invitation?.scholarData) {
-            try {
-              const parsed = JSON.parse(invitation.scholarData);
-              scholarData = { ...scholarData, ...parsed };
-            } catch (e) {
-              console.error('Failed to parse scholar data:', e);
-            }
-          }
-
-          await db.insert(schema.scholars).values({
-            userId: user.id,
-            status: 'active',
-            startDate: new Date(),
-            program: scholarData.program,
-            year: scholarData.year,
-            university: scholarData.university,
-            location: scholarData.location,
-            phone: scholarData.phone,
-            bio: scholarData.bio,
-          });
-        }
-
-        return user;
       },
     },
     signIn: {
@@ -325,9 +280,10 @@ const authConfig = betterAuth({
             console.log('[SignIn After] Parsed - jobTitle:', jobTitle, 'department:', department);
 
             // Add staff fields to user object
-            (user as any).phone = staffData.phone || null;
-            (user as any).department = department || null;
-            (user as any).role = jobTitle || null;
+            const userWithStaff = user as Record<string, unknown>;
+            userWithStaff.phone = staffData.phone || null;
+            userWithStaff.department = department || null;
+            userWithStaff.role = jobTitle || null;
 
             console.log('[SignIn After] Updated user object:', user);
           }

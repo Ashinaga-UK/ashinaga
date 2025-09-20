@@ -2,8 +2,9 @@
 
 import { CheckCircle, Download, Eye, Paperclip, X } from 'lucide-react';
 import { useState } from 'react';
-import { type Request, updateRequestStatus } from '../lib/api-client';
+import { getFileDownloadUrl, type Request, updateRequestStatus } from '../lib/api-client';
 import { useSession } from '../lib/auth-client';
+import { useToast } from './ui/use-toast';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
@@ -29,10 +30,12 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
   const [viewReviewOpen, setViewReviewOpen] = useState(false);
   const [approvalComment, setApprovalComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDownloading, setIsDownloading] = useState<string | null>(null);
 
   const session = useSession();
   const user = session.data?.user;
   const isLoading = session.isPending;
+  const { toast } = useToast();
   const isAuthenticated = !!user;
 
   // Debug logging
@@ -60,14 +63,29 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
     }
   };
 
-  const handleDownload = (url: string, filename: string) => {
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownload = async (attachmentId: string, filename: string) => {
+    try {
+      setIsDownloading(attachmentId);
+      const { downloadUrl } = await getFileDownloadUrl(attachmentId);
+
+      // Open the download URL in a new tab/window
+      // This will trigger the browser's download dialog
+      window.open(downloadUrl, '_blank');
+
+      toast({
+        title: 'Download started',
+        description: `Downloading ${filename}`,
+      });
+    } catch (error) {
+      console.error('Download failed:', error);
+      toast({
+        title: 'Download failed',
+        description: 'Failed to download the file. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDownloading(null);
+    }
   };
 
   const getPriorityColor = (priority: string) => {
@@ -133,7 +151,8 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
                         size="sm"
                         variant="ghost"
                         className="h-4 w-4 p-0"
-                        onClick={() => handleDownload(attachment.url, attachment.name)}
+                        disabled={isDownloading === attachment.id}
+                        onClick={() => handleDownload(attachment.id, attachment.name)}
                       >
                         <Download className="h-3 w-3" />
                       </Button>
@@ -213,7 +232,8 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
                                     size="sm"
                                     variant="ghost"
                                     className="h-4 w-4 p-0"
-                                    onClick={() => handleDownload(attachment.url, attachment.name)}
+                                    disabled={isDownloading === attachment.id}
+                                    onClick={() => handleDownload(attachment.id, attachment.name)}
                                   >
                                     <Download className="h-3 w-3" />
                                   </Button>

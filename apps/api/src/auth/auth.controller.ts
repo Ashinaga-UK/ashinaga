@@ -1,6 +1,9 @@
 import { All, Body, Controller, Get, Post, Req, Res } from '@nestjs/common';
-import { ApiOperation, ApiTags, ApiBody, ApiResponse } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import { eq } from 'drizzle-orm';
+import { getDatabase } from '../db/connection';
+import { invitations, staff, scholars, users } from '../db/schema';
 import { auth } from './auth.config';
 
 @ApiTags('auth')
@@ -37,7 +40,14 @@ export class AuthController {
     });
 
     try {
+      console.log('=== AUTH CONTROLLER ===');
+      console.log('URL:', url.toString());
+      console.log('Method:', req.method);
+      console.log('Body:', body);
+
       const authResponse = await auth.handler(request);
+
+      console.log('Better Auth Response Status:', authResponse?.status);
 
       if (authResponse) {
         res.status(authResponse.status || 200);
@@ -54,6 +64,8 @@ export class AuthController {
         }
 
         const responseBody = await authResponse.text();
+        console.log('Better Auth Response Body:', responseBody);
+
         if (responseBody) {
           return res.send(responseBody);
         }
@@ -115,7 +127,113 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Successfully signed up' })
   @ApiResponse({ status: 400, description: 'Email already exists' })
   async signUpWithEmail(@Req() req: FastifyRequest, @Res() res: FastifyReply) {
-    return this.forwardToAuth(req, res, '/sign-up/email');
+    const body = req.body as {
+      email: string;
+      password: string;
+      name: string;
+      invitationToken?: string;
+      // Scholar-specific fields
+      program?: string;
+      year?: string;
+      university?: string;
+      location?: string;
+      phone?: string;
+      bio?: string;
+    };
+    const emailLower = body.email.toLowerCase();
+
+    // First, check the invitation to get userType
+    const db = getDatabase();
+    const invitation = await db
+      .select()
+      .from(invitations)
+      .where(eq(invitations.email, emailLower))
+      .limit(1);
+
+    if (!invitation[0]) {
+      return res.status(400).send({ error: 'No invitation found for this email' });
+    }
+
+    const userType = invitation[0].userType;
+
+    // Capture the response body
+    let responseBody: string | undefined;
+    const originalSend = res.send.bind(res);
+    res.send = function (data: any) {
+      responseBody = typeof data === 'string' ? data : JSON.stringify(data);
+      return originalSend(data);
+    };
+
+    // Forward to Better Auth to create the user
+    await this.forwardToAuth(req, res, '/sign-up/email');
+
+    // If signup was successful, handle our post-signup logic
+    if (res.statusCode === 200 && responseBody) {
+      try {
+        // Parse the response to get the user ID
+        const responseData = JSON.parse(responseBody);
+        const userId = responseData.user?.id;
+
+        if (userId) {
+          console.log('User created with ID:', userId, 'Type:', userType);
+
+          // Update the user's userType field
+          await db.update(users).set({ userType: userType }).where(eq(users.id, userId));
+
+          console.log('User type updated to:', userType);
+
+          // Update invitation status
+          await db
+            .update(invitations)
+            .set({
+              status: 'accepted',
+              acceptedAt: new Date(),
+              userId: userId,
+              updatedAt: new Date(),
+            })
+            .where(eq(invitations.email, emailLower));
+
+          console.log('Invitation marked as accepted');
+
+          // Create staff or scholar profile
+          if (userType === 'staff') {
+            await db.insert(staff).values({
+              userId: userId,
+              role: 'viewer',
+              isActive: true,
+            });
+            console.log('Staff profile created');
+          } else if (userType === 'scholar') {
+            // Use the form data provided during signup, fallback to defaults if not provided
+            // The name is already handled by Better Auth in the user record
+            await db.insert(scholars).values({
+              userId: userId,
+              status: 'active',
+              startDate: new Date(),
+              program: body.program || 'TBD',
+              year: body.year || 'TBD',
+              university: body.university || 'TBD',
+              location: body.location || null,
+              phone: body.phone || null,
+              bio: body.bio || null,
+            });
+            console.log('Scholar profile created with data:', {
+              program: body.program,
+              year: body.year,
+              university: body.university,
+              location: body.location,
+              phone: body.phone,
+              bio: body.bio,
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error in post-signup logic:', error);
+      }
+    }
+
+    // Response already sent by forwardToAuth
+    return res;
   }
 
   @Get('session')
