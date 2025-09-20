@@ -21,7 +21,7 @@ interface TaskCompletionDialogProps {
   task: Task;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onComplete: (taskId: string, responseText: string, attachmentIds: string[]) => Promise<void>;
+  onComplete: (taskId: string, responseText: string, attachmentIds: any[]) => Promise<void>;
 }
 
 export function TaskCompletionDialog({
@@ -32,7 +32,7 @@ export function TaskCompletionDialog({
 }: TaskCompletionDialogProps) {
   const [responseText, setResponseText] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [uploadedFileIds, setUploadedFileIds] = useState<string[]>([]);
+  const [uploadedFileData, setUploadedFileData] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,7 +56,7 @@ export function TaskCompletionDialog({
     setError(null);
 
     // Validation
-    if (requiresDocument && selectedFiles.length === 0 && uploadedFileIds.length === 0) {
+    if (requiresDocument && selectedFiles.length === 0 && uploadedFileData.length === 0) {
       setError('Please upload at least one document for this task');
       return;
     }
@@ -70,20 +70,21 @@ export function TaskCompletionDialog({
       setIsSubmitting(true);
 
       // Upload files if any
-      let fileIds = [...uploadedFileIds];
+      let fileData = [...uploadedFileData];
       if (selectedFiles.length > 0) {
         const uploadedFiles = await uploadFiles(selectedFiles, task.id);
-        fileIds = [...fileIds, ...uploadedFiles.map((f) => f.attachmentId)];
-        setUploadedFileIds(fileIds);
+        // Pass the complete file metadata including S3 keys
+        fileData = [...fileData, ...uploadedFiles];
+        setUploadedFileData(fileData);
       }
 
-      // Complete the task
-      await onComplete(task.id, responseText, fileIds);
+      // Complete the task with full file metadata
+      await onComplete(task.id, responseText, fileData);
 
       // Reset form
       setResponseText('');
       setSelectedFiles([]);
-      setUploadedFileIds([]);
+      setUploadedFileData([]);
       onOpenChange(false);
     } catch (err) {
       setError('Failed to complete task. Please try again.');

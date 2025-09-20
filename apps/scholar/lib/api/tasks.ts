@@ -37,7 +37,7 @@ export async function updateTaskStatus(
 export async function completeTask(
   taskId: string,
   responseText: string,
-  attachmentIds: string[]
+  attachmentIds: any[]
 ): Promise<any> {
   return fetchAPI(`/api/tasks/${taskId}/complete`, {
     method: 'POST',

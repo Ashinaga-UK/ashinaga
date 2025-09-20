@@ -5,7 +5,7 @@ import { scholars } from '../db/schema/scholars';
 import { taskAttachments, taskResponses } from '../db/schema/task-responses';
 import { tasks } from '../db/schema/tasks';
 import { users } from '../db/schema/users';
-import { CompleteTaskDto } from './dto/complete-task.dto';
+import { AttachmentDto, CompleteTaskDto } from './dto/complete-task.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 
@@ -163,28 +163,45 @@ export class TasksService {
       }
 
       // Handle attachments if provided
-      let attachmentIds = completeTaskDto.attachmentIds;
+      let attachmentData = completeTaskDto.attachmentIds;
 
-      // Handle case where attachmentIds might be sent as an object
-      if (attachmentIds && typeof attachmentIds === 'object' && !Array.isArray(attachmentIds)) {
-        attachmentIds = Object.values(attachmentIds);
-      }
-
-      if (attachmentIds && attachmentIds.length > 0) {
+      // The frontend sends an array of attachment objects with metadata
+      if (attachmentData && attachmentData.length > 0) {
         // Delete existing attachments for this response
         await tx.delete(taskAttachments).where(eq(taskAttachments.taskResponseId, responseId));
 
-        // For task attachments, we store the file IDs and S3 keys
-        // The files were already uploaded to S3 during the upload process
-        const attachments = attachmentIds.map((fileId: string) => ({
-          taskResponseId: responseId,
-          fileName: `attachment-${fileId}`, // Filename will be updated by frontend if needed
-          fileUrl: fileId, // Store the file ID, we can get the S3 key later if needed
-          fileSize: '0', // Size already tracked in S3
-          mimeType: 'application/octet-stream', // Type already tracked in S3
-        }));
+        // Import uuid for generating IDs
+        const { v4: uuidv4 } = await import('uuid');
 
-        await tx.insert(taskAttachments).values(attachments);
+        // Create task attachment records with the S3 keys
+        const attachments = attachmentData.map((attachment: string | AttachmentDto) => {
+          // Handle both string IDs and objects with metadata
+          if (typeof attachment === 'string') {
+            // Legacy format - just the ID
+            return {
+              id: uuidv4(), // Generate a unique ID for the attachment
+              taskResponseId: responseId,
+              fileName: `attachment-${attachment}`,
+              fileUrl: attachment, // This should be the S3 key
+              fileSize: '0',
+              mimeType: 'application/octet-stream',
+            };
+          } else {
+            // New format with metadata
+            return {
+              id: attachment.attachmentId || uuidv4(), // Use the attachment ID or generate one
+              taskResponseId: responseId,
+              fileName: attachment.fileName || `attachment-${attachment.attachmentId}`,
+              fileUrl: attachment.fileKey || attachment.attachmentId, // Use S3 key if available
+              fileSize: attachment.fileSize || '0',
+              mimeType: attachment.mimeType || 'application/octet-stream',
+            };
+          }
+        });
+
+        if (attachments.length > 0) {
+          await tx.insert(taskAttachments).values(attachments);
+        }
       }
 
       return {

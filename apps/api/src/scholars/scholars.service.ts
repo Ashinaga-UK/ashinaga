@@ -301,12 +301,31 @@ export class ScholarsService {
       .where(eq(goals.scholarId, id))
       .orderBy(desc(goals.createdAt));
 
+    // Import task response tables
+    const { taskResponses, taskAttachments } = await import('../db/schema/task-responses');
+
     // Get detailed tasks
     const tasksData = await database
       .select()
       .from(tasks)
       .where(eq(tasks.scholarId, id))
       .orderBy(desc(tasks.createdAt));
+
+    // Get task responses and attachments
+    const taskIds = tasksData.map((t) => t.id);
+    const responsesData =
+      taskIds.length > 0
+        ? await database.select().from(taskResponses).where(inArray(taskResponses.taskId, taskIds))
+        : [];
+
+    const responseIds = responsesData.map((r) => r.id);
+    const attachmentsData =
+      responseIds.length > 0
+        ? await database
+            .select()
+            .from(taskAttachments)
+            .where(inArray(taskAttachments.taskResponseId, responseIds))
+        : [];
 
     // Get documents
     const documentsData = await database
@@ -329,20 +348,46 @@ export class ScholarsService {
       updatedAt: goal.updatedAt,
     }));
 
-    // Transform tasks data
-    const tasksList: TaskDto[] = tasksData.map((task) => ({
-      id: task.id,
-      title: task.title,
-      description: task.description,
-      type: task.type,
-      priority: task.priority,
-      dueDate: task.dueDate,
-      status: task.status,
-      assignedBy: task.assignedBy,
-      completedAt: task.completedAt,
-      createdAt: task.createdAt,
-      updatedAt: task.updatedAt,
-    }));
+    // Create maps for easy lookup
+    const responseMap = new Map(responsesData.map((r) => [r.taskId, r]));
+    const attachmentMap = new Map<string, any[]>();
+    attachmentsData.forEach((a) => {
+      const existing = attachmentMap.get(a.taskResponseId) || [];
+      attachmentMap.set(a.taskResponseId, [...existing, a]);
+    });
+
+    // Transform tasks data with responses and attachments
+    const tasksList: TaskDto[] = tasksData.map((task) => {
+      const response = responseMap.get(task.id);
+      const attachments = response ? attachmentMap.get(response.id) || [] : [];
+
+      return {
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        type: task.type,
+        priority: task.priority,
+        dueDate: task.dueDate,
+        status: task.status,
+        assignedBy: task.assignedBy,
+        completedAt: task.completedAt,
+        createdAt: task.createdAt,
+        updatedAt: task.updatedAt,
+        response: response
+          ? {
+              responseText: response.responseText,
+              submittedAt: response.submittedAt,
+              attachments: attachments.map((a) => ({
+                id: a.id,
+                fileName: a.fileName,
+                fileUrl: a.fileUrl,
+                fileSize: a.fileSize,
+                mimeType: a.mimeType,
+              })),
+            }
+          : undefined,
+      };
+    });
 
     // Transform documents data
     const documentsList: DocumentDto[] = documentsData.map((doc) => ({

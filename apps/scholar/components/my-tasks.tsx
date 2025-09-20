@@ -73,10 +73,10 @@ export function MyTasks() {
   const handleTaskComplete = async (
     taskId: string,
     responseText: string,
-    attachmentIds: string[]
+    attachmentData: any[]
   ) => {
     try {
-      await completeTask(taskId, responseText, attachmentIds);
+      await completeTask(taskId, responseText, attachmentData);
       // Update the local state
       setTasks((prevTasks) =>
         prevTasks.map((task) =>

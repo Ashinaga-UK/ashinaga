@@ -1,4 +1,12 @@
-import { IsArray, IsOptional, IsString, IsUUID, ValidateIf } from 'class-validator';
+import { IsArray, IsOptional, IsString, ValidateIf } from 'class-validator';
+
+export class AttachmentDto {
+  attachmentId: string;
+  fileName?: string;
+  fileSize?: string;
+  mimeType?: string;
+  fileKey?: string;
+}
 
 export class CompleteTaskDto {
   @IsOptional()
@@ -7,6 +15,5 @@ export class CompleteTaskDto {
 
   @ValidateIf((o) => o.attachmentIds !== undefined)
   @IsArray()
-  @IsUUID('4', { each: true })
-  attachmentIds?: string[]; // Array of file IDs from the file upload system
+  attachmentIds?: (string | AttachmentDto)[]; // Array of file IDs or attachment objects
 }

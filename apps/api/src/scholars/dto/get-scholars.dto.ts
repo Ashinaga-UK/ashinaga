@@ -72,6 +72,20 @@ export class GoalDto {
   updatedAt: Date;
 }
 
+export class TaskAttachmentDto {
+  id: string;
+  fileName: string;
+  fileUrl: string;
+  fileSize: string;
+  mimeType: string;
+}
+
+export class TaskResponseDto {
+  responseText?: string | null;
+  submittedAt: Date;
+  attachments: TaskAttachmentDto[];
+}
+
 export class TaskDto {
   id: string;
   title: string;
@@ -90,6 +104,7 @@ export class TaskDto {
   completedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  response?: TaskResponseDto;
 }
 
 export class DocumentDto {
