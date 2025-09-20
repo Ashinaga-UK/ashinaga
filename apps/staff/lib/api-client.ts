@@ -205,6 +205,11 @@ export async function getScholarProfile(id: string): Promise<ScholarProfile> {
   return fetchAPI<ScholarProfile>(`/api/scholars/${id}/profile`);
 }
 
+// File download function
+export async function getFileDownloadUrl(attachmentId: string): Promise<{ downloadUrl: string }> {
+  return fetchAPI<{ downloadUrl: string }>(`/api/files/download/${attachmentId}`);
+}
+
 // Request interfaces
 export interface RequestAttachment {
   id: string;

@@ -181,25 +181,32 @@ export class FilesService {
       throw new NotFoundException('Attachment not found');
     }
 
-    // Verify the user has access to this attachment
-    const scholar = await database
-      .select()
-      .from(scholars)
-      .where(eq(scholars.userId, userId))
-      .limit(1);
-
-    if (!scholar || scholar.length === 0) {
-      throw new NotFoundException('Scholar not found for this user');
-    }
-
-    // Check if this is the scholar's own request or if the user is staff
+    // Get the user to check permissions
     const user = await database.select().from(users).where(eq(users.id, userId)).limit(1);
 
-    const isOwner = attachment[0].request.scholarId === scholar[0].id;
-    const isStaff = user[0]?.userType === 'staff';
+    if (!user || user.length === 0) {
+      throw new NotFoundException('User not found');
+    }
 
-    if (!isOwner && !isStaff) {
-      throw new Error('You do not have permission to access this file');
+    const isStaff = user[0].userType === 'staff';
+
+    // Staff can download any attachment
+    if (!isStaff) {
+      // For non-staff (scholars), verify they own the request
+      const scholar = await database
+        .select()
+        .from(scholars)
+        .where(eq(scholars.userId, userId))
+        .limit(1);
+
+      if (!scholar || scholar.length === 0) {
+        throw new NotFoundException('Scholar not found for this user');
+      }
+
+      const isOwner = attachment[0].request.scholarId === scholar[0].id;
+      if (!isOwner) {
+        throw new Error('You do not have permission to access this file');
+      }
     }
 
     // Generate pre-signed URL for download
