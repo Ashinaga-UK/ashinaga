@@ -116,6 +116,9 @@ export class FilesService {
     fileSize: string,
     mimeType: string
   ): Promise<{ attachmentId: string }> {
+    // Import tasks from schema
+    const { tasks } = await import('../db/schema/tasks');
+
     // Verify the request belongs to the user's scholar profile
     const scholar = await database
       .select()
@@ -129,37 +132,49 @@ export class FilesService {
 
     const scholarId = scholar[0].id;
 
-    // Verify the request exists and belongs to this scholar
-    const request = await database
-      .select()
-      .from(requests)
-      .where(eq(requests.id, requestId))
-      .limit(1);
+    // Check if this is a task upload by trying to find a task with this ID
+    const task = await database.select().from(tasks).where(eq(tasks.id, requestId)).limit(1);
 
-    if (!request || request.length === 0 || request[0].scholarId !== scholarId) {
-      throw new NotFoundException('Request not found or does not belong to this scholar');
+    if (task && task.length > 0) {
+      // This is a task upload, verify it belongs to this scholar
+      if (task[0].scholarId !== scholarId) {
+        throw new NotFoundException('Task not found or does not belong to this scholar');
+      }
+
+      // For tasks, we'll store the file but return it as an attachment ID
+      // The task completion endpoint will handle linking it to the task response
+      return {
+        attachmentId: fileId,
+      };
+    } else {
+      // This is a request upload, proceed with original logic
+      const request = await database
+        .select()
+        .from(requests)
+        .where(eq(requests.id, requestId))
+        .limit(1);
+
+      if (!request || request.length === 0 || request[0].scholarId !== scholarId) {
+        throw new NotFoundException('Request not found or does not belong to this scholar');
+      }
+
+      // Store attachment metadata in database for requests
+      const [attachment] = await database
+        .insert(requestAttachments)
+        .values({
+          id: fileId,
+          requestId,
+          name: fileName,
+          size: fileSize,
+          url: fileKey, // Store the S3 key
+          mimeType,
+        })
+        .returning();
+
+      return {
+        attachmentId: attachment.id,
+      };
     }
-
-    // In production, you might want to move files from temp to permanent location
-    // For now, we'll just use the temp location as the permanent one
-    // This could be done with S3 lifecycle policies or a background job
-
-    // Store attachment metadata in database
-    const [attachment] = await database
-      .insert(requestAttachments)
-      .values({
-        id: fileId,
-        requestId,
-        name: fileName,
-        size: fileSize,
-        url: fileKey, // Store the S3 key
-        mimeType,
-      })
-      .returning();
-
-    return {
-      attachmentId: attachment.id,
-    };
   }
 
   /**

@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Patch, Post, Put, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/auth.guard';
+import { CompleteTaskDto } from './dto/complete-task.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { TasksService } from './tasks.service';
@@ -48,6 +49,22 @@ export class TasksController {
     @Body('status') status: 'pending' | 'in_progress' | 'completed'
   ) {
     return this.tasksService.updateTaskStatus(id, status);
+  }
+
+  @Post(':id/complete')
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Complete a task with response and attachments' })
+  async completeTask(
+    @Param('id') id: string,
+    @Body() completeTaskDto: CompleteTaskDto,
+    @Req() req: any
+  ) {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new Error('User not authenticated');
+    }
+    return this.tasksService.completeTask(id, completeTaskDto, userId);
   }
 
   @Put(':id')

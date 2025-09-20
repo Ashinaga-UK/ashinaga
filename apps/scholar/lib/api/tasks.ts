@@ -33,3 +33,14 @@ export async function updateTaskStatus(
     body: JSON.stringify({ status }),
   });
 }
+
+export async function completeTask(
+  taskId: string,
+  responseText: string,
+  attachmentIds: string[]
+): Promise<any> {
+  return fetchAPI(`/api/tasks/${taskId}/complete`, {
+    method: 'POST',
+    body: JSON.stringify({ responseText, attachmentIds }),
+  });
+}
