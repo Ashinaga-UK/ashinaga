@@ -35,6 +35,7 @@ export function useFileUpload() {
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
+        if (!file) continue; // Skip if file is undefined
 
         // Update status to uploading
         setUploadProgress((prev) =>
