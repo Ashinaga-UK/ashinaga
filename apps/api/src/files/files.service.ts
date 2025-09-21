@@ -115,7 +115,16 @@ export class FilesService {
     fileName: string,
     fileSize: string,
     mimeType: string
-  ): Promise<{ attachmentId: string }> {
+  ): Promise<{
+    attachmentId: string;
+    fileKey?: string;
+    fileName?: string;
+    fileSize?: string;
+    mimeType?: string;
+  }> {
+    // Import tasks from schema
+    const { tasks } = await import('../db/schema/tasks');
+
     // Verify the request belongs to the user's scholar profile
     const scholar = await database
       .select()
@@ -129,57 +138,62 @@ export class FilesService {
 
     const scholarId = scholar[0].id;
 
-    // Verify the request exists and belongs to this scholar
-    const request = await database
-      .select()
-      .from(requests)
-      .where(eq(requests.id, requestId))
-      .limit(1);
+    // Check if this is a task upload by trying to find a task with this ID
+    const task = await database.select().from(tasks).where(eq(tasks.id, requestId)).limit(1);
 
-    if (!request || request.length === 0 || request[0].scholarId !== scholarId) {
-      throw new NotFoundException('Request not found or does not belong to this scholar');
-    }
+    if (task && task.length > 0) {
+      // This is a task upload, verify it belongs to this scholar
+      if (task[0].scholarId !== scholarId) {
+        throw new NotFoundException('Task not found or does not belong to this scholar');
+      }
 
-    // In production, you might want to move files from temp to permanent location
-    // For now, we'll just use the temp location as the permanent one
-    // This could be done with S3 lifecycle policies or a background job
-
-    // Store attachment metadata in database
-    const [attachment] = await database
-      .insert(requestAttachments)
-      .values({
-        id: fileId,
-        requestId,
-        name: fileName,
-        size: fileSize,
-        url: fileKey, // Store the S3 key
+      // For tasks, we return the file info that will be stored when the task is completed
+      // The actual storage in task_attachments happens in the task completion endpoint
+      return {
+        attachmentId: fileId,
+        fileKey, // Return the S3 key so it can be stored in task_attachments
+        fileName,
+        fileSize,
         mimeType,
-      })
-      .returning();
+      };
+    } else {
+      // This is a request upload, proceed with original logic
+      const request = await database
+        .select()
+        .from(requests)
+        .where(eq(requests.id, requestId))
+        .limit(1);
 
-    return {
-      attachmentId: attachment.id,
-    };
+      if (!request || request.length === 0 || request[0].scholarId !== scholarId) {
+        throw new NotFoundException('Request not found or does not belong to this scholar');
+      }
+
+      // Store attachment metadata in database for requests
+      const [attachment] = await database
+        .insert(requestAttachments)
+        .values({
+          id: fileId,
+          requestId,
+          name: fileName,
+          size: fileSize,
+          url: fileKey, // Store the S3 key
+          mimeType,
+        })
+        .returning();
+
+      return {
+        attachmentId: attachment.id,
+      };
+    }
   }
 
   /**
    * Generate a pre-signed URL for downloading a file
    */
   async getDownloadUrl(userId: string, attachmentId: string): Promise<{ downloadUrl: string }> {
-    // Get the attachment
-    const attachment = await database
-      .select({
-        attachment: requestAttachments,
-        request: requests,
-      })
-      .from(requestAttachments)
-      .innerJoin(requests, eq(requestAttachments.requestId, requests.id))
-      .where(eq(requestAttachments.id, attachmentId))
-      .limit(1);
-
-    if (!attachment || attachment.length === 0) {
-      throw new NotFoundException('Attachment not found');
-    }
+    // Import task-related tables
+    const { tasks } = await import('../db/schema/tasks');
+    const { taskAttachments, taskResponses } = await import('../db/schema/task-responses');
 
     // Get the user to check permissions
     const user = await database.select().from(users).where(eq(users.id, userId)).limit(1);
@@ -189,30 +203,104 @@ export class FilesService {
     }
 
     const isStaff = user[0].userType === 'staff';
+    let fileKey: string | null = null;
 
-    // Staff can download any attachment
-    if (!isStaff) {
-      // For non-staff (scholars), verify they own the request
-      const scholar = await database
+    // First try to find in request attachments
+    const requestAttachment = await database
+      .select({
+        attachment: requestAttachments,
+        request: requests,
+      })
+      .from(requestAttachments)
+      .innerJoin(requests, eq(requestAttachments.requestId, requests.id))
+      .where(eq(requestAttachments.id, attachmentId))
+      .limit(1);
+
+    if (requestAttachment && requestAttachment.length > 0) {
+      // This is a request attachment
+      fileKey = requestAttachment[0].attachment.url;
+
+      // Staff can download any attachment
+      if (!isStaff) {
+        // For non-staff (scholars), verify they own the request
+        const scholar = await database
+          .select()
+          .from(scholars)
+          .where(eq(scholars.userId, userId))
+          .limit(1);
+
+        if (!scholar || scholar.length === 0) {
+          throw new NotFoundException('Scholar not found for this user');
+        }
+
+        const isOwner = requestAttachment[0].request.scholarId === scholar[0].id;
+        if (!isOwner) {
+          throw new Error('You do not have permission to access this file');
+        }
+      }
+    } else {
+      // Try to find in task attachments
+      const taskAttachment = await database
         .select()
-        .from(scholars)
-        .where(eq(scholars.userId, userId))
+        .from(taskAttachments)
+        .where(eq(taskAttachments.id, attachmentId))
         .limit(1);
 
-      if (!scholar || scholar.length === 0) {
-        throw new NotFoundException('Scholar not found for this user');
+      if (!taskAttachment || taskAttachment.length === 0) {
+        throw new NotFoundException('Attachment not found');
       }
 
-      const isOwner = attachment[0].request.scholarId === scholar[0].id;
-      if (!isOwner) {
-        throw new Error('You do not have permission to access this file');
+      // The S3 key is stored in the fileUrl field
+      fileKey = taskAttachment[0].fileUrl;
+
+      // Get the associated task to check permissions
+      const taskResponse = await database
+        .select()
+        .from(taskResponses)
+        .where(eq(taskResponses.id, taskAttachment[0].taskResponseId))
+        .limit(1);
+
+      if (!taskResponse || taskResponse.length === 0) {
+        throw new NotFoundException('Task response not found');
       }
+
+      const task = await database
+        .select()
+        .from(tasks)
+        .where(eq(tasks.id, taskResponse[0].taskId))
+        .limit(1);
+
+      if (!task || task.length === 0) {
+        throw new NotFoundException('Task not found');
+      }
+
+      // Staff can download any task attachment
+      if (!isStaff) {
+        // For scholars, verify they own the task
+        const scholar = await database
+          .select()
+          .from(scholars)
+          .where(eq(scholars.userId, userId))
+          .limit(1);
+
+        if (!scholar || scholar.length === 0) {
+          throw new NotFoundException('Scholar not found for this user');
+        }
+
+        if (task[0].scholarId !== scholar[0].id) {
+          throw new Error('You do not have permission to access this file');
+        }
+      }
+    }
+
+    if (!fileKey) {
+      throw new NotFoundException('File key not found');
     }
 
     // Generate pre-signed URL for download
     const command = new GetObjectCommand({
       Bucket: this.bucketName,
-      Key: attachment[0].attachment.url, // The S3 key is stored in the url field
+      Key: fileKey,
     });
 
     const downloadUrl = await getSignedUrl(this.s3Client, command, {

@@ -30,6 +30,7 @@ import { signOut, useSession } from '../../lib/auth-client';
 import { useMyAnnouncements, useMyRequests } from '../../lib/hooks/use-queries';
 import { RequestCard } from '../../components/request-card';
 import { NewRequestDialog } from '../../components/new-request-dialog';
+import { MyTasks } from '../../components/my-tasks';
 
 export default function ScholarDashboard() {
   const router = useRouter();
@@ -77,7 +78,7 @@ export default function ScholarDashboard() {
   const renderContent = () => {
     switch (activeTab) {
       case 'overview':
-        return <OverviewContent session={session} />;
+        return <OverviewContent session={session} onTabChange={setActiveTab} />;
       case 'goals':
         return <GoalsContent />;
       case 'tasks':
@@ -87,7 +88,7 @@ export default function ScholarDashboard() {
       case 'announcements':
         return <AnnouncementsContent />;
       default:
-        return <OverviewContent session={session} />;
+        return <OverviewContent session={session} onTabChange={setActiveTab} />;
     }
   };
 
@@ -98,7 +99,13 @@ export default function ScholarDashboard() {
   );
 }
 
-function OverviewContent({ session }: { session: any }) {
+function OverviewContent({
+  session,
+  onTabChange,
+}: {
+  session: any;
+  onTabChange: (tab: string) => void;
+}) {
   const { data: requests } = useMyRequests();
   const { data: announcements } = useMyAnnouncements();
 
@@ -296,6 +303,7 @@ function OverviewContent({ session }: { session: any }) {
             <Button
               variant="outline"
               className="h-auto flex-col py-4 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent"
+              onClick={() => onTabChange('tasks')}
             >
               <CheckSquare className="h-5 w-5 mb-2" />
               <span className="text-sm">View My Tasks</span>
@@ -349,11 +357,7 @@ function TasksContent() {
   return (
     <div className="p-6">
       <h2 className="text-2xl font-bold mb-4 text-gray-900">My Tasks</h2>
-      <Card className="border-ashinaga-teal-100">
-        <CardContent className="pt-6">
-          <p className="text-gray-600">Your assigned tasks will appear here.</p>
-        </CardContent>
-      </Card>
+      <MyTasks />
     </div>
   );
 }

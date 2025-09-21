@@ -12,7 +12,7 @@ import {
   Phone,
   Plus,
 } from 'lucide-react';
-import type { CreateTaskData } from '../lib/api-client';
+import { getFileDownloadUrl, type CreateTaskData } from '../lib/api-client';
 import { useScholarProfile } from '../lib/hooks/use-queries';
 import { TaskAssignment } from './task-assignment';
 import { Alert, AlertDescription } from './ui/alert';
@@ -258,6 +258,42 @@ export function ScholarProfilePage({
                             Status: {task.status.replace('_', ' ')}
                           </span>
                         </div>
+                        {/* Show task response and attachments if task is completed */}
+                        {task.status === 'completed' && task.response && (
+                          <div className="mt-3 pt-3 border-t">
+                            {task.response.responseText && (
+                              <div className="mb-2">
+                                <span className="text-sm font-medium">Response: </span>
+                                <span className="text-sm text-gray-600">{task.response.responseText}</span>
+                              </div>
+                            )}
+                            {task.response.attachments && task.response.attachments.length > 0 && (
+                              <div>
+                                <span className="text-sm font-medium">Attachments: </span>
+                                <div className="flex flex-wrap gap-2 mt-1">
+                                  {task.response.attachments.map((attachment) => (
+                                    <Badge
+                                      key={attachment.id}
+                                      variant="secondary"
+                                      className="cursor-pointer hover:bg-gray-200"
+                                      onClick={async () => {
+                                        try {
+                                          // Use the attachment ID to get the download URL
+                                          const { downloadUrl } = await getFileDownloadUrl(attachment.id);
+                                          window.open(downloadUrl, '_blank');
+                                        } catch (error) {
+                                          console.error('Failed to download file:', error);
+                                        }
+                                      }}
+                                    >
+                                      📎 {attachment.fileName}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                       <TaskAssignment
                         trigger={
