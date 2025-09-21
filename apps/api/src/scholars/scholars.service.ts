@@ -551,6 +551,7 @@ export class ScholarsService {
         priority: task.priority as 'high' | 'medium' | 'low',
         status: task.status as 'pending' | 'in_progress' | 'completed' | 'overdue',
         dueDate: task.dueDate,
+        assignedBy: task.assignedBy,
         completedAt: task.completedAt,
         createdAt: task.createdAt,
         updatedAt: task.updatedAt,
@@ -569,6 +570,8 @@ export class ScholarsService {
         id: doc.id,
         type: doc.type as 'passport' | 'visa' | 'transcript' | 'certificate' | 'other',
         name: doc.name,
+        mimeType: doc.mimeType,
+        size: doc.size,
         url: doc.url,
         uploadedBy: doc.uploadedBy,
         uploadDate: doc.uploadDate,
@@ -619,7 +622,7 @@ export class ScholarsService {
 
   async updateScholarProfile(
     userId: string,
-    updateData: UpdateScholarProfileDto
+    profileUpdateData: UpdateScholarProfileDto
   ): Promise<ScholarProfileDto> {
     // First check if the scholar exists
     const scholarResult = await database
@@ -657,36 +660,55 @@ export class ScholarsService {
       longTermCareerPlan,
       postGraduationPlan,
       bio,
-    } = updateData;
+    } = profileUpdateData;
 
-    // Update scholar record
-    await database
-      .update(scholars)
-      .set({
-        ...(dateOfBirth && { dateOfBirth }),
-        ...(gender && { gender }),
-        ...(nationality && { nationality }),
-        ...(phone && { phone }),
-        ...(location && { location }),
-        ...(addressHomeCountry && { addressHomeCountry }),
-        ...(passportExpirationDate && { passportExpirationDate }),
-        ...(visaExpirationDate && { visaExpirationDate }),
-        ...(emergencyContactCountryOfStudy && { emergencyContactCountryOfStudy }),
-        ...(emergencyContactHomeCountry && { emergencyContactHomeCountry }),
-        ...(program && { program }),
-        ...(university && { university }),
-        ...(year && { year }),
-        ...(startDate && { startDate: new Date(startDate) }),
-        ...(graduationDate && { graduationDate: new Date(graduationDate) }),
-        ...(universityId && { universityId }),
-        ...(dietaryInformation && { dietaryInformation }),
-        ...(kokorozashi && { kokorozashi }),
-        ...(longTermCareerPlan && { longTermCareerPlan }),
-        ...(postGraduationPlan && { postGraduationPlan }),
-        ...(bio && { bio }),
-        updatedAt: new Date(),
-      })
-      .where(eq(scholars.id, scholarId));
+    // Update scholar record - handle empty strings and date conversions properly
+    const dbUpdateData: any = { updatedAt: new Date() };
+
+    // Handle date fields - only set if not empty string
+    if (dateOfBirth && dateOfBirth !== '') dbUpdateData.dateOfBirth = dateOfBirth;
+    if (dateOfBirth === '') dbUpdateData.dateOfBirth = null;
+
+    if (passportExpirationDate && passportExpirationDate !== '')
+      dbUpdateData.passportExpirationDate = passportExpirationDate;
+    if (passportExpirationDate === '') dbUpdateData.passportExpirationDate = null;
+
+    if (visaExpirationDate && visaExpirationDate !== '')
+      dbUpdateData.visaExpirationDate = visaExpirationDate;
+    if (visaExpirationDate === '') dbUpdateData.visaExpirationDate = null;
+
+    if (startDate && startDate !== '') dbUpdateData.startDate = new Date(startDate);
+    if (startDate === '') dbUpdateData.startDate = null;
+
+    if (graduationDate && graduationDate !== '')
+      dbUpdateData.graduationDate = new Date(graduationDate);
+    if (graduationDate === '') dbUpdateData.graduationDate = null;
+
+    // Handle other fields - only update if provided
+    if (gender !== undefined) dbUpdateData.gender = gender;
+    if (nationality !== undefined) dbUpdateData.nationality = nationality || null;
+    if (phone !== undefined) dbUpdateData.phone = phone || null;
+    if (location !== undefined) dbUpdateData.location = location || null;
+    if (addressHomeCountry !== undefined)
+      dbUpdateData.addressHomeCountry = addressHomeCountry || null;
+    if (emergencyContactCountryOfStudy !== undefined)
+      dbUpdateData.emergencyContactCountryOfStudy = emergencyContactCountryOfStudy || null;
+    if (emergencyContactHomeCountry !== undefined)
+      dbUpdateData.emergencyContactHomeCountry = emergencyContactHomeCountry || null;
+    if (program !== undefined) dbUpdateData.program = program;
+    if (university !== undefined) dbUpdateData.university = university;
+    if (year !== undefined) dbUpdateData.year = year;
+    if (universityId !== undefined) dbUpdateData.universityId = universityId || null;
+    if (dietaryInformation !== undefined)
+      dbUpdateData.dietaryInformation = dietaryInformation || null;
+    if (kokorozashi !== undefined) dbUpdateData.kokorozashi = kokorozashi || null;
+    if (longTermCareerPlan !== undefined)
+      dbUpdateData.longTermCareerPlan = longTermCareerPlan || null;
+    if (postGraduationPlan !== undefined)
+      dbUpdateData.postGraduationPlan = postGraduationPlan || null;
+    if (bio !== undefined) dbUpdateData.bio = bio || null;
+
+    await database.update(scholars).set(dbUpdateData).where(eq(scholars.id, scholarId));
 
     // Return updated profile
     return this.getScholarProfileByUserId(userId);

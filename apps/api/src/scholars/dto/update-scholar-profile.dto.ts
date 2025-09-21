@@ -1,4 +1,4 @@
-import { IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsOptional, IsString } from 'class-validator';
 
 export enum Gender {
   MALE = 'male',
@@ -15,7 +15,7 @@ export class UpdateScholarProfileDto {
 
   // Personal Information
   @IsOptional()
-  @IsDateString()
+  @IsString() // Changed from @IsDateString() to allow empty strings
   dateOfBirth?: string;
 
   @IsOptional()
@@ -41,11 +41,11 @@ export class UpdateScholarProfileDto {
 
   // Document Information
   @IsOptional()
-  @IsDateString()
+  @IsString() // Changed from @IsDateString() to allow empty strings
   passportExpirationDate?: string;
 
   @IsOptional()
-  @IsDateString()
+  @IsString() // Changed from @IsDateString() to allow empty strings
   visaExpirationDate?: string;
 
   // Emergency Contacts (JSON string with name, email, phone)
@@ -71,11 +71,11 @@ export class UpdateScholarProfileDto {
   year?: string; // Academic Year
 
   @IsOptional()
-  @IsDateString()
+  @IsString() // Changed from @IsDateString() to allow empty strings
   startDate?: string;
 
   @IsOptional()
-  @IsDateString()
+  @IsString() // Changed from @IsDateString() to allow empty strings
   graduationDate?: string;
 
   @IsOptional()

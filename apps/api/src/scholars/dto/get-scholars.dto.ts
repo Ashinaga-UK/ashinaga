@@ -91,7 +91,10 @@ export class TaskDto {
   title: string;
   description?: string | null;
   type:
+    | 'regular'
     | 'document_upload'
+    | 'survey'
+    | 'meeting'
     | 'form_completion'
     | 'meeting_attendance'
     | 'goal_update'
@@ -99,7 +102,7 @@ export class TaskDto {
     | 'other';
   priority: 'high' | 'medium' | 'low';
   dueDate: Date;
-  status: 'pending' | 'in_progress' | 'completed';
+  status: 'pending' | 'in_progress' | 'completed' | 'overdue';
   assignedBy: string;
   completedAt?: Date | null;
   createdAt: Date;

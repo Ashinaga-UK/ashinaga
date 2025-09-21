@@ -69,6 +69,7 @@ export class ScholarsController {
     return this.scholarsService.updateScholarProfile(req.user.id, updateData);
   }
 
+  // Specific :id routes must come after all non-parameterized routes
   @Get(':id/profile')
   async getScholarProfile(@Param('id', ParseUUIDPipe) id: string): Promise<ScholarProfileDto> {
     return this.scholarsService.getScholarProfile(id);
