@@ -1,5 +1,9 @@
 import { MyGoals } from '../../../components/my-goals';
 
 export default function GoalsPage() {
-  return <MyGoals />;
+  return (
+    <div className="p-6">
+      <MyGoals />
+    </div>
+  );
 }
