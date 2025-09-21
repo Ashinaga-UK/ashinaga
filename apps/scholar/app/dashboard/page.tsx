@@ -31,6 +31,7 @@ import { useMyAnnouncements, useMyRequests } from '../../lib/hooks/use-queries';
 import { RequestCard } from '../../components/request-card';
 import { NewRequestDialog } from '../../components/new-request-dialog';
 import { MyTasks } from '../../components/my-tasks';
+import { MyGoals } from '../../components/my-goals';
 
 export default function ScholarDashboard() {
   const router = useRouter();
@@ -343,12 +344,7 @@ function OverviewContent({
 function GoalsContent() {
   return (
     <div className="p-6">
-      <h2 className="text-2xl font-bold mb-4 text-gray-900">My Goals</h2>
-      <Card className="border-ashinaga-teal-100">
-        <CardContent className="pt-6">
-          <p className="text-gray-600">Your goals and progress tracking will appear here.</p>
-        </CardContent>
-      </Card>
+      <MyGoals />
     </div>
   );
 }
