@@ -12,6 +12,7 @@ import { RequestsModule } from './requests/requests.module';
 import { ScholarsModule } from './scholars/scholars.module';
 import { TasksModule } from './tasks/tasks.module';
 import { UsersModule } from './users/users.module';
+import { GoalsModule } from './goals/goals.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { UsersModule } from './users/users.module';
     UsersModule,
     InvitationsModule,
     FilesModule,
+    GoalsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
