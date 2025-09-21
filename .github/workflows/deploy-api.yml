@@ -218,12 +218,38 @@ jobs:
         export BETTER_AUTH_SECRET=$(aws secretsmanager get-secret-value \
           --secret-id "$AUTH_SECRET_ARN" \
           --query SecretString --output text)
-        
+
+        # Get Resend API key from AWS Secrets Manager
+        echo "Retrieving Resend API key from AWS Secrets Manager..."
+        RESEND_SECRET_NAME="ashinaga-resend-api-key-${ENVIRONMENT}"
+
+        RESEND_SECRET_ARN=$(aws secretsmanager list-secrets \
+          --query "SecretList[?contains(Name, '${RESEND_SECRET_NAME}')] | sort_by(@, &CreatedDate) | [-1].ARN" \
+          --output text)
+
+        if [ -z "$RESEND_SECRET_ARN" ]; then
+          echo "ERROR: Could not find Resend secret with name containing: ${RESEND_SECRET_NAME}"
+          exit 1
+        fi
+
+        export RESEND_API_KEY=$(aws secretsmanager get-secret-value \
+          --secret-id "$RESEND_SECRET_ARN" \
+          --query SecretString --output text)
+
         # Set Better Auth URL based on environment
         if [ "$ENVIRONMENT" = "test" ]; then
           export BETTER_AUTH_URL="https://api-test.ashinaga-uk.org"
         else
           export BETTER_AUTH_URL="https://api.ashinaga-uk.org"
+        fi
+
+        # Set Frontend URLs based on environment
+        if [ "$ENVIRONMENT" = "test" ]; then
+          export STAFF_APP_URL="https://staff-test.ashinaga-uk.org"
+          export SCHOLAR_APP_URL="https://scholar-test.ashinaga-uk.org"
+        else
+          export STAFF_APP_URL="https://staff.ashinaga-uk.org"
+          export SCHOLAR_APP_URL="https://scholar.ashinaga-uk.org"
         fi
         
         # Run Drizzle migrations
@@ -236,6 +262,9 @@ jobs:
         echo "DB_USER: $DB_USER"
         echo "BETTER_AUTH_URL: $BETTER_AUTH_URL"
         echo "BETTER_AUTH_SECRET: [MASKED]"
+        echo "RESEND_API_KEY: [MASKED]"
+        echo "STAFF_APP_URL: $STAFF_APP_URL"
+        echo "SCHOLAR_APP_URL: $SCHOLAR_APP_URL"
         
         # Set SSL to production mode for RDS connection
         export NODE_ENV="production"
@@ -247,29 +276,165 @@ jobs:
 
     - name: Update App Runner service
       run: |
+        # This step:
+        # 1. Fetches latest secrets from AWS Secrets Manager
+        # 2. Builds App Runner configuration using jq (handles special characters)
+        # 3. Updates App Runner with new image and fresh environment variables
+
         ENVIRONMENT="${{ needs.determine-environment.outputs.environment }}"
         SERVICE_NAME="ashinaga-api-${ENVIRONMENT}"
         IMAGE_URI="${{ steps.meta.outputs.repository_uri }}:latest"
-        
+
         echo "Updating App Runner service: ${SERVICE_NAME}"
         echo "New image: ${IMAGE_URI}"
-        
+
         # Get service ARN
         SERVICE_ARN=$(aws apprunner list-services --query "ServiceSummaryList[?ServiceName=='${SERVICE_NAME}'].ServiceArn" --output text)
-        
+
         if [ -z "$SERVICE_ARN" ]; then
           echo "Service does not exist yet. Please run terraform apply first."
           exit 1
         fi
-        
+
+        # Fetch the latest secrets from AWS Secrets Manager
+        echo "Fetching latest secrets from AWS Secrets Manager..."
+
+        # Helper function to get secret value and trim whitespace
+        get_secret_value() {
+          local secret_pattern="$1"
+          # Get the most recent secret ARN matching the pattern
+          local secret_arn=$(aws secretsmanager list-secrets \
+            --query "SecretList[?contains(Name, '${secret_pattern}')] | sort_by(@, &CreatedDate) | [-1].ARN" \
+            --output text)
+
+          if [ -z "$secret_arn" ] || [ "$secret_arn" = "None" ]; then
+            echo "ERROR: Could not find secret with pattern: ${secret_pattern}" >&2
+            echo "Available secrets:" >&2
+            aws secretsmanager list-secrets --query "SecretList[].Name" --output table >&2
+            return 1
+          fi
+
+          echo "Found secret: $secret_arn" >&2
+
+          # Get secret value and trim whitespace
+          aws secretsmanager get-secret-value \
+            --secret-id "$secret_arn" \
+            --query SecretString \
+            --output text | xargs
+        }
+
+        # Fetch all secrets
+        echo "Fetching database password..."
+        DB_PASSWORD=$(get_secret_value "ashinaga-db-password-${ENVIRONMENT}")
+        echo "Fetching auth secret..."
+        BETTER_AUTH_SECRET=$(get_secret_value "ashinaga-auth-secret-${ENVIRONMENT}")
+        echo "Fetching Resend API key..."
+        RESEND_API_KEY=$(get_secret_value "ashinaga-resend-api-key-${ENVIRONMENT}")
+
+        # Get database connection details
+        echo "Getting database configuration..."
+        DB_IDENTIFIER="ashinaga-postgres-${ENVIRONMENT}"
+        DB_ENDPOINT=$(aws rds describe-db-instances \
+          --db-instance-identifier ${DB_IDENTIFIER} \
+          --query 'DBInstances[0].Endpoint.Address' \
+          --output text)
+        DB_NAME=$(aws rds describe-db-instances \
+          --db-instance-identifier ${DB_IDENTIFIER} \
+          --query 'DBInstances[0].DBName' \
+          --output text)
+        DB_USER=$(aws rds describe-db-instances \
+          --db-instance-identifier ${DB_IDENTIFIER} \
+          --query 'DBInstances[0].MasterUsername' \
+          --output text)
+
+        # Get S3 bucket name
+        S3_BUCKET_NAME="ashinaga-scholar-data-${ENVIRONMENT}"
+
+        # Set environment-specific values
+        if [ "$ENVIRONMENT" = "test" ]; then
+          NODE_ENV="test"
+          BETTER_AUTH_URL="https://api-test.ashinaga-uk.org"
+          CORS_ORIGINS="https://staff-test.ashinaga-uk.org,https://scholar-test.ashinaga-uk.org,http://localhost:4001,http://localhost:4002"
+          STAFF_APP_URL="https://staff-test.ashinaga-uk.org"
+          SCHOLAR_APP_URL="https://scholar-test.ashinaga-uk.org"
+        else
+          NODE_ENV="production"
+          BETTER_AUTH_URL="https://api.ashinaga-uk.org"
+          CORS_ORIGINS="https://staff.ashinaga-uk.org,https://scholar.ashinaga-uk.org,http://localhost:4001,http://localhost:4002"
+          STAFF_APP_URL="https://staff.ashinaga-uk.org"
+          SCHOLAR_APP_URL="https://scholar.ashinaga-uk.org"
+        fi
+
+        # Build the App Runner configuration JSON using jq for proper escaping
+        echo "Building App Runner configuration..."
+        APP_RUNNER_CONFIG=$(jq -n \
+          --arg image_uri "$IMAGE_URI" \
+          --arg node_env "$NODE_ENV" \
+          --arg db_host "$DB_ENDPOINT" \
+          --arg db_name "$DB_NAME" \
+          --arg db_user "$DB_USER" \
+          --arg db_password "$DB_PASSWORD" \
+          --arg auth_secret "$BETTER_AUTH_SECRET" \
+          --arg auth_url "$BETTER_AUTH_URL" \
+          --arg cors_origins "$CORS_ORIGINS" \
+          --arg resend_api_key "$RESEND_API_KEY" \
+          --arg email_from "noreply@ashinaga-uk.org" \
+          --arg staff_app_url "$STAFF_APP_URL" \
+          --arg scholar_app_url "$SCHOLAR_APP_URL" \
+          --arg s3_bucket "$S3_BUCKET_NAME" \
+          --arg aws_region "$AWS_REGION" \
+          '{
+            "ImageRepository": {
+              "ImageIdentifier": $image_uri,
+              "ImageRepositoryType": "ECR",
+              "ImageConfiguration": {
+                "Port": "4000",
+                "RuntimeEnvironmentVariables": {
+                  "NODE_ENV": $node_env,
+                  "PORT": "4000",
+                  "DB_HOST": $db_host,
+                  "DB_PORT": "5432",
+                  "DB_NAME": $db_name,
+                  "DB_USER": $db_user,
+                  "DB_PASSWORD": $db_password,
+                  "BETTER_AUTH_SECRET": $auth_secret,
+                  "BETTER_AUTH_URL": $auth_url,
+                  "CORS_ORIGINS": $cors_origins,
+                  "RESEND_API_KEY": $resend_api_key,
+                  "EMAIL_FROM": $email_from,
+                  "STAFF_APP_URL": $staff_app_url,
+                  "SCHOLAR_APP_URL": $scholar_app_url,
+                  "S3_BUCKET_NAME": $s3_bucket,
+                  "AWS_REGION": $aws_region
+                }
+              }
+            },
+            "AutoDeploymentsEnabled": true
+          }')
+
+        # Function to update App Runner service
+        update_app_runner_service() {
+          echo "Sending update request to App Runner..."
+          aws apprunner update-service \
+            --service-arn ${SERVICE_ARN} \
+            --source-configuration "$APP_RUNNER_CONFIG"
+
+          if [ $? -eq 0 ]; then
+            echo "✅ Successfully triggered App Runner update with latest secrets"
+          else
+            echo "❌ Failed to update App Runner service"
+            exit 1
+          fi
+        }
+
         # Check service status
         SERVICE_STATUS=$(aws apprunner describe-service --service-arn ${SERVICE_ARN} --query "Service.Status" --output text)
         echo "Current service status: ${SERVICE_STATUS}"
-        
+
         case ${SERVICE_STATUS} in
           "RUNNING")
-            echo "Service is running - triggering deployment..."
-            aws apprunner start-deployment --service-arn ${SERVICE_ARN}
+            echo "Service is running - updating configuration with latest secrets..."
+            update_app_runner_service
             ;;
           "CREATE_FAILED"|"PAUSED"|"DELETE_FAILED")
             echo "Service is in failed state (${SERVICE_STATUS}). Manual intervention required."
@@ -295,8 +460,8 @@ jobs:
               echo "Timeout waiting for service operation to complete"
               exit 1
             }
-            echo "Service is now ready - triggering deployment..."
-            aws apprunner start-deployment --service-arn ${SERVICE_ARN}
+            echo "Service is now ready - updating configuration with latest secrets..."
+            update_app_runner_service
             ;;
           *)
             echo "Service is in ${SERVICE_STATUS} state - waiting for it to be ready..."
@@ -318,9 +483,9 @@ jobs:
               echo "Timeout waiting for service to be ready"
               exit 1
             }
-            
-            echo "Service is now ready - triggering deployment..."
-            aws apprunner start-deployment --service-arn ${SERVICE_ARN}
+
+            echo "Service is now ready - updating configuration with latest secrets..."
+            update_app_runner_service
             ;;
         esac
 

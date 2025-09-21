@@ -253,10 +253,14 @@ module "api_app_runner" {
     # CORS Configuration for test environment
     CORS_ORIGINS = "https://staff-test.ashinaga-uk.org,https://scholar-test.ashinaga-uk.org,http://localhost:4001,http://localhost:4002"
 
-    # Email Configuration 
+    # Email Configuration
     RESEND_API_KEY = module.resend_api_key.secret_value
     EMAIL_FROM     = "noreply@ashinaga-uk.org"
-    
+
+    # Frontend URLs
+    STAFF_APP_URL   = "https://staff-test.ashinaga-uk.org"
+    SCHOLAR_APP_URL = "https://scholar-test.ashinaga-uk.org"
+
     # S3 Configuration
     S3_BUCKET_NAME = module.scholar_data_bucket.bucket_name
     AWS_REGION     = var.aws_region
