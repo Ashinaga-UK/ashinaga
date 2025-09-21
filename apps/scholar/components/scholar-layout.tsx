@@ -1,6 +1,16 @@
 'use client';
 
-import { CheckSquare, FileText, Home, LogOut, Menu, MessageSquare, Target, X } from 'lucide-react';
+import {
+  CheckSquare,
+  FileText,
+  Home,
+  LogOut,
+  Menu,
+  MessageSquare,
+  Target,
+  User,
+  X,
+} from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
@@ -18,6 +28,7 @@ export function ScholarLayout({ children, onLogout }: ScholarLayoutProps) {
 
   const navItems = [
     { id: 'dashboard', href: '/dashboard', label: 'Overview', icon: Home },
+    { id: 'profile', href: '/profile', label: 'My Profile', icon: User },
     { id: 'goals', href: '/goals', label: 'My Goals', icon: Target },
     { id: 'tasks', href: '/tasks', label: 'My Tasks', icon: CheckSquare },
     { id: 'requests', href: '/requests', label: 'My Requests', icon: FileText },

@@ -1,29 +1,15 @@
 'use client';
 
-import {
-  AlertCircle,
-  Eye,
-  EyeOff,
-  Loader2,
-  Lock,
-  Mail,
-  User,
-  School,
-  Calendar,
-  MapPin,
-  Phone,
-  FileText,
-} from 'lucide-react';
+import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail, User } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type React from 'react';
 import { useEffect, useState } from 'react';
-import { signUp } from '../lib/auth-client';
+import { signIn } from '../lib/auth-client';
 import { fetchAPI } from '../lib/api-client';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
 import { Alert, AlertDescription } from './ui/alert';
 
 interface ScholarData {
@@ -104,9 +90,18 @@ export function SignupPage() {
               }
             : {}),
         }));
-      } catch (err: any) {
+      } catch (err) {
         console.error('Token validation error:', err);
-        setError(err.message || 'Invalid or expired invitation token.');
+        const errorMessage = err instanceof Error ? err.message : 'Invalid invitation link';
+        if (errorMessage.includes('expired')) {
+          setError(
+            'This invitation has expired. Please contact your administrator for a new invitation.'
+          );
+        } else if (errorMessage.includes('404')) {
+          setError('Invalid invitation link. Please check your email for the correct link.');
+        } else {
+          setError(errorMessage);
+        }
       } finally {
         setIsValidating(false);
       }
@@ -115,16 +110,11 @@ export function SignupPage() {
     validateToken();
   }, [token]);
 
-  const handleInputChange =
-    (field: keyof typeof formData) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      setFormData((prev) => ({
-        ...prev,
-        [field]: e.target.value,
-      }));
-    };
+  const handleInputChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData((prev) => ({ ...prev, [field]: e.target.value }));
+  };
 
-  const handleSignup = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -145,7 +135,7 @@ export function SignupPage() {
     }
 
     if (formData.password.length < 8) {
-      setError('Password must be at least 8 characters long');
+      setError('Password must be at least 8 characters');
       return;
     }
 
@@ -154,65 +144,62 @@ export function SignupPage() {
       return;
     }
 
-    // Validate required scholar fields
-    if (!formData.program.trim()) {
-      setError('Program is required');
-      return;
-    }
-
-    if (!formData.year.trim()) {
-      setError('Year is required');
-      return;
-    }
-
-    if (!formData.university.trim()) {
-      setError('University is required');
-      return;
-    }
-
     setIsLoading(true);
+
     try {
-      // Pass the invitation token with the signup request
-      const { data, error: authError } = await signUp.email({
-        email: formData.email,
-        password: formData.password,
-        name: formData.name,
-        invitationToken: token,
-        // Include scholar-specific data
-        program: formData.program,
-        year: formData.year,
-        university: formData.university,
-        location: formData.location,
-        phone: formData.phone,
-        bio: formData.bio,
+      // Make direct API call to signup endpoint to properly handle invitation
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const signupResponse = await fetch(`${apiUrl}/api/auth/sign-up/email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          name: formData.name,
+          invitationToken: token,
+          // No need to send scholar data - it's already in the invitation
+        }),
       });
 
-      if (authError) {
-        console.error('Signup error:', authError);
-        setError(authError.message || 'Failed to create account');
-        setIsLoading(false);
-        return;
-      }
+      const signupData = await signupResponse.json();
+      console.log('Signup response:', signupData);
 
-      if (data) {
-        // Account created successfully, redirect to dashboard
-        router.push('/');
-        router.refresh();
+      if (signupResponse.ok && signupData.user) {
+        // Auto-login after successful signup
+        const loginResult = await signIn({
+          email: formData.email,
+          password: formData.password,
+        });
+
+        if (loginResult.data) {
+          router.push('/dashboard');
+        } else {
+          // If auto-login fails, redirect to login page
+          router.push('/login?registered=true');
+        }
+      } else {
+        setError(signupData.error || 'Failed to create account. Please try again.');
       }
-    } catch (err) {
-      console.error('Unexpected signup error:', err);
-      setError('An unexpected error occurred. Please try again.');
+    } catch (error: any) {
+      console.error('Signup error:', error);
+      setError(error.message || 'An error occurred during sign up');
+    } finally {
       setIsLoading(false);
     }
   };
 
   if (isValidating) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 flex items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50">
         <Card className="w-full max-w-md">
-          <CardContent className="flex flex-col items-center justify-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-ashinaga-teal-600 mb-4" />
-            <p className="text-gray-600">Validating invitation...</p>
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center">
+              <Loader2 className="h-8 w-8 animate-spin text-ashinaga-teal-600" />
+              <p className="mt-2 text-sm text-gray-600">Validating your invitation...</p>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -221,16 +208,21 @@ export function SignupPage() {
 
   if (!token || (error && !invitationData)) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 flex items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50">
         <Card className="w-full max-w-md">
-          <CardContent className="py-8">
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error || 'Invalid invitation link'}</AlertDescription>
+          <CardHeader>
+            <CardTitle>Invalid Invitation</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Alert className="bg-red-50 border-red-200">
+              <AlertCircle className="h-4 w-4 text-red-600" />
+              <AlertDescription className="text-red-800">
+                {error || 'Invalid invitation link'}
+              </AlertDescription>
             </Alert>
-            <p className="text-center mt-4 text-sm text-gray-600">
-              Please use the link from your invitation email or contact support.
-            </p>
+            <Button onClick={() => router.push('/login')} className="w-full mt-4" variant="outline">
+              Go to Login
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -238,220 +230,127 @@ export function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-2xl">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">
-            Complete Your Scholar Registration
-          </CardTitle>
-          <CardDescription className="text-center">
-            Set your password to complete your account setup
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 py-12 px-4">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Create Your Account</CardTitle>
+          <CardDescription>
+            Welcome to Ashinaga Scholar Portal! Please set your password to complete registration.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <form onSubmit={handleSignup} className="space-y-4">
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
+              <Alert className="bg-red-50 border-red-200">
+                <AlertCircle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-800">{error}</AlertDescription>
               </Alert>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Personal Information */}
-              <div className="space-y-2">
-                <Label htmlFor="name">
-                  <User className="inline h-4 w-4 mr-1" />
-                  Full Name *
-                </Label>
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="Enter your full name"
-                  value={formData.name}
-                  onChange={handleInputChange('name')}
-                  disabled={isLoading}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">
-                  <Mail className="inline h-4 w-4 mr-1" />
-                  Email (Pre-filled)
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  disabled
-                  className="bg-gray-50"
-                />
-              </div>
-
-              {/* Password Fields */}
-              <div className="space-y-2">
-                <Label htmlFor="password">
-                  <Lock className="inline h-4 w-4 mr-1" />
-                  Password *
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="Minimum 8 characters"
-                    value={formData.password}
-                    onChange={handleInputChange('password')}
-                    disabled={isLoading}
-                    required
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">
-                  <Lock className="inline h-4 w-4 mr-1" />
-                  Confirm Password *
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="confirmPassword"
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    placeholder="Re-enter your password"
-                    value={formData.confirmPassword}
-                    onChange={handleInputChange('confirmPassword')}
-                    disabled={isLoading}
-                    required
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Scholar Information */}
-              <div className="space-y-2">
-                <Label htmlFor="program">
-                  <School className="inline h-4 w-4 mr-1" />
-                  Program *
-                </Label>
-                <Input
-                  id="program"
-                  type="text"
-                  placeholder="e.g., Computer Science"
-                  value={formData.program}
-                  onChange={handleInputChange('program')}
-                  disabled={isLoading}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="year">
-                  <Calendar className="inline h-4 w-4 mr-1" />
-                  Year *
-                </Label>
-                <Input
-                  id="year"
-                  type="text"
-                  placeholder="e.g., 2024"
-                  value={formData.year}
-                  onChange={handleInputChange('year')}
-                  disabled={isLoading}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="university">
-                  <School className="inline h-4 w-4 mr-1" />
-                  University *
-                </Label>
-                <Input
-                  id="university"
-                  type="text"
-                  placeholder="Your university name"
-                  value={formData.university}
-                  onChange={handleInputChange('university')}
-                  disabled={isLoading}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="location">
-                  <MapPin className="inline h-4 w-4 mr-1" />
-                  Location
-                </Label>
-                <Input
-                  id="location"
-                  type="text"
-                  placeholder="City, Country"
-                  value={formData.location}
-                  onChange={handleInputChange('location')}
-                  disabled={isLoading}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="phone">
-                  <Phone className="inline h-4 w-4 mr-1" />
-                  Phone Number
-                </Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="+1234567890"
-                  value={formData.phone}
-                  onChange={handleInputChange('phone')}
-                  disabled={isLoading}
-                />
-              </div>
-            </div>
-
-            {/* Bio - Full Width */}
+            {/* Locked Fields */}
             <div className="space-y-2">
-              <Label htmlFor="bio">
-                <FileText className="inline h-4 w-4 mr-1" />
-                Bio
+              <Label htmlFor="name">
+                <User className="inline h-4 w-4 mr-1" />
+                Full Name <span className="text-sm text-muted-foreground">(Locked)</span>
               </Label>
-              <Textarea
-                id="bio"
-                placeholder="Tell us about yourself..."
-                value={formData.bio}
-                onChange={handleInputChange('bio')}
+              <Input
+                id="name"
+                type="text"
+                value={formData.name}
+                readOnly
                 disabled={isLoading}
-                rows={4}
+                className="bg-muted"
               />
             </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <div className="space-y-2">
+              <Label htmlFor="email">
+                <Mail className="inline h-4 w-4 mr-1" />
+                Email <span className="text-sm text-muted-foreground">(Locked)</span>
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                readOnly
+                disabled={isLoading}
+                className="bg-muted"
+              />
+            </div>
+
+            {/* Password Fields */}
+            <div className="space-y-2">
+              <Label htmlFor="password">
+                <Lock className="inline h-4 w-4 mr-1" />
+                Password *
+              </Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Minimum 8 characters"
+                  value={formData.password}
+                  onChange={handleInputChange('password')}
+                  disabled={isLoading}
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">
+                <Lock className="inline h-4 w-4 mr-1" />
+                Confirm Password *
+              </Label>
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  placeholder="Confirm your password"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange('confirmPassword')}
+                  disabled={isLoading}
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  tabIndex={-1}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
+              disabled={isLoading}
+            >
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Creating Account...
                 </>
               ) : (
-                'Complete Registration'
+                'Create Account'
               )}
             </Button>
           </form>

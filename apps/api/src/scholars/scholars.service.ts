@@ -1,7 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { and, count, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 import { database } from '../db/connection';
-import { documents, goals, scholars, tasks, users } from '../db/schema';
+import { documents, goals, invitations, scholars, tasks, users } from '../db/schema';
+import { InvitationsService } from '../invitations/invitations.service';
+import { CreateScholarDto } from './dto/create-scholar.dto';
 import {
   DocumentDto,
   GetScholarsQueryDto,
@@ -14,9 +16,79 @@ import {
   ScholarTasksStatsDto,
   TaskDto,
 } from './dto/get-scholars.dto';
+import { UpdateScholarProfileDto } from './dto/update-scholar-profile.dto';
 
 @Injectable()
 export class ScholarsService {
+  constructor(private readonly invitationsService: InvitationsService) {}
+
+  async createScholar(
+    createScholarDto: CreateScholarDto,
+    createdBy: string
+  ): Promise<{ success: boolean; message: string; scholar?: any }> {
+    // Check if a user with this email already exists
+    const existingUser = await database
+      .select()
+      .from(users)
+      .where(eq(users.email, createScholarDto.email))
+      .limit(1);
+
+    if (existingUser.length > 0) {
+      throw new ConflictException('A user with this email already exists');
+    }
+
+    // Check if there's an existing pending invitation
+    const existingInvitation = await database
+      .select()
+      .from(invitations)
+      .where(and(eq(invitations.email, createScholarDto.email), eq(invitations.status, 'pending')))
+      .limit(1);
+
+    if (existingInvitation.length > 0) {
+      throw new ConflictException('An invitation has already been sent to this email');
+    }
+
+    // Create the invitation with scholar data
+    const invitationData = {
+      email: createScholarDto.email,
+      userType: 'scholar' as const,
+      scholarData: {
+        name: createScholarDto.name,
+        program: createScholarDto.program,
+        year: createScholarDto.year,
+        university: createScholarDto.university,
+        location: createScholarDto.location,
+        phone: createScholarDto.phone,
+        bio: createScholarDto.bio,
+        aaiScholarId: createScholarDto.aaiScholarId,
+        dateOfBirth: createScholarDto.dateOfBirth,
+        gender: createScholarDto.gender,
+        nationality: createScholarDto.nationality,
+        addressHomeCountry: createScholarDto.addressHomeCountry,
+        passportExpirationDate: createScholarDto.passportExpirationDate,
+        visaExpirationDate: createScholarDto.visaExpirationDate,
+        emergencyContactCountryOfStudy: createScholarDto.emergencyContactCountryOfStudy,
+        emergencyContactHomeCountry: createScholarDto.emergencyContactHomeCountry,
+        universityId: createScholarDto.universityId,
+        dietaryInformation: createScholarDto.dietaryInformation,
+        kokorozashi: createScholarDto.kokorozashi,
+        longTermCareerPlan: createScholarDto.longTermCareerPlan,
+        postGraduationPlan: createScholarDto.postGraduationPlan,
+        startDate: createScholarDto.startDate,
+        graduationDate: createScholarDto.graduationDate,
+      },
+    };
+
+    // Create invitation and send email
+    const invitation = await this.invitationsService.createInvitation(invitationData, createdBy);
+
+    return {
+      success: true,
+      message: `Scholar invitation sent to ${createScholarDto.email}`,
+      scholar: invitation,
+    };
+  }
+
   async getScholars(query: GetScholarsQueryDto): Promise<GetScholarsResponseDto> {
     const {
       page = 1,
@@ -493,5 +565,223 @@ export class ScholarsService {
     }
 
     return stats;
+  }
+
+  async getScholarProfileByUserId(userId: string): Promise<ScholarProfileDto> {
+    const result = await database
+      .select({
+        scholar: scholars,
+        user: users,
+      })
+      .from(scholars)
+      .innerJoin(users, eq(scholars.userId, users.id))
+      .where(eq(scholars.userId, userId))
+      .limit(1);
+
+    if (result.length === 0) {
+      throw new NotFoundException('Scholar profile not found');
+    }
+
+    const row = result[0];
+
+    // Get goals for this scholar
+    const goalsResult = await database
+      .select()
+      .from(goals)
+      .where(eq(goals.scholarId, row.scholar.id))
+      .orderBy(desc(goals.createdAt));
+
+    const goalsList = goalsResult.map(
+      (goal): GoalDto => ({
+        id: goal.id,
+        title: goal.title,
+        description: goal.description,
+        category: goal.category as 'academic' | 'career' | 'leadership' | 'personal' | 'community',
+        targetDate: goal.targetDate,
+        progress: goal.progress,
+        status: goal.status as 'pending' | 'in_progress' | 'completed',
+        completedAt: goal.completedAt,
+        createdAt: goal.createdAt,
+        updatedAt: goal.updatedAt,
+      })
+    );
+
+    // Get tasks for this scholar
+    const tasksResult = await database
+      .select()
+      .from(tasks)
+      .where(eq(tasks.scholarId, row.scholar.id))
+      .orderBy(desc(tasks.createdAt));
+
+    const tasksList = tasksResult.map(
+      (task): TaskDto => ({
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        type: task.type as 'regular' | 'document_upload' | 'survey' | 'meeting',
+        priority: task.priority as 'high' | 'medium' | 'low',
+        status: task.status as 'pending' | 'in_progress' | 'completed' | 'overdue',
+        dueDate: task.dueDate,
+        assignedBy: task.assignedBy,
+        completedAt: task.completedAt,
+        createdAt: task.createdAt,
+        updatedAt: task.updatedAt,
+      })
+    );
+
+    // Get documents for this scholar
+    const documentsResult = await database
+      .select()
+      .from(documents)
+      .where(eq(documents.scholarId, row.scholar.id))
+      .orderBy(desc(documents.createdAt));
+
+    const documentsList = documentsResult.map(
+      (doc): DocumentDto => ({
+        id: doc.id,
+        type: doc.type as 'passport' | 'visa' | 'transcript' | 'certificate' | 'other',
+        name: doc.name,
+        mimeType: doc.mimeType,
+        size: doc.size,
+        url: doc.url,
+        uploadedBy: doc.uploadedBy,
+        uploadDate: doc.uploadDate,
+        createdAt: doc.createdAt,
+        updatedAt: doc.updatedAt,
+      })
+    );
+
+    return {
+      id: row.scholar.id,
+      userId: row.scholar.userId,
+      name: row.user.name,
+      email: row.user.email,
+      image: row.user.image,
+      phone: row.scholar.phone,
+      program: row.scholar.program,
+      year: row.scholar.year,
+      university: row.scholar.university,
+      location: row.scholar.location,
+      bio: row.scholar.bio,
+      status: row.scholar.status as 'active' | 'inactive' | 'on_hold',
+      startDate: row.scholar.startDate,
+      lastActivity: row.scholar.lastActivity,
+      // New fields
+      aaiScholarId: row.scholar.aaiScholarId,
+      dateOfBirth: row.scholar.dateOfBirth,
+      gender: row.scholar.gender as 'male' | 'female' | 'other' | 'prefer_not_to_say' | null,
+      nationality: row.scholar.nationality,
+      addressHomeCountry: row.scholar.addressHomeCountry,
+      passportExpirationDate: row.scholar.passportExpirationDate,
+      visaExpirationDate: row.scholar.visaExpirationDate,
+      emergencyContactCountryOfStudy: row.scholar.emergencyContactCountryOfStudy,
+      emergencyContactHomeCountry: row.scholar.emergencyContactHomeCountry,
+      graduationDate: row.scholar.graduationDate,
+      universityId: row.scholar.universityId,
+      dietaryInformation: row.scholar.dietaryInformation,
+      kokorozashi: row.scholar.kokorozashi,
+      longTermCareerPlan: row.scholar.longTermCareerPlan,
+      postGraduationPlan: row.scholar.postGraduationPlan,
+      // Related data
+      goals: goalsList,
+      tasks: tasksList,
+      documents: documentsList,
+      createdAt: row.scholar.createdAt,
+      updatedAt: row.scholar.updatedAt,
+    };
+  }
+
+  async updateScholarProfile(
+    userId: string,
+    profileUpdateData: UpdateScholarProfileDto
+  ): Promise<ScholarProfileDto> {
+    // First check if the scholar exists
+    const scholarResult = await database
+      .select()
+      .from(scholars)
+      .where(eq(scholars.userId, userId))
+      .limit(1);
+
+    if (scholarResult.length === 0) {
+      throw new NotFoundException('Scholar profile not found');
+    }
+
+    const scholarId = scholarResult[0].id;
+
+    // Prepare update data - remove fields that shouldn't be updated
+    const {
+      dateOfBirth,
+      gender,
+      nationality,
+      phone,
+      location,
+      addressHomeCountry,
+      passportExpirationDate,
+      visaExpirationDate,
+      emergencyContactCountryOfStudy,
+      emergencyContactHomeCountry,
+      program,
+      university,
+      year,
+      startDate,
+      graduationDate,
+      universityId,
+      dietaryInformation,
+      kokorozashi,
+      longTermCareerPlan,
+      postGraduationPlan,
+      bio,
+    } = profileUpdateData;
+
+    // Update scholar record - handle empty strings and date conversions properly
+    const dbUpdateData: any = { updatedAt: new Date() };
+
+    // Handle date fields - only set if not empty string
+    if (dateOfBirth && dateOfBirth !== '') dbUpdateData.dateOfBirth = dateOfBirth;
+    if (dateOfBirth === '') dbUpdateData.dateOfBirth = null;
+
+    if (passportExpirationDate && passportExpirationDate !== '')
+      dbUpdateData.passportExpirationDate = passportExpirationDate;
+    if (passportExpirationDate === '') dbUpdateData.passportExpirationDate = null;
+
+    if (visaExpirationDate && visaExpirationDate !== '')
+      dbUpdateData.visaExpirationDate = visaExpirationDate;
+    if (visaExpirationDate === '') dbUpdateData.visaExpirationDate = null;
+
+    if (startDate && startDate !== '') dbUpdateData.startDate = new Date(startDate);
+    if (startDate === '') dbUpdateData.startDate = null;
+
+    if (graduationDate && graduationDate !== '')
+      dbUpdateData.graduationDate = new Date(graduationDate);
+    if (graduationDate === '') dbUpdateData.graduationDate = null;
+
+    // Handle other fields - only update if provided
+    if (gender !== undefined) dbUpdateData.gender = gender;
+    if (nationality !== undefined) dbUpdateData.nationality = nationality || null;
+    if (phone !== undefined) dbUpdateData.phone = phone || null;
+    if (location !== undefined) dbUpdateData.location = location || null;
+    if (addressHomeCountry !== undefined)
+      dbUpdateData.addressHomeCountry = addressHomeCountry || null;
+    if (emergencyContactCountryOfStudy !== undefined)
+      dbUpdateData.emergencyContactCountryOfStudy = emergencyContactCountryOfStudy || null;
+    if (emergencyContactHomeCountry !== undefined)
+      dbUpdateData.emergencyContactHomeCountry = emergencyContactHomeCountry || null;
+    if (program !== undefined) dbUpdateData.program = program;
+    if (university !== undefined) dbUpdateData.university = university;
+    if (year !== undefined) dbUpdateData.year = year;
+    if (universityId !== undefined) dbUpdateData.universityId = universityId || null;
+    if (dietaryInformation !== undefined)
+      dbUpdateData.dietaryInformation = dietaryInformation || null;
+    if (kokorozashi !== undefined) dbUpdateData.kokorozashi = kokorozashi || null;
+    if (longTermCareerPlan !== undefined)
+      dbUpdateData.longTermCareerPlan = longTermCareerPlan || null;
+    if (postGraduationPlan !== undefined)
+      dbUpdateData.postGraduationPlan = postGraduationPlan || null;
+    if (bio !== undefined) dbUpdateData.bio = bio || null;
+
+    await database.update(scholars).set(dbUpdateData).where(eq(scholars.id, scholarId));
+
+    // Return updated profile
+    return this.getScholarProfileByUserId(userId);
   }
 }

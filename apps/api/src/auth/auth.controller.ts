@@ -204,27 +204,56 @@ export class AuthController {
             });
             console.log('Staff profile created');
           } else if (userType === 'scholar') {
-            // Use the form data provided during signup, fallback to defaults if not provided
-            // The name is already handled by Better Auth in the user record
+            // Get the scholar data from the invitation
+            const invitationWithData = invitation[0];
+            let scholarData: any = {};
+
+            // Parse the scholar data JSON string
+            if (invitationWithData.scholarData) {
+              try {
+                scholarData =
+                  typeof invitationWithData.scholarData === 'string'
+                    ? JSON.parse(invitationWithData.scholarData)
+                    : invitationWithData.scholarData;
+              } catch (error) {
+                console.error('Failed to parse scholar data from invitation:', error);
+                scholarData = {};
+              }
+            }
+
+            console.log('Parsed scholar data from invitation:', scholarData);
+
+            // Use scholar data from invitation - form data should be minimal (just password)
+            // Since staff has already filled all the data, we use it directly
             await db.insert(scholars).values({
               userId: userId,
               status: 'active',
-              startDate: new Date(),
-              program: body.program || 'TBD',
-              year: body.year || 'TBD',
-              university: body.university || 'TBD',
-              location: body.location || null,
-              phone: body.phone || null,
-              bio: body.bio || null,
+              // Required fields with defaults
+              program: scholarData.program || 'TBD',
+              year: scholarData.year || 'TBD',
+              university: scholarData.university || 'TBD',
+              startDate: scholarData.startDate ? new Date(scholarData.startDate) : new Date(),
+              // All optional fields from invitation
+              location: scholarData.location || null,
+              phone: scholarData.phone || null,
+              bio: scholarData.bio || null,
+              aaiScholarId: scholarData.aaiScholarId || null,
+              dateOfBirth: scholarData.dateOfBirth || null,
+              gender: scholarData.gender || null,
+              nationality: scholarData.nationality || null,
+              addressHomeCountry: scholarData.addressHomeCountry || null,
+              passportExpirationDate: scholarData.passportExpirationDate || null,
+              visaExpirationDate: scholarData.visaExpirationDate || null,
+              emergencyContactCountryOfStudy: scholarData.emergencyContactCountryOfStudy || null,
+              emergencyContactHomeCountry: scholarData.emergencyContactHomeCountry || null,
+              graduationDate: scholarData.graduationDate || null,
+              universityId: scholarData.universityId || null,
+              dietaryInformation: scholarData.dietaryInformation || null,
+              kokorozashi: scholarData.kokorozashi || null,
+              longTermCareerPlan: scholarData.longTermCareerPlan || null,
+              postGraduationPlan: scholarData.postGraduationPlan || null,
             });
-            console.log('Scholar profile created with data:', {
-              program: body.program,
-              year: body.year,
-              university: body.university,
-              location: body.location,
-              phone: body.phone,
-              bio: body.bio,
-            });
+            console.log('Scholar profile created with all invitation data');
           }
         }
       } catch (error) {
