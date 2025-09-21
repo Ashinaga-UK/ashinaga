@@ -1,6 +1,16 @@
 'use client';
 
-import { CheckSquare, FileText, Home, LogOut, Menu, MessageSquare, Target, User, X } from 'lucide-react';
+import {
+  CheckSquare,
+  FileText,
+  Home,
+  LogOut,
+  Menu,
+  MessageSquare,
+  Target,
+  User,
+  X,
+} from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';

@@ -1,8 +1,17 @@
 'use client';
 
-import { ArrowLeft, CheckCircle, FileSpreadsheet, Send, Upload, UserPlus } from 'lucide-react';
+import {
+  AlertCircle,
+  ArrowLeft,
+  CheckCircle,
+  FileSpreadsheet,
+  Send,
+  Upload,
+  UserPlus,
+} from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
+import { createScholar } from '../lib/api-client';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -18,22 +27,21 @@ interface ScholarOnboardingProps {
 }
 
 interface ScholarData {
-  firstName: string;
-  lastName: string;
+  name: string;
   aaiScholarId: string;
   dateOfBirth: string;
   gender: string;
   nationality: string;
-  phoneNumber: string;
+  phone: string;
   email: string;
   passportExpirationDate: string;
   visaExpirationDate: string;
-  addressCountryOfStudy: string;
+  location: string; // Address Country of Study
   addressHomeCountry: string;
   emergencyContactCountryOfStudy: string;
   emergencyContactHomeCountry: string;
-  universityScholarId: string;
-  dietaryInfo: string;
+  universityId: string;
+  dietaryInformation: string;
   kokorozashi: string;
   longTermCareerPlan: string;
   postGraduationPlan: string;
@@ -41,25 +49,26 @@ interface ScholarData {
   university: string;
   year: string;
   startDate: string;
+  graduationDate: string;
+  bio: string;
 }
 
 const initialScholarData: ScholarData = {
-  firstName: '',
-  lastName: '',
+  name: '',
   aaiScholarId: '',
   dateOfBirth: '',
   gender: '',
   nationality: '',
-  phoneNumber: '',
+  phone: '',
   email: '',
   passportExpirationDate: '',
   visaExpirationDate: '',
-  addressCountryOfStudy: '',
+  location: '',
   addressHomeCountry: '',
   emergencyContactCountryOfStudy: '',
   emergencyContactHomeCountry: '',
-  universityScholarId: '',
-  dietaryInfo: '',
+  universityId: '',
+  dietaryInformation: '',
   kokorozashi: '',
   longTermCareerPlan: '',
   postGraduationPlan: '',
@@ -67,6 +76,8 @@ const initialScholarData: ScholarData = {
   university: '',
   year: '',
   startDate: '',
+  graduationDate: '',
+  bio: '',
 };
 
 export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
@@ -88,22 +99,21 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
       // Mock CSV parsing - in real app, you'd parse the actual CSV
       const mockCsvData: ScholarData[] = [
         {
-          firstName: 'John',
-          lastName: 'Doe',
+          name: 'John Doe',
           aaiScholarId: 'AAI123',
           dateOfBirth: '2000-01-01',
           gender: 'Male',
           nationality: 'British',
-          phoneNumber: '+44 7123 456789',
+          phone: '+44 7123 456789',
           email: 'john.doe@scholar.ac.uk',
           passportExpirationDate: '2026-01-01',
           visaExpirationDate: '2025-01-01',
-          addressCountryOfStudy: '123 Scholar St, London',
+          location: '123 Scholar St, London',
           addressHomeCountry: '456 Home St, London',
           emergencyContactCountryOfStudy: 'Jane Doe',
           emergencyContactHomeCountry: 'John Smith',
-          universityScholarId: 'UNI123',
-          dietaryInfo: 'None',
+          universityId: 'UNI123',
+          dietaryInformation: 'None',
           kokorozashi: 'To become a software engineer',
           longTermCareerPlan: 'Work in AI',
           postGraduationPlan: 'Get a job',
@@ -111,24 +121,25 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
           university: 'Imperial College London',
           year: 'Pre-University',
           startDate: '2025-09-01',
+          graduationDate: '2029-06-01',
+          bio: 'Computer Science student',
         },
         {
-          firstName: 'Jane',
-          lastName: 'Smith',
+          name: 'Jane Smith',
           aaiScholarId: 'AAI456',
           dateOfBirth: '2001-02-02',
           gender: 'Female',
           nationality: 'American',
-          phoneNumber: '+44 7234 567890',
+          phone: '+44 7234 567890',
           email: 'jane.smith@scholar.ac.uk',
           passportExpirationDate: '2027-02-02',
           visaExpirationDate: '2026-02-02',
-          addressCountryOfStudy: '456 Scholar Ave, Edinburgh',
+          location: '456 Scholar Ave, Edinburgh',
           addressHomeCountry: '789 Home Ave, New York',
           emergencyContactCountryOfStudy: 'John Smith',
           emergencyContactHomeCountry: 'Jane Doe',
-          universityScholarId: 'UNI456',
-          dietaryInfo: 'Vegetarian',
+          universityId: 'UNI456',
+          dietaryInformation: 'Vegetarian',
           kokorozashi: 'To become a doctor',
           longTermCareerPlan: 'Work in healthcare',
           postGraduationPlan: 'Go to medical school',
@@ -136,6 +147,8 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
           university: 'University of Edinburgh',
           year: 'Foundation',
           startDate: '2025-09-01',
+          graduationDate: '2030-06-01',
+          bio: 'Medicine student',
         },
       ];
       setCsvData(mockCsvData);
@@ -144,10 +157,33 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
 
   const handleSingleScholarSubmit = async () => {
     setIsSubmitting(true);
-    // Mock API call
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    setStep(2);
-    setIsSubmitting(false);
+    console.log('Submitting scholar data:', scholarData);
+
+    // Clean up the data - remove empty strings for optional fields
+    const cleanedData: any = {};
+    Object.entries(scholarData).forEach(([key, value]) => {
+      if (value !== '' && value !== undefined && value !== null) {
+        cleanedData[key] = value;
+      }
+    });
+
+    console.log('Cleaned scholar data:', cleanedData);
+
+    try {
+      const result = await createScholar(cleanedData);
+      console.log('Create scholar result:', result);
+      if (result.success) {
+        setStep(3); // Skip to success - invitation is already sent
+      } else {
+        console.error('Failed to create scholar:', result);
+        alert('Failed to create scholar. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error creating scholar:', error);
+      alert('Error creating scholar. Please check the console for details.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleBulkSubmit = async () => {
@@ -182,7 +218,7 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
               <h2 className="text-2xl font-bold text-gray-900">Scholars Successfully Onboarded!</h2>
               <p className="text-gray-600">
                 {activeTab === 'single'
-                  ? `${scholarData.firstName} ${scholarData.lastName} has been added to the system and invitation sent.`
+                  ? `${scholarData.name} has been added to the system and invitation sent.`
                   : `${csvData.length} scholars have been added to the system and invitations sent.`}
               </p>
               <Button onClick={onBack} className="mt-4">
@@ -269,21 +305,24 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="firstName">First Name *</Label>
+                    <Label htmlFor="name">Full Name *</Label>
                     <Input
-                      id="firstName"
-                      value={scholarData.firstName}
-                      onChange={(e) => handleInputChange('firstName', e.target.value)}
-                      placeholder="Enter scholar's first name"
+                      id="name"
+                      value={scholarData.name}
+                      onChange={(e) => handleInputChange('name', e.target.value)}
+                      placeholder="Enter scholar's full name"
+                      required
                     />
                   </div>
                   <div>
-                    <Label htmlFor="lastName">Last Name *</Label>
+                    <Label htmlFor="email">Email Address *</Label>
                     <Input
-                      id="lastName"
-                      value={scholarData.lastName}
-                      onChange={(e) => handleInputChange('lastName', e.target.value)}
-                      placeholder="Enter scholar's last name"
+                      id="email"
+                      type="email"
+                      value={scholarData.email}
+                      onChange={(e) => handleInputChange('email', e.target.value)}
+                      placeholder="scholar@university.ac.uk"
+                      required
                     />
                   </div>
                   <div>
@@ -333,30 +372,20 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
 
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="phoneNumber">Phone Number</Label>
+                    <Label htmlFor="phone">Phone Number</Label>
                     <Input
-                      id="phoneNumber"
-                      value={scholarData.phoneNumber}
-                      onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
+                      id="phone"
+                      value={scholarData.phone}
+                      onChange={(e) => handleInputChange('phone', e.target.value)}
                       placeholder="+44 7123 456789"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="email">Email Address *</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={scholarData.email}
-                      onChange={(e) => handleInputChange('email', e.target.value)}
-                      placeholder="scholar@university.ac.uk"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="addressCountryOfStudy">Address (Country of Study)</Label>
+                    <Label htmlFor="location">Address (Country of Study)</Label>
                     <Textarea
-                      id="addressCountryOfStudy"
-                      value={scholarData.addressCountryOfStudy}
-                      onChange={(e) => handleInputChange('addressCountryOfStudy', e.target.value)}
+                      id="location"
+                      value={scholarData.location}
+                      onChange={(e) => handleInputChange('location', e.target.value)}
                       placeholder="Scholar's address in the country of study"
                       rows={3}
                     />
@@ -498,20 +527,20 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="universityScholarId">University Scholar ID</Label>
+                    <Label htmlFor="universityId">University Scholar ID</Label>
                     <Input
-                      id="universityScholarId"
-                      value={scholarData.universityScholarId}
-                      onChange={(e) => handleInputChange('universityScholarId', e.target.value)}
+                      id="universityId"
+                      value={scholarData.universityId}
+                      onChange={(e) => handleInputChange('universityId', e.target.value)}
                       placeholder="Enter University Scholar ID"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="dietaryInfo">Dietary Information</Label>
+                    <Label htmlFor="dietaryInformation">Dietary Information</Label>
                     <Textarea
-                      id="dietaryInfo"
-                      value={scholarData.dietaryInfo}
-                      onChange={(e) => handleInputChange('dietaryInfo', e.target.value)}
+                      id="dietaryInformation"
+                      value={scholarData.dietaryInformation}
+                      onChange={(e) => handleInputChange('dietaryInformation', e.target.value)}
                       placeholder="Any dietary restrictions or allergies"
                       rows={3}
                     />
@@ -552,13 +581,7 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
               <div className="flex justify-end">
                 <Button
                   onClick={handleSingleScholarSubmit}
-                  disabled={
-                    !scholarData.firstName ||
-                    !scholarData.lastName ||
-                    !scholarData.email ||
-                    !scholarData.program ||
-                    isSubmitting
-                  }
+                  disabled={!scholarData.name || !scholarData.email || isSubmitting}
                   className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
                 >
                   {isSubmitting ? 'Creating...' : 'Create Scholar'}
@@ -613,9 +636,7 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
                           <TableBody>
                             {csvData.map((scholar) => (
                               <TableRow key={scholar.email}>
-                                <TableCell>
-                                  {scholar.firstName} {scholar.lastName}
-                                </TableCell>
+                                <TableCell>{scholar.name}</TableCell>
                                 <TableCell>{scholar.email}</TableCell>
                                 <TableCell>{scholar.program}</TableCell>
                                 <TableCell>{scholar.university}</TableCell>

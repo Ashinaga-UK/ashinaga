@@ -1,7 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { and, count, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 import { database } from '../db/connection';
-import { documents, goals, scholars, tasks, users } from '../db/schema';
+import { documents, goals, invitations, scholars, tasks, users } from '../db/schema';
+import { InvitationsService } from '../invitations/invitations.service';
+import { CreateScholarDto } from './dto/create-scholar.dto';
 import {
   DocumentDto,
   GetScholarsQueryDto,
@@ -18,6 +20,75 @@ import { UpdateScholarProfileDto } from './dto/update-scholar-profile.dto';
 
 @Injectable()
 export class ScholarsService {
+  constructor(private readonly invitationsService: InvitationsService) {}
+
+  async createScholar(
+    createScholarDto: CreateScholarDto,
+    createdBy: string
+  ): Promise<{ success: boolean; message: string; scholar?: any }> {
+    // Check if a user with this email already exists
+    const existingUser = await database
+      .select()
+      .from(users)
+      .where(eq(users.email, createScholarDto.email))
+      .limit(1);
+
+    if (existingUser.length > 0) {
+      throw new ConflictException('A user with this email already exists');
+    }
+
+    // Check if there's an existing pending invitation
+    const existingInvitation = await database
+      .select()
+      .from(invitations)
+      .where(and(eq(invitations.email, createScholarDto.email), eq(invitations.status, 'pending')))
+      .limit(1);
+
+    if (existingInvitation.length > 0) {
+      throw new ConflictException('An invitation has already been sent to this email');
+    }
+
+    // Create the invitation with scholar data
+    const invitationData = {
+      email: createScholarDto.email,
+      userType: 'scholar' as const,
+      scholarData: {
+        name: createScholarDto.name,
+        program: createScholarDto.program,
+        year: createScholarDto.year,
+        university: createScholarDto.university,
+        location: createScholarDto.location,
+        phone: createScholarDto.phone,
+        bio: createScholarDto.bio,
+        aaiScholarId: createScholarDto.aaiScholarId,
+        dateOfBirth: createScholarDto.dateOfBirth,
+        gender: createScholarDto.gender,
+        nationality: createScholarDto.nationality,
+        addressHomeCountry: createScholarDto.addressHomeCountry,
+        passportExpirationDate: createScholarDto.passportExpirationDate,
+        visaExpirationDate: createScholarDto.visaExpirationDate,
+        emergencyContactCountryOfStudy: createScholarDto.emergencyContactCountryOfStudy,
+        emergencyContactHomeCountry: createScholarDto.emergencyContactHomeCountry,
+        universityId: createScholarDto.universityId,
+        dietaryInformation: createScholarDto.dietaryInformation,
+        kokorozashi: createScholarDto.kokorozashi,
+        longTermCareerPlan: createScholarDto.longTermCareerPlan,
+        postGraduationPlan: createScholarDto.postGraduationPlan,
+        startDate: createScholarDto.startDate,
+        graduationDate: createScholarDto.graduationDate,
+      },
+    };
+
+    // Create invitation and send email
+    const invitation = await this.invitationsService.createInvitation(invitationData, createdBy);
+
+    return {
+      success: true,
+      message: `Scholar invitation sent to ${createScholarDto.email}`,
+      scholar: invitation,
+    };
+  }
+
   async getScholars(query: GetScholarsQueryDto): Promise<GetScholarsResponseDto> {
     const {
       page = 1,

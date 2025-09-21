@@ -15,7 +15,12 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { getMyProfile, updateMyProfile, type ScholarProfile, type UpdateProfileData } from '../lib/api/profile';
+import {
+  getMyProfile,
+  updateMyProfile,
+  type ScholarProfile,
+  type UpdateProfileData,
+} from '../lib/api/profile';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
@@ -53,7 +58,9 @@ export function MyProfile() {
         university: data.university || '',
         year: data.year || '',
         startDate: data.startDate ? new Date(data.startDate).toISOString().split('T')[0] : '',
-        graduationDate: data.graduationDate ? new Date(data.graduationDate).toISOString().split('T')[0] : '',
+        graduationDate: data.graduationDate
+          ? new Date(data.graduationDate).toISOString().split('T')[0]
+          : '',
         universityId: data.universityId || '',
         dietaryInformation: data.dietaryInformation || '',
         kokorozashi: data.kokorozashi || '',
@@ -112,7 +119,9 @@ export function MyProfile() {
         university: profile.university || '',
         year: profile.year || '',
         startDate: profile.startDate ? new Date(profile.startDate).toISOString().split('T')[0] : '',
-        graduationDate: profile.graduationDate ? new Date(profile.graduationDate).toISOString().split('T')[0] : '',
+        graduationDate: profile.graduationDate
+          ? new Date(profile.graduationDate).toISOString().split('T')[0]
+          : '',
         universityId: profile.universityId || '',
         dietaryInformation: profile.dietaryInformation || '',
         kokorozashi: profile.kokorozashi || '',
@@ -186,7 +195,9 @@ export function MyProfile() {
               <Lock className="h-5 w-5" />
               Basic Information
             </CardTitle>
-            <CardDescription>These fields are managed by the system and cannot be edited</CardDescription>
+            <CardDescription>
+              These fields are managed by the system and cannot be edited
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -200,7 +211,12 @@ export function MyProfile() {
               </div>
               <div>
                 <Label htmlFor="aaiScholarId">AAI Scholar ID</Label>
-                <Input id="aaiScholarId" value={profile.aaiScholarId || 'Not assigned'} disabled className="bg-gray-50" />
+                <Input
+                  id="aaiScholarId"
+                  value={profile.aaiScholarId || 'Not assigned'}
+                  disabled
+                  className="bg-gray-50"
+                />
               </div>
             </div>
           </CardContent>
@@ -319,7 +335,9 @@ export function MyProfile() {
                   id="passportExpirationDate"
                   type="date"
                   value={formData.passportExpirationDate}
-                  onChange={(e) => setFormData({ ...formData, passportExpirationDate: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, passportExpirationDate: e.target.value })
+                  }
                   disabled={!editing}
                 />
               </div>
@@ -353,7 +371,9 @@ export function MyProfile() {
               <Textarea
                 id="emergencyContactCountryOfStudy"
                 value={formData.emergencyContactCountryOfStudy}
-                onChange={(e) => setFormData({ ...formData, emergencyContactCountryOfStudy: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, emergencyContactCountryOfStudy: e.target.value })
+                }
                 disabled={!editing}
                 rows={3}
                 placeholder="Please include Name, Email, Phone Number"
@@ -361,13 +381,13 @@ export function MyProfile() {
               <p className="text-xs text-gray-500 mt-1">Please include Name, Email, Phone Number</p>
             </div>
             <div>
-              <Label htmlFor="emergencyContactHomeCountry">
-                Emergency Contact (Home Country)
-              </Label>
+              <Label htmlFor="emergencyContactHomeCountry">Emergency Contact (Home Country)</Label>
               <Textarea
                 id="emergencyContactHomeCountry"
                 value={formData.emergencyContactHomeCountry}
-                onChange={(e) => setFormData({ ...formData, emergencyContactHomeCountry: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, emergencyContactHomeCountry: e.target.value })
+                }
                 disabled={!editing}
                 rows={3}
                 placeholder="Please include Name, Email, Phone Number"
@@ -521,12 +541,7 @@ export function MyProfile() {
         {/* Action Buttons */}
         {editing && (
           <div className="flex gap-3 justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleCancel}
-              disabled={saving}
-            >
+            <Button type="button" variant="outline" onClick={handleCancel} disabled={saving}>
               <X className="h-4 w-4 mr-2" />
               Cancel
             </Button>
