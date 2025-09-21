@@ -503,3 +503,45 @@ export async function updateTask(taskId: string, data: UpdateTaskData): Promise<
     body: JSON.stringify(data),
   });
 }
+
+// Scholar creation function
+export interface CreateScholarData {
+  name: string;
+  email: string;
+  program: string;
+  year: string;
+  university: string;
+  startDate: string;
+  aaiScholarId?: string;
+  dateOfBirth?: string;
+  gender?: string;
+  nationality?: string;
+  phone?: string;
+  location?: string;
+  addressHomeCountry?: string;
+  passportExpirationDate?: string;
+  visaExpirationDate?: string;
+  emergencyContactCountryOfStudy?: string;
+  emergencyContactHomeCountry?: string;
+  graduationDate?: string;
+  universityId?: string;
+  dietaryInformation?: string;
+  kokorozashi?: string;
+  longTermCareerPlan?: string;
+  postGraduationPlan?: string;
+  bio?: string;
+}
+
+export async function createScholar(data: CreateScholarData): Promise<{
+  success: boolean;
+  message: string;
+  scholar?: any;
+}> {
+  return fetchAPI('/api/scholars', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+}

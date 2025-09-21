@@ -15,7 +15,12 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { getMyProfile, updateMyProfile, type ScholarProfile, type UpdateProfileData } from '../lib/api/profile';
+import {
+  getMyProfile,
+  updateMyProfile,
+  type ScholarProfile,
+  type UpdateProfileData,
+} from '../lib/api/profile';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
@@ -53,7 +58,9 @@ export function MyProfile() {
         university: data.university || '',
         year: data.year || '',
         startDate: data.startDate ? new Date(data.startDate).toISOString().split('T')[0] : '',
-        graduationDate: data.graduationDate ? new Date(data.graduationDate).toISOString().split('T')[0] : '',
+        graduationDate: data.graduationDate
+          ? new Date(data.graduationDate).toISOString().split('T')[0]
+          : '',
         universityId: data.universityId || '',
         dietaryInformation: data.dietaryInformation || '',
         kokorozashi: data.kokorozashi || '',
@@ -112,7 +119,9 @@ export function MyProfile() {
         university: profile.university || '',
         year: profile.year || '',
         startDate: profile.startDate ? new Date(profile.startDate).toISOString().split('T')[0] : '',
-        graduationDate: profile.graduationDate ? new Date(profile.graduationDate).toISOString().split('T')[0] : '',
+        graduationDate: profile.graduationDate
+          ? new Date(profile.graduationDate).toISOString().split('T')[0]
+          : '',
         universityId: profile.universityId || '',
         dietaryInformation: profile.dietaryInformation || '',
         kokorozashi: profile.kokorozashi || '',
@@ -186,7 +195,9 @@ export function MyProfile() {
               <Lock className="h-5 w-5" />
               Basic Information
             </CardTitle>
-            <CardDescription>These fields are managed by the system and cannot be edited</CardDescription>
+            <CardDescription>
+              These fields are managed by the system and cannot be edited
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -200,7 +211,12 @@ export function MyProfile() {
               </div>
               <div>
                 <Label htmlFor="aaiScholarId">AAI Scholar ID</Label>
-                <Input id="aaiScholarId" value={profile.aaiScholarId || 'Not assigned'} disabled className="bg-gray-50" />
+                <Input
+                  id="aaiScholarId"
+                  value={profile.aaiScholarId || 'Not assigned'}
+                  disabled
+                  className="bg-gray-50"
+                />
               </div>
             </div>
           </CardContent>
@@ -319,7 +335,9 @@ export function MyProfile() {
                   id="passportExpirationDate"
                   type="date"
                   value={formData.passportExpirationDate}
-                  onChange={(e) => setFormData({ ...formData, passportExpirationDate: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, passportExpirationDate: e.target.value })
+                  }
                   disabled={!editing}
                 />
               </div>
@@ -353,7 +371,9 @@ export function MyProfile() {
               <Textarea
                 id="emergencyContactCountryOfStudy"
                 value={formData.emergencyContactCountryOfStudy}
-                onChange={(e) => setFormData({ ...formData, emergencyContactCountryOfStudy: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, emergencyContactCountryOfStudy: e.target.value })
+                }
                 disabled={!editing}
                 rows={3}
                 placeholder="Please include Name, Email, Phone Number"
@@ -361,13 +381,13 @@ export function MyProfile() {
               <p className="text-xs text-gray-500 mt-1">Please include Name, Email, Phone Number</p>
             </div>
             <div>
-              <Label htmlFor="emergencyContactHomeCountry">
-                Emergency Contact (Home Country)
-              </Label>
+              <Label htmlFor="emergencyContactHomeCountry">Emergency Contact (Home Country)</Label>
               <Textarea
                 id="emergencyContactHomeCountry"
                 value={formData.emergencyContactHomeCountry}
-                onChange={(e) => setFormData({ ...formData, emergencyContactHomeCountry: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, emergencyContactHomeCountry: e.target.value })
+                }
                 disabled={!editing}
                 rows={3}
                 placeholder="Please include Name, Email, Phone Number"
@@ -399,23 +419,57 @@ export function MyProfile() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="university">University</Label>
-                <Input
-                  id="university"
+                <Select
                   value={formData.university}
-                  onChange={(e) => setFormData({ ...formData, university: e.target.value })}
+                  onValueChange={(value) => setFormData({ ...formData, university: value })}
                   disabled={!editing}
-                  placeholder="e.g., Tokyo University"
-                />
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select university" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Imperial College London">Imperial College London</SelectItem>
+                    <SelectItem value="University of Edinburgh">University of Edinburgh</SelectItem>
+                    <SelectItem value="LSE">London School of Economics</SelectItem>
+                    <SelectItem value="Cambridge University">Cambridge University</SelectItem>
+                    <SelectItem value="Oxford University">Oxford University</SelectItem>
+                    <SelectItem value="UCL">University College London</SelectItem>
+                    <SelectItem value="University of York">University of York</SelectItem>
+                    <SelectItem value="University of Warwick">University of Warwick</SelectItem>
+                    <SelectItem value="University of Central Lancashire">
+                      University of Central Lancashire
+                    </SelectItem>
+                    <SelectItem value="University of East Anglia">
+                      University of East Anglia
+                    </SelectItem>
+                    <SelectItem value="University of Manchester">
+                      University of Manchester
+                    </SelectItem>
+                    <SelectItem value="University of Leeds">University of Leeds</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label htmlFor="year">Academic Year</Label>
-                <Input
-                  id="year"
+                <Select
                   value={formData.year}
-                  onChange={(e) => setFormData({ ...formData, year: e.target.value })}
+                  onValueChange={(value) => setFormData({ ...formData, year: value })}
                   disabled={!editing}
-                  placeholder="e.g., Year 3"
-                />
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select academic year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Pre-University">Pre-University</SelectItem>
+                    <SelectItem value="Foundation">Foundation</SelectItem>
+                    <SelectItem value="Year 1">Year 1</SelectItem>
+                    <SelectItem value="Year 2">Year 2</SelectItem>
+                    <SelectItem value="Year 3">Year 3</SelectItem>
+                    <SelectItem value="Year 4">Year 4</SelectItem>
+                    <SelectItem value="Year 5">Year 5</SelectItem>
+                    <SelectItem value="Postgraduate">Postgraduate</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label htmlFor="startDate">Start Date</Label>
@@ -521,12 +575,7 @@ export function MyProfile() {
         {/* Action Buttons */}
         {editing && (
           <div className="flex gap-3 justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleCancel}
-              disabled={saving}
-            >
+            <Button type="button" variant="outline" onClick={handleCancel} disabled={saving}>
               <X className="h-4 w-4 mr-2" />
               Cancel
             </Button>

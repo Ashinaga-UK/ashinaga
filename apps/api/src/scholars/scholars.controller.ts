@@ -5,6 +5,7 @@ import {
   Param,
   ParseUUIDPipe,
   Patch,
+  Post,
   Query,
   Request,
   UseGuards,
@@ -12,6 +13,8 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/auth.guard';
+import { StaffGuard } from '../auth/staff.guard';
+import { CreateScholarDto } from './dto/create-scholar.dto';
 import {
   GetScholarsQueryDto,
   GetScholarsResponseDto,
@@ -25,6 +28,15 @@ import { ScholarsService } from './scholars.service';
 @Controller('api/scholars')
 export class ScholarsController {
   constructor(private readonly scholarsService: ScholarsService) {}
+
+  @Post()
+  @UseGuards(StaffGuard)
+  async createScholar(
+    @Body() createScholarDto: CreateScholarDto,
+    @Request() req
+  ): Promise<{ success: boolean; message: string; scholar?: any }> {
+    return this.scholarsService.createScholar(createScholarDto, req.user.id);
+  }
 
   @Get()
   async getScholars(

@@ -28,6 +28,7 @@ import { useMyAnnouncements, useMyRequests } from '../../../lib/hooks/use-querie
 import { NewRequestDialog } from '../../../components/new-request-dialog';
 import { getMyTasks } from '../../../lib/api/tasks';
 import { getMyGoals } from '../../../lib/api/goals';
+import { getMyProfile, type ScholarProfile } from '../../../lib/api/profile';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -36,14 +37,20 @@ export default function DashboardPage() {
   const { data: announcements } = useMyAnnouncements();
   const [tasks, setTasks] = useState<any[]>([]);
   const [goals, setGoals] = useState<any[]>([]);
+  const [profile, setProfile] = useState<ScholarProfile | null>(null);
   const [loadingData, setLoadingData] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [tasksData, goalsData] = await Promise.all([getMyTasks(), getMyGoals()]);
+        const [tasksData, goalsData, profileData] = await Promise.all([
+          getMyTasks(),
+          getMyGoals(),
+          getMyProfile(),
+        ]);
         setTasks(tasksData);
         setGoals(goalsData);
+        setProfile(profileData);
       } catch (error) {
         console.error('Failed to load data:', error);
       } finally {
@@ -178,11 +185,15 @@ export default function DashboardPage() {
             </div>
             <div>
               <p className="text-sm text-gray-600">Program</p>
-              <p className="font-medium">Computer Science</p>
+              <p className="font-medium">{profile?.program || 'Not set'}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">University</p>
-              <p className="font-medium">Tokyo University</p>
+              <p className="font-medium">{profile?.university || 'Not set'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Year</p>
+              <p className="font-medium">{profile?.year || 'Not set'}</p>
             </div>
           </CardContent>
         </Card>
