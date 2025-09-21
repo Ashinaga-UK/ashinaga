@@ -109,7 +109,14 @@ export function useFileUpload() {
           // Update progress to completed
           setUploadProgress((prev) =>
             prev.map((p, idx) =>
-              idx === i ? { ...p, status: 'completed', progress: 100, attachmentId: confirmResponse.attachmentId } : p
+              idx === i
+                ? {
+                    ...p,
+                    status: 'completed',
+                    progress: 100,
+                    attachmentId: confirmResponse.attachmentId,
+                  }
+                : p
             )
           );
 

@@ -65,10 +65,7 @@ export function ScholarLayout({ children, onLogout }: ScholarLayoutProps) {
                 const isActive = pathname === item.href;
                 return (
                   <li key={item.id}>
-                    <Link
-                      href={item.href}
-                      onClick={() => setIsSidebarOpen(false)}
-                    >
+                    <Link href={item.href} onClick={() => setIsSidebarOpen(false)}>
                       <Button
                         variant="ghost"
                         className={cn(

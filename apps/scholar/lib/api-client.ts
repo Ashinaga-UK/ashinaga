@@ -10,7 +10,9 @@ async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise
   const url = `${baseUrl}${normalizedEndpoint}`;
 
   // Only set Content-Type for requests with a body
-  const headers: Record<string, string> = { ...(options.headers as Record<string, string> || {}) };
+  const headers: Record<string, string> = {
+    ...((options.headers as Record<string, string>) || {}),
+  };
   if (options.body) {
     headers['Content-Type'] = 'application/json';
   }

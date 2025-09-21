@@ -1,12 +1,7 @@
 'use client';
 
 import { AlertCircle, Bell } from 'lucide-react';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '../../../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { useMyAnnouncements } from '../../../lib/hooks/use-queries';
 
 export default function AnnouncementsPage() {

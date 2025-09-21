@@ -41,10 +41,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [tasksData, goalsData] = await Promise.all([
-          getMyTasks(),
-          getMyGoals(),
-        ]);
+        const [tasksData, goalsData] = await Promise.all([getMyTasks(), getMyGoals()]);
         setTasks(tasksData);
         setGoals(goalsData);
       } catch (error) {
@@ -63,7 +60,9 @@ export default function DashboardPage() {
     ).length || 0;
 
   // Calculate pending tasks
-  const pendingTasks = tasks.filter((t) => t.status === 'pending' || t.status === 'in_progress').length;
+  const pendingTasks = tasks.filter(
+    (t) => t.status === 'pending' || t.status === 'in_progress'
+  ).length;
   const dueSoon = tasks.filter((t) => {
     if (t.status === 'completed') return false;
     const dueDate = new Date(t.dueDate);
@@ -149,7 +148,11 @@ export default function DashboardPage() {
           <CardContent>
             <div className="text-2xl font-bold">{recentAnnouncements}</div>
             <p className="text-xs text-muted-foreground">
-              {recentAnnouncements === 0 ? 'No new' : recentAnnouncements === 1 ? 'New announcement' : 'New announcements'}
+              {recentAnnouncements === 0
+                ? 'No new'
+                : recentAnnouncements === 1
+                  ? 'New announcement'
+                  : 'New announcements'}
             </p>
           </CardContent>
         </Card>
@@ -207,9 +210,9 @@ export default function DashboardPage() {
               <div className="text-center py-4">
                 <p className="text-sm text-gray-500">Loading goals...</p>
               </div>
-            ) : goals.filter(g => g.status === 'in_progress').slice(0, 3).length > 0 ? (
+            ) : goals.filter((g) => g.status === 'in_progress').slice(0, 3).length > 0 ? (
               goals
-                .filter(g => g.status === 'in_progress')
+                .filter((g) => g.status === 'in_progress')
                 .slice(0, 3)
                 .map((goal) => (
                   <div key={goal.id}>

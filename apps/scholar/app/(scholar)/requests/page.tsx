@@ -2,10 +2,7 @@
 
 import { AlertCircle, FileText, Plus } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
-import {
-  Card,
-  CardContent,
-} from '../../../components/ui/card';
+import { Card, CardContent } from '../../../components/ui/card';
 import { useMyRequests } from '../../../lib/hooks/use-queries';
 import { RequestCard } from '../../../components/request-card';
 import { NewRequestDialog } from '../../../components/new-request-dialog';

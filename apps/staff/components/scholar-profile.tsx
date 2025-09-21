@@ -264,7 +264,9 @@ export function ScholarProfilePage({
                             {task.response.responseText && (
                               <div className="mb-2">
                                 <span className="text-sm font-medium">Response: </span>
-                                <span className="text-sm text-gray-600">{task.response.responseText}</span>
+                                <span className="text-sm text-gray-600">
+                                  {task.response.responseText}
+                                </span>
                               </div>
                             )}
                             {task.response.attachments && task.response.attachments.length > 0 && (
@@ -279,7 +281,9 @@ export function ScholarProfilePage({
                                       onClick={async () => {
                                         try {
                                           // Use the attachment ID to get the download URL
-                                          const { downloadUrl } = await getFileDownloadUrl(attachment.id);
+                                          const { downloadUrl } = await getFileDownloadUrl(
+                                            attachment.id
+                                          );
                                           window.open(downloadUrl, '_blank');
                                         } catch (error) {
                                           console.error('Failed to download file:', error);

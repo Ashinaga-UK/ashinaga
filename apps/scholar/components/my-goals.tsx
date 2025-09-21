@@ -16,13 +16,7 @@ import { CreateGoalDialog } from './create-goal-dialog';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader } from './ui/card';
 import { Progress } from './ui/progress';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from './ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Slider } from './ui/slider';
 
 export function MyGoals() {
@@ -67,7 +61,8 @@ export function MyGoals() {
 
   const handleProgressUpdate = async (goalId: string, newProgress: number) => {
     try {
-      const status = newProgress === 100 ? 'completed' : newProgress > 0 ? 'in_progress' : 'pending';
+      const status =
+        newProgress === 100 ? 'completed' : newProgress > 0 ? 'in_progress' : 'pending';
       await updateGoal(goalId, { progress: newProgress, status });
       await loadGoals();
       setEditingProgress(null);
@@ -319,7 +314,7 @@ export function MyGoals() {
                       <div className="space-y-2">
                         <Slider
                           value={[tempProgress]}
-                          onValueChange={(value) => setTempProgress(value[0])}
+                          onValueChange={(value) => setTempProgress(value[0] || 0)}
                           max={100}
                           step={5}
                           className="w-full"

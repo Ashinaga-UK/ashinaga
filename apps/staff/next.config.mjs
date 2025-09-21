@@ -6,15 +6,14 @@ const nextConfig = {
   // Strict mode for better development experience
   reactStrictMode: true,
 
+  // Use SWC minifier instead of Terser
+  swcMinify: true,
+
   // Webpack configuration to address build issues
   webpack: (config, { isServer }) => {
-    // Disable certain optimizations that might cause issues
-    if (!isServer) {
-      config.optimization = {
-        ...config.optimization,
-        minimize: false,
-      };
-    }
+    // Handle potential undefined issues
+    config.module.rules = config.module.rules || [];
+
     return config;
   },
 };

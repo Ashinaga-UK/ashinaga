@@ -5,11 +5,7 @@ import { useEffect } from 'react';
 import { signOut, useSession } from '../../lib/auth-client';
 import { ScholarLayout } from '../../components/scholar-layout';
 
-export default function ScholarRootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function ScholarRootLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { data: session, isPending } = useSession();
 
@@ -48,9 +44,5 @@ export default function ScholarRootLayout({
     return null;
   }
 
-  return (
-    <ScholarLayout onLogout={handleLogout}>
-      {children}
-    </ScholarLayout>
-  );
+  return <ScholarLayout onLogout={handleLogout}>{children}</ScholarLayout>;
 }
