@@ -119,7 +119,7 @@ resource "aws_db_instance" "postgres" {
   max_allocated_storage = var.db_max_allocated_storage
   storage_type          = "gp3"
   engine                = "postgres"
-  engine_version        = "15.7"
+  engine_version        = "15.12"
   instance_class        = var.db_instance_class
   db_name               = var.db_name
   username              = var.db_username
@@ -149,6 +149,7 @@ resource "aws_db_instance" "postgres" {
     delete = "60m" # Increased to 60 minutes for destroy
   }
 
+  # Ensure proper cleanup order
   depends_on = [
     aws_db_subnet_group.postgres,
     aws_security_group.rds
@@ -232,6 +233,7 @@ module "api_app_runner" {
   port             = var.app_runner_port
   cpu              = var.app_runner_cpu
   memory           = var.app_runner_memory
+
   # S3 access policy for scholar data
   additional_policy_arns = [module.scholar_data_bucket.s3_access_policy_arn]
 
@@ -251,9 +253,13 @@ module "api_app_runner" {
     # CORS Configuration for production environment
     CORS_ORIGINS = "https://staff.ashinaga-uk.org,https://scholar.ashinaga-uk.org,http://localhost:4001,http://localhost:4002"
 
-    # Email Configuration (optional - will log to console if not set)
+    # Email Configuration
     RESEND_API_KEY = module.resend_api_key.secret_value
     EMAIL_FROM     = "noreply@ashinaga-uk.org"
+
+    # Frontend URLs
+    STAFF_APP_URL   = "https://staff.ashinaga-uk.org"
+    SCHOLAR_APP_URL = "https://scholar.ashinaga-uk.org"
 
     # S3 Configuration
     S3_BUCKET_NAME = module.scholar_data_bucket.bucket_name
