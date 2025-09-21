@@ -91,7 +91,10 @@ export class TaskDto {
   title: string;
   description?: string | null;
   type:
+    | 'regular'
     | 'document_upload'
+    | 'survey'
+    | 'meeting'
     | 'form_completion'
     | 'meeting_attendance'
     | 'goal_update'
@@ -99,7 +102,7 @@ export class TaskDto {
     | 'other';
   priority: 'high' | 'medium' | 'low';
   dueDate: Date;
-  status: 'pending' | 'in_progress' | 'completed';
+  status: 'pending' | 'in_progress' | 'completed' | 'overdue';
   assignedBy: string;
   completedAt?: Date | null;
   createdAt: Date;
@@ -157,6 +160,25 @@ export class ScholarProfileDto {
   status: 'active' | 'inactive' | 'on_hold';
   startDate: Date;
   lastActivity?: Date | null;
+
+  // New profile fields
+  aaiScholarId?: string | null;
+  dateOfBirth?: string | null;
+  gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say' | null;
+  nationality?: string | null;
+  addressHomeCountry?: string | null;
+  passportExpirationDate?: string | null;
+  visaExpirationDate?: string | null;
+  emergencyContactCountryOfStudy?: string | null;
+  emergencyContactHomeCountry?: string | null;
+  graduationDate?: Date | null;
+  universityId?: string | null;
+  dietaryInformation?: string | null;
+  kokorozashi?: string | null;
+  longTermCareerPlan?: string | null;
+  postGraduationPlan?: string | null;
+
+  // Related data
   goals: GoalDto[];
   tasks: TaskDto[];
   documents: DocumentDto[];

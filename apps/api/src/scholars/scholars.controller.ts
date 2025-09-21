@@ -1,11 +1,24 @@
-import { Controller, Get, Param, ParseUUIDPipe, Query, ValidationPipe } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Query,
+  Request,
+  UseGuards,
+  ValidationPipe,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { AuthGuard } from '../auth/auth.guard';
 import {
   GetScholarsQueryDto,
   GetScholarsResponseDto,
   ScholarProfileDto,
   ScholarResponseDto,
 } from './dto/get-scholars.dto';
+import { UpdateScholarProfileDto } from './dto/update-scholar-profile.dto';
 import { ScholarsService } from './scholars.service';
 
 @ApiTags('scholars')
@@ -40,6 +53,23 @@ export class ScholarsController {
     return this.scholarsService.getScholarStats();
   }
 
+  // Scholar's own profile endpoints (must be before :id routes)
+  @Get('my-profile')
+  @UseGuards(AuthGuard)
+  async getMyProfile(@Request() req): Promise<ScholarProfileDto> {
+    return this.scholarsService.getScholarProfileByUserId(req.user.id);
+  }
+
+  @Patch('my-profile')
+  @UseGuards(AuthGuard)
+  async updateMyProfile(
+    @Request() req,
+    @Body() updateData: UpdateScholarProfileDto
+  ): Promise<ScholarProfileDto> {
+    return this.scholarsService.updateScholarProfile(req.user.id, updateData);
+  }
+
+  // Specific :id routes must come after all non-parameterized routes
   @Get(':id/profile')
   async getScholarProfile(@Param('id', ParseUUIDPipe) id: string): Promise<ScholarProfileDto> {
     return this.scholarsService.getScholarProfile(id);
