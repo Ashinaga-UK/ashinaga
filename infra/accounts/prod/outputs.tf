@@ -21,8 +21,8 @@ output "app_runner_custom_domain" {
 }
 
 output "app_runner_dns_target" {
-  description = "DNS target for CNAME record (use this in your DNS provider)"
-  value       = module.api_app_runner.service_url
+  description = "DNS target for the App Runner custom domain (add this as CNAME in Cloudflare)"
+  value       = aws_apprunner_custom_domain_association.api.dns_target
 }
 
 # Database outputs (sensitive)
