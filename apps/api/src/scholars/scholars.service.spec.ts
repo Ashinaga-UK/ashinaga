@@ -1,12 +1,28 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { ScholarsService } from './scholars.service';
 
+// Mock the database connection before any imports that might use it
 jest.mock('../db/connection', () => ({
   database: {
     select: jest.fn(),
   },
+  getDatabase: jest.fn(() => ({
+    select: jest.fn(),
+    insert: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+  })),
 }));
+
+// Mock the auth config to prevent it from trying to use the database
+jest.mock('../auth/auth.config', () => ({
+  auth: {
+    handler: jest.fn(),
+  },
+}));
+
+import { ScholarsService } from './scholars.service';
+import { InvitationsService } from '../invitations/invitations.service';
 
 describe('ScholarsService', () => {
   let service: ScholarsService;
@@ -14,7 +30,15 @@ describe('ScholarsService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [ScholarsService],
+      providers: [
+        ScholarsService,
+        {
+          provide: InvitationsService,
+          useValue: {
+            createInvitation: jest.fn(),
+          },
+        },
+      ],
     }).compile();
 
     service = module.get<ScholarsService>(ScholarsService);
