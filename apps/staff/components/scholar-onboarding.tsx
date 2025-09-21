@@ -490,6 +490,18 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
                         <SelectItem value="Cambridge University">Cambridge University</SelectItem>
                         <SelectItem value="Oxford University">Oxford University</SelectItem>
                         <SelectItem value="UCL">University College London</SelectItem>
+                        <SelectItem value="University of York">University of York</SelectItem>
+                        <SelectItem value="University of Warwick">University of Warwick</SelectItem>
+                        <SelectItem value="University of Central Lancashire">
+                          University of Central Lancashire
+                        </SelectItem>
+                        <SelectItem value="University of East Anglia">
+                          University of East Anglia
+                        </SelectItem>
+                        <SelectItem value="University of Manchester">
+                          University of Manchester
+                        </SelectItem>
+                        <SelectItem value="University of Leeds">University of Leeds</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

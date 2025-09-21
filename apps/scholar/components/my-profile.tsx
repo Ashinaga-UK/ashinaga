@@ -419,23 +419,57 @@ export function MyProfile() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="university">University</Label>
-                <Input
-                  id="university"
+                <Select
                   value={formData.university}
-                  onChange={(e) => setFormData({ ...formData, university: e.target.value })}
+                  onValueChange={(value) => setFormData({ ...formData, university: value })}
                   disabled={!editing}
-                  placeholder="e.g., Tokyo University"
-                />
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select university" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Imperial College London">Imperial College London</SelectItem>
+                    <SelectItem value="University of Edinburgh">University of Edinburgh</SelectItem>
+                    <SelectItem value="LSE">London School of Economics</SelectItem>
+                    <SelectItem value="Cambridge University">Cambridge University</SelectItem>
+                    <SelectItem value="Oxford University">Oxford University</SelectItem>
+                    <SelectItem value="UCL">University College London</SelectItem>
+                    <SelectItem value="University of York">University of York</SelectItem>
+                    <SelectItem value="University of Warwick">University of Warwick</SelectItem>
+                    <SelectItem value="University of Central Lancashire">
+                      University of Central Lancashire
+                    </SelectItem>
+                    <SelectItem value="University of East Anglia">
+                      University of East Anglia
+                    </SelectItem>
+                    <SelectItem value="University of Manchester">
+                      University of Manchester
+                    </SelectItem>
+                    <SelectItem value="University of Leeds">University of Leeds</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label htmlFor="year">Academic Year</Label>
-                <Input
-                  id="year"
+                <Select
                   value={formData.year}
-                  onChange={(e) => setFormData({ ...formData, year: e.target.value })}
+                  onValueChange={(value) => setFormData({ ...formData, year: value })}
                   disabled={!editing}
-                  placeholder="e.g., Year 3"
-                />
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select academic year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Pre-University">Pre-University</SelectItem>
+                    <SelectItem value="Foundation">Foundation</SelectItem>
+                    <SelectItem value="Year 1">Year 1</SelectItem>
+                    <SelectItem value="Year 2">Year 2</SelectItem>
+                    <SelectItem value="Year 3">Year 3</SelectItem>
+                    <SelectItem value="Year 4">Year 4</SelectItem>
+                    <SelectItem value="Year 5">Year 5</SelectItem>
+                    <SelectItem value="Postgraduate">Postgraduate</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label htmlFor="startDate">Start Date</Label>
