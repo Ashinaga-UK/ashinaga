@@ -9,12 +9,17 @@ async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise
   const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = `${baseUrl}${normalizedEndpoint}`;
 
+  // Only set Content-Type for requests with a body
+  const headers: Record<string, string> = {
+    ...((options.headers as Record<string, string>) || {}),
+  };
+  if (options.body) {
+    headers['Content-Type'] = 'application/json';
+  }
+
   const response = await fetch(url, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
+    headers,
     credentials: 'include', // Include cookies for authentication
   });
 

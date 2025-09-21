@@ -49,6 +49,20 @@ export interface Goal {
   updatedAt: string;
 }
 
+export interface TaskAttachment {
+  id: string;
+  fileName: string;
+  fileUrl: string;
+  fileSize: string;
+  mimeType: string;
+}
+
+export interface TaskResponse {
+  responseText?: string | null;
+  submittedAt: string;
+  attachments: TaskAttachment[];
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -67,6 +81,7 @@ export interface Task {
   completedAt?: string | null;
   createdAt: string;
   updatedAt: string;
+  response?: TaskResponse;
 }
 
 export interface Document {

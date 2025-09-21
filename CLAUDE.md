@@ -213,3 +213,4 @@ See `infra/DEPLOYMENT_GUIDE.md` for complete setup instructions.
 2. Fix linting with `pnpm lint` (runs biome check with fixes)
 3. Test endpoints with Swagger UI before frontend integration
 4. Use loading states and error handling in all data fetching components
+5. **IMPORTANT**: Do NOT run `pnpm dev` or attempt to start development servers - they are always running in the background

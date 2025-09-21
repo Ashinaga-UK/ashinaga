@@ -14,6 +14,7 @@ export interface UploadedFile {
   fileName: string;
   fileSize: string;
   mimeType: string;
+  fileKey?: string;
 }
 
 export function useFileUpload() {
@@ -87,7 +88,13 @@ export function useFileUpload() {
           });
 
           // Step 3: Confirm upload with backend
-          const { attachmentId } = await fetchAPI<{ attachmentId: string }>('/api/files/confirm', {
+          const confirmResponse = await fetchAPI<{
+            attachmentId: string;
+            fileKey?: string;
+            fileName?: string;
+            fileSize?: string;
+            mimeType?: string;
+          }>('/api/files/confirm', {
             method: 'POST',
             body: JSON.stringify({
               fileId,
@@ -102,15 +109,23 @@ export function useFileUpload() {
           // Update progress to completed
           setUploadProgress((prev) =>
             prev.map((p, idx) =>
-              idx === i ? { ...p, status: 'completed', progress: 100, attachmentId } : p
+              idx === i
+                ? {
+                    ...p,
+                    status: 'completed',
+                    progress: 100,
+                    attachmentId: confirmResponse.attachmentId,
+                  }
+                : p
             )
           );
 
           uploadedFiles.push({
-            attachmentId,
-            fileName: file.name,
-            fileSize: file.size.toString(),
-            mimeType: file.type,
+            attachmentId: confirmResponse.attachmentId,
+            fileName: confirmResponse.fileName || file.name,
+            fileSize: confirmResponse.fileSize || file.size.toString(),
+            mimeType: confirmResponse.mimeType || file.type,
+            fileKey: confirmResponse.fileKey || fileKey,
           });
         } catch (error) {
           console.error(`Failed to upload ${file.name}:`, error);
