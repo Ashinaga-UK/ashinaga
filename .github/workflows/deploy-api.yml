@@ -218,12 +218,38 @@ jobs:
         export BETTER_AUTH_SECRET=$(aws secretsmanager get-secret-value \
           --secret-id "$AUTH_SECRET_ARN" \
           --query SecretString --output text)
-        
+
+        # Get Resend API key from AWS Secrets Manager
+        echo "Retrieving Resend API key from AWS Secrets Manager..."
+        RESEND_SECRET_NAME="ashinaga-resend-api-key-${ENVIRONMENT}"
+
+        RESEND_SECRET_ARN=$(aws secretsmanager list-secrets \
+          --query "SecretList[?contains(Name, '${RESEND_SECRET_NAME}')] | sort_by(@, &CreatedDate) | [-1].ARN" \
+          --output text)
+
+        if [ -z "$RESEND_SECRET_ARN" ]; then
+          echo "ERROR: Could not find Resend secret with name containing: ${RESEND_SECRET_NAME}"
+          exit 1
+        fi
+
+        export RESEND_API_KEY=$(aws secretsmanager get-secret-value \
+          --secret-id "$RESEND_SECRET_ARN" \
+          --query SecretString --output text)
+
         # Set Better Auth URL based on environment
         if [ "$ENVIRONMENT" = "test" ]; then
           export BETTER_AUTH_URL="https://api-test.ashinaga-uk.org"
         else
           export BETTER_AUTH_URL="https://api.ashinaga-uk.org"
+        fi
+
+        # Set Frontend URLs based on environment
+        if [ "$ENVIRONMENT" = "test" ]; then
+          export STAFF_APP_URL="https://staff-test.ashinaga-uk.org"
+          export SCHOLAR_APP_URL="https://scholar-test.ashinaga-uk.org"
+        else
+          export STAFF_APP_URL="https://staff.ashinaga-uk.org"
+          export SCHOLAR_APP_URL="https://scholar.ashinaga-uk.org"
         fi
         
         # Run Drizzle migrations
@@ -236,6 +262,9 @@ jobs:
         echo "DB_USER: $DB_USER"
         echo "BETTER_AUTH_URL: $BETTER_AUTH_URL"
         echo "BETTER_AUTH_SECRET: [MASKED]"
+        echo "RESEND_API_KEY: [MASKED]"
+        echo "STAFF_APP_URL: $STAFF_APP_URL"
+        echo "SCHOLAR_APP_URL: $SCHOLAR_APP_URL"
         
         # Set SSL to production mode for RDS connection
         export NODE_ENV="production"
