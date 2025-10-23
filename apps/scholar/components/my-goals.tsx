@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { deleteGoal, getMyGoals, type Goal, updateGoal } from '../lib/api/goals';
+import { useSession } from '../lib/auth-client';
+import { CommentThread } from './comment-thread';
 import { CreateGoalDialog } from './create-goal-dialog';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader } from './ui/card';
@@ -21,6 +23,7 @@ import { Slider } from './ui/slider';
 import { Textarea } from './ui/textarea';
 
 export function MyGoals() {
+  const { data: session } = useSession();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [filteredGoals, setFilteredGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -446,6 +449,13 @@ export function MyGoals() {
                       <p className="text-sm text-green-600">
                         ✅ Completed on {new Date(goal.completedAt).toLocaleDateString()}
                       </p>
+                    </div>
+                  )}
+
+                  {/* Comment Thread */}
+                  {session?.user?.id && (
+                    <div className="mt-4">
+                      <CommentThread goalId={goal.id} currentUserId={session.user.id} />
                     </div>
                   )}
                 </CardContent>

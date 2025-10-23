@@ -13,7 +13,9 @@ import {
   Plus,
 } from 'lucide-react';
 import { getFileDownloadUrl, type CreateTaskData } from '../lib/api-client';
+import { useSession } from '../lib/auth-client';
 import { useScholarProfile } from '../lib/hooks/use-queries';
+import { CommentThread } from './comment-thread';
 import { TaskAssignment } from './task-assignment';
 import { Alert, AlertDescription } from './ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -34,6 +36,7 @@ export function ScholarProfilePage({
   onBack,
   initialTab = 'goals',
 }: ScholarProfileProps) {
+  const { data: session } = useSession();
   const { data: scholar, isLoading, error } = useScholarProfile(scholarId);
 
   const getStatusColor = (status: string) => {
@@ -281,6 +284,13 @@ export function ScholarProfilePage({
                         </span>
                       </div>
                     </div>
+
+                    {/* Comment Thread */}
+                    {session?.user?.id && (
+                      <div className="mt-4">
+                        <CommentThread goalId={goal.id} currentUserId={session.user.id} />
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))
