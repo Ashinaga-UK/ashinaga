@@ -84,6 +84,7 @@ function StaffDashboardContent() {
     data: announcements = [],
     isLoading: announcementsLoading,
     error: announcementsError,
+    refetch: refetchAnnouncements,
   } = useAnnouncements(isAuthenticated);
 
   // Update state when URL changes
@@ -573,7 +574,7 @@ function StaffDashboardContent() {
                                 ) {
                                   try {
                                     await deleteAnnouncement(announcement.id);
-                                    announcementsRefetch();
+                                    refetchAnnouncements();
                                   } catch (error) {
                                     console.error('Failed to delete announcement:', error);
                                     alert('Failed to delete announcement. Please try again.');

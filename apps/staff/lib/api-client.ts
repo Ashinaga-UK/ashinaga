@@ -162,12 +162,18 @@ export async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): 
   });
 
   try {
+    const headers: Record<string, string> = {
+      ...options.headers,
+    };
+
+    // Only set Content-Type if there's a body
+    if (options.body) {
+      headers['Content-Type'] = 'application/json';
+    }
+
     const response = await fetch(url, {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      headers,
       credentials: 'include', // Include cookies for authentication
     });
 
