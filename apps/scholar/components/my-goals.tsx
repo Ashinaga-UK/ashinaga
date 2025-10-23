@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader } from './ui/card';
 import { Progress } from './ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Slider } from './ui/slider';
+import { Textarea } from './ui/textarea';
 
 export function MyGoals() {
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -26,8 +27,10 @@ export function MyGoals() {
   const [filter, setFilter] = useState<'all' | 'pending' | 'in_progress' | 'completed'>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [editingProgress, setEditingProgress] = useState<string | null>(null);
-  const [tempProgress, setTempProgress] = useState<number>(0);
+  const [editingCompletion, setEditingCompletion] = useState<string | null>(null);
+  const [tempCompletion, setTempCompletion] = useState<number>(1);
+  const [editingReview, setEditingReview] = useState<string | null>(null);
+  const [tempReview, setTempReview] = useState<string>('');
 
   const loadGoals = async () => {
     try {
@@ -59,15 +62,25 @@ export function MyGoals() {
     setFilteredGoals(filtered);
   }, [goals, filter, categoryFilter]);
 
-  const handleProgressUpdate = async (goalId: string, newProgress: number) => {
+  const handleCompletionUpdate = async (goalId: string, newCompletion: number) => {
     try {
       const status =
-        newProgress === 100 ? 'completed' : newProgress > 0 ? 'in_progress' : 'pending';
-      await updateGoal(goalId, { progress: newProgress, status });
+        newCompletion === 10 ? 'completed' : newCompletion > 1 ? 'in_progress' : 'pending';
+      await updateGoal(goalId, { completionScale: newCompletion, status });
       await loadGoals();
-      setEditingProgress(null);
+      setEditingCompletion(null);
     } catch (error) {
-      console.error('Failed to update goal progress:', error);
+      console.error('Failed to update goal completion:', error);
+    }
+  };
+
+  const handleReviewUpdate = async (goalId: string, reviewNotes: string) => {
+    try {
+      await updateGoal(goalId, { reviewNotes });
+      await loadGoals();
+      setEditingReview(null);
+    } catch (error) {
+      console.error('Failed to update review notes:', error);
     }
   };
 
@@ -84,18 +97,27 @@ export function MyGoals() {
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case 'academic':
+      case 'academic_development':
         return '🎓';
-      case 'career':
-        return '💼';
-      case 'leadership':
-        return '👥';
-      case 'personal':
+      case 'personal_development':
         return '🌟';
-      case 'community':
-        return '🤝';
+      case 'professional_development':
+        return '💼';
       default:
         return '📌';
+    }
+  };
+
+  const getCategoryLabel = (category: string) => {
+    switch (category) {
+      case 'academic_development':
+        return 'Academic Development';
+      case 'personal_development':
+        return 'Personal Development';
+      case 'professional_development':
+        return 'Professional Development';
+      default:
+        return category;
     }
   };
 
@@ -227,16 +249,14 @@ export function MyGoals() {
             </SelectContent>
           </Select>
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-52">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
-              <SelectItem value="academic">Academic</SelectItem>
-              <SelectItem value="career">Career</SelectItem>
-              <SelectItem value="leadership">Leadership</SelectItem>
-              <SelectItem value="personal">Personal</SelectItem>
-              <SelectItem value="community">Community</SelectItem>
+              <SelectItem value="academic_development">Academic Development</SelectItem>
+              <SelectItem value="personal_development">Personal Development</SelectItem>
+              <SelectItem value="professional_development">Professional Development</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -277,7 +297,7 @@ export function MyGoals() {
                         <div>
                           <h3 className="font-semibold text-lg">{goal.title}</h3>
                           <div className="flex items-center gap-4 text-sm text-gray-600">
-                            <span className="capitalize">{goal.category}</span>
+                            <span>{getCategoryLabel(goal.category)}</span>
                             <span>•</span>
                             <span className="flex items-center gap-1">
                               <Calendar className="h-3 w-3" />
@@ -286,8 +306,23 @@ export function MyGoals() {
                           </div>
                         </div>
                       </div>
-                      {goal.description && (
-                        <p className="text-gray-600 mt-2 mb-4">{goal.description}</p>
+
+                      {/* Related Skills */}
+                      {goal.relatedSkills && (
+                        <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                          <p className="text-xs font-semibold text-blue-900 mb-1">
+                            Related LDF Skills & Qualities
+                          </p>
+                          <p className="text-sm text-blue-800">{goal.relatedSkills}</p>
+                        </div>
+                      )}
+
+                      {/* Action Plan */}
+                      {goal.actionPlan && (
+                        <div className="mt-3 p-3 bg-green-50 rounded-lg">
+                          <p className="text-xs font-semibold text-green-900 mb-1">Action Plan</p>
+                          <p className="text-sm text-green-800">{goal.actionPlan}</p>
+                        </div>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
@@ -306,32 +341,33 @@ export function MyGoals() {
                     </div>
                   </div>
 
-                  {/* Progress Section */}
-                  <div className="space-y-2">
+                  {/* Completion Scale Section */}
+                  <div className="mt-4 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Progress</span>
-                      <span className="text-sm font-medium">{goal.progress}%</span>
+                      <span className="text-sm text-gray-600">Completion Scale</span>
+                      <span className="text-sm font-medium">{goal.completionScale}/10</span>
                     </div>
-                    {editingProgress === goal.id ? (
+                    {editingCompletion === goal.id ? (
                       <div className="space-y-2">
                         <Slider
-                          value={[tempProgress]}
-                          onValueChange={(value) => setTempProgress(value[0] || 0)}
-                          max={100}
-                          step={5}
+                          value={[tempCompletion]}
+                          onValueChange={(value) => setTempCompletion(value[0] || 1)}
+                          min={1}
+                          max={10}
+                          step={1}
                           className="w-full"
                         />
                         <div className="flex gap-2">
                           <Button
                             size="sm"
-                            onClick={() => handleProgressUpdate(goal.id, tempProgress)}
+                            onClick={() => handleCompletionUpdate(goal.id, tempCompletion)}
                           >
                             Save
                           </Button>
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => setEditingProgress(null)}
+                            onClick={() => setEditingCompletion(null)}
                           >
                             Cancel
                           </Button>
@@ -341,13 +377,67 @@ export function MyGoals() {
                       <div
                         className="cursor-pointer"
                         onClick={() => {
-                          setEditingProgress(goal.id);
-                          setTempProgress(goal.progress);
+                          setEditingCompletion(goal.id);
+                          setTempCompletion(goal.completionScale);
                         }}
                       >
-                        <Progress value={goal.progress} className="h-2" />
-                        <p className="text-xs text-gray-500 mt-1">Click to update progress</p>
+                        <Progress value={(goal.completionScale / 10) * 100} className="h-2" />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Click to update completion (1-10 scale)
+                        </p>
                       </div>
+                    )}
+                  </div>
+
+                  {/* Review & Self-Reflection Section */}
+                  <div className="mt-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-gray-700">
+                        Goal Review & Self-Reflection
+                      </span>
+                      {!editingReview && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setEditingReview(goal.id);
+                            setTempReview(goal.reviewNotes || '');
+                          }}
+                        >
+                          {goal.reviewNotes ? 'Edit' : 'Add'} Review
+                        </Button>
+                      )}
+                    </div>
+                    {editingReview === goal.id ? (
+                      <div className="space-y-2">
+                        <Textarea
+                          value={tempReview}
+                          onChange={(e) => setTempReview(e.target.value)}
+                          placeholder="How is it going? In as much detail as possible, are you on track to meet your deadline?"
+                          rows={4}
+                          className="w-full"
+                        />
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={() => handleReviewUpdate(goal.id, tempReview)}>
+                            Save
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setEditingReview(null)}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    ) : goal.reviewNotes ? (
+                      <div className="p-3 bg-purple-50 rounded-lg">
+                        <p className="text-sm text-purple-900">{goal.reviewNotes}</p>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-500 italic">
+                        No review notes yet. Click "Add Review" to reflect on your progress.
+                      </p>
                     )}
                   </div>
 

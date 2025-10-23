@@ -4,8 +4,12 @@ export interface Goal {
   id: string;
   title: string;
   description: string | null;
-  category: 'academic' | 'career' | 'leadership' | 'personal' | 'community';
+  category: 'academic_development' | 'personal_development' | 'professional_development';
   targetDate: string;
+  relatedSkills: string | null;
+  actionPlan: string | null;
+  reviewNotes: string | null;
+  completionScale: number;
   progress: number;
   status: 'pending' | 'in_progress' | 'completed';
   scholarId: string;
@@ -17,8 +21,12 @@ export interface Goal {
 export interface CreateGoalData {
   title: string;
   description?: string;
-  category: 'academic' | 'career' | 'leadership' | 'personal' | 'community';
+  category: 'academic_development' | 'personal_development' | 'professional_development';
   targetDate: string;
+  relatedSkills?: string;
+  actionPlan?: string;
+  reviewNotes?: string;
+  completionScale?: number;
   progress?: number;
   status?: 'pending' | 'in_progress' | 'completed';
 }
@@ -26,8 +34,12 @@ export interface CreateGoalData {
 export interface UpdateGoalData {
   title?: string;
   description?: string;
-  category?: 'academic' | 'career' | 'leadership' | 'personal' | 'community';
+  category?: 'academic_development' | 'personal_development' | 'professional_development';
   targetDate?: string;
+  relatedSkills?: string;
+  actionPlan?: string;
+  reviewNotes?: string;
+  completionScale?: number;
   progress?: number;
   status?: 'pending' | 'in_progress' | 'completed';
 }
