@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -87,5 +88,15 @@ export class RequestsController {
       throw new Error('User not authenticated');
     }
     return this.requestsService.createRequest(createRequestDto, userId);
+  }
+
+  @Delete(':id')
+  @UseGuards(AuthGuard)
+  async archiveRequest(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new Error('User not authenticated');
+    }
+    return this.requestsService.archiveRequest(id, userId);
   }
 }

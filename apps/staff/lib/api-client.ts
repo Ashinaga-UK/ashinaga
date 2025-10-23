@@ -162,12 +162,25 @@ export async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): 
   });
 
   try {
+    const headers: Record<string, string> = {};
+
+    // Copy existing headers if they exist
+    if (options.headers) {
+      Object.entries(options.headers).forEach(([key, value]) => {
+        if (typeof value === 'string') {
+          headers[key] = value;
+        }
+      });
+    }
+
+    // Only set Content-Type if there's a body
+    if (options.body) {
+      headers['Content-Type'] = 'application/json';
+    }
+
     const response = await fetch(url, {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      headers,
       credentials: 'include', // Include cookies for authentication
     });
 
@@ -336,6 +349,12 @@ export async function updateRequestStatus(
   });
 }
 
+export async function deleteRequest(requestId: string): Promise<void> {
+  return fetchAPI(`/api/requests/${requestId}`, {
+    method: 'DELETE',
+  });
+}
+
 // Announcement types and functions
 export interface ScholarFilter {
   id: string;
@@ -404,6 +423,12 @@ export interface Announcement {
 
 export async function getAnnouncements(): Promise<Announcement[]> {
   return fetchAPI<Announcement[]>('/api/announcements');
+}
+
+export async function deleteAnnouncement(announcementId: string): Promise<void> {
+  return fetchAPI(`/api/announcements/${announcementId}`, {
+    method: 'DELETE',
+  });
 }
 
 export interface ScholarStats {

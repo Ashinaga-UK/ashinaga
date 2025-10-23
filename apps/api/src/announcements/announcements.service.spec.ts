@@ -1,5 +1,6 @@
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
+import { EmailService } from '../email/email.service';
 import { AnnouncementsService } from './announcements.service';
 
 // Mock the database module
@@ -9,8 +10,18 @@ describe('AnnouncementsService', () => {
   let service: AnnouncementsService;
 
   beforeEach(async () => {
+    const mockEmailService = {
+      sendAnnouncementEmail: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
-      providers: [AnnouncementsService],
+      providers: [
+        AnnouncementsService,
+        {
+          provide: EmailService,
+          useValue: mockEmailService,
+        },
+      ],
     }).compile();
 
     service = module.get<AnnouncementsService>(AnnouncementsService);
@@ -80,7 +91,9 @@ describe('AnnouncementsService', () => {
       mockDatabase.select = jest.fn().mockReturnValue({
         from: jest.fn().mockReturnValue({
           innerJoin: jest.fn().mockReturnValue({
-            orderBy: jest.fn().mockResolvedValue(mockAnnouncementData),
+            where: jest.fn().mockReturnValue({
+              orderBy: jest.fn().mockResolvedValue(mockAnnouncementData),
+            }),
           }),
         }),
       });
@@ -89,7 +102,9 @@ describe('AnnouncementsService', () => {
       mockDatabase.select.mockReturnValueOnce({
         from: jest.fn().mockReturnValue({
           innerJoin: jest.fn().mockReturnValue({
-            orderBy: jest.fn().mockResolvedValue(mockAnnouncementData),
+            where: jest.fn().mockReturnValue({
+              orderBy: jest.fn().mockResolvedValue(mockAnnouncementData),
+            }),
           }),
         }),
       });
