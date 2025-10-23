@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { and, count, desc, eq } from 'drizzle-orm';
+import { and, count, desc, eq, inArray } from 'drizzle-orm';
 import { database } from '../db/connection';
 import {
   announcementFilters,
@@ -8,10 +8,12 @@ import {
   scholars,
   users,
 } from '../db/schema';
+import { EmailService } from '../email/email.service';
 import { CreateAnnouncementDto, ScholarFilterDto } from './dto/create-announcement.dto';
 
 @Injectable()
 export class AnnouncementsService {
+  constructor(private readonly emailService: EmailService) {}
   async createAnnouncement(createAnnouncementDto: CreateAnnouncementDto, createdBy: string) {
     const { title, content, filters = [] } = createAnnouncementDto;
 
@@ -37,7 +39,10 @@ export class AnnouncementsService {
     }
 
     // Create recipient records for scholars who match the filters
-    await this.createRecipientRecords(announcement.id, filters);
+    const recipientScholarIds = await this.createRecipientRecords(announcement.id, filters);
+
+    // Send emails to all recipients
+    await this.sendAnnouncementEmails(announcement.id, title, content, recipientScholarIds);
 
     return announcement;
   }
@@ -175,7 +180,7 @@ export class AnnouncementsService {
   private async createRecipientRecords(
     announcementId: string,
     filters: Array<{ filterType: string; filterValue: string }>
-  ) {
+  ): Promise<string[]> {
     // Build where conditions based on filters
     const whereConditions = [];
 
@@ -225,5 +230,51 @@ export class AnnouncementsService {
         }))
       );
     }
+
+    return matchingScholars.map((scholar) => scholar.id);
+  }
+
+  private async sendAnnouncementEmails(
+    announcementId: string,
+    title: string,
+    content: string,
+    scholarIds: string[]
+  ): Promise<void> {
+    if (scholarIds.length === 0) {
+      console.log('No recipients for announcement, skipping email sending');
+      return;
+    }
+
+    // Get scholar details with user information
+    const recipientDetails = await database
+      .select({
+        scholarId: scholars.id,
+        scholarName: users.name,
+        email: users.email,
+      })
+      .from(scholars)
+      .innerJoin(users, eq(scholars.userId, users.id))
+      .where(inArray(scholars.id, scholarIds));
+
+    // Send emails to all recipients
+    // We don't await each email to avoid blocking, but we log failures
+    const emailPromises = recipientDetails.map(async (recipient) => {
+      try {
+        await this.emailService.sendAnnouncementEmail(
+          recipient.email,
+          recipient.scholarName,
+          title,
+          content,
+          announcementId
+        );
+        console.log(`Announcement email sent to ${recipient.email}`);
+      } catch (error) {
+        console.error(`Failed to send announcement email to ${recipient.email}:`, error);
+        // Don't throw - we want to continue sending to other recipients
+      }
+    });
+
+    // Wait for all emails to be sent
+    await Promise.allSettled(emailPromises);
   }
 }
