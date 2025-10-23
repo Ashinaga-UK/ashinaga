@@ -1,5 +1,6 @@
 import { integer, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { scholars } from './scholars';
+import { users } from './users';
 
 export const goalCategoryEnum = pgEnum('goal_category', [
   'academic_development',
@@ -37,6 +38,19 @@ export const milestones = pgTable('milestones', {
     .references(() => goals.id, { onDelete: 'cascade' }),
   completed: text('completed').notNull().default('false'),
   completedDate: timestamp('completed_date', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const goalComments = pgTable('goal_comments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  goalId: uuid('goal_id')
+    .notNull()
+    .references(() => goals.id, { onDelete: 'cascade' }),
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  comment: text('comment').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
