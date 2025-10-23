@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
@@ -53,5 +53,14 @@ export class AnnouncementsController {
       throw new Error('User not authenticated');
     }
     return this.announcementsService.getAnnouncementsForScholar(userId);
+  }
+
+  @Delete(':id')
+  async archiveAnnouncement(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new Error('User not authenticated');
+    }
+    return this.announcementsService.archiveAnnouncement(id, userId);
   }
 }

@@ -406,6 +406,12 @@ export async function getAnnouncements(): Promise<Announcement[]> {
   return fetchAPI<Announcement[]>('/api/announcements');
 }
 
+export async function deleteAnnouncement(announcementId: string): Promise<void> {
+  return fetchAPI(`/api/announcements/${announcementId}`, {
+    method: 'DELETE',
+  });
+}
+
 export interface ScholarStats {
   total: number;
   active: number;

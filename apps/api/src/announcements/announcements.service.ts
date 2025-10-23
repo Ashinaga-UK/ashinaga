@@ -55,6 +55,7 @@ export class AnnouncementsService {
       })
       .from(announcements)
       .innerJoin(users, eq(announcements.createdBy, users.id))
+      .where(eq(announcements.archived, false))
       .orderBy(desc(announcements.createdAt));
 
     const announcementsWithDetails = await Promise.all(
@@ -101,7 +102,7 @@ export class AnnouncementsService {
 
     const scholarId = scholar[0].id;
 
-    // Get announcements sent to this scholar
+    // Get announcements sent to this scholar (excluding archived)
     const result = await database
       .select({
         announcement: announcements,
@@ -113,7 +114,9 @@ export class AnnouncementsService {
         eq(announcements.id, announcementRecipients.announcementId)
       )
       .innerJoin(users, eq(announcements.createdBy, users.id))
-      .where(eq(announcementRecipients.scholarId, scholarId))
+      .where(
+        and(eq(announcementRecipients.scholarId, scholarId), eq(announcements.archived, false))
+      )
       .orderBy(desc(announcements.createdAt));
 
     // Format the announcements
@@ -175,6 +178,36 @@ export class AnnouncementsService {
       locations,
       statuses,
     };
+  }
+
+  async archiveAnnouncement(announcementId: string, archivedBy: string) {
+    // Check if announcement exists and is not already archived
+    const [announcement] = await database
+      .select()
+      .from(announcements)
+      .where(eq(announcements.id, announcementId));
+
+    if (!announcement) {
+      throw new Error('Announcement not found');
+    }
+
+    if (announcement.archived) {
+      throw new Error('Announcement is already archived');
+    }
+
+    // Archive the announcement
+    const [archivedAnnouncement] = await database
+      .update(announcements)
+      .set({
+        archived: true,
+        archivedAt: new Date(),
+        archivedBy,
+        updatedAt: new Date(),
+      })
+      .where(eq(announcements.id, announcementId))
+      .returning();
+
+    return archivedAnnouncement;
   }
 
   private async createRecipientRecords(
