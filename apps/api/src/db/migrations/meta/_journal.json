@@ -50,6 +50,13 @@
       "when": 1761253061446,
       "tag": "0006_even_hulk",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1761258048921,
+      "tag": "0007_careful_black_widow",
+      "breakpoints": true
     }
   ]
 }
