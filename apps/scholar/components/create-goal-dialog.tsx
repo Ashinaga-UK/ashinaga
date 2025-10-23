@@ -207,9 +207,7 @@ export function CreateGoalDialog({ open, onOpenChange, onSuccess }: CreateGoalDi
                 }
                 disabled={isSubmitting}
               />
-              <p className="text-xs text-gray-500">
-                Between 1-10, how complete is this goal?
-              </p>
+              <p className="text-xs text-gray-500">Between 1-10, how complete is this goal?</p>
             </div>
 
             {/* Error Message */}
