@@ -1,7 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { and, count, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 import { database } from '../db/connection';
-import { documents, goals, invitations, scholars, tasks, users } from '../db/schema';
+import { documents, goals, invitations, scholars, tasks, users, goalComments } from '../db/schema';
 import { InvitationsService } from '../invitations/invitations.service';
 import { CreateScholarDto } from './dto/create-scholar.dto';
 import {
@@ -791,5 +791,112 @@ export class ScholarsService {
 
     // Return updated profile
     return this.getScholarProfileByUserId(userId);
+  }
+
+  async exportScholarLDF(scholarId: string): Promise<string> {
+    // Get scholar info
+    const [scholar] = await database
+      .select({
+        name: users.name,
+        email: users.email,
+      })
+      .from(scholars)
+      .leftJoin(users, eq(scholars.userId, users.id))
+      .where(eq(scholars.id, scholarId));
+
+    if (!scholar) {
+      throw new NotFoundException('Scholar not found');
+    }
+
+    // Get all goals with comments
+    const goalsData = await database
+      .select()
+      .from(goals)
+      .where(eq(goals.scholarId, scholarId))
+      .orderBy(desc(goals.createdAt));
+
+    // Get all comments for these goals
+    const goalIds = goalsData.map((g) => g.id);
+    const commentsData =
+      goalIds.length > 0
+        ? await database
+            .select({
+              id: goalComments.id,
+              goalId: goalComments.goalId,
+              comment: goalComments.comment,
+              createdAt: goalComments.createdAt,
+              userName: users.name,
+              userType: users.userType,
+            })
+            .from(goalComments)
+            .leftJoin(users, eq(goalComments.userId, users.id))
+            .where(inArray(goalComments.goalId, goalIds))
+            .orderBy(goalComments.createdAt)
+        : [];
+
+    // Group comments by goalId
+    const commentsByGoal = new Map<string, any[]>();
+    for (const comment of commentsData) {
+      if (!commentsByGoal.has(comment.goalId)) {
+        commentsByGoal.set(comment.goalId, []);
+      }
+      commentsByGoal.get(comment.goalId)!.push(comment);
+    }
+
+    // Build CSV
+    const csvRows: string[] = [];
+
+    // Header
+    csvRows.push(
+      [
+        'Scholar Name',
+        'Scholar Email',
+        'Goal Category',
+        'Goal Summary',
+        'Target Deadline',
+        'Related LDF Skills & Qualities',
+        'Action Plan',
+        'Goal Review & Self-Reflection',
+        'Completion Scale (1-10)',
+        'Status',
+        'Completed Date',
+        'Created Date',
+        'Comments Thread',
+      ]
+        .map((v) => `"${v}"`)
+        .join(',')
+    );
+
+    // Data rows
+    for (const goal of goalsData) {
+      const comments = commentsByGoal.get(goal.id) || [];
+      const commentsText = comments
+        .map(
+          (c) =>
+            `[${c.userName} (${c.userType}), ${new Date(c.createdAt).toLocaleDateString()}]: ${c.comment}`
+        )
+        .join(' | ');
+
+      const row = [
+        scholar.name,
+        scholar.email,
+        goal.category,
+        goal.title,
+        goal.targetDate ? new Date(goal.targetDate).toLocaleDateString() : '',
+        goal.relatedSkills || '',
+        goal.actionPlan || '',
+        goal.reviewNotes || '',
+        goal.completionScale,
+        goal.status,
+        goal.completedAt ? new Date(goal.completedAt).toLocaleDateString() : '',
+        new Date(goal.createdAt).toLocaleDateString(),
+        commentsText,
+      ];
+
+      // Escape and quote each field
+      csvRows.push(row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','));
+    }
+
+    return csvRows.join('\n');
   }
 }

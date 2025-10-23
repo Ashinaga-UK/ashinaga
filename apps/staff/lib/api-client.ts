@@ -40,8 +40,12 @@ export interface Goal {
   id: string;
   title: string;
   description?: string | null;
-  category: 'academic' | 'career' | 'leadership' | 'personal' | 'community';
+  category: 'academic_development' | 'personal_development' | 'professional_development';
   targetDate: string;
+  relatedSkills?: string | null;
+  actionPlan?: string | null;
+  reviewNotes?: string | null;
+  completionScale: number;
   progress: number;
   status: 'pending' | 'in_progress' | 'completed';
   completedAt?: string | null;

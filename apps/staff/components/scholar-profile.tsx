@@ -5,6 +5,7 @@ import {
   Calendar,
   CheckCircle,
   Clock,
+  Download,
   FileText,
   Loader2,
   Mail,
@@ -128,13 +129,53 @@ export function ScholarProfilePage({
     );
   }
 
+  const handleDownloadLDF = async () => {
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const downloadUrl = `${baseUrl}/api/scholars/${scholarId}/export-ldf`;
+
+      // Fetch with credentials
+      const response = await fetch(downloadUrl, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to download LDF report');
+      }
+
+      // Get the CSV content
+      const csvContent = await response.text();
+
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${scholar.name.replace(/\s+/g, '_')}_LDF_Export.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading LDF report:', error);
+      alert('Failed to download LDF report. Please try again.');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between">
         <Button variant="ghost" onClick={onBack}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Students
+        </Button>
+        <Button
+          onClick={handleDownloadLDF}
+          className="bg-ashinaga-teal-600 hover:bg-ashinaga-teal-700"
+        >
+          <Download className="h-4 w-4 mr-2" />
+          Download LDF Report
         </Button>
       </div>
 
