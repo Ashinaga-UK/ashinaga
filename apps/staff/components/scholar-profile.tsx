@@ -130,6 +130,8 @@ export function ScholarProfilePage({
   }
 
   const handleDownloadLDF = async () => {
+    if (!scholar) return;
+
     try {
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
       const downloadUrl = `${baseUrl}/api/scholars/${scholarId}/export-ldf`;
