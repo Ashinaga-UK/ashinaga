@@ -1,8 +1,13 @@
 'use client';
 
-import { CheckCircle, Download, Eye, Paperclip, X } from 'lucide-react';
+import { CheckCircle, Download, Eye, Paperclip, Printer, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
-import { getFileDownloadUrl, type Request, updateRequestStatus } from '../lib/api-client';
+import {
+  deleteRequest,
+  getFileDownloadUrl,
+  type Request,
+  updateRequestStatus,
+} from '../lib/api-client';
 import { useSession } from '../lib/auth-client';
 import { useToast } from './ui/use-toast';
 import { Badge } from './ui/badge';
@@ -85,6 +90,45 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
       });
     } finally {
       setIsDownloading(null);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (
+      !window.confirm('Are you sure you want to delete this request? This action cannot be undone.')
+    ) {
+      return;
+    }
+
+    try {
+      await deleteRequest(request.id);
+      toast({
+        title: 'Request deleted',
+        description: 'The request has been successfully deleted.',
+      });
+      // Notify parent to refresh
+      onStatusUpdate(request.id, 'deleted');
+    } catch (error) {
+      console.error('Failed to delete request:', error);
+      toast({
+        title: 'Delete failed',
+        description: 'Failed to delete the request. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handlePrint = () => {
+    // Open print view in a new window
+    const printWindow = window.open(
+      `/print-request/${request.id}`,
+      '_blank',
+      'width=800,height=1000'
+    );
+    if (printWindow) {
+      printWindow.addEventListener('load', () => {
+        printWindow.print();
+      });
     }
   };
 
@@ -281,6 +325,14 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
               </>
             )}
 
+            {/* Print Button for approved requests */}
+            {request.status === 'approved' && (
+              <Button size="sm" variant="outline" onClick={handlePrint}>
+                <Printer className="h-4 w-4 mr-1" />
+                Print
+              </Button>
+            )}
+
             {/* View Review Button for already reviewed requests */}
             {(request.status === 'approved' ||
               request.status === 'rejected' ||
@@ -368,6 +420,16 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
                 </DialogContent>
               </Dialog>
             )}
+
+            {/* Delete Button */}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+              onClick={handleDelete}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </CardContent>
