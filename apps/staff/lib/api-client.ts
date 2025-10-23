@@ -162,9 +162,16 @@ export async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): 
   });
 
   try {
-    const headers: Record<string, string> = {
-      ...options.headers,
-    };
+    const headers: Record<string, string> = {};
+
+    // Copy existing headers if they exist
+    if (options.headers) {
+      Object.entries(options.headers).forEach(([key, value]) => {
+        if (typeof value === 'string') {
+          headers[key] = value;
+        }
+      });
+    }
 
     // Only set Content-Type if there's a body
     if (options.body) {
