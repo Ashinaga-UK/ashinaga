@@ -145,7 +145,7 @@ export interface GetScholarsParams {
   sortOrder?: 'asc' | 'desc';
 }
 
-async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+export async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace(/\/$/, '');
   const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = `${baseUrl}${normalizedEndpoint}`;
