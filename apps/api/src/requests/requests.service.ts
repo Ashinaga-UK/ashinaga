@@ -22,6 +22,9 @@ export class RequestsService {
 
     const whereConditions = [];
 
+    // Always filter out archived requests
+    whereConditions.push(eq(requests.archived, false));
+
     if (search) {
       whereConditions.push(
         or(
@@ -241,7 +244,7 @@ export class RequestsService {
 
     const scholarId = scholar[0].id;
 
-    // Get requests for this scholar with user info
+    // Get requests for this scholar with user info (excluding archived)
     const requestsWithScholars = await database
       .select({
         request: requests,
@@ -251,7 +254,7 @@ export class RequestsService {
       .from(requests)
       .innerJoin(scholars, eq(requests.scholarId, scholars.id))
       .innerJoin(users, eq(scholars.userId, users.id))
-      .where(eq(requests.scholarId, scholarId))
+      .where(and(eq(requests.scholarId, scholarId), eq(requests.archived, false)))
       .orderBy(desc(requests.submittedDate));
 
     // Get attachments and audit logs for all requests
@@ -421,5 +424,41 @@ export class RequestsService {
     }
 
     return updatedRequest;
+  }
+
+  async archiveRequest(requestId: string, archivedBy: string) {
+    // Check if request exists and is not already archived
+    const [request] = await database.select().from(requests).where(eq(requests.id, requestId));
+
+    if (!request) {
+      throw new NotFoundException('Request not found');
+    }
+
+    if (request.archived) {
+      throw new Error('Request is already archived');
+    }
+
+    // Archive the request
+    const [archivedRequest] = await database
+      .update(requests)
+      .set({
+        archived: true,
+        archivedAt: new Date(),
+        archivedBy,
+        updatedAt: new Date(),
+      })
+      .where(eq(requests.id, requestId))
+      .returning();
+
+    // Create audit log entry
+    await database.insert(requestAuditLogs).values({
+      requestId,
+      action: 'archived',
+      performedBy: archivedBy,
+      comment: 'Request archived',
+      metadata: JSON.stringify({ archivedBy, archivedAt: new Date() }),
+    });
+
+    return archivedRequest;
   }
 }

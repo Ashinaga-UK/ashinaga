@@ -342,6 +342,12 @@ export async function updateRequestStatus(
   });
 }
 
+export async function deleteRequest(requestId: string): Promise<void> {
+  return fetchAPI(`/api/requests/${requestId}`, {
+    method: 'DELETE',
+  });
+}
+
 // Announcement types and functions
 export interface ScholarFilter {
   id: string;
