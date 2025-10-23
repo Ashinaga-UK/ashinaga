@@ -40,8 +40,12 @@ export interface Goal {
   id: string;
   title: string;
   description?: string | null;
-  category: 'academic' | 'career' | 'leadership' | 'personal' | 'community';
+  category: 'academic_development' | 'personal_development' | 'professional_development';
   targetDate: string;
+  relatedSkills?: string | null;
+  actionPlan?: string | null;
+  reviewNotes?: string | null;
+  completionScale: number;
   progress: number;
   status: 'pending' | 'in_progress' | 'completed';
   completedAt?: string | null;
@@ -145,7 +149,7 @@ export interface GetScholarsParams {
   sortOrder?: 'asc' | 'desc';
 }
 
-async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+export async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace(/\/$/, '');
   const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = `${baseUrl}${normalizedEndpoint}`;

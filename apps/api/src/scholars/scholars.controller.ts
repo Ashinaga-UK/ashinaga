@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -85,6 +86,14 @@ export class ScholarsController {
   @Get(':id/profile')
   async getScholarProfile(@Param('id', ParseUUIDPipe) id: string): Promise<ScholarProfileDto> {
     return this.scholarsService.getScholarProfile(id);
+  }
+
+  @Get(':id/export-ldf')
+  @UseGuards(StaffGuard)
+  @Header('Content-Type', 'text/csv')
+  @Header('Content-Disposition', 'attachment; filename="ldf-export.csv"')
+  async exportScholarLDF(@Param('id', ParseUUIDPipe) id: string): Promise<string> {
+    return this.scholarsService.exportScholarLDF(id);
   }
 
   @Get(':id')

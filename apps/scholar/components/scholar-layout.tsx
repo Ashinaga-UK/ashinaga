@@ -29,7 +29,7 @@ export function ScholarLayout({ children, onLogout }: ScholarLayoutProps) {
   const navItems = [
     { id: 'dashboard', href: '/dashboard', label: 'Overview', icon: Home },
     { id: 'profile', href: '/profile', label: 'My Profile', icon: User },
-    { id: 'goals', href: '/goals', label: 'My Goals', icon: Target },
+    { id: 'goals', href: '/goals', label: 'My LDF', icon: Target },
     { id: 'tasks', href: '/tasks', label: 'My Tasks', icon: CheckSquare },
     { id: 'requests', href: '/requests', label: 'My Requests', icon: FileText },
     { id: 'announcements', href: '/announcements', label: 'Announcements', icon: MessageSquare },

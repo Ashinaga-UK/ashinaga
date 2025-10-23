@@ -8,11 +8,29 @@ export class CreateGoalDto {
   @IsString()
   description?: string;
 
-  @IsEnum(['academic', 'career', 'leadership', 'personal', 'community'])
-  category: 'academic' | 'career' | 'leadership' | 'personal' | 'community';
+  @IsEnum(['academic_development', 'personal_development', 'professional_development'])
+  category: 'academic_development' | 'personal_development' | 'professional_development';
 
   @IsDateString()
   targetDate: string;
+
+  @IsOptional()
+  @IsString()
+  relatedSkills?: string;
+
+  @IsOptional()
+  @IsString()
+  actionPlan?: string;
+
+  @IsOptional()
+  @IsString()
+  reviewNotes?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(10)
+  completionScale?: number;
 
   @IsOptional()
   @IsInt()
