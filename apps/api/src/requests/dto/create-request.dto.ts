@@ -14,8 +14,8 @@ export class CreateRequestDto {
   priority?: 'high' | 'medium' | 'low';
 
   @IsString()
-  @IsOptional()
-  assignedTo?: string; // Staff member ID to handle the request
+  @IsNotEmpty({ message: 'Staff member assignment is required' })
+  assignedTo: string; // Staff member ID to handle the request
 
   @IsArray()
   @IsUUID('4', { each: true })

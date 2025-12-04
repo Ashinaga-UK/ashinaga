@@ -239,6 +239,22 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
 
   const handleInputChange = (field: keyof ScholarData, value: string) => {
     setScholarData((prev) => ({ ...prev, [field]: value }));
+
+    // Live validation for specific fields
+    let error: string | null = null;
+    if (field === 'phone') error = validatePhone(value);
+    if (field === 'dateOfBirth') error = validateDOB(value);
+    if (field === 'passportExpirationDate') error = validatePassportExpiry(value);
+
+    // Update validation errors for this field
+    if (error) {
+      setValidationErrors((prev) => ({ ...prev, [field]: error }));
+    } else {
+      setValidationErrors((prev) => {
+        const { [field]: _, ...rest } = prev;
+        return rest;
+      });
+    }
   };
 
   const handleCsvUpload = (event: React.ChangeEvent<HTMLInputElement>) => {

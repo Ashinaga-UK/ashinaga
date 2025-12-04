@@ -38,7 +38,7 @@ const formSchema = z.object({
     .min(20, 'Please provide at least 20 characters')
     .max(1000, 'Maximum 1000 characters'),
   priority: z.enum(['high', 'medium', 'low']).optional(),
-  assignedTo: z.string().optional(),
+  assignedTo: z.string().min(1, 'Please select a staff member'),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -231,7 +231,9 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
               name="assignedTo"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Assign to Staff Member (Optional)</FormLabel>
+                  <FormLabel>
+                    Assign to Staff Member <span className="text-red-500">*</span>
+                  </FormLabel>
                   <Select onValueChange={field.onChange} value={field.value || ''}>
                     <FormControl>
                       <SelectTrigger>
@@ -251,7 +253,7 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
                     </SelectContent>
                   </Select>
                   <FormDescription>
-                    Optionally route this request to a specific staff member
+                    Select the staff member who should handle this request
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

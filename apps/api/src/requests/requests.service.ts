@@ -1,7 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { and, count, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 import { database } from '../db/connection';
-import { requestAttachments, requestAuditLogs, requests, scholars, users } from '../db/schema';
+import {
+  requestAttachments,
+  requestAuditLogs,
+  requests,
+  scholars,
+  staff,
+  users,
+} from '../db/schema';
 import { EmailService } from '../email/email.service';
 import { CreateRequestDto, CreateRequestResponseDto } from './dto/create-request.dto';
 import {
@@ -15,7 +22,7 @@ import {
 export class RequestsService {
   constructor(private readonly emailService: EmailService) {}
 
-  async getRequests(query: GetRequestsQueryDto): Promise<GetRequestsResponseDto> {
+  async getRequests(query: GetRequestsQueryDto, userId: string): Promise<GetRequestsResponseDto> {
     const { page = 1, limit = 20, search, type, status, priority } = query;
 
     const offset = (page - 1) * limit;
@@ -24,6 +31,14 @@ export class RequestsService {
 
     // Always filter out archived requests
     whereConditions.push(eq(requests.archived, false));
+
+    // Check if user is a super admin
+    const [staffRecord] = await database.select().from(staff).where(eq(staff.userId, userId));
+
+    // If not a super admin, only show requests assigned to this user
+    if (!staffRecord?.isSuperAdmin) {
+      whereConditions.push(eq(requests.assignedTo, userId));
+    }
 
     if (search) {
       whereConditions.push(
