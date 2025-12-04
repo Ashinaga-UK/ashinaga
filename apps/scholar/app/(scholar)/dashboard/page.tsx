@@ -121,7 +121,7 @@ export default function DashboardPage() {
 
         <Card className="border-ashinaga-teal-100">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active LDF Items</CardTitle>
+            <CardTitle className="text-sm font-medium">Active LDF Goals</CardTitle>
             <Target className="h-4 w-4 text-ashinaga-green-600" />
           </CardHeader>
           <CardContent>
@@ -240,14 +240,14 @@ export default function DashboardPage() {
             ) : (
               <div className="text-center py-4">
                 <Target className="h-8 w-8 mx-auto text-gray-300 mb-2" />
-                <p className="text-sm text-gray-500">No active LDF items</p>
+                <p className="text-sm text-gray-500">No active LDF goals</p>
                 <Button
                   variant="link"
                   size="sm"
                   className="text-xs mt-1"
                   onClick={() => router.push('/goals')}
                 >
-                  Set your first LDF item
+                  Set your first LDF goal
                 </Button>
               </div>
             )}

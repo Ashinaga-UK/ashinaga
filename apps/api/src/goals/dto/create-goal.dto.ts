@@ -11,6 +11,10 @@ export class CreateGoalDto {
   @IsEnum(['academic_development', 'personal_development', 'professional_development'])
   category: 'academic_development' | 'personal_development' | 'professional_development';
 
+  @IsOptional()
+  @IsEnum(['term_1', 'term_2', 'term_3'])
+  term?: 'term_1' | 'term_2' | 'term_3';
+
   @IsDateString()
   targetDate: string;
 

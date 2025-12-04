@@ -10,11 +10,14 @@ export const goalCategoryEnum = pgEnum('goal_category', [
 
 export const goalStatusEnum = pgEnum('goal_status', ['pending', 'in_progress', 'completed']);
 
+export const goalTermEnum = pgEnum('goal_term', ['term_1', 'term_2', 'term_3']);
+
 export const goals = pgTable('goals', {
   id: uuid('id').defaultRandom().primaryKey(),
   title: text('title').notNull(),
   description: text('description'),
   category: goalCategoryEnum('category').notNull(),
+  term: goalTermEnum('term'), // Term 1, Term 2, Term 3
   targetDate: timestamp('target_date', { withTimezone: true }).notNull(),
   relatedSkills: text('related_skills'), // LDF skills & qualities
   actionPlan: text('action_plan'), // How skills help achieve goal, habits, routines, activities, milestones

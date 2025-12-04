@@ -234,20 +234,20 @@ export function ScholarProfilePage({
       {/* Tabs */}
       <Tabs defaultValue={initialTab} className="space-y-4">
         <TabsList>
-          <TabsTrigger value="goals">LDF Items</TabsTrigger>
+          <TabsTrigger value="goals">LDF Goals</TabsTrigger>
           <TabsTrigger value="tasks">Tasks</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
         </TabsList>
 
         <TabsContent value="goals" className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Student LDF Items</h3>
+            <h3 className="text-lg font-semibold">Student LDF Goals</h3>
           </div>
           <div className="grid gap-4">
             {scholar.goals.length === 0 ? (
               <Card>
                 <CardContent className="pt-4">
-                  <p className="text-gray-500 text-center py-4">No LDF items set yet</p>
+                  <p className="text-gray-500 text-center py-4">No LDF goals set yet</p>
                 </CardContent>
               </Card>
             ) : (

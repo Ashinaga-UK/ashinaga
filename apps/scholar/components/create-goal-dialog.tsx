@@ -35,6 +35,7 @@ export function CreateGoalDialog({ open, onOpenChange, onSuccess }: CreateGoalDi
     completionScale: 1,
     progress: 0,
     status: 'pending',
+    term: undefined,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +66,7 @@ export function CreateGoalDialog({ open, onOpenChange, onSuccess }: CreateGoalDi
         completionScale: 1,
         progress: 0,
         status: 'pending',
+        term: undefined,
       });
     } catch (err) {
       setError('Failed to create goal. Please try again.');
@@ -92,9 +94,9 @@ export function CreateGoalDialog({ open, onOpenChange, onSuccess }: CreateGoalDi
       <DialogContent className="sm:max-w-[500px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Create New LDF Item</DialogTitle>
+            <DialogTitle>Create New LDF Goal</DialogTitle>
             <DialogDescription>
-              Set a new Learning Development Framework item to track your growth
+              Set a new Leadership Development Framework goal to track your growth
             </DialogDescription>
           </DialogHeader>
 
@@ -147,6 +149,28 @@ export function CreateGoalDialog({ open, onOpenChange, onSuccess }: CreateGoalDi
                   </SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Term */}
+            <div className="grid gap-2">
+              <Label htmlFor="term">Term</Label>
+              <Select
+                value={formData.term || ''}
+                onValueChange={(value: any) =>
+                  setFormData({ ...formData, term: value || undefined })
+                }
+                disabled={isSubmitting}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select term (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="term_1">Term 1</SelectItem>
+                  <SelectItem value="term_2">Term 2</SelectItem>
+                  <SelectItem value="term_3">Term 3</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500">Which term is this goal for?</p>
             </div>
 
             {/* Target Date */}
@@ -238,7 +262,7 @@ export function CreateGoalDialog({ open, onOpenChange, onSuccess }: CreateGoalDi
                   Creating...
                 </>
               ) : (
-                'Create LDF Item'
+                'Create LDF Goal'
               )}
             </Button>
           </DialogFooter>
