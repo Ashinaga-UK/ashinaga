@@ -51,7 +51,152 @@ interface ScholarData {
   startDate: string;
   graduationDate: string;
   bio: string;
+  majorCategory: string;
+  fieldOfStudy: string;
 }
+
+// Major Categories from Insightly
+const MAJOR_CATEGORIES = [
+  'Business-Related',
+  'Development, Public Policy, Law',
+  'Engineering and Technology',
+  'Environment and Agriculture-related',
+  'Literature and Arts-related',
+  'Medical, Science, and Math-related',
+];
+
+// Fields of Study from Insightly
+const FIELDS_OF_STUDY = [
+  'Accounting',
+  'Actuarial Science',
+  'Advertising',
+  'Aerospace Engineering',
+  'Agriculture',
+  'Agricultural and Biological Engineering',
+  'Agricultural Business Management',
+  'Agriculture Economics',
+  'Animal Bioscience',
+  'Animal Sciences',
+  'Anthropology',
+  'Applied Mathematics',
+  'Archaeology',
+  'Architectural Engineering',
+  'Architecture',
+  'Art History',
+  'Studio Art',
+  'Art Education',
+  'Biobehavioral Health',
+  'Biochemistry',
+  'Bioengineering',
+  'Biology',
+  'Biophysics',
+  'Biomedical Sciences',
+  'Biotechnology',
+  'Business Administration and Management',
+  'Business Logistics',
+  'Chemical Engineering',
+  'Chemistry',
+  'Children',
+  'Civil Engineering',
+  'Computer Engineering',
+  'Computer Science',
+  'Crime, Law, and Justice',
+  'Dance',
+  'Diamond Mining and Processing',
+  'Earth Sciences',
+  'Economics',
+  'Electrical Engineering',
+  'Elementary and Kindergarten Education',
+  'Engineering Science',
+  'English',
+  'Environmental Systems Engineering',
+  'Environmental Sciences',
+  'Environmental Resource Management',
+  'Film and Video',
+  'Finance',
+  'Food Science',
+  'Foreign Investments and Management',
+  'Forest Science',
+  'Forest Technology',
+  'General Science',
+  'Geography',
+  'Geosciences',
+  'Graphic Design and Photography',
+  'Health and Physical Education',
+  'Health Policy and Administration',
+  'History',
+  'Horticulture',
+  'Hotel, Restaurant, and Institutional Management',
+  'Human Development and Family Studies',
+  'Individual and Family Studies',
+  'Industrial Engineering',
+  'Information Sciences and Technology',
+  'Journalism',
+  'Kinesiology',
+  'Landscape Architecture',
+  'Law Enforcement and Correction',
+  'Marine Biology',
+  'Marketing',
+  'Mathematics',
+  'Mechanical Engineering',
+  'Media Studies',
+  'Meteorology',
+  'Microbiology',
+  'Mineral Economics',
+  'Modern Languages',
+  'Music Education',
+  'Nuclear Engineering',
+  'Nursing',
+  'Nutrition',
+  'Pharmacy',
+  'Philosophy',
+  'Physics',
+  'Physiology',
+  'Political Science',
+  'Pre-medicine',
+  'Psychology',
+  'Public Relations',
+  'Real Estate',
+  'Recreation and Parks',
+  'Rehabilitation Services',
+  'Religious Studies',
+  'Social Sciences',
+  'Tourism',
+];
+
+// Validation functions
+const validatePhone = (phone: string): string | null => {
+  if (!phone) return null; // Optional field
+  if (!/^[\d\s+\-()]*$/.test(phone)) {
+    return 'Phone number must contain only digits and valid phone characters (+, -, spaces, parentheses)';
+  }
+  return null;
+};
+
+const validateDOB = (dob: string): string | null => {
+  if (!dob) return null; // Optional field
+  const date = new Date(dob);
+  const today = new Date();
+  if (date >= today) {
+    return 'Date of birth must be in the past';
+  }
+  const age = Math.floor((today.getTime() - date.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+  if (age < 16 || age > 80) {
+    return 'Scholar age must be between 16 and 80 years';
+  }
+  return null;
+};
+
+const validatePassportExpiry = (expiry: string): string | null => {
+  if (!expiry) return null; // Optional field
+  const date = new Date(expiry);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (date < today) {
+    return 'Passport expiration date must not be in the past';
+  }
+  return null;
+};
 
 const initialScholarData: ScholarData = {
   name: '',
@@ -78,6 +223,8 @@ const initialScholarData: ScholarData = {
   startDate: '',
   graduationDate: '',
   bio: '',
+  majorCategory: '',
+  fieldOfStudy: '',
 };
 
 export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
@@ -87,6 +234,8 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
   const [_csvFile, setCsvFile] = useState<File | null>(null);
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [fieldOfStudySearch, setFieldOfStudySearch] = useState('');
 
   const handleInputChange = (field: keyof ScholarData, value: string) => {
     setScholarData((prev) => ({ ...prev, [field]: value }));
@@ -123,6 +272,8 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
           startDate: '2025-09-01',
           graduationDate: '2029-06-01',
           bio: 'Computer Science student',
+          majorCategory: 'Engineering and Technology',
+          fieldOfStudy: 'Computer Science',
         },
         {
           name: 'Jane Smith',
@@ -149,6 +300,8 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
           startDate: '2025-09-01',
           graduationDate: '2030-06-01',
           bio: 'Medicine student',
+          majorCategory: 'Medical, Science, and Math-related',
+          fieldOfStudy: 'Medicine',
         },
       ];
       setCsvData(mockCsvData);
@@ -156,6 +309,26 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
   };
 
   const handleSingleScholarSubmit = async () => {
+    // Validate fields
+    const errors: Record<string, string> = {};
+
+    const phoneError = validatePhone(scholarData.phone);
+    if (phoneError) errors.phone = phoneError;
+
+    const dobError = validateDOB(scholarData.dateOfBirth);
+    if (dobError) errors.dateOfBirth = dobError;
+
+    const passportError = validatePassportExpiry(scholarData.passportExpirationDate);
+    if (passportError) errors.passportExpirationDate = passportError;
+
+    // If there are validation errors, show them and don't submit
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
+    // Clear any previous errors
+    setValidationErrors({});
     setIsSubmitting(true);
     console.log('Submitting scholar data:', scholarData);
 
@@ -176,11 +349,15 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
         setStep(3); // Skip to success - invitation is already sent
       } else {
         console.error('Failed to create scholar:', result);
-        alert('Failed to create scholar. Please try again.');
+        // Show specific error message if available
+        const errorMessage =
+          (result as any).message || 'Failed to create scholar. Please try again.';
+        setValidationErrors({ submit: errorMessage });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating scholar:', error);
-      alert('Error creating scholar. Please check the console for details.');
+      const errorMessage = error?.message || 'Error creating scholar. Please try again.';
+      setValidationErrors({ submit: errorMessage });
     } finally {
       setIsSubmitting(false);
     }
@@ -341,7 +518,11 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
                       type="date"
                       value={scholarData.dateOfBirth}
                       onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
+                      className={validationErrors.dateOfBirth ? 'border-red-500' : ''}
                     />
+                    {validationErrors.dateOfBirth && (
+                      <p className="text-sm text-red-600 mt-1">{validationErrors.dateOfBirth}</p>
+                    )}
                   </div>
                   <div>
                     <Label htmlFor="gender">Gender</Label>
@@ -378,7 +559,11 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
                       value={scholarData.phone}
                       onChange={(e) => handleInputChange('phone', e.target.value)}
                       placeholder="+44 7123 456789"
+                      className={validationErrors.phone ? 'border-red-500' : ''}
                     />
+                    {validationErrors.phone && (
+                      <p className="text-sm text-red-600 mt-1">{validationErrors.phone}</p>
+                    )}
                   </div>
                   <div>
                     <Label htmlFor="location">Address (Country of Study)</Label>
@@ -407,7 +592,13 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
                       type="date"
                       value={scholarData.passportExpirationDate}
                       onChange={(e) => handleInputChange('passportExpirationDate', e.target.value)}
+                      className={validationErrors.passportExpirationDate ? 'border-red-500' : ''}
                     />
+                    {validationErrors.passportExpirationDate && (
+                      <p className="text-sm text-red-600 mt-1">
+                        {validationErrors.passportExpirationDate}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <Label htmlFor="visaExpirationDate">Visa Expiration Date</Label>
@@ -505,6 +696,42 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
                       </SelectContent>
                     </Select>
                   </div>
+                  <div>
+                    <Label htmlFor="majorCategory">Major Category</Label>
+                    <Select
+                      value={scholarData.majorCategory}
+                      onValueChange={(value) => handleInputChange('majorCategory', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select major category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MAJOR_CATEGORIES.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="fieldOfStudy">Field of Study</Label>
+                    <Select
+                      value={scholarData.fieldOfStudy}
+                      onValueChange={(value) => handleInputChange('fieldOfStudy', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select field of study" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[300px]">
+                        {FIELDS_OF_STUDY.map((field) => (
+                          <SelectItem key={field} value={field}>
+                            {field}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <div className="space-y-4">
@@ -589,6 +816,17 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
                   </div>
                 </div>
               </div>
+
+              {/* Error Display */}
+              {validationErrors.submit && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-red-800 font-medium">Error</p>
+                    <p className="text-red-700 text-sm">{validationErrors.submit}</p>
+                  </div>
+                </div>
+              )}
 
               <div className="flex justify-end">
                 <Button

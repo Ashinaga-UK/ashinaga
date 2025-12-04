@@ -64,6 +64,13 @@
       "when": 1761259580462,
       "tag": "0008_silly_franklin_richards",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1764876691592,
+      "tag": "0009_slow_nomad",
+      "breakpoints": true
     }
   ]
 }
