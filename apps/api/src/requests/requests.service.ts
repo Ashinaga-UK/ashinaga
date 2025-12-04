@@ -311,6 +311,7 @@ export class RequestsService {
         description: createRequestDto.description,
         priority: createRequestDto.priority || 'medium',
         status: 'pending',
+        assignedTo: createRequestDto.assignedTo || null,
       })
       .returning();
 

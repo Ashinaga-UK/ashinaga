@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { database } from '../db/connection';
-import { users } from '../db/schema';
+import { staff, users } from '../db/schema';
 import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
@@ -38,5 +38,20 @@ export class UsersService {
 
     // If no name provided, just return the existing user
     return this.findById(userId);
+  }
+
+  async getStaffList(): Promise<{ id: string; name: string; email: string }[]> {
+    // Get all active staff members with their user info
+    const staffList = await database
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+      })
+      .from(staff)
+      .innerJoin(users, eq(staff.userId, users.id))
+      .where(eq(staff.isActive, true));
+
+    return staffList;
   }
 }

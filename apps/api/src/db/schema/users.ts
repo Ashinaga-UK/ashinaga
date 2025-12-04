@@ -57,6 +57,7 @@ export const staff = pgTable('staff', {
   phone: text('phone'),
   department: text('department'),
   isActive: boolean('is_active').notNull().default(true),
+  isSuperAdmin: boolean('is_super_admin').notNull().default(false), // Super admin sees all requests
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });

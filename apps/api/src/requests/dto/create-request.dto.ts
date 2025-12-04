@@ -13,6 +13,10 @@ export class CreateRequestDto {
   @IsOptional()
   priority?: 'high' | 'medium' | 'low';
 
+  @IsString()
+  @IsOptional()
+  assignedTo?: string; // Staff member ID to handle the request
+
   @IsArray()
   @IsUUID('4', { each: true })
   @IsOptional()
