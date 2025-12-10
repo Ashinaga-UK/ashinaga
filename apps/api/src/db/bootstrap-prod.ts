@@ -40,91 +40,69 @@ const db = drizzle(pool, { schema });
 
 async function bootstrapProduction() {
   console.log('🚀 Starting production bootstrap...');
-  console.log('This will create the first admin staff member and their invitation.\n');
+  console.log('This will create a root user and an invitation for the first admin.\n');
 
   try {
-    // Check if any staff already exists
-    const existingStaff = await db.select().from(schema.staff).limit(1);
-    if (existingStaff.length > 0) {
-      console.log('⚠️  Staff members already exist. Skipping bootstrap.');
+    // Check if any invitations already exist
+    const existingInvitations = await db.select().from(schema.invitations).limit(1);
+    if (existingInvitations.length > 0) {
+      console.log('⚠️  Invitations already exist. Skipping bootstrap.');
       console.log(
         'If you need to create additional staff, use the invitation endpoint after logging in.'
       );
       process.exit(0);
     }
 
-    // Get the email from environment variable or prompt
-    const staffEmail = process.env.STAFF_EMAIL || process.argv[2];
-    if (!staffEmail) {
-      console.error('❌ ERROR: Staff email is required!');
+    // Get the admin email from environment variable or command line argument
+    const adminEmail = process.env.STAFF_EMAIL || process.argv[2];
+    if (!adminEmail) {
+      console.error('❌ ERROR: Admin email is required!');
       console.error('Usage: STAFF_EMAIL=email@example.com ts-node src/db/bootstrap-prod.ts');
       console.error('   Or: ts-node src/db/bootstrap-prod.ts email@example.com');
       process.exit(1);
     }
 
-    const emailLower = staffEmail.toLowerCase().trim();
-    console.log(`📧 Creating admin staff member: ${emailLower}\n`);
+    const adminEmailLower = adminEmail.toLowerCase().trim();
+    console.log(`📧 Creating invitation for admin: ${adminEmailLower}\n`);
 
-    // Generate user ID
-    const userId = generateId();
+    // Step 1: Create a simple root user (just for the invitedBy reference)
+    console.log('1. Creating root system user...');
+    const rootUserId = generateId();
+    const rootEmail = 'root@ashinaga-system.org'; // System email that won't conflict
 
-    // Create the admin user
-    console.log('1. Creating user...');
-    const [user] = await db
+    const [rootUser] = await db
       .insert(schema.users)
       .values({
-        id: userId,
-        name: 'Admin User', // User can update this after signup
-        email: emailLower,
-        emailVerified: false, // Will be verified when they sign up
+        id: rootUserId,
+        name: 'Staff Root',
+        email: rootEmail,
+        emailVerified: false,
         image: null,
         userType: 'staff',
       })
       .onConflictDoUpdate({
         target: schema.users.email,
         set: {
+          name: 'Staff Root',
           userType: 'staff',
           updatedAt: new Date(),
         },
       })
       .returning();
 
-    console.log(`   ✅ User created: ${user.id}`);
+    console.log(`   ✅ Root user created: ${rootUser.id} (${rootEmail})`);
 
-    // Create staff record
-    console.log('2. Creating staff record...');
-    const [staff] = await db
-      .insert(schema.staff)
-      .values({
-        userId: user.id,
-        role: 'admin',
-        phone: null,
-        department: null,
-        isActive: true,
-      })
-      .onConflictDoUpdate({
-        target: schema.staff.userId,
-        set: {
-          role: 'admin',
-          isActive: true,
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
-
-    console.log(`   ✅ Staff record created with role: ${staff.role}`);
-
-    // Create invitation (self-invited for bootstrap)
-    console.log('3. Creating invitation...');
+    // Step 2: Create invitation for the admin email
+    console.log('2. Creating invitation for admin...');
     const token = generateInvitationToken();
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
     const [invitation] = await db
       .insert(schema.invitations)
       .values({
-        email: emailLower,
+        email: adminEmailLower,
         userType: 'staff',
-        invitedBy: user.id, // Self-invited for bootstrap
+        invitedBy: rootUser.id, // Root user is the inviter
         token,
         expiresAt,
         status: 'pending',
@@ -137,7 +115,7 @@ async function bootstrapProduction() {
           token,
           expiresAt,
           status: 'pending',
-          invitedBy: user.id,
+          invitedBy: rootUser.id,
           updatedAt: new Date(),
         },
       })
@@ -145,25 +123,28 @@ async function bootstrapProduction() {
 
     console.log(`   ✅ Invitation created: ${invitation.id}`);
 
-    // Build invitation URL
-    const authUrl = process.env.BETTER_AUTH_URL || 'https://api.ashinaga-uk.org';
-    const inviteUrl = `${authUrl}/auth/signup?token=${token}&email=${encodeURIComponent(emailLower)}`;
+    // Step 3: Build correct invitation URL (pointing to frontend, not API)
+    const staffAppUrl = process.env.STAFF_APP_URL || 'https://staff.ashinaga-uk.org';
+    const inviteUrl = `${staffAppUrl}/signup?token=${token}`;
 
     console.log('\n✅ Production bootstrap completed successfully!\n');
     console.log('📋 Next steps:');
-    console.log(`   1. Send this invitation link to ${emailLower}:`);
+    console.log(`   1. Send this invitation link to ${adminEmailLower}:`);
     console.log(`      ${inviteUrl}\n`);
-    console.log('   2. The staff member should:');
+    console.log('   2. The admin should:');
     console.log('      - Click the invitation link');
-    console.log('      - Complete signup with their password');
+    console.log('      - Complete signup with their password and name');
     console.log('      - Log in to the staff dashboard\n');
-    console.log('   3. After the first admin logs in, they can invite additional staff');
+    console.log('   3. After signup, their staff record will be created automatically');
+    console.log('      with role: viewer (you can promote to admin via database if needed)\n');
+    console.log('   4. After the admin logs in, they can invite additional staff');
     console.log('      using the POST /api/invitations endpoint.\n');
 
     // Output invitation details for easy access
     console.log('📧 Invitation Details:');
-    console.log(`   Email: ${emailLower}`);
+    console.log(`   Email: ${adminEmailLower}`);
     console.log(`   Token: ${token}`);
+    console.log(`   Invited By: ${rootUser.id} (${rootEmail})`);
     console.log(`   Expires: ${expiresAt.toISOString()}\n`);
   } catch (error) {
     console.error('❌ Bootstrap failed:', error);
