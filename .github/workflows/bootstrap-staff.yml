@@ -124,8 +124,10 @@ jobs:
         # Set Better Auth URL based on environment
         if [ "$ENVIRONMENT" = "test" ]; then
           BETTER_AUTH_URL="https://api-test.ashinaga-uk.org"
+          STAFF_APP_URL="https://staff-test.ashinaga-uk.org"
         else
           BETTER_AUTH_URL="https://api.ashinaga-uk.org"
+          STAFF_APP_URL="https://staff.ashinaga-uk.org"
         fi
         
         # Mask sensitive values
@@ -140,6 +142,7 @@ jobs:
         echo "DB_PASSWORD=${DB_PASSWORD}" >> $GITHUB_ENV
         echo "BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}" >> $GITHUB_ENV
         echo "BETTER_AUTH_URL=${BETTER_AUTH_URL}" >> $GITHUB_ENV
+        echo "STAFF_APP_URL=${STAFF_APP_URL}" >> $GITHUB_ENV
         echo "ENVIRONMENT=${ENVIRONMENT}" >> $GITHUB_ENV
         
         echo "✅ Database connection details retrieved"
@@ -173,6 +176,7 @@ jobs:
         export DB_PASSWORD="${DB_PASSWORD}"
         export BETTER_AUTH_SECRET="${BETTER_AUTH_SECRET}"
         export BETTER_AUTH_URL="${BETTER_AUTH_URL}"
+        export STAFF_APP_URL="${STAFF_APP_URL}"
         
         # Run the bootstrap script
         echo "Executing: pnpm db:bootstrap-prod \"${STAFF_EMAIL}\""
