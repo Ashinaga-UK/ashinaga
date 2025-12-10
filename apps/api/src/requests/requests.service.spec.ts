@@ -65,7 +65,14 @@ describe('RequestsService', () => {
         callCount++;
 
         if (callCount === 1) {
-          // First call - main query for requests
+          // First call - check if user is super admin (staff query)
+          return {
+            from: jest.fn().mockReturnValue({
+              where: jest.fn().mockResolvedValue([{ isSuperAdmin: true }]),
+            }),
+          };
+        } else if (callCount === 2) {
+          // Second call - main query for requests
           return {
             from: jest.fn().mockReturnValue({
               innerJoin: jest.fn().mockReturnValue({
@@ -81,8 +88,8 @@ describe('RequestsService', () => {
               }),
             }),
           };
-        } else if (callCount === 2) {
-          // Second call - count query
+        } else if (callCount === 3) {
+          // Third call - count query
           return {
             from: jest.fn().mockReturnValue({
               innerJoin: jest.fn().mockReturnValue({
@@ -92,8 +99,8 @@ describe('RequestsService', () => {
               }),
             }),
           };
-        } else if (callCount === 3) {
-          // Third call - attachments query
+        } else if (callCount === 4) {
+          // Fourth call - attachments query
           return {
             from: jest.fn().mockReturnValue({
               where: jest.fn().mockReturnValue({
@@ -102,7 +109,7 @@ describe('RequestsService', () => {
             }),
           };
         } else {
-          // Fourth call - audit logs query
+          // Fifth call - audit logs query
           return {
             from: jest.fn().mockReturnValue({
               where: jest.fn().mockReturnValue({
@@ -113,7 +120,7 @@ describe('RequestsService', () => {
         }
       });
 
-      const result = await service.getRequests({});
+      const result = await service.getRequests({}, 'user-123');
 
       expect(result).toHaveProperty('data');
       expect(result).toHaveProperty('pagination');

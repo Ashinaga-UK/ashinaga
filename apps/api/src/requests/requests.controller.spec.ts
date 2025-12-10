@@ -46,21 +46,28 @@ describe('RequestsController', () => {
             auditLogCount: 1,
           },
         ],
-        meta: {
-          currentPage: 1,
-          itemsPerPage: 20,
+        pagination: {
+          page: 1,
+          limit: 20,
           totalItems: 1,
           totalPages: 1,
-          hasNextPage: false,
-          hasPreviousPage: false,
+          hasNext: false,
+          hasPrev: false,
+        },
+      };
+
+      const mockRequest = {
+        user: {
+          id: 'user-123',
+          email: 'test@example.com',
         },
       };
 
       mockRequestsService.getRequests.mockResolvedValue(mockResponse);
 
-      const result = await controller.getRequests({ page: 1, limit: 20 });
+      const result = await controller.getRequests({ page: 1, limit: 20 }, mockRequest as any);
 
-      expect(service.getRequests).toHaveBeenCalledWith({ page: 1, limit: 20 });
+      expect(service.getRequests).toHaveBeenCalledWith({ page: 1, limit: 20 }, 'user-123');
       expect(result).toEqual(mockResponse);
     });
 
@@ -76,11 +83,18 @@ describe('RequestsController', () => {
         sortOrder: 'asc' as const,
       };
 
-      mockRequestsService.getRequests.mockResolvedValue({ data: [], meta: {} });
+      const mockRequest = {
+        user: {
+          id: 'user-123',
+          email: 'test@example.com',
+        },
+      };
 
-      await controller.getRequests(query);
+      mockRequestsService.getRequests.mockResolvedValue({ data: [], pagination: {} });
 
-      expect(service.getRequests).toHaveBeenCalledWith(query);
+      await controller.getRequests(query, mockRequest as any);
+
+      expect(service.getRequests).toHaveBeenCalledWith(query, 'user-123');
     });
   });
 
