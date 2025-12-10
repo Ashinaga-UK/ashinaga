@@ -58,6 +58,17 @@ async function bootstrap() {
     .setTitle('Ashinaga API')
     .setDescription('Main API for the Ashinaga platform')
     .setVersion('1.0')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'JWT',
+        description: 'Enter your Bearer token (Better Auth session token)',
+        in: 'header',
+      },
+      'bearer' // This name is used as the security scheme name
+    )
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
