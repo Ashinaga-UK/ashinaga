@@ -1,7 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { and, count, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 import { database } from '../db/connection';
-import { requestAttachments, requestAuditLogs, requests, scholars, users } from '../db/schema';
+import {
+  requestAttachments,
+  requestAuditLogs,
+  requests,
+  scholars,
+  staff,
+  users,
+} from '../db/schema';
 import { EmailService } from '../email/email.service';
 import { CreateRequestDto, CreateRequestResponseDto } from './dto/create-request.dto';
 import {
@@ -15,12 +22,23 @@ import {
 export class RequestsService {
   constructor(private readonly emailService: EmailService) {}
 
-  async getRequests(query: GetRequestsQueryDto): Promise<GetRequestsResponseDto> {
+  async getRequests(query: GetRequestsQueryDto, userId: string): Promise<GetRequestsResponseDto> {
     const { page = 1, limit = 20, search, type, status, priority } = query;
 
     const offset = (page - 1) * limit;
 
     const whereConditions = [];
+
+    // Always filter out archived requests
+    whereConditions.push(eq(requests.archived, false));
+
+    // Check if user is a super admin
+    const [staffRecord] = await database.select().from(staff).where(eq(staff.userId, userId));
+
+    // If not a super admin, only show requests assigned to this user
+    if (!staffRecord?.isSuperAdmin) {
+      whereConditions.push(eq(requests.assignedTo, userId));
+    }
 
     if (search) {
       whereConditions.push(
@@ -241,7 +259,7 @@ export class RequestsService {
 
     const scholarId = scholar[0].id;
 
-    // Get requests for this scholar with user info
+    // Get requests for this scholar with user info (excluding archived)
     const requestsWithScholars = await database
       .select({
         request: requests,
@@ -251,7 +269,7 @@ export class RequestsService {
       .from(requests)
       .innerJoin(scholars, eq(requests.scholarId, scholars.id))
       .innerJoin(users, eq(scholars.userId, users.id))
-      .where(eq(requests.scholarId, scholarId))
+      .where(and(eq(requests.scholarId, scholarId), eq(requests.archived, false)))
       .orderBy(desc(requests.submittedDate));
 
     // Get attachments and audit logs for all requests
@@ -308,6 +326,7 @@ export class RequestsService {
         description: createRequestDto.description,
         priority: createRequestDto.priority || 'medium',
         status: 'pending',
+        assignedTo: createRequestDto.assignedTo || null,
       })
       .returning();
 
@@ -421,5 +440,41 @@ export class RequestsService {
     }
 
     return updatedRequest;
+  }
+
+  async archiveRequest(requestId: string, archivedBy: string) {
+    // Check if request exists and is not already archived
+    const [request] = await database.select().from(requests).where(eq(requests.id, requestId));
+
+    if (!request) {
+      throw new NotFoundException('Request not found');
+    }
+
+    if (request.archived) {
+      throw new Error('Request is already archived');
+    }
+
+    // Archive the request
+    const [archivedRequest] = await database
+      .update(requests)
+      .set({
+        archived: true,
+        archivedAt: new Date(),
+        archivedBy,
+        updatedAt: new Date(),
+      })
+      .where(eq(requests.id, requestId))
+      .returning();
+
+    // Create audit log entry
+    await database.insert(requestAuditLogs).values({
+      requestId,
+      action: 'archived',
+      performedBy: archivedBy,
+      comment: 'Request archived',
+      metadata: JSON.stringify({ archivedBy, archivedAt: new Date() }),
+    });
+
+    return archivedRequest;
   }
 }

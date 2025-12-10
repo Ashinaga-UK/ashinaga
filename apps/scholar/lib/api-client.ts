@@ -98,6 +98,7 @@ export interface CreateRequestData {
   description: string;
   priority?: 'high' | 'medium' | 'low';
   attachmentIds?: string[];
+  assignedTo?: string;
 }
 
 export async function createRequest(data: CreateRequestData): Promise<Request> {
@@ -105,6 +106,17 @@ export async function createRequest(data: CreateRequestData): Promise<Request> {
     method: 'POST',
     body: JSON.stringify(data),
   });
+}
+
+// Staff types and functions
+export interface StaffMember {
+  id: string;
+  name: string;
+  email: string;
+}
+
+export async function getStaffList(): Promise<StaffMember[]> {
+  return fetchAPI<StaffMember[]>('/api/users/staff');
 }
 
 // Export the fetchAPI function and any other API functions as needed

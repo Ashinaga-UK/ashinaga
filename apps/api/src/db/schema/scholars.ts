@@ -51,6 +51,10 @@ export const scholars = pgTable('scholars', {
   longTermCareerPlan: text('long_term_career_plan'),
   postGraduationPlan: text('post_graduation_plan'),
 
+  // New fields - Academic categorization (matching Insightly)
+  majorCategory: text('major_category'), // Business-Related, Engineering and Technology, etc.
+  fieldOfStudy: text('field_of_study'), // Computer Science, Medicine, etc.
+
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });

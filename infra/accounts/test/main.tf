@@ -114,17 +114,18 @@ resource "aws_db_subnet_group" "postgres" {
 
 # RDS PostgreSQL instance
 resource "aws_db_instance" "postgres" {
-  identifier            = "${var.project_name}-postgres-${var.environment}"
-  allocated_storage     = var.db_allocated_storage
-  max_allocated_storage = var.db_max_allocated_storage
-  storage_type          = "gp3"
-  engine                = "postgres"
-  engine_version        = "15.12"
-  instance_class        = var.db_instance_class
-  db_name               = var.db_name
-  username              = var.db_username
-  password              = module.db_password.secret_value
-  publicly_accessible   = var.publicly_accessible
+  identifier                  = "${var.project_name}-postgres-${var.environment}"
+  allocated_storage           = var.db_allocated_storage
+  max_allocated_storage       = var.db_max_allocated_storage
+  storage_type                = "gp3"
+  engine                      = "postgres"
+  engine_version              = "17.5"
+  instance_class              = var.db_instance_class
+  db_name                     = var.db_name
+  username                    = var.db_username
+  password                    = module.db_password.secret_value
+  publicly_accessible         = var.publicly_accessible
+  allow_major_version_upgrade = true
 
   vpc_security_group_ids = [aws_security_group.rds.id]
   db_subnet_group_name   = aws_db_subnet_group.postgres.name
@@ -233,7 +234,7 @@ module "api_app_runner" {
   port             = var.app_runner_port
   cpu              = var.app_runner_cpu
   memory           = var.app_runner_memory
-  
+
   # S3 access policy for scholar data
   additional_policy_arns = [module.scholar_data_bucket.s3_access_policy_arn]
 

@@ -36,6 +36,41 @@
       "when": 1758462916219,
       "tag": "0004_demonic_black_bolt",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1761251966458,
+      "tag": "0005_opposite_wendell_rand",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1761253061446,
+      "tag": "0006_even_hulk",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1761258048921,
+      "tag": "0007_careful_black_widow",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1761259580462,
+      "tag": "0008_silly_franklin_richards",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1764876691592,
+      "tag": "0009_slow_nomad",
+      "breakpoints": true
     }
   ]
 }

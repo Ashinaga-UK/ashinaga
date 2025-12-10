@@ -5,6 +5,7 @@ import {
   Calendar,
   CheckCircle,
   Clock,
+  Download,
   FileText,
   Loader2,
   Mail,
@@ -13,7 +14,9 @@ import {
   Plus,
 } from 'lucide-react';
 import { getFileDownloadUrl, type CreateTaskData } from '../lib/api-client';
+import { useSession } from '../lib/auth-client';
 import { useScholarProfile } from '../lib/hooks/use-queries';
+import { CommentThread } from './comment-thread';
 import { TaskAssignment } from './task-assignment';
 import { Alert, AlertDescription } from './ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -34,6 +37,7 @@ export function ScholarProfilePage({
   onBack,
   initialTab = 'goals',
 }: ScholarProfileProps) {
+  const { data: session } = useSession();
   const { data: scholar, isLoading, error } = useScholarProfile(scholarId);
 
   const getStatusColor = (status: string) => {
@@ -59,6 +63,32 @@ export function ScholarProfilePage({
         return 'secondary';
       default:
         return 'default';
+    }
+  };
+
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case 'academic_development':
+        return '🎓';
+      case 'personal_development':
+        return '🌟';
+      case 'professional_development':
+        return '💼';
+      default:
+        return '📌';
+    }
+  };
+
+  const getCategoryLabel = (category: string) => {
+    switch (category) {
+      case 'academic_development':
+        return 'Academic Development';
+      case 'personal_development':
+        return 'Personal Development';
+      case 'professional_development':
+        return 'Professional Development';
+      default:
+        return category;
     }
   };
 
@@ -99,13 +129,55 @@ export function ScholarProfilePage({
     );
   }
 
+  const handleDownloadLDF = async () => {
+    if (!scholar) return;
+
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const downloadUrl = `${baseUrl}/api/scholars/${scholarId}/export-ldf`;
+
+      // Fetch with credentials
+      const response = await fetch(downloadUrl, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to download LDF report');
+      }
+
+      // Get the CSV content
+      const csvContent = await response.text();
+
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${scholar.name.replace(/\s+/g, '_')}_LDF_Export.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading LDF report:', error);
+      alert('Failed to download LDF report. Please try again.');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between">
         <Button variant="ghost" onClick={onBack}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Students
+        </Button>
+        <Button
+          onClick={handleDownloadLDF}
+          className="bg-ashinaga-teal-600 hover:bg-ashinaga-teal-700"
+        >
+          <Download className="h-4 w-4 mr-2" />
+          Download LDF Report
         </Button>
       </div>
 
@@ -162,56 +234,106 @@ export function ScholarProfilePage({
       {/* Tabs */}
       <Tabs defaultValue={initialTab} className="space-y-4">
         <TabsList>
-          <TabsTrigger value="goals">Goals & Progress</TabsTrigger>
+          <TabsTrigger value="goals">LDF Goals</TabsTrigger>
           <TabsTrigger value="tasks">Tasks</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
         </TabsList>
 
         <TabsContent value="goals" className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Student Goals</h3>
+            <h3 className="text-lg font-semibold">Student LDF Goals</h3>
           </div>
           <div className="grid gap-4">
             {scholar.goals.length === 0 ? (
               <Card>
                 <CardContent className="pt-4">
-                  <p className="text-gray-500 text-center py-4">No goals set yet</p>
+                  <p className="text-gray-500 text-center py-4">No LDF goals set yet</p>
                 </CardContent>
               </Card>
             ) : (
               scholar.goals.map((goal) => (
                 <Card key={goal.id}>
                   <CardContent className="pt-4">
-                    <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
-                        <h4 className="font-medium mb-1">{goal.title}</h4>
-                        <p className="text-sm text-gray-600 mb-3">
-                          {goal.description || 'No description'}
-                        </p>
-                        <div className="flex items-center gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-sm text-gray-600">Progress</span>
-                              <span className="text-sm font-medium">{goal.progress}%</span>
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="text-2xl">{getCategoryIcon(goal.category)}</span>
+                          <div>
+                            <h4 className="font-semibold text-lg">{goal.title}</h4>
+                            <div className="flex items-center gap-4 text-sm text-gray-600">
+                              <span>{getCategoryLabel(goal.category)}</span>
+                              <span>•</span>
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                Target: {new Date(goal.targetDate).toLocaleDateString()}
+                              </span>
                             </div>
-                            <Progress value={goal.progress} className="h-2" />
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            Due: {new Date(goal.targetDate).toLocaleDateString()}
                           </div>
                         </div>
+
+                        {/* Related Skills */}
+                        {goal.relatedSkills && (
+                          <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                            <p className="text-xs font-semibold text-blue-900 mb-1">
+                              Related LDF Skills & Qualities
+                            </p>
+                            <p className="text-sm text-blue-800">{goal.relatedSkills}</p>
+                          </div>
+                        )}
+
+                        {/* Action Plan */}
+                        {goal.actionPlan && (
+                          <div className="mt-3 p-3 bg-green-50 rounded-lg">
+                            <p className="text-xs font-semibold text-green-900 mb-1">Action Plan</p>
+                            <p className="text-sm text-green-800">{goal.actionPlan}</p>
+                          </div>
+                        )}
+
+                        {/* Review Notes */}
+                        {goal.reviewNotes && (
+                          <div className="mt-3 p-3 bg-purple-50 rounded-lg">
+                            <p className="text-xs font-semibold text-purple-900 mb-1">
+                              Goal Review & Self-Reflection
+                            </p>
+                            <p className="text-sm text-purple-800">{goal.reviewNotes}</p>
+                          </div>
+                        )}
+
+                        {/* Completion Scale */}
+                        <div className="mt-4">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm text-gray-600">Completion Scale</span>
+                            <span className="text-sm font-medium">{goal.completionScale}/10</span>
+                          </div>
+                          <Progress value={(goal.completionScale / 10) * 100} className="h-2" />
+                        </div>
+
+                        {goal.completedAt && (
+                          <div className="mt-3 pt-3 border-t">
+                            <p className="text-sm text-green-600">
+                              ✅ Completed on {new Date(goal.completedAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 ml-4">
                         {goal.status === 'completed' ? (
                           <CheckCircle className="h-5 w-5 text-green-600" />
                         ) : (
                           <Clock className="h-5 w-5 text-blue-600" />
                         )}
-                        <span className={`text-sm ${getStatusColor(goal.status)}`}>
+                        <span className={`text-sm capitalize ${getStatusColor(goal.status)}`}>
                           {goal.status.replace('_', ' ')}
                         </span>
                       </div>
                     </div>
+
+                    {/* Comment Thread */}
+                    {session?.user?.id && (
+                      <div className="mt-4">
+                        <CommentThread goalId={goal.id} currentUserId={session.user.id} />
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))

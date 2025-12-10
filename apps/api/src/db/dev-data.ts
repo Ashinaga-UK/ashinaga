@@ -142,7 +142,7 @@ type TaskType =
   | 'other';
 type TaskPriority = 'high' | 'medium' | 'low';
 type TaskStatus = 'pending' | 'in_progress' | 'completed';
-type GoalCategory = 'academic' | 'career' | 'leadership' | 'personal' | 'community';
+type GoalCategory = 'academic_development' | 'personal_development' | 'professional_development';
 type GoalStatus = 'pending' | 'in_progress' | 'completed';
 type RequestType = 'financial_support' | 'extenuating_circumstances' | 'academic_support';
 type RequestPriority = 'high' | 'medium' | 'low';
@@ -864,7 +864,7 @@ async function populateDevData() {
       await ensureGoal({
         title: 'Achieve First Class Honours',
         description: 'Maintain a GPA above 3.7 throughout my degree program',
-        category: 'academic',
+        category: 'academic_development',
         targetDate: new Date('2025-06-30'),
         progress: 75,
         status: 'in_progress',
@@ -875,7 +875,7 @@ async function populateDevData() {
       await ensureGoal({
         title: 'Complete Research Internship',
         description: 'Secure and complete a summer research internship at a leading AI lab',
-        category: 'career',
+        category: 'professional_development',
         targetDate: new Date('2024-08-31'),
         progress: 30,
         status: 'in_progress',
@@ -887,7 +887,7 @@ async function populateDevData() {
         title: 'Launch Campus Mental Health Initiative',
         description:
           'Establish a peer support network for international students struggling with mental health',
-        category: 'leadership',
+        category: 'personal_development',
         targetDate: new Date('2024-12-31'),
         progress: 60,
         status: 'in_progress',
@@ -898,7 +898,7 @@ async function populateDevData() {
       await ensureGoal({
         title: 'Publish Research Paper',
         description: 'Co-author and publish a research paper on sustainable water management',
-        category: 'academic',
+        category: 'academic_development',
         targetDate: new Date('2024-05-31'),
         progress: 100,
         status: 'completed',

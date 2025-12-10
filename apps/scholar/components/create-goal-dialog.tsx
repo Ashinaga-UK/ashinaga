@@ -27,10 +27,15 @@ export function CreateGoalDialog({ open, onOpenChange, onSuccess }: CreateGoalDi
   const [formData, setFormData] = useState<CreateGoalData>({
     title: '',
     description: '',
-    category: 'academic',
+    category: 'academic_development',
     targetDate: '',
+    relatedSkills: '',
+    actionPlan: '',
+    reviewNotes: '',
+    completionScale: 1,
     progress: 0,
     status: 'pending',
+    term: undefined,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,10 +58,15 @@ export function CreateGoalDialog({ open, onOpenChange, onSuccess }: CreateGoalDi
       setFormData({
         title: '',
         description: '',
-        category: 'academic',
+        category: 'academic_development',
         targetDate: '',
+        relatedSkills: '',
+        actionPlan: '',
+        reviewNotes: '',
+        completionScale: 1,
         progress: 0,
         status: 'pending',
+        term: undefined,
       });
     } catch (err) {
       setError('Failed to create goal. Please try again.');
@@ -68,16 +78,12 @@ export function CreateGoalDialog({ open, onOpenChange, onSuccess }: CreateGoalDi
 
   const getCategoryEmoji = (category: string) => {
     switch (category) {
-      case 'academic':
+      case 'academic_development':
         return '🎓';
-      case 'career':
-        return '💼';
-      case 'leadership':
-        return '👥';
-      case 'personal':
+      case 'personal_development':
         return '🌟';
-      case 'community':
-        return '🤝';
+      case 'professional_development':
+        return '💼';
       default:
         return '📌';
     }
@@ -88,9 +94,9 @@ export function CreateGoalDialog({ open, onOpenChange, onSuccess }: CreateGoalDi
       <DialogContent className="sm:max-w-[500px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Create New Goal</DialogTitle>
+            <DialogTitle>Create New LDF Goal</DialogTitle>
             <DialogDescription>
-              Set a new goal to track your progress and achieve your aspirations
+              Set a new Leadership Development Framework goal to track your growth
             </DialogDescription>
           </DialogHeader>
 
@@ -98,27 +104,14 @@ export function CreateGoalDialog({ open, onOpenChange, onSuccess }: CreateGoalDi
             {/* Title */}
             <div className="grid gap-2">
               <Label htmlFor="title">
-                Goal Title <span className="text-red-500">*</span>
+                Goal Summary <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="title"
-                placeholder="e.g., Complete my thesis research"
+                placeholder="Write down a SMART goal (one or two sentences max)"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 disabled={isSubmitting}
-              />
-            </div>
-
-            {/* Description */}
-            <div className="grid gap-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                placeholder="Describe your goal in detail..."
-                value={formData.description || ''}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                disabled={isSubmitting}
-                rows={3}
               />
             </div>
 
@@ -136,44 +129,54 @@ export function CreateGoalDialog({ open, onOpenChange, onSuccess }: CreateGoalDi
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="academic">
+                  <SelectItem value="academic_development">
                     <span className="flex items-center gap-2">
-                      <span>{getCategoryEmoji('academic')}</span>
-                      Academic
+                      <span>{getCategoryEmoji('academic_development')}</span>
+                      Academic Development
                     </span>
                   </SelectItem>
-                  <SelectItem value="career">
+                  <SelectItem value="personal_development">
                     <span className="flex items-center gap-2">
-                      <span>{getCategoryEmoji('career')}</span>
-                      Career
+                      <span>{getCategoryEmoji('personal_development')}</span>
+                      Personal Development
                     </span>
                   </SelectItem>
-                  <SelectItem value="leadership">
+                  <SelectItem value="professional_development">
                     <span className="flex items-center gap-2">
-                      <span>{getCategoryEmoji('leadership')}</span>
-                      Leadership
-                    </span>
-                  </SelectItem>
-                  <SelectItem value="personal">
-                    <span className="flex items-center gap-2">
-                      <span>{getCategoryEmoji('personal')}</span>
-                      Personal
-                    </span>
-                  </SelectItem>
-                  <SelectItem value="community">
-                    <span className="flex items-center gap-2">
-                      <span>{getCategoryEmoji('community')}</span>
-                      Community
+                      <span>{getCategoryEmoji('professional_development')}</span>
+                      Professional Development
                     </span>
                   </SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
+            {/* Term */}
+            <div className="grid gap-2">
+              <Label htmlFor="term">Term</Label>
+              <Select
+                value={formData.term || ''}
+                onValueChange={(value: any) =>
+                  setFormData({ ...formData, term: value || undefined })
+                }
+                disabled={isSubmitting}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select term (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="term_1">Term 1</SelectItem>
+                  <SelectItem value="term_2">Term 2</SelectItem>
+                  <SelectItem value="term_3">Term 3</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500">Which term is this goal for?</p>
+            </div>
+
             {/* Target Date */}
             <div className="grid gap-2">
               <Label htmlFor="targetDate">
-                Target Date <span className="text-red-500">*</span>
+                Target Deadline <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="targetDate"
@@ -183,25 +186,52 @@ export function CreateGoalDialog({ open, onOpenChange, onSuccess }: CreateGoalDi
                 disabled={isSubmitting}
                 min={new Date().toISOString().split('T')[0]}
               />
+              <p className="text-xs text-gray-500">
+                Deadline for current term or max 1 year into the future
+              </p>
             </div>
 
-            {/* Initial Progress */}
+            {/* Related LDF Skills & Qualities */}
             <div className="grid gap-2">
-              <Label htmlFor="progress">Initial Progress (%)</Label>
+              <Label htmlFor="relatedSkills">Related LDF Skills & Qualities</Label>
+              <Textarea
+                id="relatedSkills"
+                placeholder="Note all that apply..."
+                value={formData.relatedSkills || ''}
+                onChange={(e) => setFormData({ ...formData, relatedSkills: e.target.value })}
+                disabled={isSubmitting}
+                rows={2}
+              />
+            </div>
+
+            {/* Action Plan */}
+            <div className="grid gap-2">
+              <Label htmlFor="actionPlan">Action Plan</Label>
+              <Textarea
+                id="actionPlan"
+                placeholder="How will these skills & qualities help you achieve your goal? What habits, routines, activities and milestones do you need to put in place?"
+                value={formData.actionPlan || ''}
+                onChange={(e) => setFormData({ ...formData, actionPlan: e.target.value })}
+                disabled={isSubmitting}
+                rows={3}
+              />
+            </div>
+
+            {/* Completion Scale */}
+            <div className="grid gap-2">
+              <Label htmlFor="completionScale">Completion Scale (1-10)</Label>
               <Input
-                id="progress"
+                id="completionScale"
                 type="number"
-                min="0"
-                max="100"
-                value={formData.progress || 0}
+                min="1"
+                max="10"
+                value={formData.completionScale || 1}
                 onChange={(e) =>
-                  setFormData({ ...formData, progress: parseInt(e.target.value) || 0 })
+                  setFormData({ ...formData, completionScale: parseInt(e.target.value) || 1 })
                 }
                 disabled={isSubmitting}
               />
-              <p className="text-xs text-gray-500">
-                Set an initial progress value if you've already started working on this goal
-              </p>
+              <p className="text-xs text-gray-500">Between 1-10, how complete is this goal?</p>
             </div>
 
             {/* Error Message */}
@@ -232,7 +262,7 @@ export function CreateGoalDialog({ open, onOpenChange, onSuccess }: CreateGoalDi
                   Creating...
                 </>
               ) : (
-                'Create Goal'
+                'Create LDF Goal'
               )}
             </Button>
           </DialogFooter>

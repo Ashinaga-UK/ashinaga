@@ -12,6 +12,8 @@ import {
 import { AuthGuard } from '../auth/auth.guard';
 import { CreateGoalDto } from './dto/create-goal.dto';
 import { UpdateGoalDto } from './dto/update-goal.dto';
+import { CreateCommentDto } from './dto/create-comment.dto';
+import { UpdateCommentDto } from './dto/update-comment.dto';
 import { GoalsService } from './goals.service';
 
 @Controller('api/goals')
@@ -42,5 +44,34 @@ export class GoalsController {
   @Delete(':id')
   async deleteGoal(@Request() req, @Param('id') id: string) {
     return this.goalsService.deleteGoal(req.user.id, id);
+  }
+
+  // Comment endpoints
+  @Get(':goalId/comments')
+  async getComments(@Param('goalId') goalId: string) {
+    return this.goalsService.getComments(goalId);
+  }
+
+  @Post(':goalId/comments')
+  async createComment(
+    @Request() req,
+    @Param('goalId') goalId: string,
+    @Body() createCommentDto: CreateCommentDto
+  ) {
+    return this.goalsService.createComment(req.user.id, goalId, createCommentDto);
+  }
+
+  @Patch('comments/:commentId')
+  async updateComment(
+    @Request() req,
+    @Param('commentId') commentId: string,
+    @Body() updateCommentDto: UpdateCommentDto
+  ) {
+    return this.goalsService.updateComment(req.user.id, commentId, updateCommentDto);
+  }
+
+  @Delete('comments/:commentId')
+  async deleteComment(@Request() req, @Param('commentId') commentId: string) {
+    return this.goalsService.deleteComment(req.user.id, commentId);
   }
 }

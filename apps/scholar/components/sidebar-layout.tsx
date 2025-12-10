@@ -17,7 +17,7 @@ export function SidebarLayout({ children, activeTab, onTabChange, onLogout }: Si
 
   const navItems = [
     { id: 'overview', label: 'Overview', icon: Home },
-    { id: 'goals', label: 'My Goals', icon: Target },
+    { id: 'goals', label: 'My LDF', icon: Target },
     { id: 'tasks', label: 'My Tasks', icon: CheckSquare },
     { id: 'requests', label: 'My Requests', icon: FileText },
     { id: 'announcements', label: 'Announcements', icon: MessageSquare },

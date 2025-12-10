@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -30,11 +31,17 @@ export class RequestsController {
   constructor(private readonly requestsService: RequestsService) {}
 
   @Get()
+  @UseGuards(AuthGuard)
   async getRequests(
     @Query(new ValidationPipe({ transform: true, whitelist: true }))
-    query: GetRequestsQueryDto
+    query: GetRequestsQueryDto,
+    @Req() req: AuthenticatedRequest
   ): Promise<GetRequestsResponseDto> {
-    return this.requestsService.getRequests(query);
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new Error('User not authenticated');
+    }
+    return this.requestsService.getRequests(query, userId);
   }
 
   @Get('stats')
@@ -87,5 +94,15 @@ export class RequestsController {
       throw new Error('User not authenticated');
     }
     return this.requestsService.createRequest(createRequestDto, userId);
+  }
+
+  @Delete(':id')
+  @UseGuards(AuthGuard)
+  async archiveRequest(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new Error('User not authenticated');
+    }
+    return this.requestsService.archiveRequest(id, userId);
   }
 }

@@ -252,6 +252,8 @@ export class AuthController {
               kokorozashi: scholarData.kokorozashi || null,
               longTermCareerPlan: scholarData.longTermCareerPlan || null,
               postGraduationPlan: scholarData.postGraduationPlan || null,
+              majorCategory: scholarData.majorCategory || null,
+              fieldOfStudy: scholarData.fieldOfStudy || null,
             });
             console.log('Scholar profile created with all invitation data');
           }

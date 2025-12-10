@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertCircle, FileText, Loader2, MessageSquare, Plus, Users } from 'lucide-react';
+import { AlertCircle, FileText, Loader2, MessageSquare, Plus, Trash2, Users } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { AnnouncementCreator } from '../components/announcement-creator';
@@ -25,6 +25,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import {
   type Announcement,
+  deleteAnnouncement,
   getRequestStats,
   getRequests,
   getScholarStats,
@@ -83,6 +84,7 @@ function StaffDashboardContent() {
     data: announcements = [],
     isLoading: announcementsLoading,
     error: announcementsError,
+    refetch: refetchAnnouncements,
   } = useAnnouncements(isAuthenticated);
 
   // Update state when URL changes
@@ -526,7 +528,7 @@ function StaffDashboardContent() {
                     <div className="space-y-4">
                       {announcements.map((announcement) => (
                         <div key={announcement.id} className="border rounded-lg p-4">
-                          <div className="flex items-start justify-between">
+                          <div className="flex items-start justify-between gap-4">
                             <div className="flex-1">
                               <h3 className="font-semibold text-lg mb-2">{announcement.title}</h3>
                               <p className="text-gray-600 mb-3 whitespace-pre-wrap">
@@ -560,6 +562,28 @@ function StaffDashboardContent() {
                                 )}
                               </div>
                             </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                              onClick={async () => {
+                                if (
+                                  window.confirm(
+                                    'Are you sure you want to delete this announcement? This action cannot be undone.'
+                                  )
+                                ) {
+                                  try {
+                                    await deleteAnnouncement(announcement.id);
+                                    refetchAnnouncements();
+                                  } catch (error) {
+                                    console.error('Failed to delete announcement:', error);
+                                    alert('Failed to delete announcement. Please try again.');
+                                  }
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
                       ))}
