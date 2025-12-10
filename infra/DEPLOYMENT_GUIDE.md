@@ -112,7 +112,7 @@ curl $(terraform output -raw app_runner_service_url)
 
 ### Database Configuration
 
-- **Engine**: PostgreSQL 15.7
+- **Engine**: PostgreSQL 17.5
 - **Instance**: db.t3.micro (suitable for development)
 - **Backup**: Disabled for faster deletion (`backup_retention_period = 0`)
 - **Deletion Protection**: Disabled for easy cleanup

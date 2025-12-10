@@ -34,4 +34,13 @@ export class UsersController {
     }
     return this.usersService.updateUser(userId, updateUserDto);
   }
+
+  @Get('staff')
+  @UseGuards(AuthGuard)
+  @ApiOperation({ summary: 'Get list of active staff members' })
+  @ApiResponse({ status: 200, description: 'Returns list of active staff' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getStaffList() {
+    return this.usersService.getStaffList();
+  }
 }

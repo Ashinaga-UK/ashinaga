@@ -12,6 +12,7 @@ export interface Goal {
   completionScale: number;
   progress: number;
   status: 'pending' | 'in_progress' | 'completed';
+  term: 'term_1' | 'term_2' | 'term_3' | null;
   scholarId: string;
   completedAt: string | null;
   createdAt: string;
@@ -29,6 +30,7 @@ export interface CreateGoalData {
   completionScale?: number;
   progress?: number;
   status?: 'pending' | 'in_progress' | 'completed';
+  term?: 'term_1' | 'term_2' | 'term_3';
 }
 
 export interface UpdateGoalData {
@@ -42,6 +44,7 @@ export interface UpdateGoalData {
   completionScale?: number;
   progress?: number;
   status?: 'pending' | 'in_progress' | 'completed';
+  term?: 'term_1' | 'term_2' | 'term_3';
 }
 
 export async function getMyGoals(): Promise<Goal[]> {

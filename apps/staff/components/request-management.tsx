@@ -325,8 +325,8 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
               </>
             )}
 
-            {/* Print Button for approved requests */}
-            {request.status === 'approved' && (
+            {/* Print Button for approved and rejected requests */}
+            {(request.status === 'approved' || request.status === 'rejected') && (
               <Button size="sm" variant="outline" onClick={handlePrint}>
                 <Printer className="h-4 w-4 mr-1" />
                 Print

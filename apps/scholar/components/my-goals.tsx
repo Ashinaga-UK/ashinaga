@@ -29,6 +29,7 @@ export function MyGoals() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'pending' | 'in_progress' | 'completed'>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [termFilter, setTermFilter] = useState<string>('all');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingCompletion, setEditingCompletion] = useState<string | null>(null);
   const [tempCompletion, setTempCompletion] = useState<number>(1);
@@ -62,8 +63,12 @@ export function MyGoals() {
       filtered = filtered.filter((goal) => goal.category === categoryFilter);
     }
 
+    if (termFilter !== 'all') {
+      filtered = filtered.filter((goal) => goal.term === termFilter);
+    }
+
     setFilteredGoals(filtered);
-  }, [goals, filter, categoryFilter]);
+  }, [goals, filter, categoryFilter, termFilter]);
 
   const handleCompletionUpdate = async (goalId: string, newCompletion: number) => {
     try {
@@ -171,16 +176,14 @@ export function MyGoals() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">My LDF</h1>
-            <p className="text-gray-600 mt-1">
-              Track and manage your Learning Development Framework
-            </p>
+            <p className="text-gray-600 mt-1">Track and manage your Leadership Development</p>
           </div>
           <Button
             onClick={() => setShowCreateDialog(true)}
             className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
           >
             <Plus className="h-4 w-4 mr-2" />
-            New LDF Item
+            New LDF Goal
           </Button>
         </div>
 
@@ -190,7 +193,7 @@ export function MyGoals() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Total LDF Items</p>
+                  <p className="text-sm text-gray-600">Total LDF Goals</p>
                   <p className="text-2xl font-bold">{stats.total}</p>
                 </div>
                 <Target className="h-8 w-8 text-gray-400" />
@@ -262,6 +265,17 @@ export function MyGoals() {
               <SelectItem value="professional_development">Professional Development</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={termFilter} onValueChange={setTermFilter}>
+            <SelectTrigger className="w-36">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Terms</SelectItem>
+              <SelectItem value="term_1">Term 1</SelectItem>
+              <SelectItem value="term_2">Term 2</SelectItem>
+              <SelectItem value="term_3">Term 3</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Goals List */}
@@ -272,18 +286,18 @@ export function MyGoals() {
                 <div className="text-center py-8">
                   <Target className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500">
-                    {filter === 'all' && categoryFilter === 'all'
-                      ? "You haven't set any LDF items yet"
-                      : 'No LDF items found with the selected filters'}
+                    {filter === 'all' && categoryFilter === 'all' && termFilter === 'all'
+                      ? "You haven't set any LDF goals yet"
+                      : 'No LDF goals found with the selected filters'}
                   </p>
-                  {filter === 'all' && categoryFilter === 'all' && (
+                  {filter === 'all' && categoryFilter === 'all' && termFilter === 'all' && (
                     <Button
                       variant="outline"
                       className="mt-4"
                       onClick={() => setShowCreateDialog(true)}
                     >
                       <Plus className="h-4 w-4 mr-2" />
-                      Create Your First LDF Item
+                      Create Your First LDF Goal
                     </Button>
                   )}
                 </div>
@@ -306,6 +320,18 @@ export function MyGoals() {
                               <Calendar className="h-3 w-3" />
                               Target: {new Date(goal.targetDate).toLocaleDateString()}
                             </span>
+                            {goal.term && (
+                              <>
+                                <span>•</span>
+                                <span className="px-2 py-0.5 bg-ashinaga-teal-100 text-ashinaga-teal-700 rounded-full text-xs font-medium">
+                                  {goal.term === 'term_1'
+                                    ? 'Term 1'
+                                    : goal.term === 'term_2'
+                                      ? 'Term 2'
+                                      : 'Term 3'}
+                                </span>
+                              </>
+                            )}
                           </div>
                         </div>
                       </div>

@@ -6,7 +6,7 @@ import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { useFileUpload } from '../lib/hooks/use-file-upload';
-import { useCreateRequest } from '../lib/hooks/use-queries';
+import { useCreateRequest, useStaffList } from '../lib/hooks/use-queries';
 import { Button } from './ui/button';
 import {
   Dialog,
@@ -38,6 +38,7 @@ const formSchema = z.object({
     .min(20, 'Please provide at least 20 characters')
     .max(1000, 'Maximum 1000 characters'),
   priority: z.enum(['high', 'medium', 'low']).optional(),
+  assignedTo: z.string().min(1, 'Please select a staff member'),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -53,6 +54,7 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const createRequest = useCreateRequest();
+  const { data: staffList, isLoading: isLoadingStaff } = useStaffList(open);
   const { uploadFiles, uploadProgress, isUploading, resetProgress } = useFileUpload();
 
   const form = useForm<FormValues>({
@@ -61,6 +63,7 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
       type: 'academic_support',
       description: '',
       priority: 'medium',
+      assignedTo: undefined,
     },
   });
 
@@ -217,6 +220,40 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
                   </Select>
                   <FormDescription>
                     Select high priority for urgent matters requiring immediate attention
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="assignedTo"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    Assign to Staff Member <span className="text-red-500">*</span>
+                  </FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value || ''}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={
+                            isLoadingStaff ? 'Loading staff...' : 'Select a staff member'
+                          }
+                        />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {staffList?.map((staff) => (
+                        <SelectItem key={staff.id} value={staff.id}>
+                          {staff.name} ({staff.email})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    Select the staff member who should handle this request
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
