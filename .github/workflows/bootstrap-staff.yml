@@ -1,0 +1,202 @@
+name: Bootstrap Staff Member
+
+# Manual workflow to bootstrap the first admin staff member in an environment
+# This creates the first admin user and their invitation token
+# Run this once per environment after initial deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to bootstrap'
+        required: true
+        default: 'prod'
+        type: choice
+        options:
+        - test
+        - prod
+      staff_email:
+        description: 'Email address for the first admin staff member'
+        required: true
+        type: string
+
+concurrency:
+  group: bootstrap-staff-${{ github.event.inputs.environment }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: eu-west-3
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: Install pnpm
+      run: npm install -g pnpm
+
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Get database connection
+      run: |
+        ENVIRONMENT="${{ github.event.inputs.environment }}"
+        
+        echo "Getting database connection details for ${ENVIRONMENT} environment..."
+        
+        # Get database connection details directly from AWS RDS
+        DB_IDENTIFIER="ashinaga-postgres-${ENVIRONMENT}"
+        
+        DB_HOST=$(aws rds describe-db-instances \
+          --db-instance-identifier ${DB_IDENTIFIER} \
+          --query 'DBInstances[0].Endpoint.Address' \
+          --output text 2>/dev/null || echo "")
+        
+        if [ -z "$DB_HOST" ] || [ "$DB_HOST" = "None" ]; then
+          echo "ERROR: Cannot get database endpoint from AWS RDS."
+          echo "Looking for database with identifier: ${DB_IDENTIFIER}"
+          aws rds describe-db-instances --query 'DBInstances[*].[DBInstanceIdentifier,DBInstanceStatus]' --output table || echo "Failed to list databases"
+          exit 1
+        fi
+        
+        DB_NAME=$(aws rds describe-db-instances \
+          --db-instance-identifier ${DB_IDENTIFIER} \
+          --query 'DBInstances[0].DBName' \
+          --output text)
+          
+        DB_USER=$(aws rds describe-db-instances \
+          --db-instance-identifier ${DB_IDENTIFIER} \
+          --query 'DBInstances[0].MasterUsername' \
+          --output text)
+        
+        # Get password from Secrets Manager
+        SECRET_NAME="ashinaga-db-password-${ENVIRONMENT}"
+        SECRET_ARN=$(aws secretsmanager list-secrets \
+          --query "SecretList[?contains(Name, '${SECRET_NAME}')] | sort_by(@, &CreatedDate) | [-1].ARN" \
+          --output text)
+        
+        if [ -z "$SECRET_ARN" ] || [ "$SECRET_ARN" = "None" ]; then
+          echo "ERROR: Could not find secret with name containing: ${SECRET_NAME}"
+          echo "Available secrets:"
+          aws secretsmanager list-secrets --query "SecretList[?contains(Name, 'ashinaga')].Name" --output table
+          exit 1
+        fi
+        
+        DB_PASSWORD=$(aws secretsmanager get-secret-value \
+          --secret-id "$SECRET_ARN" \
+          --query SecretString --output text)
+        
+        # Get Better Auth secret from Secrets Manager
+        echo "Retrieving Better Auth secret from AWS Secrets Manager..."
+        AUTH_SECRET_NAME="ashinaga-auth-secret-${ENVIRONMENT}"
+        
+        AUTH_SECRET_ARN=$(aws secretsmanager list-secrets \
+          --query "SecretList[?contains(Name, '${AUTH_SECRET_NAME}')] | sort_by(@, &CreatedDate) | [-1].ARN" \
+          --output text)
+        
+        if [ -z "$AUTH_SECRET_ARN" ] || [ "$AUTH_SECRET_ARN" = "None" ]; then
+          echo "ERROR: Could not find auth secret with name containing: ${AUTH_SECRET_NAME}"
+          exit 1
+        fi
+        
+        BETTER_AUTH_SECRET=$(aws secretsmanager get-secret-value \
+          --secret-id "$AUTH_SECRET_ARN" \
+          --query SecretString --output text)
+        
+        # Set Better Auth URL based on environment
+        if [ "$ENVIRONMENT" = "test" ]; then
+          BETTER_AUTH_URL="https://api-test.ashinaga-uk.org"
+        else
+          BETTER_AUTH_URL="https://api.ashinaga-uk.org"
+        fi
+        
+        # Mask sensitive values
+        echo "::add-mask::$DB_PASSWORD"
+        echo "::add-mask::$BETTER_AUTH_SECRET"
+        
+        # Export for next step
+        echo "DB_HOST=${DB_HOST}" >> $GITHUB_ENV
+        echo "DB_PORT=5432" >> $GITHUB_ENV
+        echo "DB_NAME=${DB_NAME}" >> $GITHUB_ENV
+        echo "DB_USER=${DB_USER}" >> $GITHUB_ENV
+        echo "DB_PASSWORD=${DB_PASSWORD}" >> $GITHUB_ENV
+        echo "BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}" >> $GITHUB_ENV
+        echo "BETTER_AUTH_URL=${BETTER_AUTH_URL}" >> $GITHUB_ENV
+        echo "ENVIRONMENT=${ENVIRONMENT}" >> $GITHUB_ENV
+        
+        echo "✅ Database connection details retrieved"
+        echo "Database host: ${DB_HOST}"
+        echo "Database name: ${DB_NAME}"
+        echo "Database user: ${DB_USER}"
+
+    - name: Run bootstrap script
+      run: |
+        cd apps/api
+        
+        ENVIRONMENT="${ENVIRONMENT}"
+        STAFF_EMAIL="${{ github.event.inputs.staff_email }}"
+        
+        # Validate email format
+        if [[ ! "$STAFF_EMAIL" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+          echo "ERROR: Invalid email format: ${STAFF_EMAIL}"
+          exit 1
+        fi
+        
+        echo "🚀 Running bootstrap script for ${ENVIRONMENT} environment..."
+        echo "Staff email: ${STAFF_EMAIL}"
+        
+        # Set environment variables for the script
+        # Use production mode for RDS SSL connection (works for both test and prod)
+        export NODE_ENV="production"
+        export DB_HOST="${DB_HOST}"
+        export DB_PORT="${DB_PORT}"
+        export DB_NAME="${DB_NAME}"
+        export DB_USER="${DB_USER}"
+        export DB_PASSWORD="${DB_PASSWORD}"
+        export BETTER_AUTH_SECRET="${BETTER_AUTH_SECRET}"
+        export BETTER_AUTH_URL="${BETTER_AUTH_URL}"
+        
+        # Run the bootstrap script
+        echo "Executing: pnpm db:bootstrap-prod \"${STAFF_EMAIL}\""
+        pnpm db:bootstrap-prod "${STAFF_EMAIL}"
+        
+        echo "✅ Bootstrap script completed successfully!"
+
+    - name: Summary
+      run: |
+        ENVIRONMENT="${ENVIRONMENT}"
+        STAFF_EMAIL="${{ github.event.inputs.staff_email }}"
+        
+        echo "## ✅ Staff Bootstrap Complete" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Environment" >> $GITHUB_STEP_SUMMARY
+        echo "- **Environment**: ${ENVIRONMENT}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Staff Email**: ${STAFF_EMAIL}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+        echo "1. Check the workflow logs above for the invitation URL" >> $GITHUB_STEP_SUMMARY
+        echo "2. Send the invitation link to ${STAFF_EMAIL}" >> $GITHUB_STEP_SUMMARY
+        if [ "$ENVIRONMENT" = "test" ]; then
+          echo "3. Staff member should sign up at: https://staff-test.ashinaga-uk.org" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "3. Staff member should sign up at: https://staff.ashinaga-uk.org" >> $GITHUB_STEP_SUMMARY
+        fi
+        echo "4. After signup, the admin can invite additional staff using the API" >> $GITHUB_STEP_SUMMARY
