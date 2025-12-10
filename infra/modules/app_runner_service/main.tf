@@ -162,7 +162,10 @@ resource "aws_apprunner_service" "this" {
 
   lifecycle {
     ignore_changes = [
-      source_configuration[0].image_repository[0].image_configuration[0].runtime_environment_variables["DB_PASSWORD"]
+      # Ignore all secrets - GitHub Actions workflow manages these
+      source_configuration[0].image_repository[0].image_configuration[0].runtime_environment_variables["DB_PASSWORD"],
+      source_configuration[0].image_repository[0].image_configuration[0].runtime_environment_variables["BETTER_AUTH_SECRET"],
+      source_configuration[0].image_repository[0].image_configuration[0].runtime_environment_variables["RESEND_API_KEY"]
     ]
   }
 }

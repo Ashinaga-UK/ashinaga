@@ -277,9 +277,10 @@ jobs:
     - name: Update App Runner service
       run: |
         # This step:
-        # 1. Fetches latest secrets from AWS Secrets Manager
+        # 1. Fetches latest secrets from AWS Secrets Manager (GitHub Actions is the source of truth for secrets)
         # 2. Builds App Runner configuration using jq (handles special characters)
         # 3. Updates App Runner with new image and fresh environment variables
+        # Note: Terraform creates the service with initial secrets, but ignores changes to them via lifecycle rules
 
         ENVIRONMENT="${{ needs.determine-environment.outputs.environment }}"
         SERVICE_NAME="ashinaga-api-${ENVIRONMENT}"
@@ -302,23 +303,24 @@ jobs:
         # Helper function to get secret value and trim whitespace
         get_secret_value() {
           local secret_pattern="$1"
-          # Get the most recent secret ARN matching the pattern
-          local secret_arn=$(aws secretsmanager list-secrets \
-            --query "SecretList[?contains(Name, '${secret_pattern}')] | sort_by(@, &CreatedDate) | [-1].ARN" \
-            --output text)
+          # Get the most recent secret name matching the pattern
+          # First get all matching secrets, filter out "None", then sort and pick the last one
+          local secret_name=$(aws secretsmanager list-secrets \
+            --query "SecretList[?contains(Name, '${secret_pattern}')].Name" \
+            --output text | tr '\t' '\n' | grep -v "^None$" | sort | tail -n 1)
 
-          if [ -z "$secret_arn" ] || [ "$secret_arn" = "None" ]; then
+          if [ -z "$secret_name" ]; then
             echo "ERROR: Could not find secret with pattern: ${secret_pattern}" >&2
             echo "Available secrets:" >&2
-            aws secretsmanager list-secrets --query "SecretList[].Name" --output table >&2
+            aws secretsmanager list-secrets --query "SecretList[?contains(Name, 'ashinaga')].Name" --output table >&2
             return 1
           fi
 
-          echo "Found secret: $secret_arn" >&2
+          echo "Found secret: $secret_name" >&2
 
           # Get secret value and trim whitespace
           aws secretsmanager get-secret-value \
-            --secret-id "$secret_arn" \
+            --secret-id "$secret_name" \
             --query SecretString \
             --output text | xargs
         }
