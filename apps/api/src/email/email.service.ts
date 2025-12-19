@@ -12,11 +12,16 @@ export class EmailService {
     }
   }
 
-  async sendPasswordResetEmail(email: string, resetUrl: string): Promise<void> {
+  async sendPasswordResetEmail(options: {
+    email: string;
+    resetUrl: string;
+    userType?: 'staff' | 'scholar';
+  }): Promise<void> {
+    const { email, resetUrl } = options;
     const fromEmail = process.env.EMAIL_FROM || 'noreply@ashinaga.org';
-    const appName = email.includes('@ashinaga.org')
-      ? 'Ashinaga Staff Portal'
-      : 'Ashinaga Scholar Portal';
+    const userType =
+      options.userType || (email.toLowerCase().includes('@ashinaga.org') ? 'staff' : 'scholar');
+    const appName = userType === 'staff' ? 'Ashinaga Staff Portal' : 'Ashinaga Scholar Portal';
 
     // If Resend is not configured, fallback to console logging
     if (!this.resend) {
@@ -53,69 +58,65 @@ export class EmailService {
       return;
     }
 
-    // Send actual email via Resend
-    try {
-      const { data, error } = await this.resend.emails.send({
-        from: fromEmail,
-        to: email,
-        subject: `Reset your ${appName} password`,
-        html: `
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <meta charset="utf-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>Reset Your Password</title>
-            </head>
-            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-              <div style="background: linear-gradient(135deg, #0D9488 0%, #16A34A 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-                <h1 style="color: white; margin: 0; font-size: 28px;">Ashinaga</h1>
-              </div>
-              
-              <div style="background: white; padding: 30px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 10px 10px;">
-                <h2 style="color: #333; margin-top: 0;">Reset Your Password</h2>
-                
-                <p>Hi there,</p>
-                
-                <p>We received a request to reset your password for your ${appName} account. Click the button below to create a new password:</p>
-                
-                <div style="text-align: center; margin: 30px 0;">
-                  <a href="${resetUrl}" style="display: inline-block; background: linear-gradient(135deg, #0D9488 0%, #16A34A 100%); color: white; text-decoration: none; padding: 12px 30px; border-radius: 5px; font-weight: 600;">Reset Password</a>
-                </div>
-                
-                <p>Or copy and paste this link into your browser:</p>
-                <p style="word-break: break-all; color: #0D9488;">${resetUrl}</p>
-                
-                <p>This link will expire in 1 hour for security reasons.</p>
-                
-                <p>If you didn't request this password reset, you can safely ignore this email. Your password won't be changed.</p>
-                
-                <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 30px 0;">
-                
-                <p style="color: #666; font-size: 14px;">
-                  Best regards,<br>
-                  The Ashinaga Team
-                </p>
-              </div>
-              
-              <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
-                <p>© ${new Date().getFullYear()} Ashinaga. All rights reserved.</p>
-              </div>
-            </body>
-          </html>
-        `,
-      });
+    await this.sendEmail({
+      to: email,
+      subject: `Reset your ${appName} password`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Reset Your Password</title>
+          </head>
+          <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #0D9488 0%, #16A34A 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+              <h1 style="color: white; margin: 0; font-size: 28px;">Ashinaga</h1>
+            </div>
 
-      if (error) {
-        console.error('Failed to send password reset email:', error);
-        throw new Error('Failed to send password reset email');
-      }
+            <div style="background: white; padding: 30px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 10px 10px;">
+              <h2 style="color: #333; margin-top: 0;">Reset Your Password</h2>
 
-      console.log('Password reset email sent successfully:', data);
-    } catch (error) {
-      console.error('Error sending email:', error);
-      throw error;
-    }
+              <p>Hi there,</p>
+
+              <p>We received a request to reset your password for your ${appName} account. Click the button below to create a new password:</p>
+
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${resetUrl}" style="display: inline-block; background: linear-gradient(135deg, #0D9488 0%, #16A34A 100%); color: white; text-decoration: none; padding: 12px 30px; border-radius: 5px; font-weight: 600;">Reset Password</a>
+              </div>
+
+              <p>Or copy and paste this link into your browser:</p>
+              <p style="word-break: break-all; color: #0D9488;">${resetUrl}</p>
+
+              <p>This link will expire in 1 hour for security reasons.</p>
+
+              <p>If you didn't request this password reset, you can safely ignore this email. Your password won't be changed.</p>
+
+              <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 30px 0;">
+
+              <p style="color: #666; font-size: 14px;">
+                Best regards,<br>
+                The Ashinaga Team
+              </p>
+            </div>
+
+            <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
+              <p>© ${new Date().getFullYear()} Ashinaga. All rights reserved.</p>
+            </div>
+          </body>
+        </html>
+      `,
+      text: `
+Reset Your Password (${appName})
+
+We received a request to reset your password for your ${appName} account.
+
+Reset link (expires in 1 hour):
+${resetUrl}
+
+If you didn't request this, you can ignore this email.
+      `.trim(),
+    });
   }
 
   async sendEmail(options: {

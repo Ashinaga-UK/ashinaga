@@ -26,7 +26,11 @@ describe('EmailService', () => {
     it('should log password reset email when Resend is not configured', async () => {
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
 
-      await service.sendPasswordResetEmail('test@example.com', 'https://example.com/reset');
+      await service.sendPasswordResetEmail({
+        email: 'test@example.com',
+        resetUrl: 'https://example.com/reset',
+        userType: 'scholar',
+      });
 
       expect(consoleSpy).toHaveBeenCalledWith('PASSWORD RESET EMAIL (Resend not configured)');
       expect(consoleSpy).toHaveBeenCalledWith('To: test@example.com');
@@ -51,10 +55,11 @@ describe('EmailService', () => {
       };
       serviceInstance.resend = { emails: { send: mockSend } };
 
-      await serviceWithResend.sendPasswordResetEmail(
-        'scholar@example.com',
-        'https://example.com/reset'
-      );
+      await serviceWithResend.sendPasswordResetEmail({
+        email: 'scholar@example.com',
+        resetUrl: 'https://example.com/reset',
+        userType: 'scholar',
+      });
 
       expect(mockSend).toHaveBeenCalledWith(
         expect.objectContaining({
