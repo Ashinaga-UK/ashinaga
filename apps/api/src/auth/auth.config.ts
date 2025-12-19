@@ -8,6 +8,34 @@ import { EmailService } from '../email/email.service';
 // Create email service instance
 const emailService = new EmailService();
 
+function getPortalBaseUrl(userType: string): string {
+  const isStaff = userType === 'staff';
+  const envVar = isStaff ? 'STAFF_APP_URL' : 'SCHOLAR_APP_URL';
+  const fallback = isStaff ? 'http://localhost:4001' : 'http://localhost:4002';
+  return (process.env[envVar] || fallback).replace(/\/$/, '');
+}
+
+type UserType = 'staff' | 'scholar';
+type ResetPasswordUser = { userType?: UserType };
+
+function extractResetToken(urlString: string): string | null {
+  try {
+    const url = new URL(urlString);
+    const tokenFromQuery = url.searchParams.get('token');
+    if (tokenFromQuery) return tokenFromQuery;
+
+    // Better Auth can format the reset URL as /api/auth/reset-password/<token>
+    const parts = url.pathname.split('/').filter(Boolean);
+    const resetIdx = parts.findIndex((p) => p === 'reset-password');
+    if (resetIdx !== -1 && parts[resetIdx + 1]) {
+      return parts[resetIdx + 1];
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 // Better Auth configuration
 const authConfig = betterAuth({
   database: drizzleAdapter(getDatabase(), {
@@ -16,6 +44,7 @@ const authConfig = betterAuth({
       user: schema.users,
       account: schema.accounts,
       session: schema.sessions,
+      verification: schema.verification,
     },
   }),
   secret: process.env.BETTER_AUTH_SECRET,
@@ -43,19 +72,99 @@ const authConfig = betterAuth({
         return;
       }
 
-      // In test environment, just log the reset URL instead of sending email
-      if (process.env.NODE_ENV === 'test') {
+      // Always build a portal-correct reset URL (staff -> staff app, scholar -> scholar app)
+      const token = extractResetToken(data.url);
+      const userType = (data.user as unknown as ResetPasswordUser)?.userType || 'scholar';
+      const portalBaseUrl = getPortalBaseUrl(userType);
+      const resetUrl = token
+        ? `${portalBaseUrl}/reset-password?token=${encodeURIComponent(token)}`
+        : data.url;
+
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[sendResetPassword] userType:', userType);
+        console.log('[sendResetPassword] portalBaseUrl:', portalBaseUrl);
+        console.log('[sendResetPassword] resetUrl:', resetUrl);
+        if (!token) {
+          console.warn(
+            '[sendResetPassword] Could not extract token from Better Auth URL, using raw URL:',
+            data.url
+          );
+        }
+      }
+
+      // Only skip sending during Jest unit tests.
+      // Note: some deployed "test" environments set NODE_ENV=test; we still want real emails there.
+      if (process.env.NODE_ENV === 'test' && process.env.JEST_WORKER_ID) {
         console.log('═══════════════════════════════════════════════════════════════');
         console.log('PASSWORD RESET EMAIL (Test Environment)');
         console.log('═══════════════════════════════════════════════════════════════');
         console.log(`To: ${email}`);
-        console.log(`Reset Link: ${data.url}`);
+        console.log(`Reset Link: ${resetUrl}`);
         console.log('═══════════════════════════════════════════════════════════════');
         return;
       }
 
-      // In production, use the email service to send password reset emails
-      await emailService.sendPasswordResetEmail(email, data.url);
+      const appName = userType === 'staff' ? 'Ashinaga Staff Portal' : 'Ashinaga Scholar Portal';
+
+      await emailService.sendEmail({
+        to: email,
+        subject: `Reset your ${appName} password`,
+        html: `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Reset Your Password</title>
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <div style="background: linear-gradient(135deg, #0D9488 0%, #16A34A 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                <h1 style="color: white; margin: 0; font-size: 28px;">Ashinaga</h1>
+              </div>
+
+              <div style="background: white; padding: 30px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 10px 10px;">
+                <h2 style="color: #333; margin-top: 0;">Reset Your Password</h2>
+
+                <p>Hi there,</p>
+
+                <p>We received a request to reset your password for your ${appName} account. Click the button below to create a new password:</p>
+
+                <div style="text-align: center; margin: 30px 0;">
+                  <a href="${resetUrl}" style="display: inline-block; background: linear-gradient(135deg, #0D9488 0%, #16A34A 100%); color: white; text-decoration: none; padding: 12px 30px; border-radius: 5px; font-weight: 600;">Reset Password</a>
+                </div>
+
+                <p>Or copy and paste this link into your browser:</p>
+                <p style="word-break: break-all; color: #0D9488;">${resetUrl}</p>
+
+                <p>This link will expire in 1 hour for security reasons.</p>
+
+                <p>If you didn't request this password reset, you can safely ignore this email. Your password won't be changed.</p>
+
+                <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 30px 0;">
+
+                <p style="color: #666; font-size: 14px;">
+                  Best regards,<br>
+                  The Ashinaga Team
+                </p>
+              </div>
+
+              <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
+                <p>© ${new Date().getFullYear()} Ashinaga. All rights reserved.</p>
+              </div>
+            </body>
+          </html>
+        `,
+        text: `
+Reset Your Password (${appName})
+
+We received a request to reset your password for your ${appName} account.
+
+Reset link (expires in 1 hour):
+${resetUrl}
+
+If you didn't request this, you can ignore this email.
+        `.trim(),
+      });
     },
   },
   socialProviders: {
