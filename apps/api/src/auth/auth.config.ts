@@ -72,24 +72,37 @@ const authConfig = betterAuth({
         return;
       }
 
-      // In test environment, just log the reset URL instead of sending email
-      if (process.env.NODE_ENV === 'test') {
-        console.log('═══════════════════════════════════════════════════════════════');
-        console.log('PASSWORD RESET EMAIL (Test Environment)');
-        console.log('═══════════════════════════════════════════════════════════════');
-        console.log(`To: ${email}`);
-        console.log(`Reset Link: ${data.url}`);
-        console.log('═══════════════════════════════════════════════════════════════');
-        return;
-      }
-
-      // Build a portal-correct reset URL (staff -> staff app, scholar -> scholar app)
+      // Always build a portal-correct reset URL (staff -> staff app, scholar -> scholar app)
       const token = extractResetToken(data.url);
       const userType = (data.user as unknown as ResetPasswordUser)?.userType || 'scholar';
       const portalBaseUrl = getPortalBaseUrl(userType);
       const resetUrl = token
         ? `${portalBaseUrl}/reset-password?token=${encodeURIComponent(token)}`
         : data.url;
+
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[sendResetPassword] userType:', userType);
+        console.log('[sendResetPassword] portalBaseUrl:', portalBaseUrl);
+        console.log('[sendResetPassword] resetUrl:', resetUrl);
+        if (!token) {
+          console.warn(
+            '[sendResetPassword] Could not extract token from Better Auth URL, using raw URL:',
+            data.url
+          );
+        }
+      }
+
+      // Only skip sending during Jest unit tests.
+      // Note: some deployed "test" environments set NODE_ENV=test; we still want real emails there.
+      if (process.env.NODE_ENV === 'test' && process.env.JEST_WORKER_ID) {
+        console.log('═══════════════════════════════════════════════════════════════');
+        console.log('PASSWORD RESET EMAIL (Test Environment)');
+        console.log('═══════════════════════════════════════════════════════════════');
+        console.log(`To: ${email}`);
+        console.log(`Reset Link: ${resetUrl}`);
+        console.log('═══════════════════════════════════════════════════════════════');
+        return;
+      }
 
       const appName = userType === 'staff' ? 'Ashinaga Staff Portal' : 'Ashinaga Scholar Portal';
 
