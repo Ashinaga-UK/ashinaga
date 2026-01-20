@@ -53,7 +53,7 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="w-16 h-16 bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 rounded-lg flex items-center justify-center mx-auto mb-4">
@@ -71,7 +71,9 @@ export function LoginPage() {
                 <p className="text-sm text-orange-600">This portal is for scholars only</p>
               </div>
               <div className="text-center">
-                <p className="text-sm text-gray-600 mb-2">Looking for the Staff Portal?</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                  Looking for the Staff Portal?
+                </p>
                 <Button
                   variant="outline"
                   size="sm"
@@ -86,10 +88,12 @@ export function LoginPage() {
               </div>
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-gray-300" />
+                  <span className="w-full border-t border-gray-300 dark:border-gray-600" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-2 text-gray-500">Or sign in as scholar</span>
+                  <span className="bg-white dark:bg-card px-2 text-gray-500 dark:text-gray-400">
+                    Or sign in as scholar
+                  </span>
                 </div>
               </div>
             </div>
@@ -119,7 +123,7 @@ export function LoginPage() {
                   required
                 />
               </div>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 You must have an invitation to access the portal
               </p>
             </div>
@@ -165,7 +169,7 @@ export function LoginPage() {
           <div className="text-center">
             <Button
               variant="link"
-              className="text-sm text-gray-600"
+              className="text-sm text-gray-600 dark:text-gray-400"
               onClick={() => router.push('/forgot-password')}
             >
               Forgot your password?
