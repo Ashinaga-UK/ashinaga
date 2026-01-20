@@ -1,5 +1,5 @@
 import { ConfigService } from '@nestjs/config';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { FilesService } from './files.service';
 
 // Mock the uuid module
