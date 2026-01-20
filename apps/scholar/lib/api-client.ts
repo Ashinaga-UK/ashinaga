@@ -75,8 +75,13 @@ export interface Request {
   scholarId: string;
   scholarName: string;
   scholarEmail: string;
-  type: 'financial_support' | 'extenuating_circumstances' | 'academic_support';
+  type:
+    | 'extenuating_circumstances'
+    | 'summer_funding_request'
+    | 'summer_funding_report'
+    | 'requirement_submission';
   description: string;
+  formData?: Record<string, any> | null;
   priority: 'high' | 'medium' | 'low';
   status: 'pending' | 'approved' | 'rejected' | 'reviewed' | 'commented';
   submittedDate: string;
@@ -94,8 +99,13 @@ export async function getMyRequests(): Promise<Request[]> {
 }
 
 export interface CreateRequestData {
-  type: 'financial_support' | 'extenuating_circumstances' | 'academic_support';
+  type:
+    | 'extenuating_circumstances'
+    | 'summer_funding_request'
+    | 'summer_funding_report'
+    | 'requirement_submission';
   description: string;
+  formData?: Record<string, any>;
   priority?: 'high' | 'medium' | 'low';
   attachmentIds?: string[];
   assignedTo?: string;
