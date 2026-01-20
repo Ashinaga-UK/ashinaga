@@ -3,9 +3,10 @@ import { scholars } from './scholars';
 import { users } from './users';
 
 export const requestTypeEnum = pgEnum('request_type', [
-  'financial_support',
   'extenuating_circumstances',
-  'academic_support',
+  'summer_funding_request',
+  'summer_funding_report',
+  'requirement_submission',
 ]);
 
 export const requestStatusEnum = pgEnum('request_status', [
@@ -25,6 +26,7 @@ export const requests = pgTable('requests', {
     .references(() => scholars.id),
   type: requestTypeEnum('type').notNull(),
   description: text('description').notNull(),
+  formData: text('form_data'), // JSON string for type-specific form fields
   priority: requestPriorityEnum('priority').notNull().default('medium'),
   status: requestStatusEnum('status').notNull().default('pending'),
   submittedDate: timestamp('submitted_date', { withTimezone: true }).defaultNow().notNull(),

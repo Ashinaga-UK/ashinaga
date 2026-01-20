@@ -1,13 +1,14 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { FileText, Paperclip, Trash2, Upload, X } from 'lucide-react';
+import { FileText, Paperclip, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { useFileUpload } from '../lib/hooks/use-file-upload';
 import { useCreateRequest, useStaffList } from '../lib/hooks/use-queries';
 import { Button } from './ui/button';
+import { Checkbox } from './ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -26,22 +27,31 @@ import {
   FormLabel,
   FormMessage,
 } from './ui/form';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
 import { Progress } from './ui/progress';
+import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Textarea } from './ui/textarea';
 import { useToast } from './ui/use-toast';
 
-const formSchema = z.object({
-  type: z.enum(['financial_support', 'extenuating_circumstances', 'academic_support']),
+// Form schema for the base request
+const baseSchema = z.object({
+  type: z.enum([
+    'extenuating_circumstances',
+    'summer_funding_request',
+    'summer_funding_report',
+    'requirement_submission',
+  ]),
   description: z
     .string()
     .min(20, 'Please provide at least 20 characters')
-    .max(1000, 'Maximum 1000 characters'),
+    .max(2000, 'Maximum 2000 characters'),
   priority: z.enum(['high', 'medium', 'low']).optional(),
   assignedTo: z.string().min(1, 'Please select a staff member'),
 });
 
-type FormValues = z.infer<typeof formSchema>;
+type FormValues = z.infer<typeof baseSchema>;
 
 interface NewRequestDialogProps {
   trigger?: React.ReactNode;
@@ -57,20 +67,35 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
   const { data: staffList, isLoading: isLoadingStaff } = useStaffList(open);
   const { uploadFiles, uploadProgress, isUploading, resetProgress } = useFileUpload();
 
+  // Type-specific form data (managed separately from main form)
+  const [activityType, setActivityType] = useState<string>('');
+  const [appliedForAlternativeFunding, setAppliedForAlternativeFunding] = useState<string>('');
+  const [receivingOtherFunding, setReceivingOtherFunding] = useState<string>('');
+  const [otherFundingSource, setOtherFundingSource] = useState<string>('');
+  const [otherFundingAmount, setOtherFundingAmount] = useState<string>('');
+  const [additionalNotes, setAdditionalNotes] = useState<string>('');
+  const [travelInsuranceAcknowledged, setTravelInsuranceAcknowledged] = useState(false);
+  const [informationTruthful, setInformationTruthful] = useState(false);
+  const [activitySummary, setActivitySummary] = useState<string>('');
+  const [learningOutcomes, setLearningOutcomes] = useState<string>('');
+  const [challengesFaced, setChallengesFaced] = useState<string>('');
+  const [submissionType, setSubmissionType] = useState<string>('');
+
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(baseSchema),
     defaultValues: {
-      type: 'academic_support',
+      type: 'extenuating_circumstances',
       description: '',
       priority: 'medium',
       assignedTo: undefined,
     },
   });
 
+  const selectedType = form.watch('type');
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     const validFiles = files.filter((file) => {
-      // Validate file size (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
         toast({
           title: 'File too large',
@@ -83,7 +108,6 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
     });
 
     setSelectedFiles((prev) => [...prev, ...validFiles]);
-    // Reset input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -93,26 +117,79 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const resetTypeSpecificData = () => {
+    setActivityType('');
+    setAppliedForAlternativeFunding('');
+    setReceivingOtherFunding('');
+    setOtherFundingSource('');
+    setOtherFundingAmount('');
+    setAdditionalNotes('');
+    setTravelInsuranceAcknowledged(false);
+    setInformationTruthful(false);
+    setActivitySummary('');
+    setLearningOutcomes('');
+    setChallengesFaced('');
+    setSubmissionType('');
+  };
+
+  const collectFormData = () => {
+    const type = form.getValues('type');
+
+    switch (type) {
+      case 'summer_funding_request':
+        return {
+          activityType,
+          appliedForAlternativeFunding,
+          receivingOtherFunding,
+          otherFundingSource: receivingOtherFunding === 'yes' ? otherFundingSource : undefined,
+          otherFundingAmount: receivingOtherFunding === 'yes' ? otherFundingAmount : undefined,
+          additionalNotes: additionalNotes || undefined,
+          travelInsuranceAcknowledged,
+          informationTruthful,
+        };
+      case 'summer_funding_report':
+        return {
+          activitySummary,
+          learningOutcomes,
+          challengesFaced: challengesFaced || undefined,
+          additionalNotes: additionalNotes || undefined,
+        };
+      case 'requirement_submission':
+        return {
+          submissionType,
+          additionalNotes: additionalNotes || undefined,
+        };
+      default:
+        return undefined;
+    }
+  };
+
   const onSubmit = async (values: FormValues) => {
     try {
-      // First create the request
-      const newRequest = await createRequest.mutateAsync(values);
+      const formData = collectFormData();
+      const requestData: any = {
+        type: values.type,
+        description: values.description,
+        priority: values.priority,
+        assignedTo: values.assignedTo,
+        formData,
+      };
 
-      // Then upload files if any are selected
+      const newRequest = await createRequest.mutateAsync(requestData);
+
       if (selectedFiles.length > 0 && newRequest.id) {
         try {
           await uploadFiles(selectedFiles, newRequest.id);
         } catch (uploadError) {
-          // Files failed to upload but request was created
           toast({
             title: 'Request created',
             description: 'Your request was submitted but some files failed to upload.',
             variant: 'destructive',
           });
-          // Still close dialog and reset since request was created
           form.reset();
           setSelectedFiles([]);
           resetProgress();
+          resetTypeSpecificData();
           setOpen(false);
           onSuccess?.();
           return;
@@ -124,10 +201,10 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
         description: 'Your request has been submitted successfully. Staff will review it soon.',
       });
 
-      // Reset everything
       form.reset();
       setSelectedFiles([]);
       resetProgress();
+      resetTypeSpecificData();
       setOpen(false);
       onSuccess?.();
     } catch (error) {
@@ -146,9 +223,10 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
   };
 
   const requestTypeOptions = [
-    { value: 'financial_support', label: 'Financial Support' },
     { value: 'extenuating_circumstances', label: 'Extenuating Circumstances' },
-    { value: 'academic_support', label: 'Academic Support' },
+    { value: 'summer_funding_request', label: 'Summer Funding Request' },
+    { value: 'summer_funding_report', label: 'Summer Funding Report' },
+    { value: 'requirement_submission', label: 'Requirement Submission' },
   ];
 
   const priorityOptions = [
@@ -156,6 +234,279 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
     { value: 'medium', label: 'Medium Priority' },
     { value: 'low', label: 'Low Priority' },
   ];
+
+  const renderTypeSpecificFields = () => {
+    switch (selectedType) {
+      case 'extenuating_circumstances':
+        return (
+          <div className="space-y-4 border-t pt-4">
+            <h4 className="font-medium text-sm">Extenuating Circumstances Details</h4>
+            <p className="text-sm text-muted-foreground">
+              Please provide detailed information about the circumstances affecting your studies.
+              Include relevant dates and any supporting documentation.
+            </p>
+          </div>
+        );
+
+      case 'summer_funding_request':
+        return (
+          <div className="space-y-4 border-t pt-4">
+            <h4 className="font-medium text-sm">Summer Funding Request</h4>
+            <p className="text-sm text-muted-foreground mb-4">
+              Note: You must attach an offer letter or confirmation of your summer activity.
+            </p>
+
+            <div className="space-y-2">
+              <Label>
+                Activity Type <span className="text-red-500">*</span>
+              </Label>
+              <RadioGroup value={activityType} onValueChange={setActivityType}>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="internship" id="internship" />
+                  <label htmlFor="internship" className="text-sm">
+                    Internship
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="summer_school" id="summer_school" />
+                  <label htmlFor="summer_school" className="text-sm">
+                    Summer School
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="research_project" id="research_project" />
+                  <label htmlFor="research_project" className="text-sm">
+                    Research Project
+                  </label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            <div className="space-y-2">
+              <Label>
+                Have you applied for alternative funding? <span className="text-red-500">*</span>
+              </Label>
+              <RadioGroup
+                value={appliedForAlternativeFunding}
+                onValueChange={setAppliedForAlternativeFunding}
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="yes_successful" id="yes_successful" />
+                  <label htmlFor="yes_successful" className="text-sm">
+                    Yes, and I was successful
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="yes_unsuccessful" id="yes_unsuccessful" />
+                  <label htmlFor="yes_unsuccessful" className="text-sm">
+                    Yes, but I was unsuccessful
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="no" id="no_alternative" />
+                  <label htmlFor="no_alternative" className="text-sm">
+                    No, I have not applied
+                  </label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            <div className="space-y-2">
+              <Label>
+                Are you receiving any other funding for this activity?{' '}
+                <span className="text-red-500">*</span>
+              </Label>
+              <RadioGroup value={receivingOtherFunding} onValueChange={setReceivingOtherFunding}>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="yes" id="receiving_yes" />
+                  <label htmlFor="receiving_yes" className="text-sm">
+                    Yes
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="no" id="receiving_no" />
+                  <label htmlFor="receiving_no" className="text-sm">
+                    No
+                  </label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            {receivingOtherFunding === 'yes' && (
+              <>
+                <div className="space-y-2">
+                  <Label>Funding Source</Label>
+                  <Textarea
+                    placeholder="Please specify the source of funding..."
+                    value={otherFundingSource}
+                    onChange={(e) => setOtherFundingSource(e.target.value)}
+                    className="resize-none"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Funding Amount</Label>
+                  <Input
+                    placeholder="Please specify the amount..."
+                    value={otherFundingAmount}
+                    onChange={(e) => setOtherFundingAmount(e.target.value)}
+                  />
+                </div>
+              </>
+            )}
+
+            <div className="space-y-2">
+              <Label>Anything further you would like to note?</Label>
+              <Textarea
+                placeholder="Any additional information..."
+                value={additionalNotes}
+                onChange={(e) => setAdditionalNotes(e.target.value)}
+                className="resize-none"
+              />
+            </div>
+
+            <div className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+              <Checkbox
+                checked={travelInsuranceAcknowledged}
+                onCheckedChange={(checked) => setTravelInsuranceAcknowledged(checked === true)}
+              />
+              <div className="space-y-1 leading-none">
+                <Label>
+                  I acknowledge that I need to arrange my own travel insurance{' '}
+                  <span className="text-red-500">*</span>
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  You are responsible for arranging appropriate travel insurance for your summer
+                  activity.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+              <Checkbox
+                checked={informationTruthful}
+                onCheckedChange={(checked) => setInformationTruthful(checked === true)}
+              />
+              <div className="space-y-1 leading-none">
+                <Label>
+                  I confirm that all information provided is true and accurate{' '}
+                  <span className="text-red-500">*</span>
+                </Label>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'summer_funding_report':
+        return (
+          <div className="space-y-4 border-t pt-4">
+            <h4 className="font-medium text-sm">Summer Funding Report</h4>
+            <p className="text-sm text-muted-foreground">
+              Please provide a report on your summer activity and learning outcomes.
+            </p>
+
+            <div className="space-y-2">
+              <Label>
+                Activity Summary <span className="text-red-500">*</span>
+              </Label>
+              <Textarea
+                placeholder="Describe what you did during your summer activity..."
+                value={activitySummary}
+                onChange={(e) => setActivitySummary(e.target.value)}
+                className="min-h-[100px] resize-none"
+              />
+              <p className="text-sm text-muted-foreground">Minimum 50 characters</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>
+                Learning Outcomes <span className="text-red-500">*</span>
+              </Label>
+              <Textarea
+                placeholder="What did you learn from this experience?"
+                value={learningOutcomes}
+                onChange={(e) => setLearningOutcomes(e.target.value)}
+                className="min-h-[80px] resize-none"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Challenges Faced</Label>
+              <Textarea
+                placeholder="Were there any challenges you faced?"
+                value={challengesFaced}
+                onChange={(e) => setChallengesFaced(e.target.value)}
+                className="resize-none"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Additional Notes</Label>
+              <Textarea
+                placeholder="Any other comments or reflections..."
+                value={additionalNotes}
+                onChange={(e) => setAdditionalNotes(e.target.value)}
+                className="resize-none"
+              />
+            </div>
+          </div>
+        );
+
+      case 'requirement_submission':
+        return (
+          <div className="space-y-4 border-t pt-4">
+            <h4 className="font-medium text-sm">Requirement Submission</h4>
+            <p className="text-sm text-muted-foreground">
+              Submit required documents or materials. Please attach the relevant files.
+            </p>
+
+            <div className="space-y-2">
+              <Label>
+                Submission Type <span className="text-red-500">*</span>
+              </Label>
+              <RadioGroup value={submissionType} onValueChange={setSubmissionType}>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="ashinaga_proposal" id="ashinaga_proposal" />
+                  <label htmlFor="ashinaga_proposal" className="text-sm">
+                    Ashinaga Proposal
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="transcript" id="transcript" />
+                  <label htmlFor="transcript" className="text-sm">
+                    Transcript
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="tenancy_agreement" id="tenancy_agreement" />
+                  <label htmlFor="tenancy_agreement" className="text-sm">
+                    Tenancy Agreement
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="other" id="other_submission" />
+                  <label htmlFor="other_submission" className="text-sm">
+                    Other
+                  </label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Additional Notes</Label>
+              <Textarea
+                placeholder="Any additional information about this submission..."
+                value={additionalNotes}
+                onChange={(e) => setAdditionalNotes(e.target.value)}
+                className="resize-none"
+              />
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -269,7 +620,7 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
                   <FormControl>
                     <Textarea
                       placeholder="Please describe your request in detail..."
-                      className="min-h-[150px] resize-none"
+                      className="min-h-[120px] resize-none"
                       {...field}
                     />
                   </FormControl>
@@ -277,7 +628,7 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
                     Provide detailed information about your request. Include relevant dates,
                     amounts, or circumstances.
                     <span className="block text-xs mt-1">
-                      {field.value?.length || 0}/1000 characters
+                      {field.value?.length || 0}/2000 characters
                     </span>
                   </FormDescription>
                   <FormMessage />
@@ -285,10 +636,21 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
               )}
             />
 
+            {/* Type-specific fields */}
+            {renderTypeSpecificFields()}
+
             {/* File Upload Section */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <label className="text-sm font-medium">Attachments (Optional)</label>
+                <label className="text-sm font-medium">
+                  Attachments{' '}
+                  {selectedType === 'summer_funding_request' ||
+                  selectedType === 'requirement_submission' ? (
+                    <span className="text-red-500">*</span>
+                  ) : (
+                    '(Optional)'
+                  )}
+                </label>
                 <Button
                   type="button"
                   variant="outline"
@@ -361,6 +723,7 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
                   form.reset();
                   setSelectedFiles([]);
                   resetProgress();
+                  resetTypeSpecificData();
                   setOpen(false);
                 }}
               >

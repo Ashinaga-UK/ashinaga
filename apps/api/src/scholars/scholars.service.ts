@@ -1,7 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { and, count, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 import { database } from '../db/connection';
-import { documents, goals, invitations, scholars, tasks, users, goalComments } from '../db/schema';
+import { documents, goalComments, goals, invitations, scholars, tasks, users } from '../db/schema';
 import { InvitationsService } from '../invitations/invitations.service';
 import { CreateScholarDto } from './dto/create-scholar.dto';
 import {

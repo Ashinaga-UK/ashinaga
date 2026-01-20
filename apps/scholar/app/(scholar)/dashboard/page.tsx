@@ -87,7 +87,8 @@ export default function DashboardPage() {
     const totalTime = targetDate.getTime() - new Date(g.createdAt).getTime();
     const elapsedTime = now.getTime() - new Date(g.createdAt).getTime();
     const expectedProgress = (elapsedTime / totalTime) * 100;
-    return g.progress >= expectedProgress - 10; // Within 10% of expected
+    const actualProgress = g.completionScale * 10;
+    return actualProgress >= expectedProgress - 10; // Within 10% of expected
   }).length;
   const onTrackPercentage = goals.length > 0 ? Math.round((goalsOnTrack / goals.length) * 100) : 0;
 
@@ -201,7 +202,7 @@ export default function DashboardPage() {
         {/* Goals Progress */}
         <Card className="border-ashinaga-teal-100">
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
+            <CardTitle className="flex items-center justify-between flex-wrap gap-2">
               <span className="flex items-center gap-2">
                 <Target className="h-5 w-5" />
                 LDF Progress
@@ -209,7 +210,7 @@ export default function DashboardPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-xs"
+                className="text-xs shrink-0"
                 onClick={() => router.push('/goals')}
               >
                 View All <ArrowRight className="h-3 w-3 ml-1" />
@@ -229,10 +230,12 @@ export default function DashboardPage() {
                   <div key={goal.id}>
                     <div className="flex justify-between mb-1">
                       <p className="text-sm font-medium truncate">{goal.title}</p>
-                      <span className="text-sm text-muted-foreground">{goal.progress}%</span>
+                      <span className="text-sm text-muted-foreground">
+                        {goal.completionScale * 10}%
+                      </span>
                     </div>
                     <Progress
-                      value={goal.progress}
+                      value={goal.completionScale * 10}
                       className="h-2 bg-gray-200 [&>div]:bg-gradient-to-r [&>div]:from-ashinaga-teal-600 [&>div]:to-ashinaga-green-600"
                     />
                   </div>
@@ -257,7 +260,7 @@ export default function DashboardPage() {
         {/* Recent Announcements */}
         <Card className="border-ashinaga-teal-100">
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
+            <CardTitle className="flex items-center justify-between flex-wrap gap-2">
               <span className="flex items-center gap-2">
                 <Bell className="h-5 w-5" />
                 Recent Announcements
@@ -265,7 +268,7 @@ export default function DashboardPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-xs"
+                className="text-xs shrink-0"
                 onClick={() => router.push('/announcements')}
               >
                 View All <ArrowRight className="h-3 w-3 ml-1" />
