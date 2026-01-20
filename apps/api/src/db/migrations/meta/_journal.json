@@ -78,6 +78,13 @@
       "when": 1766160073987,
       "tag": "0010_salty_genesis",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1768924015944,
+      "tag": "0011_purple_cammi",
+      "breakpoints": true
     }
   ]
 }
