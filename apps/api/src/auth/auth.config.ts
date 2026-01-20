@@ -51,11 +51,15 @@ const authConfig = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL || 'http://localhost:4000',
   trustedOrigins: (request) => {
     const origin = request.headers.get('origin') || '';
-    // Allow all localhost origins in development
-    if (process.env.NODE_ENV === 'development' && origin.startsWith('http://localhost:')) {
+    // Allow all localhost origins
+    if (origin.startsWith('http://localhost:')) {
       return [origin];
     }
-    // In production, check against explicit list
+    // Allow Vercel preview deployments
+    if (origin.endsWith('.vercel.app')) {
+      return [origin];
+    }
+    // Check against explicit list
     const allowedOrigins = process.env.CORS_ORIGINS?.split(',') || [];
     if (allowedOrigins.includes(origin)) {
       return [origin];
