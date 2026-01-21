@@ -144,7 +144,11 @@ type TaskPriority = 'high' | 'medium' | 'low';
 type TaskStatus = 'pending' | 'in_progress' | 'completed';
 type GoalCategory = 'academic_development' | 'personal_development' | 'professional_development';
 type GoalStatus = 'pending' | 'in_progress' | 'completed';
-type RequestType = 'financial_support' | 'extenuating_circumstances' | 'academic_support';
+type RequestType =
+  | 'extenuating_circumstances'
+  | 'summer_funding_request'
+  | 'summer_funding_report'
+  | 'requirement_submission';
 type RequestPriority = 'high' | 'medium' | 'low';
 type RequestStatus = 'pending' | 'approved' | 'rejected' | 'reviewed' | 'commented';
 
@@ -1022,9 +1026,9 @@ async function populateDevData() {
     requests.push(
       await ensureRequest({
         scholarId: scholars[0].id,
-        type: 'financial_support',
+        type: 'summer_funding_request',
         description:
-          'I need financial assistance for purchasing a new laptop. My current laptop has stopped working and I need it for my AI coursework and research projects.',
+          'I am applying for summer funding to participate in a research internship at a partner university. The internship is for 10 weeks and will enhance my skills in AI and machine learning.',
         priority: 'high',
         status: 'pending',
       })
@@ -1047,14 +1051,13 @@ async function populateDevData() {
     requests.push(
       await ensureRequest({
         scholarId: scholars[2].id,
-        type: 'academic_support',
+        type: 'requirement_submission',
         description:
-          'I am struggling with advanced statistics in my International Relations program. I would like to request a tutor or additional support resources.',
+          'I am submitting my updated transcript for the current academic year. All modules have been completed successfully.',
         priority: 'medium',
         status: 'reviewed',
         reviewedBy: viewerUser.id,
-        reviewComment:
-          'We have arranged for you to join the statistics support group that meets weekly. Details sent to your email.',
+        reviewComment: 'Transcript received and verified. Thank you for the submission.',
         reviewDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
         submittedDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
       })

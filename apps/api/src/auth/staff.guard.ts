@@ -1,9 +1,9 @@
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
-import { Injectable, UnauthorizedException, ForbiddenException } from '@nestjs/common';
-import { auth } from './auth.config';
+import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { eq } from 'drizzle-orm';
 import { getDatabase } from '../db/connection';
 import { staff } from '../db/schema';
-import { eq } from 'drizzle-orm';
+import { auth } from './auth.config';
 
 @Injectable()
 export class StaffGuard implements CanActivate {

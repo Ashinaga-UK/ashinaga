@@ -30,14 +30,27 @@ async function bootstrap() {
 
   app.enableCors({
     origin: (origin, callback) => {
-      // Allow all localhost origins regardless of port
-      if (!origin || origin.startsWith('http://localhost:')) {
+      // Allow requests with no origin (like mobile apps or curl)
+      if (!origin) {
         callback(null, true);
-      } else if (corsOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(null, false);
+        return;
       }
+      // Allow all localhost origins regardless of port
+      if (origin.startsWith('http://localhost:')) {
+        callback(null, true);
+        return;
+      }
+      // Allow Vercel preview deployments
+      if (origin.endsWith('.vercel.app')) {
+        callback(null, true);
+        return;
+      }
+      // Check against configured CORS origins
+      if (corsOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(null, false);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
