@@ -66,6 +66,19 @@ const authConfig = betterAuth({
     }
     return [];
   },
+  // When frontend and API are on different domains (e.g. Vercel preview + separate API),
+  // session cookies must use SameSite=None; Secure so the browser sends them cross-origin.
+  ...(process.env.ENABLE_CROSS_ORIGIN_COOKIES === 'true'
+    ? {
+        advanced: {
+          useSecureCookies: true,
+          defaultCookieAttributes: {
+            sameSite: 'none' as const,
+            secure: true,
+          },
+        },
+      }
+    : {}),
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: false, // We handle verification through invitations

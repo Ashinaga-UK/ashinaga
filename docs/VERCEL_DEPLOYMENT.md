@@ -76,6 +76,37 @@ Each app has its own `vercel.json` file that specifies:
 3. **Optimized Builds**: Only builds the specific app and its dependencies
 4. **Vercel Features**: Each app gets its own preview deployments, analytics, etc.
 
+## Preview deployments: login not working
+
+If you cannot log in on **Vercel Preview** (e.g. `scholar-git-xxx.vercel.app`), it is usually one of the following.
+
+### 1. Environment variables for Preview
+
+Vercel env vars can be set per environment (Production / Preview / Development). For **Preview**:
+
+**Scholar and Staff (Vercel):**
+
+- Set `NEXT_PUBLIC_API_URL` for the **Preview** environment to your API's public URL (e.g. `https://api.ashinaga-uk.org` or your test API URL).
+- If this is only set for Production, Preview builds get the fallback `http://localhost:3000`, so auth and API calls go to the wrong place and login fails.
+
+**API (wherever it runs):**
+
+- `BETTER_AUTH_URL` must be the API's own public URL in that environment (e.g. `https://api.ashinaga-uk.org`). It is used for redirects and session handling.
+- For cross-origin login (frontend on Vercel, API on another domain), set **`ENABLE_CROSS_ORIGIN_COOKIES=true`** on the API. This makes session cookies `SameSite=None; Secure` so the browser sends them when the frontend (e.g. `*.vercel.app`) calls the API. Without this, the session cookie is not sent and the user appears logged out after sign-in.
+- `CORS_ORIGINS` is optional if you already allow `*.vercel.app` (the API and Better Auth in this repo allow any `*.vercel.app` origin by default).
+
+### 2. CORS
+
+The API already allows any `http://localhost:*` origin, any `*.vercel.app` origin, and any origin in `CORS_ORIGINS`. So CORS is rarely the cause if the env vars above are correct. If you use a custom domain for Preview, add that domain to `CORS_ORIGINS` and ensure Better Auth's `trustedOrigins` allows it (or extend the logic in `apps/api/src/auth/auth.config.ts`).
+
+### Checklist for Preview login
+
+| Where | Variable | Required for Preview login |
+|-------|----------|----------------------------|
+| Scholar/Staff (Vercel) | `NEXT_PUBLIC_API_URL` (Preview) | Yes – must be the API URL |
+| API | `BETTER_AUTH_URL` | Yes – API's own URL |
+| API | `ENABLE_CROSS_ORIGIN_COOKIES=true` | Yes when frontend and API are different domains |
+
 ## Troubleshooting
 
 ### Build Failures
