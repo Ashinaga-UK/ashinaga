@@ -76,7 +76,7 @@ const authConfig = betterAuth({
     const isLocalhost = baseURL.includes('localhost') || baseURL.includes('127.0.0.1');
     // For non-production deployed environments (test/staging/preview), enable cross-origin cookies
     const needsCrossOrigin = !isProduction && !isLocalhost;
-    
+
     return {
       useSecureCookies: !isLocalhost,
       defaultCookieAttributes: {
