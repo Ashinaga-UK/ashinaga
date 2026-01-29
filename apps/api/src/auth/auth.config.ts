@@ -66,19 +66,25 @@ const authConfig = betterAuth({
     }
     return [];
   },
-  // When frontend and API are on different domains (e.g. Vercel preview + separate API),
-  // session cookies must use SameSite=None; Secure so the browser sends them cross-origin.
-  ...(process.env.ENABLE_CROSS_ORIGIN_COOKIES === 'true'
-    ? {
-        advanced: {
-          useSecureCookies: true,
-          defaultCookieAttributes: {
-            sameSite: 'none' as const,
-            secure: true,
-          },
-        },
-      }
-    : {}),
+  // Enable cross-origin cookies for non-production environments (test/staging/preview).
+  // In production, frontend and API are on the same domain, so SameSite=Lax is sufficient.
+  // For test/staging/preview (e.g. Vercel preview + separate API), we need SameSite=None; Secure
+  // so the browser sends cookies cross-origin.
+  advanced: (() => {
+    const baseURL = process.env.BETTER_AUTH_URL || 'http://localhost:4000';
+    const isProduction = process.env.NODE_ENV === 'production';
+    const isLocalhost = baseURL.includes('localhost') || baseURL.includes('127.0.0.1');
+    // For non-production deployed environments (test/staging/preview), enable cross-origin cookies
+    const needsCrossOrigin = !isProduction && !isLocalhost;
+    
+    return {
+      useSecureCookies: !isLocalhost,
+      defaultCookieAttributes: {
+        sameSite: needsCrossOrigin ? ('none' as const) : ('lax' as const),
+        secure: !isLocalhost,
+      },
+    };
+  })(),
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: false, // We handle verification through invitations

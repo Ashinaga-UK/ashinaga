@@ -91,8 +91,8 @@ Vercel env vars can be set per environment (Production / Preview / Development).
 
 **API (wherever it runs):**
 
-- `BETTER_AUTH_URL` must be the API's own public URL in that environment (e.g. `https://api.ashinaga-uk.org`). It is used for redirects and session handling.
-- For cross-origin login (frontend on Vercel, API on another domain), set **`ENABLE_CROSS_ORIGIN_COOKIES=true`** on the API. This makes session cookies `SameSite=None; Secure` so the browser sends them when the frontend (e.g. `*.vercel.app`) calls the API. Without this, the session cookie is not sent and the user appears logged out after sign-in.
+- `BETTER_AUTH_URL` must be the API's own public URL in that environment (e.g. `https://api-test.ashinaga-uk.org` for test, `https://api.ashinaga-uk.org` for production). It is used for redirects and session handling.
+- Cross-origin cookies are **enabled automatically** for non-production environments (test/staging/preview). Session cookies use `SameSite=None; Secure` automatically, allowing the browser to send cookies when the frontend (e.g. `*.vercel.app`) calls the API on a different domain. In production, where frontend and API are on the same domain, `SameSite=Lax` is used instead.
 - `CORS_ORIGINS` is optional if you already allow `*.vercel.app` (the API and Better Auth in this repo allow any `*.vercel.app` origin by default).
 
 ### 2. CORS
@@ -103,9 +103,10 @@ The API already allows any `http://localhost:*` origin, any `*.vercel.app` origi
 
 | Where | Variable | Required for Preview login |
 |-------|----------|----------------------------|
-| Scholar/Staff (Vercel) | `NEXT_PUBLIC_API_URL` (Preview) | Yes – must be the API URL |
-| API | `BETTER_AUTH_URL` | Yes – API's own URL |
-| API | `ENABLE_CROSS_ORIGIN_COOKIES=true` | Yes when frontend and API are different domains |
+| Scholar/Staff (Vercel) | `NEXT_PUBLIC_API_URL` (Preview) | Yes – must be the API URL (test/staging) |
+| API | `BETTER_AUTH_URL` | Yes – API's own URL (must be HTTPS or non-localhost) |
+| API | `NODE_ENV` | Set to anything except `production` for test/staging (enables cross-origin cookies) |
+| API | Cross-origin cookies | Automatic – enabled for non-production environments |
 
 ## Troubleshooting
 
