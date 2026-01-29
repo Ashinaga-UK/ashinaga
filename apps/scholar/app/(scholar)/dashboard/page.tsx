@@ -237,13 +237,13 @@ export default function DashboardPage() {
                       </div>
                       <Progress
                         value={goal.completionScale * 10}
-                        className="h-2 bg-gray-200 dark:bg-gray-700 [&>div]:bg-gradient-to-r [&>div]:from-ashinaga-teal-600 [&>div]:to-ashinaga-green-600"
+                        className="h-2 bg-gray-200 dark:bg-gray-700 [&>div]:bg-gradient-to-r [&>div]:from-ashinaga-teal-600 [&>div]:to-ashinaga-green-600 dark:[&>div]:from-ashinaga-teal-800 dark:[&>div]:to-ashinaga-green-800"
                       />
                     </div>
                   ))}
                 <Button
                   onClick={() => router.push('/goals')}
-                  className="w-full mt-2 bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
+                  className="w-full mt-2 bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700 dark:from-ashinaga-teal-800 dark:to-ashinaga-green-800 dark:hover:from-ashinaga-teal-900 dark:hover:to-ashinaga-green-900"
                 >
                   <Target className="h-4 w-4 mr-2" />
                   Update My Progress
@@ -289,7 +289,7 @@ export default function DashboardPage() {
               <div className="space-y-3">
                 {announcements.slice(0, 2).map((announcement) => (
                   <div key={announcement.id} className="flex items-start gap-2">
-                    <Badge className="mt-0.5 bg-ashinaga-teal-600 hover:bg-ashinaga-teal-700">
+                    <Badge className="mt-0.5 bg-ashinaga-teal-600 hover:bg-ashinaga-teal-700 dark:bg-ashinaga-teal-800 dark:hover:bg-ashinaga-teal-900">
                       New
                     </Badge>
                     <div className="flex-1">

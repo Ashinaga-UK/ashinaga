@@ -37,7 +37,7 @@ export function ScholarLayout({ children, onLogout }: ScholarLayoutProps) {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:from-background dark:to-background dark:bg-background">
       {/* Mobile header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white dark:bg-sidebar border-b border-ashinaga-teal-100 dark:border-sidebar-border z-50 px-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
