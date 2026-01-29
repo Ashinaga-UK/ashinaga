@@ -37,34 +37,34 @@ export function ScholarLayout({ children, onLogout }: ScholarLayoutProps) {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:bg-background">
       {/* Mobile header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white dark:bg-gray-900 border-b border-ashinaga-teal-100 dark:border-gray-700 z-50 px-4 flex items-center justify-between">
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white dark:bg-sidebar border-b border-ashinaga-teal-100 dark:border-sidebar-border z-50 px-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
             {isSidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
-          <h1 className="text-lg font-semibold dark:text-white">Ashinaga Scholar Portal</h1>
+          <h1 className="text-lg font-semibold text-foreground">Ashinaga Scholar Portal</h1>
         </div>
       </div>
 
       {/* Sidebar */}
       <div
         className={cn(
-          'fixed left-0 top-0 bottom-0 w-64 bg-white dark:bg-gray-900 border-r border-ashinaga-teal-100 dark:border-gray-700 transform transition-transform duration-200 ease-in-out z-40',
+          'fixed left-0 top-0 bottom-0 w-64 bg-white dark:bg-sidebar border-r border-ashinaga-teal-100 dark:border-sidebar-border transform transition-transform duration-200 ease-in-out z-40',
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="p-6 border-b border-ashinaga-teal-100 dark:border-gray-700">
+          <div className="p-6 border-b border-ashinaga-teal-100 dark:border-sidebar-border">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-lg">A</span>
               </div>
               <div>
-                <h1 className="font-semibold dark:text-white">Ashinaga</h1>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Scholar Portal</p>
+                <h1 className="font-semibold text-foreground">Ashinaga</h1>
+                <p className="text-xs text-muted-foreground">Scholar Portal</p>
               </div>
             </div>
           </div>
@@ -83,7 +83,7 @@ export function ScholarLayout({ children, onLogout }: ScholarLayoutProps) {
                         className={cn(
                           'w-full justify-start',
                           isActive &&
-                            'bg-ashinaga-teal-50 dark:bg-ashinaga-teal-900/30 text-ashinaga-teal-700 dark:text-ashinaga-teal-400 hover:bg-ashinaga-teal-100 dark:hover:bg-ashinaga-teal-900/50'
+                            'bg-ashinaga-teal-50 dark:bg-accent text-ashinaga-teal-700 dark:text-ashinaga-teal-400 hover:bg-ashinaga-teal-100 dark:hover:bg-accent/80'
                         )}
                         asChild
                       >
@@ -100,7 +100,7 @@ export function ScholarLayout({ children, onLogout }: ScholarLayoutProps) {
           </nav>
 
           {/* Bottom section */}
-          <div className="p-4 border-t border-ashinaga-teal-100 dark:border-gray-700 space-y-1">
+          <div className="p-4 border-t border-ashinaga-teal-100 dark:border-sidebar-border space-y-1">
             <ThemeToggle />
             <Button
               variant="ghost"
