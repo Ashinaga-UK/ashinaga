@@ -83,7 +83,7 @@ export function ScholarLayout({ children, onLogout }: ScholarLayoutProps) {
                         className={cn(
                           'w-full justify-start',
                           isActive &&
-                            'bg-ashinaga-teal-50 dark:bg-accent text-ashinaga-teal-700 dark:text-ashinaga-teal-400 hover:bg-ashinaga-teal-100 dark:hover:bg-accent/80'
+                            'bg-ashinaga-teal-50 dark:bg-accent text-ashinaga-teal-700 dark:text-accent-foreground hover:bg-ashinaga-teal-100 dark:hover:bg-accent/80'
                         )}
                         asChild
                       >

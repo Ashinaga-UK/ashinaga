@@ -329,7 +329,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Button
               variant="outline"
-              className="h-auto flex-col py-4 border-ashinaga-teal-200 dark:border-gray-600 hover:bg-ashinaga-teal-50 dark:hover:bg-gray-800 bg-transparent"
+              className="h-auto flex-col py-4 border-ashinaga-teal-200 dark:border-border hover:bg-ashinaga-teal-50 dark:hover:bg-muted bg-transparent"
               onClick={() => router.push('/tasks')}
             >
               <CheckSquare className="h-5 w-5 mb-2" />
@@ -339,7 +339,7 @@ export default function DashboardPage() {
               trigger={
                 <Button
                   variant="outline"
-                  className="h-auto flex-col py-4 border-ashinaga-teal-200 dark:border-gray-600 hover:bg-ashinaga-teal-50 dark:hover:bg-gray-800 bg-transparent"
+                  className="h-auto flex-col py-4 border-ashinaga-teal-200 dark:border-border hover:bg-ashinaga-teal-50 dark:hover:bg-muted bg-transparent"
                 >
                   <Plus className="h-5 w-5 mb-2" />
                   <span className="text-sm">Create Request</span>
@@ -348,7 +348,7 @@ export default function DashboardPage() {
             />
             <Button
               variant="outline"
-              className="h-auto flex-col py-4 border-ashinaga-teal-200 dark:border-gray-600 hover:bg-ashinaga-teal-50 dark:hover:bg-gray-800 bg-transparent"
+              className="h-auto flex-col py-4 border-ashinaga-teal-200 dark:border-border hover:bg-ashinaga-teal-50 dark:hover:bg-muted bg-transparent"
               onClick={() => router.push('/announcements')}
             >
               <Bell className="h-5 w-5 mb-2" />
@@ -356,7 +356,7 @@ export default function DashboardPage() {
             </Button>
             <Button
               variant="outline"
-              className="h-auto flex-col py-4 border-ashinaga-teal-200 dark:border-gray-600 hover:bg-ashinaga-teal-50 dark:hover:bg-gray-800 bg-transparent"
+              className="h-auto flex-col py-4 border-ashinaga-teal-200 dark:border-border hover:bg-ashinaga-teal-50 dark:hover:bg-muted bg-transparent"
               onClick={() => router.push('/goals')}
             >
               <Target className="h-5 w-5 mb-2" />
