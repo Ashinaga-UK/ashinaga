@@ -143,11 +143,11 @@ export function MyGoals() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'text-green-600';
+        return 'text-green-600 dark:text-green-400';
       case 'in_progress':
-        return 'text-blue-600';
+        return 'text-blue-600 dark:text-blue-400';
       default:
-        return 'text-gray-500';
+        return 'text-gray-500 dark:text-gray-400';
     }
   };
 
@@ -156,7 +156,7 @@ export function MyGoals() {
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ashinaga-teal-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading LDF...</p>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading LDF...</p>
         </div>
       </div>
     );
@@ -175,8 +175,10 @@ export function MyGoals() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">My LDF</h1>
-            <p className="text-gray-600 mt-1">Track and manage your Leadership Development</p>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">My LDF</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">
+              Track and manage your Leadership Development
+            </p>
           </div>
           <Button
             onClick={() => setShowCreateDialog(true)}
@@ -193,7 +195,7 @@ export function MyGoals() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Total LDF Goals</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Total LDF Goals</p>
                   <p className="text-2xl font-bold">{stats.total}</p>
                 </div>
                 <Target className="h-8 w-8 text-gray-400" />
@@ -204,7 +206,7 @@ export function MyGoals() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Completed</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Completed</p>
                   <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
                 </div>
                 <CheckCircle className="h-8 w-8 text-green-600" />
@@ -215,7 +217,7 @@ export function MyGoals() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">In Progress</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">In Progress</p>
                   <p className="text-2xl font-bold text-blue-600">{stats.inProgress}</p>
                 </div>
                 <Clock className="h-8 w-8 text-blue-600" />
@@ -226,7 +228,7 @@ export function MyGoals() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Completion Rate</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Completion Rate</p>
                   <p className="text-2xl font-bold">
                     {stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0}%
                   </p>
@@ -240,8 +242,8 @@ export function MyGoals() {
         {/* Filters */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-500" />
-            <span className="text-sm text-gray-600">Filter by:</span>
+            <Filter className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+            <span className="text-sm text-gray-600 dark:text-gray-400">Filter by:</span>
           </div>
           <Select value={filter} onValueChange={(value: any) => setFilter(value)}>
             <SelectTrigger className="w-40">
@@ -284,8 +286,8 @@ export function MyGoals() {
             <Card>
               <CardContent className="pt-6">
                 <div className="text-center py-8">
-                  <Target className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">
+                  <Target className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+                  <p className="text-gray-500 dark:text-gray-400">
                     {filter === 'all' && categoryFilter === 'all' && termFilter === 'all'
                       ? "You haven't set any LDF goals yet"
                       : 'No LDF goals found with the selected filters'}
@@ -313,7 +315,7 @@ export function MyGoals() {
                         <span className="text-2xl">{getCategoryIcon(goal.category)}</span>
                         <div>
                           <h3 className="font-semibold text-lg">{goal.title}</h3>
-                          <div className="flex items-center gap-4 text-sm text-gray-600">
+                          <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
                             <span>{getCategoryLabel(goal.category)}</span>
                             <span>•</span>
                             <span className="flex items-center gap-1">
@@ -323,7 +325,7 @@ export function MyGoals() {
                             {goal.term && (
                               <>
                                 <span>•</span>
-                                <span className="px-2 py-0.5 bg-ashinaga-teal-100 text-ashinaga-teal-700 rounded-full text-xs font-medium">
+                                <span className="px-2 py-0.5 bg-ashinaga-teal-100 dark:bg-ashinaga-teal-900/40 text-ashinaga-teal-700 dark:text-ashinaga-teal-400 rounded-full text-xs font-medium">
                                   {goal.term === 'term_1'
                                     ? 'Term 1'
                                     : goal.term === 'term_2'
@@ -338,19 +340,25 @@ export function MyGoals() {
 
                       {/* Related Skills */}
                       {goal.relatedSkills && (
-                        <div className="mt-3 p-3 bg-blue-50 rounded-lg">
-                          <p className="text-xs font-semibold text-blue-900 mb-1">
+                        <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                          <p className="text-xs font-semibold text-blue-900 dark:text-blue-300 mb-1">
                             Related LDF Skills & Qualities
                           </p>
-                          <p className="text-sm text-blue-800">{goal.relatedSkills}</p>
+                          <p className="text-sm text-blue-800 dark:text-blue-200">
+                            {goal.relatedSkills}
+                          </p>
                         </div>
                       )}
 
                       {/* Action Plan */}
                       {goal.actionPlan && (
-                        <div className="mt-3 p-3 bg-green-50 rounded-lg">
-                          <p className="text-xs font-semibold text-green-900 mb-1">Action Plan</p>
-                          <p className="text-sm text-green-800">{goal.actionPlan}</p>
+                        <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                          <p className="text-xs font-semibold text-green-900 dark:text-green-300 mb-1">
+                            Action Plan
+                          </p>
+                          <p className="text-sm text-green-800 dark:text-green-200">
+                            {goal.actionPlan}
+                          </p>
                         </div>
                       )}
                     </div>
@@ -373,7 +381,9 @@ export function MyGoals() {
                   {/* Completion Scale Section */}
                   <div className="mt-4 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Completion Scale</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        Completion Scale
+                      </span>
                       <span className="text-sm font-medium">{goal.completionScale}/10</span>
                     </div>
                     {editingCompletion === goal.id ? (
@@ -411,7 +421,7 @@ export function MyGoals() {
                         }}
                       >
                         <Progress value={(goal.completionScale / 10) * 100} className="h-2" />
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                           Click to update completion (1-10 scale)
                         </p>
                       </div>
@@ -421,7 +431,7 @@ export function MyGoals() {
                   {/* Review & Self-Reflection Section */}
                   <div className="mt-4 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold text-gray-700">
+                      <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                         Goal Review & Self-Reflection
                       </span>
                       {!editingReview && (
@@ -460,11 +470,13 @@ export function MyGoals() {
                         </div>
                       </div>
                     ) : goal.reviewNotes ? (
-                      <div className="p-3 bg-purple-50 rounded-lg">
-                        <p className="text-sm text-purple-900">{goal.reviewNotes}</p>
+                      <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                        <p className="text-sm text-purple-900 dark:text-purple-200">
+                          {goal.reviewNotes}
+                        </p>
                       </div>
                     ) : (
-                      <p className="text-xs text-gray-500 italic">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 italic">
                         No review notes yet. Click "Add Review" to reflect on your progress.
                       </p>
                     )}

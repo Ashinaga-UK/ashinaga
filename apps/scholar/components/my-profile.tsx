@@ -137,7 +137,7 @@ export function MyProfile() {
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ashinaga-teal-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading profile...</p>
+          <p className="mt-4 text-muted-foreground">Loading profile...</p>
         </div>
       </div>
     );
@@ -145,9 +145,9 @@ export function MyProfile() {
 
   if (!profile) {
     return (
-      <Alert className="border-red-200 bg-red-50">
+      <Alert className="border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10">
         <AlertTriangle className="h-4 w-4" />
-        <AlertDescription>Failed to load profile. Please try again later.</AlertDescription>
+        <AlertDescription className="text-red-800 dark:text-red-300">Failed to load profile. Please try again later.</AlertDescription>
       </Alert>
     );
   }
@@ -157,8 +157,8 @@ export function MyProfile() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
-          <p className="text-gray-600 mt-1">Manage your personal information</p>
+          <h1 className="text-3xl font-bold text-foreground">My Profile</h1>
+          <p className="text-muted-foreground mt-1">Manage your personal information</p>
         </div>
         {!editing && (
           <Button
@@ -173,25 +173,25 @@ export function MyProfile() {
 
       {/* Success/Error Messages */}
       {success && (
-        <Alert className="border-green-200 bg-green-50">
-          <AlertDescription className="text-green-800">
+        <Alert className="border-green-200 dark:border-green-500/30 bg-green-50 dark:bg-green-500/10">
+          <AlertDescription className="text-green-800 dark:text-green-300">
             Profile updated successfully!
           </AlertDescription>
         </Alert>
       )}
 
       {error && (
-        <Alert className="border-red-200 bg-red-50">
+        <Alert className="border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10">
           <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription className="text-red-800 dark:text-red-300">{error}</AlertDescription>
         </Alert>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Locked Fields */}
-        <Card className="border-ashinaga-teal-100">
+        <Card className="border-ashinaga-teal-100 dark:border-border">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-foreground">
               <Lock className="h-5 w-5" />
               Basic Information
             </CardTitle>
@@ -203,11 +203,11 @@ export function MyProfile() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="name">Name</Label>
-                <Input id="name" value={profile.name} disabled className="bg-gray-50" />
+                <Input id="name" value={profile.name} disabled className="bg-muted" />
               </div>
               <div>
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" value={profile.email} disabled className="bg-gray-50" />
+                <Input id="email" value={profile.email} disabled className="bg-muted" />
               </div>
               <div>
                 <Label htmlFor="aaiScholarId">AAI Scholar ID</Label>
@@ -215,7 +215,7 @@ export function MyProfile() {
                   id="aaiScholarId"
                   value={profile.aaiScholarId || 'Not assigned'}
                   disabled
-                  className="bg-gray-50"
+                  className="bg-muted"
                 />
               </div>
             </div>
@@ -223,9 +223,9 @@ export function MyProfile() {
         </Card>
 
         {/* Personal Information */}
-        <Card className="border-ashinaga-teal-100">
+        <Card className="border-ashinaga-teal-100 dark:border-border">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-foreground">
               <User className="h-5 w-5" />
               Personal Information
             </CardTitle>
@@ -286,9 +286,9 @@ export function MyProfile() {
         </Card>
 
         {/* Address Information */}
-        <Card className="border-ashinaga-teal-100">
+        <Card className="border-ashinaga-teal-100 dark:border-border">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-foreground">
               <Globe className="h-5 w-5" />
               Address Information
             </CardTitle>
@@ -320,9 +320,9 @@ export function MyProfile() {
         </Card>
 
         {/* Document Information */}
-        <Card className="border-ashinaga-teal-100">
+        <Card className="border-ashinaga-teal-100 dark:border-border">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-foreground">
               <FileText className="h-5 w-5" />
               Document Information
             </CardTitle>
@@ -356,9 +356,9 @@ export function MyProfile() {
         </Card>
 
         {/* Emergency Contacts */}
-        <Card className="border-ashinaga-teal-100">
+        <Card className="border-ashinaga-teal-100 dark:border-border">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-foreground">
               <Phone className="h-5 w-5" />
               Emergency Contacts
             </CardTitle>
@@ -378,7 +378,7 @@ export function MyProfile() {
                 rows={3}
                 placeholder="Please include Name, Email, Phone Number"
               />
-              <p className="text-xs text-gray-500 mt-1">Please include Name, Email, Phone Number</p>
+              <p className="text-xs text-muted-foreground mt-1">Please include Name, Email, Phone Number</p>
             </div>
             <div>
               <Label htmlFor="emergencyContactHomeCountry">Emergency Contact (Home Country)</Label>
@@ -392,15 +392,15 @@ export function MyProfile() {
                 rows={3}
                 placeholder="Please include Name, Email, Phone Number"
               />
-              <p className="text-xs text-gray-500 mt-1">Please include Name, Email, Phone Number</p>
+              <p className="text-xs text-muted-foreground mt-1">Please include Name, Email, Phone Number</p>
             </div>
           </CardContent>
         </Card>
 
         {/* Academic Information */}
-        <Card className="border-ashinaga-teal-100">
+        <Card className="border-ashinaga-teal-100 dark:border-border">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-foreground">
               <GraduationCap className="h-5 w-5" />
               Academic Information
             </CardTitle>
@@ -506,9 +506,9 @@ export function MyProfile() {
         </Card>
 
         {/* Additional Information */}
-        <Card className="border-ashinaga-teal-100">
+        <Card className="border-ashinaga-teal-100 dark:border-border">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-foreground">
               <Calendar className="h-5 w-5" />
               Additional Information
             </CardTitle>

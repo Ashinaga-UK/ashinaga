@@ -87,7 +87,8 @@ export default function DashboardPage() {
     const totalTime = targetDate.getTime() - new Date(g.createdAt).getTime();
     const elapsedTime = now.getTime() - new Date(g.createdAt).getTime();
     const expectedProgress = (elapsedTime / totalTime) * 100;
-    return g.progress >= expectedProgress - 10; // Within 10% of expected
+    const actualProgress = g.completionScale * 10;
+    return actualProgress >= expectedProgress - 10; // Within 10% of expected
   }).length;
   const onTrackPercentage = goals.length > 0 ? Math.round((goalsOnTrack / goals.length) * 100) : 0;
 
@@ -98,15 +99,15 @@ export default function DashboardPage() {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
           Welcome back, {session?.user?.name || 'Scholar'}!
         </h1>
-        <p className="text-gray-600 mt-1">Here's your overview for today</p>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">Here's your overview for today</p>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-ashinaga-teal-100">
+        <Card className="border-ashinaga-teal-100 dark:border-gray-700">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Pending Tasks</CardTitle>
             <CheckSquare className="h-4 w-4 text-ashinaga-teal-600" />
@@ -119,7 +120,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-ashinaga-teal-100">
+        <Card className="border-ashinaga-teal-100 dark:border-gray-700">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active LDF Goals</CardTitle>
             <Target className="h-4 w-4 text-ashinaga-green-600" />
@@ -130,7 +131,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-ashinaga-teal-100">
+        <Card className="border-ashinaga-teal-100 dark:border-gray-700">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Open Requests</CardTitle>
             <FileText className="h-4 w-4 text-orange-600" />
@@ -147,7 +148,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-ashinaga-teal-100">
+        <Card className="border-ashinaga-teal-100 dark:border-gray-700">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">New Announcements</CardTitle>
             <Bell className="h-4 w-4 text-blue-600" />
@@ -167,7 +168,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Profile Information */}
-        <Card className="border-ashinaga-teal-100">
+        <Card className="border-ashinaga-teal-100 dark:border-gray-700">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />
@@ -176,32 +177,32 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div>
-              <p className="text-sm text-gray-600">Name</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Name</p>
               <p className="font-medium">{session?.user?.name || 'Not set'}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">Email</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Email</p>
               <p className="font-medium">{session?.user?.email}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">Program</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Program</p>
               <p className="font-medium">{profile?.program || 'Not set'}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">University</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">University</p>
               <p className="font-medium">{profile?.university || 'Not set'}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">Year</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Year</p>
               <p className="font-medium">{profile?.year || 'Not set'}</p>
             </div>
           </CardContent>
         </Card>
 
         {/* Goals Progress */}
-        <Card className="border-ashinaga-teal-100">
+        <Card className="border-ashinaga-teal-100 dark:border-gray-700">
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
+            <CardTitle className="flex items-center justify-between flex-wrap gap-2">
               <span className="flex items-center gap-2">
                 <Target className="h-5 w-5" />
                 LDF Progress
@@ -209,7 +210,7 @@ export default function DashboardPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-xs"
+                className="text-xs shrink-0"
                 onClick={() => router.push('/goals')}
               >
                 View All <ArrowRight className="h-3 w-3 ml-1" />
@@ -219,28 +220,39 @@ export default function DashboardPage() {
           <CardContent className="space-y-4">
             {loadingData ? (
               <div className="text-center py-4">
-                <p className="text-sm text-gray-500">Loading LDF...</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Loading LDF...</p>
               </div>
             ) : goals.filter((g) => g.status === 'in_progress').slice(0, 3).length > 0 ? (
-              goals
-                .filter((g) => g.status === 'in_progress')
-                .slice(0, 3)
-                .map((goal) => (
-                  <div key={goal.id}>
-                    <div className="flex justify-between mb-1">
-                      <p className="text-sm font-medium truncate">{goal.title}</p>
-                      <span className="text-sm text-muted-foreground">{goal.progress}%</span>
+              <>
+                {goals
+                  .filter((g) => g.status === 'in_progress')
+                  .slice(0, 3)
+                  .map((goal) => (
+                    <div key={goal.id}>
+                      <div className="flex justify-between mb-1">
+                        <p className="text-sm font-medium truncate">{goal.title}</p>
+                        <span className="text-sm text-muted-foreground">
+                          {goal.completionScale * 10}%
+                        </span>
+                      </div>
+                      <Progress
+                        value={goal.completionScale * 10}
+                        className="h-2 bg-gray-200 dark:bg-gray-700 [&>div]:bg-gradient-to-r [&>div]:from-ashinaga-teal-600 [&>div]:to-ashinaga-green-600 dark:[&>div]:from-ashinaga-teal-800 dark:[&>div]:to-ashinaga-green-800"
+                      />
                     </div>
-                    <Progress
-                      value={goal.progress}
-                      className="h-2 bg-gray-200 [&>div]:bg-gradient-to-r [&>div]:from-ashinaga-teal-600 [&>div]:to-ashinaga-green-600"
-                    />
-                  </div>
-                ))
+                  ))}
+                <Button
+                  onClick={() => router.push('/goals')}
+                  className="w-full mt-2 bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700 dark:from-ashinaga-teal-800 dark:to-ashinaga-green-800 dark:hover:from-ashinaga-teal-900 dark:hover:to-ashinaga-green-900"
+                >
+                  <Target className="h-4 w-4 mr-2" />
+                  Update My Progress
+                </Button>
+              </>
             ) : (
               <div className="text-center py-4">
-                <Target className="h-8 w-8 mx-auto text-gray-300 mb-2" />
-                <p className="text-sm text-gray-500">No active LDF goals</p>
+                <Target className="h-8 w-8 mx-auto text-gray-300 dark:text-gray-600 mb-2" />
+                <p className="text-sm text-gray-500 dark:text-gray-400">No active LDF goals</p>
                 <Button
                   variant="link"
                   size="sm"
@@ -255,9 +267,9 @@ export default function DashboardPage() {
         </Card>
 
         {/* Recent Announcements */}
-        <Card className="border-ashinaga-teal-100">
+        <Card className="border-ashinaga-teal-100 dark:border-gray-700">
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
+            <CardTitle className="flex items-center justify-between flex-wrap gap-2">
               <span className="flex items-center gap-2">
                 <Bell className="h-5 w-5" />
                 Recent Announcements
@@ -265,7 +277,7 @@ export default function DashboardPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-xs"
+                className="text-xs shrink-0"
                 onClick={() => router.push('/announcements')}
               >
                 View All <ArrowRight className="h-3 w-3 ml-1" />
@@ -277,12 +289,12 @@ export default function DashboardPage() {
               <div className="space-y-3">
                 {announcements.slice(0, 2).map((announcement) => (
                   <div key={announcement.id} className="flex items-start gap-2">
-                    <Badge className="mt-0.5 bg-ashinaga-teal-600 hover:bg-ashinaga-teal-700">
+                    <Badge className="mt-0.5 bg-ashinaga-teal-600 hover:bg-ashinaga-teal-700 dark:bg-ashinaga-teal-800 dark:hover:bg-ashinaga-teal-900">
                       New
                     </Badge>
                     <div className="flex-1">
                       <p className="text-sm font-medium line-clamp-1">{announcement.title}</p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
                         {new Date(announcement.createdAt).toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',
@@ -292,15 +304,15 @@ export default function DashboardPage() {
                   </div>
                 ))}
                 {announcements.length > 2 && (
-                  <p className="text-xs text-gray-500 text-center pt-1">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 text-center pt-1">
                     +{announcements.length - 2} more
                   </p>
                 )}
               </div>
             ) : (
               <div className="text-center py-4">
-                <Bell className="h-8 w-8 mx-auto text-gray-300 mb-2" />
-                <p className="text-sm text-gray-500">No new announcements</p>
+                <Bell className="h-8 w-8 mx-auto text-gray-300 dark:text-gray-600 mb-2" />
+                <p className="text-sm text-gray-500 dark:text-gray-400">No new announcements</p>
               </div>
             )}
           </CardContent>
@@ -308,7 +320,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <Card className="border-ashinaga-teal-100">
+      <Card className="border-ashinaga-teal-100 dark:border-gray-700">
         <CardHeader>
           <CardTitle>Quick Actions</CardTitle>
           <CardDescription>Common tasks and actions</CardDescription>
@@ -317,7 +329,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Button
               variant="outline"
-              className="h-auto flex-col py-4 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent"
+              className="h-auto flex-col py-4 border-ashinaga-teal-200 dark:border-border hover:bg-ashinaga-teal-50 dark:hover:bg-muted bg-transparent"
               onClick={() => router.push('/tasks')}
             >
               <CheckSquare className="h-5 w-5 mb-2" />
@@ -327,7 +339,7 @@ export default function DashboardPage() {
               trigger={
                 <Button
                   variant="outline"
-                  className="h-auto flex-col py-4 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent"
+                  className="h-auto flex-col py-4 border-ashinaga-teal-200 dark:border-border hover:bg-ashinaga-teal-50 dark:hover:bg-muted bg-transparent"
                 >
                   <Plus className="h-5 w-5 mb-2" />
                   <span className="text-sm">Create Request</span>
@@ -336,7 +348,7 @@ export default function DashboardPage() {
             />
             <Button
               variant="outline"
-              className="h-auto flex-col py-4 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent"
+              className="h-auto flex-col py-4 border-ashinaga-teal-200 dark:border-border hover:bg-ashinaga-teal-50 dark:hover:bg-muted bg-transparent"
               onClick={() => router.push('/announcements')}
             >
               <Bell className="h-5 w-5 mb-2" />
@@ -344,7 +356,7 @@ export default function DashboardPage() {
             </Button>
             <Button
               variant="outline"
-              className="h-auto flex-col py-4 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent"
+              className="h-auto flex-col py-4 border-ashinaga-teal-200 dark:border-border hover:bg-ashinaga-teal-50 dark:hover:bg-muted bg-transparent"
               onClick={() => router.push('/goals')}
             >
               <Target className="h-5 w-5 mb-2" />

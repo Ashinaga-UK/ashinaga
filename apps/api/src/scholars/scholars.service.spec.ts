@@ -21,8 +21,8 @@ jest.mock('../auth/auth.config', () => ({
   },
 }));
 
-import { ScholarsService } from './scholars.service';
 import { InvitationsService } from '../invitations/invitations.service';
+import { ScholarsService } from './scholars.service';
 
 describe('ScholarsService', () => {
   let service: ScholarsService;

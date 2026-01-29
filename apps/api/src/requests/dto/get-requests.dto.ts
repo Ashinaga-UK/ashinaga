@@ -20,8 +20,17 @@ export class GetRequestsQueryDto {
   search?: string;
 
   @IsOptional()
-  @IsEnum(['financial_support', 'extenuating_circumstances', 'academic_support'])
-  type?: 'financial_support' | 'extenuating_circumstances' | 'academic_support';
+  @IsEnum([
+    'extenuating_circumstances',
+    'summer_funding_request',
+    'summer_funding_report',
+    'requirement_submission',
+  ])
+  type?:
+    | 'extenuating_circumstances'
+    | 'summer_funding_request'
+    | 'summer_funding_report'
+    | 'requirement_submission';
 
   @IsOptional()
   @IsEnum(['pending', 'approved', 'rejected', 'reviewed', 'commented'])
@@ -66,8 +75,13 @@ export class RequestResponseDto {
   scholarId: string;
   scholarName: string;
   scholarEmail: string;
-  type: 'financial_support' | 'extenuating_circumstances' | 'academic_support';
+  type:
+    | 'extenuating_circumstances'
+    | 'summer_funding_request'
+    | 'summer_funding_report'
+    | 'requirement_submission';
   description: string;
+  formData?: Record<string, any> | null;
   priority: 'high' | 'medium' | 'low';
   status: 'pending' | 'approved' | 'rejected' | 'reviewed' | 'commented';
   submittedDate: Date;

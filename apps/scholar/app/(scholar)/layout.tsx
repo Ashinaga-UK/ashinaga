@@ -34,8 +34,8 @@ export default function ScholarRootLayout({ children }: { children: React.ReactN
 
   if (isPending) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 flex items-center justify-center">
-        <p className="text-gray-600">Loading...</p>
+        <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
       </div>
     );
   }
