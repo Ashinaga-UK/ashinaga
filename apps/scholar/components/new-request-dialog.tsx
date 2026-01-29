@@ -172,7 +172,11 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
 
   const onSubmit = async (values: FormValues) => {
     try {
-      if (values.type === 'summer_funding_request' && riskOfNotCarryingOut === 'yes' && !riskDetails?.trim()) {
+      if (
+        values.type === 'summer_funding_request' &&
+        riskOfNotCarryingOut === 'yes' &&
+        !riskDetails?.trim()
+      ) {
         toast({
           title: 'Details required',
           description: 'Please provide details about the risk when you answer Yes.',
@@ -288,7 +292,10 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
                   </label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="visiting_home_volunteering" id="visiting_home_volunteering" />
+                  <RadioGroupItem
+                    value="visiting_home_volunteering"
+                    id="visiting_home_volunteering"
+                  />
                   <label htmlFor="visiting_home_volunteering" className="text-sm">
                     Visiting home and volunteering
                   </label>
@@ -305,10 +312,7 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
                 Examples include pending confirmation of exam resits or an unconfirmed internship
                 offer.
               </p>
-              <RadioGroup
-                value={riskOfNotCarryingOut}
-                onValueChange={setRiskOfNotCarryingOut}
-              >
+              <RadioGroup value={riskOfNotCarryingOut} onValueChange={setRiskOfNotCarryingOut}>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="yes" id="risk_yes" />
                   <label htmlFor="risk_yes" className="text-sm">
