@@ -12,11 +12,13 @@ export interface ExtenuatingCircumstancesFormData {
 }
 
 export interface SummerFundingRequestFormData {
-  activityType: 'internship' | 'summer_school' | 'research_project';
+  activityType: 'internship_ssa' | 'research_placement' | 'visiting_home_volunteering';
   appliedForAlternativeFunding: 'yes_successful' | 'yes_unsuccessful' | 'no';
   receivingOtherFunding: 'yes' | 'no';
   otherFundingSource?: string;
   otherFundingAmount?: string;
+  riskOfNotCarryingOut: 'yes' | 'no';
+  riskDetails?: string;
   additionalNotes?: string;
   travelInsuranceAcknowledged: boolean;
   informationTruthful: boolean;

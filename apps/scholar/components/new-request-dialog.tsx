@@ -80,6 +80,8 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
   const [learningOutcomes, setLearningOutcomes] = useState<string>('');
   const [challengesFaced, setChallengesFaced] = useState<string>('');
   const [submissionType, setSubmissionType] = useState<string>('');
+  const [riskOfNotCarryingOut, setRiskOfNotCarryingOut] = useState<string>('');
+  const [riskDetails, setRiskDetails] = useState<string>('');
 
   const form = useForm<FormValues>({
     resolver: zodResolver(baseSchema),
@@ -130,6 +132,8 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
     setLearningOutcomes('');
     setChallengesFaced('');
     setSubmissionType('');
+    setRiskOfNotCarryingOut('');
+    setRiskDetails('');
   };
 
   const collectFormData = () => {
@@ -143,6 +147,8 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
           receivingOtherFunding,
           otherFundingSource: receivingOtherFunding === 'yes' ? otherFundingSource : undefined,
           otherFundingAmount: receivingOtherFunding === 'yes' ? otherFundingAmount : undefined,
+          riskOfNotCarryingOut,
+          riskDetails: riskOfNotCarryingOut === 'yes' ? riskDetails : undefined,
           additionalNotes: additionalNotes || undefined,
           travelInsuranceAcknowledged,
           informationTruthful,
@@ -166,6 +172,14 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
 
   const onSubmit = async (values: FormValues) => {
     try {
+      if (values.type === 'summer_funding_request' && riskOfNotCarryingOut === 'yes' && !riskDetails?.trim()) {
+        toast({
+          title: 'Details required',
+          description: 'Please provide details about the risk when you answer Yes.',
+          variant: 'destructive',
+        });
+        return;
+      }
       const formData = collectFormData();
       const requestData: any = {
         type: values.type,
@@ -262,25 +276,67 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
               </Label>
               <RadioGroup value={activityType} onValueChange={setActivityType}>
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="internship" id="internship" />
-                  <label htmlFor="internship" className="text-sm">
-                    Internship
+                  <RadioGroupItem value="internship_ssa" id="internship_ssa" />
+                  <label htmlFor="internship_ssa" className="text-sm">
+                    An 8-week+ internship in sub-Saharan Africa
                   </label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="summer_school" id="summer_school" />
-                  <label htmlFor="summer_school" className="text-sm">
-                    Summer School
+                  <RadioGroupItem value="research_placement" id="research_placement" />
+                  <label htmlFor="research_placement" className="text-sm">
+                    A university research placement
                   </label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="research_project" id="research_project" />
-                  <label htmlFor="research_project" className="text-sm">
-                    Research Project
+                  <RadioGroupItem value="visiting_home_volunteering" id="visiting_home_volunteering" />
+                  <label htmlFor="visiting_home_volunteering" className="text-sm">
+                    Visiting home and volunteering
                   </label>
                 </div>
               </RadioGroup>
             </div>
+
+            <div className="space-y-2">
+              <Label>
+                Is there any strong risk of not being able to carry out the activities you are
+                applying for? <span className="text-red-500">*</span>
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Examples include pending confirmation of exam resits or an unconfirmed internship
+                offer.
+              </p>
+              <RadioGroup
+                value={riskOfNotCarryingOut}
+                onValueChange={setRiskOfNotCarryingOut}
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="yes" id="risk_yes" />
+                  <label htmlFor="risk_yes" className="text-sm">
+                    Yes
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="no" id="risk_no" />
+                  <label htmlFor="risk_no" className="text-sm">
+                    No
+                  </label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            {riskOfNotCarryingOut === 'yes' && (
+              <div className="space-y-2">
+                <Label>
+                  Please give details <span className="text-red-500">*</span>
+                </Label>
+                <Textarea
+                  placeholder="Describe the risk and any relevant circumstances..."
+                  value={riskDetails}
+                  onChange={(e) => setRiskDetails(e.target.value)}
+                  className="resize-none min-h-[80px]"
+                />
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label>
