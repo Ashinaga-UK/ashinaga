@@ -1,13 +1,63 @@
 import { IsArray, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
+export type RequestType =
+  | 'extenuating_circumstances'
+  | 'summer_funding_request'
+  | 'summer_funding_report'
+  | 'requirement_submission';
+
+// Type-specific form data interfaces
+export interface ExtenuatingCircumstancesFormData {
+  reason: string;
+}
+
+export interface SummerFundingRequestFormData {
+  activityType: 'internship_ssa' | 'research_placement' | 'visiting_home_volunteering';
+  appliedForAlternativeFunding: 'yes_successful' | 'yes_unsuccessful' | 'no';
+  receivingOtherFunding: 'yes' | 'no';
+  otherFundingSource?: string;
+  otherFundingAmount?: string;
+  riskOfNotCarryingOut: 'yes' | 'no';
+  riskDetails?: string;
+  additionalNotes?: string;
+  travelInsuranceAcknowledged: boolean;
+  informationTruthful: boolean;
+}
+
+export interface SummerFundingReportFormData {
+  activitySummary: string;
+  learningOutcomes: string;
+  challengesFaced?: string;
+  additionalNotes?: string;
+}
+
+export interface RequirementSubmissionFormData {
+  submissionType: 'ashinaga_proposal' | 'transcript' | 'tenancy_agreement' | 'other';
+  additionalNotes?: string;
+}
+
+export type FormData =
+  | ExtenuatingCircumstancesFormData
+  | SummerFundingRequestFormData
+  | SummerFundingReportFormData
+  | RequirementSubmissionFormData;
+
 export class CreateRequestDto {
-  @IsEnum(['financial_support', 'extenuating_circumstances', 'academic_support'])
+  @IsEnum([
+    'extenuating_circumstances',
+    'summer_funding_request',
+    'summer_funding_report',
+    'requirement_submission',
+  ])
   @IsNotEmpty()
-  type: 'financial_support' | 'extenuating_circumstances' | 'academic_support';
+  type: RequestType;
 
   @IsString()
   @IsNotEmpty()
   description: string;
+
+  @IsOptional()
+  formData?: FormData;
 
   @IsEnum(['high', 'medium', 'low'])
   @IsOptional()

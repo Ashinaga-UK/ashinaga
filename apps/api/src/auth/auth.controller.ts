@@ -1,9 +1,9 @@
 import { All, Body, Controller, Get, Post, Req, Res } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import type { FastifyReply, FastifyRequest } from 'fastify';
 import { eq } from 'drizzle-orm';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import { getDatabase } from '../db/connection';
-import { invitations, staff, scholars, users } from '../db/schema';
+import { invitations, scholars, staff, users } from '../db/schema';
 import { auth } from './auth.config';
 
 @ApiTags('auth')
@@ -159,7 +159,7 @@ export class AuthController {
     // Capture the response body
     let responseBody: string | undefined;
     const originalSend = res.send.bind(res);
-    res.send = function (data: any) {
+    res.send = (data: any) => {
       responseBody = typeof data === 'string' ? data : JSON.stringify(data);
       return originalSend(data);
     };

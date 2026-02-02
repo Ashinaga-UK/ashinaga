@@ -76,7 +76,7 @@ describe('RequestsController', () => {
         page: 2,
         limit: 10,
         search: 'test',
-        type: 'financial_support' as const,
+        type: 'summer_funding_request' as const,
         status: 'pending' as const,
         priority: 'high' as const,
         sortBy: 'submittedDate' as const,

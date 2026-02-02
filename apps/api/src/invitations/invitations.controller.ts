@@ -1,20 +1,20 @@
 import {
-  Controller,
-  Post,
-  Get,
-  Delete,
   Body,
-  Param,
-  Query,
-  UseGuards,
-  Req,
+  Controller,
+  Delete,
+  Get,
   HttpCode,
   HttpStatus,
+  Param,
+  Post,
+  Query,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
-import { InvitationsService } from './invitations.service';
-import { CreateInvitationDto, ResendInvitationDto } from './dto/create-invitation.dto';
+import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { StaffGuard } from '../auth/staff.guard';
+import { CreateInvitationDto, ResendInvitationDto } from './dto/create-invitation.dto';
+import { InvitationsService } from './invitations.service';
 
 @ApiTags('invitations')
 @Controller('api/invitations')

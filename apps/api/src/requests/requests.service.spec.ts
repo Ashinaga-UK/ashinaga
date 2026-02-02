@@ -34,7 +34,7 @@ describe('RequestsService', () => {
         {
           request: {
             id: '1',
-            type: 'financial_support',
+            type: 'summer_funding_request',
             status: 'pending',
             priority: 'high',
             description: 'Test request',

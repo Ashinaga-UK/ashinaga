@@ -10,10 +10,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
-import { CreateGoalDto } from './dto/create-goal.dto';
-import { UpdateGoalDto } from './dto/update-goal.dto';
 import { CreateCommentDto } from './dto/create-comment.dto';
+import { CreateGoalDto } from './dto/create-goal.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
+import { UpdateGoalDto } from './dto/update-goal.dto';
 import { GoalsService } from './goals.service';
 
 @Controller('api/goals')

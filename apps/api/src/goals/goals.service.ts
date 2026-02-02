@@ -1,7 +1,7 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { desc, eq } from 'drizzle-orm';
 import { getDatabase } from '../db/connection';
-import { goals, goalComments } from '../db/schema/goals';
+import { goalComments, goals } from '../db/schema/goals';
 import { scholars } from '../db/schema/scholars';
 import { users } from '../db/schema/users';
 import { EmailService } from '../email/email.service';

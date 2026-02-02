@@ -163,7 +163,7 @@ export class TasksService {
       }
 
       // Handle attachments if provided
-      let attachmentData = completeTaskDto.attachmentIds;
+      const attachmentData = completeTaskDto.attachmentIds;
 
       // The frontend sends an array of attachment objects with metadata
       if (attachmentData && attachmentData.length > 0) {
