@@ -1,16 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  type Announcement,
-  type CreateAnnouncementData,
   type CreateTaskData,
+  archiveScholar,
   createAnnouncement,
   createTask,
+  deleteScholar,
   getAnnouncements,
   getScholarProfile,
   getTasksByScholar,
-  type ScholarProfile,
   type Task,
+  type UpdateScholarProfileData,
   type UpdateTaskData,
+  updateScholarProfile,
   updateTask,
   updateUser,
 } from '../api-client';
@@ -112,17 +113,37 @@ export function useUpdateTask() {
   return useMutation({
     mutationFn: ({ taskId, data }: { taskId: string; data: UpdateTaskData }) =>
       updateTask(taskId, data),
-    onSuccess: (updatedTask, variables) => {
-      // Invalidate tasks for the scholar
-      // We need to find the scholar ID from the task
+    onSuccess: (updatedTask) => {
       if (updatedTask && 'scholarId' in updatedTask) {
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.scholarTasks((updatedTask as any).scholarId),
-        });
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.scholarProfile((updatedTask as any).scholarId),
-        });
+        const scholarId = (updatedTask as { scholarId: string }).scholarId;
+        queryClient.invalidateQueries({ queryKey: queryKeys.scholarTasks(scholarId) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.scholarProfile(scholarId) });
       }
     },
+  });
+}
+
+// Update scholar profile (staff)
+export function useUpdateScholarProfile(scholarId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UpdateScholarProfileData) => updateScholarProfile(scholarId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.scholarProfile(scholarId) });
+    },
+  });
+}
+
+// Archive scholar (staff)
+export function useArchiveScholar() {
+  return useMutation({
+    mutationFn: archiveScholar,
+  });
+}
+
+// Delete scholar (staff)
+export function useDeleteScholar() {
+  return useMutation({
+    mutationFn: deleteScholar,
   });
 }

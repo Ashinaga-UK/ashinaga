@@ -1,14 +1,26 @@
 'use client';
 
-import { AlertCircle, Eye, Loader2, MoreHorizontal, Plus, Search, Users } from 'lucide-react';
+import {
+  AlertCircle,
+  Archive,
+  Download,
+  Eye,
+  Loader2,
+  MoreHorizontal,
+  Plus,
+  Search,
+  Trash2,
+} from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import {
   type GetScholarsParams,
+  downloadAllScholarsCSV,
   getFilterOptions,
   getScholars,
   type Scholar,
   type ScholarFilterOptions,
 } from '../lib/api-client';
+import { useArchiveScholar, useDeleteScholar } from '../lib/hooks/use-queries';
 import { BulkTaskAssignment } from './bulk-task-assignment';
 import { TaskAssignment } from './task-assignment';
 import { Alert, AlertDescription } from './ui/alert';
@@ -46,9 +58,12 @@ export function ScholarManagementTable({
   const [programFilter, setProgramFilter] = useState('all');
   const [yearFilter, setYearFilter] = useState('all');
   const [universityFilter, setUniversityFilter] = useState('all');
-  const [statusFilter, _setStatusFilter] = useState<'all' | 'active' | 'inactive' | 'on_hold'>(
-    'all'
-  );
+  const [statusFilter, setStatusFilter] = useState<
+    'all' | 'active' | 'inactive' | 'on_hold' | 'archived'
+  >('all');
+  const [exportingCsv, setExportingCsv] = useState(false);
+  const archiveScholar = useArchiveScholar();
+  const deleteScholar = useDeleteScholar();
 
   // Filter options from API
   const [filterOptions, setFilterOptions] = useState<ScholarFilterOptions>({
@@ -122,8 +137,49 @@ export function ScholarManagementTable({
         return 'bg-gray-100 text-gray-800';
       case 'on_hold':
         return 'bg-yellow-100 text-yellow-800';
+      case 'archived':
+        return 'bg-gray-200 text-gray-700';
       default:
         return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const handleExportCsv = async () => {
+    setExportingCsv(true);
+    try {
+      await downloadAllScholarsCSV();
+    } catch (e) {
+      console.error(e);
+      alert('Failed to download CSV. Please try again.');
+    } finally {
+      setExportingCsv(false);
+    }
+  };
+
+  const handleArchive = async (scholarId: string, scholarName: string) => {
+    if (!confirm(`Archive "${scholarName}"? They will be hidden from the default list.`)) return;
+    try {
+      await archiveScholar.mutateAsync(scholarId);
+      await fetchScholars();
+    } catch (e) {
+      console.error(e);
+      alert('Failed to archive. Please try again.');
+    }
+  };
+
+  const handleDelete = async (scholarId: string, scholarName: string) => {
+    if (
+      !confirm(
+        `Permanently delete "${scholarName}"? This cannot be undone. All goals, tasks, and documents will be removed.`
+      )
+    )
+      return;
+    try {
+      await deleteScholar.mutateAsync(scholarId);
+      await fetchScholars();
+    } catch (e) {
+      console.error(e);
+      alert('Failed to delete. Please try again.');
     }
   };
 
@@ -193,6 +249,18 @@ export function ScholarManagementTable({
           />
           */}
           <Button
+            variant="outline"
+            onClick={handleExportCsv}
+            disabled={exportingCsv}
+          >
+            {exportingCsv ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4 mr-2" />
+            )}
+            Export all (CSV)
+          </Button>
+          <Button
             className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
             onClick={onOnboardScholar}
           >
@@ -203,6 +271,18 @@ export function ScholarManagementTable({
       </div>
 
       <div className="flex items-center gap-4 flex-wrap">
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="inactive">Inactive</SelectItem>
+            <SelectItem value="on_hold">On hold</SelectItem>
+            <SelectItem value="archived">Archived</SelectItem>
+          </SelectContent>
+        </Select>
         <Select value={programFilter} onValueChange={setProgramFilter}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="All Programs" />
@@ -245,7 +325,10 @@ export function ScholarManagementTable({
           </SelectContent>
         </Select>
 
-        {(programFilter !== 'all' || yearFilter !== 'all' || universityFilter !== 'all') && (
+        {(programFilter !== 'all' ||
+          yearFilter !== 'all' ||
+          universityFilter !== 'all' ||
+          statusFilter !== 'all') && (
           <Button
             variant="outline"
             size="sm"
@@ -253,6 +336,7 @@ export function ScholarManagementTable({
               setProgramFilter('all');
               setYearFilter('all');
               setUniversityFilter('all');
+              setStatusFilter('all');
             }}
           >
             Clear Filters
@@ -399,6 +483,27 @@ export function ScholarManagementTable({
                           <DropdownMenuItem onClick={() => onViewProfile(scholar.id)}>
                             <Eye className="h-4 w-4 mr-2" />
                             View Profile
+                          </DropdownMenuItem>
+                          {scholar.status !== 'archived' && (
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handleArchive(scholar.id, scholar.name);
+                              }}
+                            >
+                              <Archive className="h-4 w-4 mr-2" />
+                              Archive
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem
+                            className="text-red-600 focus:text-red-600"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleDelete(scholar.id, scholar.name);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

@@ -1,7 +1,12 @@
 import { date, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { users } from './users';
 
-export const scholarStatusEnum = pgEnum('scholar_status', ['active', 'inactive', 'on_hold']);
+export const scholarStatusEnum = pgEnum('scholar_status', [
+  'active',
+  'inactive',
+  'on_hold',
+  'archived',
+]);
 export const genderEnum = pgEnum('gender', ['male', 'female', 'other', 'prefer_not_to_say']);
 
 export const scholars = pgTable('scholars', {

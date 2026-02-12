@@ -1,0 +1,1 @@
+ALTER TYPE "public"."scholar_status" ADD VALUE 'archived';

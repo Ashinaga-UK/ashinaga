@@ -26,5 +26,5 @@ export class ScholarFilterDto {
   year: string;
   university: string;
   location?: string | null;
-  status: 'active' | 'inactive' | 'on_hold';
+  status: 'active' | 'inactive' | 'on_hold' | 'archived';
 }

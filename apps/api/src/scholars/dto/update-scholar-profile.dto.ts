@@ -102,4 +102,12 @@ export class UpdateScholarProfileDto {
   @IsOptional()
   @IsString()
   bio?: string;
+
+  @IsOptional()
+  @IsString()
+  majorCategory?: string;
+
+  @IsOptional()
+  @IsString()
+  fieldOfStudy?: string;
 }

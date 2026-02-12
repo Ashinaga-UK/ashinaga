@@ -1,7 +1,19 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { and, count, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
+import { and, count, desc, eq, ilike, inArray, not, or, sql } from 'drizzle-orm';
 import { database } from '../db/connection';
-import { documents, goalComments, goals, invitations, scholars, tasks, users } from '../db/schema';
+import {
+  announcementRecipients,
+  documents,
+  goalComments,
+  goals,
+  invitations,
+  requests,
+  scholars,
+  taskAttachments,
+  taskResponses,
+  tasks,
+  users,
+} from '../db/schema';
 import { InvitationsService } from '../invitations/invitations.service';
 import { CreateScholarDto } from './dto/create-scholar.dto';
 import {
@@ -131,6 +143,9 @@ export class ScholarsService {
 
     if (status) {
       whereConditions.push(eq(scholars.status, status));
+    } else {
+      // Exclude archived by default so they don't appear in main list
+      whereConditions.push(not(eq(scholars.status, 'archived')));
     }
 
     const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
@@ -182,7 +197,7 @@ export class ScholarsService {
       university: row.scholar.university,
       location: row.scholar.location,
       bio: row.scholar.bio,
-      status: row.scholar.status as 'active' | 'inactive' | 'on_hold',
+      status: row.scholar.status as 'active' | 'inactive' | 'on_hold' | 'archived',
       startDate: row.scholar.startDate,
       lastActivity: row.scholar.lastActivity,
       goals: goalsStats[row.scholar.id] || { total: 0, completed: 0, inProgress: 0, pending: 0 },
@@ -237,7 +252,7 @@ export class ScholarsService {
       university: row.scholar.university,
       location: row.scholar.location,
       bio: row.scholar.bio,
-      status: row.scholar.status as 'active' | 'inactive' | 'on_hold',
+      status: row.scholar.status as 'active' | 'inactive' | 'on_hold' | 'archived',
       startDate: row.scholar.startDate,
       lastActivity: row.scholar.lastActivity,
       goals: goalsStats[row.scholar.id] || { total: 0, completed: 0, inProgress: 0, pending: 0 },
@@ -491,9 +506,26 @@ export class ScholarsService {
       university: row.scholar.university,
       location: row.scholar.location,
       bio: row.scholar.bio,
-      status: row.scholar.status as 'active' | 'inactive' | 'on_hold',
+      status: row.scholar.status as 'active' | 'inactive' | 'on_hold' | 'archived',
       startDate: row.scholar.startDate,
       lastActivity: row.scholar.lastActivity,
+      aaiScholarId: row.scholar.aaiScholarId,
+      dateOfBirth: row.scholar.dateOfBirth,
+      gender: row.scholar.gender as 'male' | 'female' | 'other' | 'prefer_not_to_say' | null,
+      nationality: row.scholar.nationality,
+      addressHomeCountry: row.scholar.addressHomeCountry,
+      passportExpirationDate: row.scholar.passportExpirationDate,
+      visaExpirationDate: row.scholar.visaExpirationDate,
+      emergencyContactCountryOfStudy: row.scholar.emergencyContactCountryOfStudy,
+      emergencyContactHomeCountry: row.scholar.emergencyContactHomeCountry,
+      graduationDate: row.scholar.graduationDate,
+      universityId: row.scholar.universityId,
+      dietaryInformation: row.scholar.dietaryInformation,
+      kokorozashi: row.scholar.kokorozashi,
+      longTermCareerPlan: row.scholar.longTermCareerPlan,
+      postGraduationPlan: row.scholar.postGraduationPlan,
+      majorCategory: row.scholar.majorCategory ?? undefined,
+      fieldOfStudy: row.scholar.fieldOfStudy ?? undefined,
       goals: goalsList,
       tasks: tasksList,
       documents: documentsList,
@@ -537,6 +569,7 @@ export class ScholarsService {
     active: number;
     inactive: number;
     onHold: number;
+    archived: number;
   }> {
     const statsResult = await database
       .select({
@@ -551,6 +584,7 @@ export class ScholarsService {
       active: 0,
       inactive: 0,
       onHold: 0,
+      archived: 0,
     };
 
     for (const row of statsResult) {
@@ -564,6 +598,9 @@ export class ScholarsService {
           break;
         case 'on_hold':
           stats.onHold = row.count;
+          break;
+        case 'archived':
+          stats.archived = row.count;
           break;
       }
     }
@@ -671,7 +708,7 @@ export class ScholarsService {
       university: row.scholar.university,
       location: row.scholar.location,
       bio: row.scholar.bio,
-      status: row.scholar.status as 'active' | 'inactive' | 'on_hold',
+      status: row.scholar.status as 'active' | 'inactive' | 'on_hold' | 'archived',
       startDate: row.scholar.startDate,
       lastActivity: row.scholar.lastActivity,
       // New fields
@@ -739,6 +776,8 @@ export class ScholarsService {
       longTermCareerPlan,
       postGraduationPlan,
       bio,
+      majorCategory,
+      fieldOfStudy,
     } = profileUpdateData;
 
     // Update scholar record - handle empty strings and date conversions properly
@@ -786,11 +825,28 @@ export class ScholarsService {
     if (postGraduationPlan !== undefined)
       dbUpdateData.postGraduationPlan = postGraduationPlan || null;
     if (bio !== undefined) dbUpdateData.bio = bio || null;
+    if (majorCategory !== undefined) dbUpdateData.majorCategory = majorCategory || null;
+    if (fieldOfStudy !== undefined) dbUpdateData.fieldOfStudy = fieldOfStudy || null;
 
     await database.update(scholars).set(dbUpdateData).where(eq(scholars.id, scholarId));
 
     // Return updated profile
     return this.getScholarProfileByUserId(userId);
+  }
+
+  async updateScholarProfileByScholarId(
+    scholarId: string,
+    profileUpdateData: UpdateScholarProfileDto
+  ): Promise<ScholarProfileDto> {
+    const [row] = await database
+      .select({ userId: scholars.userId })
+      .from(scholars)
+      .where(eq(scholars.id, scholarId))
+      .limit(1);
+    if (!row) {
+      throw new NotFoundException('Scholar not found');
+    }
+    return this.updateScholarProfile(row.userId, profileUpdateData);
   }
 
   async exportScholarLDF(scholarId: string): Promise<string> {
@@ -898,5 +954,149 @@ export class ScholarsService {
     }
 
     return csvRows.join('\n');
+  }
+
+  /** Export all scholars' profile data as CSV (Staff only). Includes archived. */
+  async exportAllScholarsCSV(): Promise<string> {
+    const rows = await database
+      .select({
+        scholar: scholars,
+        userName: users.name,
+        userEmail: users.email,
+      })
+      .from(scholars)
+      .innerJoin(users, eq(scholars.userId, users.id))
+      .orderBy(users.name);
+
+    const csvEscape = (v: unknown): string => {
+      if (v === null || v === undefined) return '';
+      const s = String(v);
+      return `"${s.replace(/"/g, '""')}"`;
+    };
+    const fmtDate = (d: Date | string | null | undefined): string =>
+      d ? new Date(d).toISOString().split('T')[0]! : '';
+
+    const headers = [
+      'ID',
+      'Name',
+      'Email',
+      'Status',
+      'AAI Scholar ID',
+      'Phone',
+      'Program',
+      'Year',
+      'University',
+      'University ID',
+      'Location',
+      'Address (Home Country)',
+      'Date of Birth',
+      'Gender',
+      'Nationality',
+      'Passport Expiration',
+      'Visa Expiration',
+      'Emergency Contact (Country of Study)',
+      'Emergency Contact (Home Country)',
+      'Start Date',
+      'Graduation Date',
+      'Major Category',
+      'Field of Study',
+      'Dietary Information',
+      'Kokorozashi',
+      'Long-term Career Plan',
+      'Post-graduation Plan',
+      'Bio',
+      'Created At',
+      'Updated At',
+    ];
+    const csvRows: string[] = [headers.map((h) => csvEscape(h)).join(',')];
+
+    for (const { scholar: s, userName, userEmail } of rows) {
+      const row = [
+        s.id,
+        userName,
+        userEmail,
+        s.status,
+        s.aaiScholarId ?? '',
+        s.phone ?? '',
+        s.program,
+        s.year,
+        s.university,
+        s.universityId ?? '',
+        s.location ?? '',
+        s.addressHomeCountry ?? '',
+        fmtDate(s.dateOfBirth),
+        s.gender ?? '',
+        s.nationality ?? '',
+        fmtDate(s.passportExpirationDate),
+        fmtDate(s.visaExpirationDate),
+        s.emergencyContactCountryOfStudy ?? '',
+        s.emergencyContactHomeCountry ?? '',
+        fmtDate(s.startDate),
+        fmtDate(s.graduationDate),
+        s.majorCategory ?? '',
+        s.fieldOfStudy ?? '',
+        s.dietaryInformation ?? '',
+        s.kokorozashi ?? '',
+        s.longTermCareerPlan ?? '',
+        s.postGraduationPlan ?? '',
+        (s.bio ?? '').replace(/\r?\n/g, ' '),
+        s.createdAt ? new Date(s.createdAt).toISOString() : '',
+        s.updatedAt ? new Date(s.updatedAt).toISOString() : '',
+      ];
+      csvRows.push(row.map(csvEscape).join(','));
+    }
+
+    return csvRows.join('\n');
+  }
+
+  async archiveScholar(scholarId: string): Promise<ScholarResponseDto> {
+    const [row] = await database
+      .select()
+      .from(scholars)
+      .where(eq(scholars.id, scholarId))
+      .limit(1);
+    if (!row) {
+      throw new NotFoundException('Scholar not found');
+    }
+    await database
+      .update(scholars)
+      .set({ status: 'archived', updatedAt: new Date() })
+      .where(eq(scholars.id, scholarId));
+    return this.getScholar(scholarId);
+  }
+
+  async deleteScholar(scholarId: string): Promise<void> {
+    const [row] = await database
+      .select()
+      .from(scholars)
+      .where(eq(scholars.id, scholarId))
+      .limit(1);
+    if (!row) {
+      throw new NotFoundException('Scholar not found');
+    }
+    const goalRows = await database.select({ id: goals.id }).from(goals).where(eq(goals.scholarId, scholarId));
+    const goalIds = goalRows.map((r) => r.id);
+    if (goalIds.length > 0) {
+      await database.delete(goalComments).where(inArray(goalComments.goalId, goalIds));
+    }
+    await database.delete(goals).where(eq(goals.scholarId, scholarId));
+    const taskRows = await database.select({ id: tasks.id }).from(tasks).where(eq(tasks.scholarId, scholarId));
+    const taskIds = taskRows.map((r) => r.id);
+    if (taskIds.length > 0) {
+      const trRows = await database
+        .select({ id: taskResponses.id })
+        .from(taskResponses)
+        .where(inArray(taskResponses.taskId, taskIds));
+      const trIds = trRows.map((r) => r.id);
+      if (trIds.length > 0) {
+        await database.delete(taskAttachments).where(inArray(taskAttachments.taskResponseId, trIds));
+      }
+      await database.delete(taskResponses).where(inArray(taskResponses.taskId, taskIds));
+    }
+    await database.delete(tasks).where(eq(tasks.scholarId, scholarId));
+    await database.delete(documents).where(eq(documents.scholarId, scholarId));
+    await database.delete(requests).where(eq(requests.scholarId, scholarId));
+    await database.delete(announcementRecipients).where(eq(announcementRecipients.scholarId, scholarId));
+    await database.delete(scholars).where(eq(scholars.id, scholarId));
   }
 }

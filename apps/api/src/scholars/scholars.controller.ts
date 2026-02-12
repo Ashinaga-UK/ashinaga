@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Header,
   Param,
@@ -62,8 +63,17 @@ export class ScholarsController {
     active: number;
     inactive: number;
     onHold: number;
+    archived: number;
   }> {
     return this.scholarsService.getScholarStats();
+  }
+
+  @Get('export/csv')
+  @UseGuards(StaffGuard)
+  @Header('Content-Type', 'text/csv')
+  @Header('Content-Disposition', 'attachment; filename="scholars-export.csv"')
+  async exportAllScholarsCSV(): Promise<string> {
+    return this.scholarsService.exportAllScholarsCSV();
   }
 
   // Scholar's own profile endpoints (must be before :id routes)
@@ -88,12 +98,34 @@ export class ScholarsController {
     return this.scholarsService.getScholarProfile(id);
   }
 
+  @Patch(':id/profile')
+  @UseGuards(StaffGuard)
+  async updateScholarProfileByStaff(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateData: UpdateScholarProfileDto
+  ): Promise<ScholarProfileDto> {
+    return this.scholarsService.updateScholarProfileByScholarId(id, updateData);
+  }
+
   @Get(':id/export-ldf')
   @UseGuards(StaffGuard)
   @Header('Content-Type', 'text/csv')
   @Header('Content-Disposition', 'attachment; filename="ldf-export.csv"')
   async exportScholarLDF(@Param('id', ParseUUIDPipe) id: string): Promise<string> {
     return this.scholarsService.exportScholarLDF(id);
+  }
+
+  @Patch(':id/archive')
+  @UseGuards(StaffGuard)
+  async archiveScholar(@Param('id', ParseUUIDPipe) id: string): Promise<ScholarResponseDto> {
+    return this.scholarsService.archiveScholar(id);
+  }
+
+  @Delete(':id')
+  @UseGuards(StaffGuard)
+  async deleteScholar(@Param('id', ParseUUIDPipe) id: string): Promise<{ success: boolean }> {
+    await this.scholarsService.deleteScholar(id);
+    return { success: true };
   }
 
   @Get(':id')
