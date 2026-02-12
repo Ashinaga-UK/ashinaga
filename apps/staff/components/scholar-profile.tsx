@@ -365,7 +365,11 @@ export function ScholarProfilePage({
                       </SelectTrigger>
                       <SelectContent>
                         {[
-                          ...new Set([editForm.program, ...filterOptions.programs].filter(Boolean)),
+                          ...new Set(
+                            [editForm.program, ...filterOptions.programs].filter(
+                              (x): x is string => typeof x === 'string' && x !== ''
+                            )
+                          ),
                         ].map((program) => (
                           <SelectItem key={program} value={program}>
                             {program}
@@ -385,11 +389,13 @@ export function ScholarProfilePage({
                       </SelectTrigger>
                       <SelectContent>
                         {[
-                          ...new Set([
-                            editForm.year,
-                            ...filterOptions.years,
-                            ...ACADEMIC_YEAR_OPTIONS,
-                          ].filter(Boolean)),
+                          ...new Set(
+                            [
+                              editForm.year,
+                              ...filterOptions.years,
+                              ...ACADEMIC_YEAR_OPTIONS,
+                            ].filter((x): x is string => typeof x === 'string' && x !== '')
+                          ),
                         ].map((year) => (
                           <SelectItem key={year} value={year}>
                             {year}
@@ -409,11 +415,13 @@ export function ScholarProfilePage({
                       </SelectTrigger>
                       <SelectContent>
                         {[
-                          ...new Set([
-                            editForm.university,
-                            ...filterOptions.universities,
-                            ...DEFAULT_UNIVERSITY_OPTIONS,
-                          ].filter(Boolean)),
+                          ...new Set(
+                            [
+                              editForm.university,
+                              ...filterOptions.universities,
+                              ...DEFAULT_UNIVERSITY_OPTIONS,
+                            ].filter((x): x is string => typeof x === 'string' && x !== '')
+                          ),
                         ].map((uni) => (
                           <SelectItem key={uni} value={uni}>
                             {uni}
