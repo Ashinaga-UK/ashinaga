@@ -17,19 +17,19 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
+  type CreateTaskData,
   getFileDownloadUrl,
   getFilterOptions,
-  type CreateTaskData,
   type ScholarFilterOptions,
   type UpdateScholarProfileData,
 } from '../lib/api-client';
+import { useSession } from '../lib/auth-client';
 import {
   ACADEMIC_YEAR_OPTIONS,
   COUNTRY_OPTIONS,
   DEFAULT_UNIVERSITY_OPTIONS,
   GENDER_OPTIONS,
 } from '../lib/constants';
-import { useSession } from '../lib/auth-client';
 import { useScholarProfile, useUpdateScholarProfile } from '../lib/hooks/use-queries';
 import { CommentThread } from './comment-thread';
 import { TaskAssignment } from './task-assignment';
@@ -234,7 +234,9 @@ export function ScholarProfilePage({
                   program: scholar.program ?? '',
                   university: scholar.university ?? '',
                   year: scholar.year ?? '',
-                  startDate: scholar.startDate ? new Date(scholar.startDate).toISOString().split('T')[0] : '',
+                  startDate: scholar.startDate
+                    ? new Date(scholar.startDate).toISOString().split('T')[0]
+                    : '',
                   graduationDate: scholar.graduationDate
                     ? new Date(scholar.graduationDate).toISOString().split('T')[0]
                     : '',
@@ -660,9 +662,7 @@ export function ScholarProfilePage({
                 </div>
                 <div>
                   <span className="text-muted-foreground">Start date</span>
-                  <p className="font-medium">
-                    {new Date(scholar.startDate).toLocaleDateString()}
-                  </p>
+                  <p className="font-medium">{new Date(scholar.startDate).toLocaleDateString()}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Graduation date</span>
