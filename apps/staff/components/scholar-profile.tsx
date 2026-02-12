@@ -29,6 +29,8 @@ import {
   COUNTRY_OPTIONS,
   DEFAULT_UNIVERSITY_OPTIONS,
   GENDER_OPTIONS,
+  normalizeLocation,
+  normalizeNationality,
 } from '../lib/constants';
 import { useScholarProfile, useUpdateScholarProfile } from '../lib/hooks/use-queries';
 import { CommentThread } from './comment-thread';
@@ -224,8 +226,8 @@ export function ScholarProfilePage({
                   phone: scholar.phone ?? '',
                   dateOfBirth: scholar.dateOfBirth ?? '',
                   gender: scholar.gender ?? undefined,
-                  nationality: scholar.nationality ?? '',
-                  location: scholar.location ?? '',
+                  nationality: normalizeNationality(scholar.nationality ?? ''),
+                  location: normalizeLocation(scholar.location ?? ''),
                   addressHomeCountry: scholar.addressHomeCountry ?? '',
                   passportExpirationDate: scholar.passportExpirationDate ?? '',
                   visaExpirationDate: scholar.visaExpirationDate ?? '',
@@ -313,13 +315,16 @@ export function ScholarProfilePage({
                   <div>
                     <Label>Nationality</Label>
                     <Select
-                      value={editForm.nationality ?? ''}
-                      onValueChange={(value) => setEditForm((f) => ({ ...f, nationality: value }))}
+                      value={editForm.nationality || '_none'}
+                      onValueChange={(value) =>
+                        setEditForm((f) => ({ ...f, nationality: value === '_none' ? '' : value }))
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select nationality" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="_none">Select nationality</SelectItem>
                         {COUNTRY_OPTIONS.map((country) => (
                           <SelectItem key={country} value={country}>
                             {country}
@@ -331,13 +336,16 @@ export function ScholarProfilePage({
                   <div>
                     <Label>Location (country of study)</Label>
                     <Select
-                      value={editForm.location ?? ''}
-                      onValueChange={(value) => setEditForm((f) => ({ ...f, location: value }))}
+                      value={editForm.location || '_none'}
+                      onValueChange={(value) =>
+                        setEditForm((f) => ({ ...f, location: value === '_none' ? '' : value }))
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select country" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="_none">Select country</SelectItem>
                         {COUNTRY_OPTIONS.map((country) => (
                           <SelectItem key={country} value={country}>
                             {country}
@@ -533,8 +541,8 @@ export function ScholarProfilePage({
                   <span>{scholar.phone || 'No phone number'}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-gray-400" />
-                  <span>{scholar.location || 'No location'}</span>
+                  <MapPin className="h-4 w-4 text-gray-400 shrink-0" aria-label="Country of study" />
+                  <span>{normalizeLocation(scholar.location ?? '') || 'No location'}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-gray-400" />
@@ -589,7 +597,9 @@ export function ScholarProfilePage({
                 </div>
                 <div>
                   <span className="text-muted-foreground">Nationality</span>
-                  <p className="font-medium">{scholar.nationality || '—'}</p>
+                  <p className="font-medium">
+                    {normalizeNationality(scholar.nationality ?? '') || '—'}
+                  </p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Passport expiration</span>
@@ -613,18 +623,20 @@ export function ScholarProfilePage({
           <Card>
             <CardHeader>
               <CardTitle>Emergency contacts</CardTitle>
-              <CardDescription>Country of study and home country</CardDescription>
+              <CardDescription>
+                Contact person (name, email, phone) for country of study and home country
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <div>
-                <span className="text-muted-foreground">Country of study</span>
-                <p className="font-medium whitespace-pre-wrap">
+                <span className="text-muted-foreground">Emergency contact (country of study)</span>
+                <p className="font-medium whitespace-pre-wrap mt-0.5">
                   {scholar.emergencyContactCountryOfStudy || '—'}
                 </p>
               </div>
               <div>
-                <span className="text-muted-foreground">Home country</span>
-                <p className="font-medium whitespace-pre-wrap">
+                <span className="text-muted-foreground">Emergency contact (home country)</span>
+                <p className="font-medium whitespace-pre-wrap mt-0.5">
                   {scholar.emergencyContactHomeCountry || '—'}
                 </p>
               </div>
