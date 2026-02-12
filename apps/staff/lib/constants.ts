@@ -223,6 +223,106 @@ export const COUNTRY_OPTIONS: readonly string[] = [
   'Other',
 ];
 
+/**
+ * Map common demonyms (e.g. "Mauritian") to country names (e.g. "Mauritius")
+ * so we store and display country names consistently.
+ */
+export const DEMONYM_TO_COUNTRY: Record<string, string> = {
+  American: 'United States',
+  Australian: 'Australia',
+  Austrian: 'Austria',
+  Bangladeshi: 'Bangladesh',
+  Belgian: 'Belgium',
+  Brazilian: 'Brazil',
+  British: 'United Kingdom',
+  Canadian: 'Canada',
+  Chinese: 'China',
+  Colombian: 'Colombia',
+  Dutch: 'Netherlands',
+  Egyptian: 'Egypt',
+  English: 'United Kingdom',
+  Ethiopian: 'Ethiopia',
+  Filipino: 'Philippines',
+  Finnish: 'Finland',
+  French: 'France',
+  German: 'Germany',
+  Ghanaian: 'Ghana',
+  Greek: 'Greece',
+  Indian: 'India',
+  Indonesian: 'Indonesia',
+  Irish: 'Ireland',
+  Israeli: 'Israel',
+  Italian: 'Italy',
+  Japanese: 'Japan',
+  Kenyan: 'Kenya',
+  Korean: 'South Korea',
+  Lebanese: 'Lebanon',
+  Malaysian: 'Malaysia',
+  Mauritian: 'Mauritius',
+  Mexican: 'Mexico',
+  Moroccan: 'Morocco',
+  Nepalese: 'Nepal',
+  Nigerian: 'Nigeria',
+  Norwegian: 'Norway',
+  Pakistani: 'Pakistan',
+  Palestinian: 'Palestine',
+  Peruvian: 'Peru',
+  Polish: 'Poland',
+  Portuguese: 'Portugal',
+  Russian: 'Russia',
+  Saudi: 'Saudi Arabia',
+  Scottish: 'United Kingdom',
+  Singaporean: 'Singapore',
+  'South African': 'South Africa',
+  Spanish: 'Spain',
+  'Sri Lankan': 'Sri Lanka',
+  Swedish: 'Sweden',
+  Swiss: 'Switzerland',
+  Thai: 'Thailand',
+  Tunisian: 'Tunisia',
+  Turkish: 'Turkey',
+  Ugandan: 'Uganda',
+  Ukrainian: 'Ukraine',
+  Vietnamese: 'Vietnam',
+  Welsh: 'United Kingdom',
+  Zambian: 'Zambia',
+  Zimbabwean: 'Zimbabwe',
+};
+
+/**
+ * Normalize nationality to a country name (demonym → country).
+ * Returns the country name for display and storage.
+ */
+export function normalizeNationality(raw: string | undefined): string {
+  const trimmed = raw?.trim() ?? '';
+  if (!trimmed) return '';
+  return DEMONYM_TO_COUNTRY[trimmed] ?? trimmed;
+}
+
+/**
+ * Normalize location to a country-only value. If the stored value is a full address,
+ * try to detect a country name from it; otherwise return empty so user picks from dropdown.
+ */
+export function normalizeLocation(
+  raw: string | undefined,
+  countryOptions: readonly string[] = COUNTRY_OPTIONS
+): string {
+  const trimmed = raw?.trim() ?? '';
+  if (!trimmed) return '';
+  if (countryOptions.includes(trimmed)) return trimmed;
+  // Looks like an address: try to find a country in it (e.g. last part after comma, or substring)
+  const parts = trimmed.split(/[,;]/).map((p) => p.trim()).filter(Boolean);
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const part = parts[i];
+    if (part && countryOptions.includes(part)) return part;
+  }
+  for (const country of countryOptions) {
+    if (country === 'Other' || !country) continue;
+    if (trimmed.includes(country)) return country;
+  }
+  return '';
+}
+
 /** University options used when API filter options are empty (e.g. scholar app list). */
 export const DEFAULT_UNIVERSITY_OPTIONS = [
   'Imperial College London',
