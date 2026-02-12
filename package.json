@@ -8,6 +8,7 @@
     "dev:down": "docker compose down",
     "build": "turbo run build",
     "test": "turbo run test",
+    "test:integration": "cd apps/api && pnpm test:integration",
     "test:e2e": "turbo run test:e2e",
     "test:coverage": "turbo run test:coverage",
     "test:coverage:open": "turbo run test:coverage:open",
