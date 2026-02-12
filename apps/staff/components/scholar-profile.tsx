@@ -320,7 +320,13 @@ export function ScholarProfilePage({
                         <SelectValue placeholder="Select nationality" />
                       </SelectTrigger>
                       <SelectContent>
-                        {COUNTRY_OPTIONS.map((country) => (
+                        {[
+                          ...new Set(
+                            [editForm.nationality, ...COUNTRY_OPTIONS].filter(
+                              (x): x is string => typeof x === 'string' && x !== ''
+                            )
+                          ),
+                        ].map((country) => (
                           <SelectItem key={country} value={country}>
                             {country}
                           </SelectItem>
@@ -338,7 +344,13 @@ export function ScholarProfilePage({
                         <SelectValue placeholder="Select country" />
                       </SelectTrigger>
                       <SelectContent>
-                        {COUNTRY_OPTIONS.map((country) => (
+                        {[
+                          ...new Set(
+                            [editForm.location, ...COUNTRY_OPTIONS].filter(
+                              (x): x is string => typeof x === 'string' && x !== ''
+                            )
+                          ),
+                        ].map((country) => (
                           <SelectItem key={country} value={country}>
                             {country}
                           </SelectItem>
