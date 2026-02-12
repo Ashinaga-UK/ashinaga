@@ -15,8 +15,20 @@ import {
   Plus,
   User,
 } from 'lucide-react';
-import { useState } from 'react';
-import { getFileDownloadUrl, type CreateTaskData, type UpdateScholarProfileData } from '../lib/api-client';
+import { useEffect, useState } from 'react';
+import {
+  getFileDownloadUrl,
+  getFilterOptions,
+  type CreateTaskData,
+  type ScholarFilterOptions,
+  type UpdateScholarProfileData,
+} from '../lib/api-client';
+import {
+  ACADEMIC_YEAR_OPTIONS,
+  COUNTRY_OPTIONS,
+  DEFAULT_UNIVERSITY_OPTIONS,
+  GENDER_OPTIONS,
+} from '../lib/constants';
 import { useSession } from '../lib/auth-client';
 import { useScholarProfile, useUpdateScholarProfile } from '../lib/hooks/use-queries';
 import { CommentThread } from './comment-thread';
@@ -38,6 +50,7 @@ import {
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Progress } from './ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Textarea } from './ui/textarea';
 
@@ -57,6 +70,17 @@ export function ScholarProfilePage({
   const updateProfile = useUpdateScholarProfile(scholarId);
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState<UpdateScholarProfileData>({});
+  const [filterOptions, setFilterOptions] = useState<ScholarFilterOptions>({
+    programs: [],
+    years: [],
+    universities: [],
+  });
+
+  useEffect(() => {
+    getFilterOptions()
+      .then(setFilterOptions)
+      .catch(() => {});
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -258,52 +282,145 @@ export function ScholarProfilePage({
                     />
                   </div>
                   <div>
+                    <Label>Gender</Label>
+                    <Select
+                      value={editForm.gender ?? '_none'}
+                      onValueChange={(value) =>
+                        setEditForm((f) => ({
+                          ...f,
+                          gender:
+                            value === '_none'
+                              ? undefined
+                              : (value as 'male' | 'female' | 'other' | 'prefer_not_to_say'),
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select gender" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="_none">Not specified</SelectItem>
+                        {GENDER_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
                     <Label>Nationality</Label>
-                    <Input
+                    <Select
                       value={editForm.nationality ?? ''}
-                      onChange={(e) => setEditForm((f) => ({ ...f, nationality: e.target.value }))}
-                      placeholder="Nationality"
-                    />
+                      onValueChange={(value) => setEditForm((f) => ({ ...f, nationality: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select nationality" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {COUNTRY_OPTIONS.map((country) => (
+                          <SelectItem key={country} value={country}>
+                            {country}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <Label>Location (country of study)</Label>
-                    <Input
+                    <Select
                       value={editForm.location ?? ''}
-                      onChange={(e) => setEditForm((f) => ({ ...f, location: e.target.value }))}
-                      placeholder="Location"
-                    />
+                      onValueChange={(value) => setEditForm((f) => ({ ...f, location: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select country" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {COUNTRY_OPTIONS.map((country) => (
+                          <SelectItem key={country} value={country}>
+                            {country}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="col-span-2">
                     <Label>Address (home country)</Label>
                     <Input
                       value={editForm.addressHomeCountry ?? ''}
-                      onChange={(e) => setEditForm((f) => ({ ...f, addressHomeCountry: e.target.value }))}
-                      placeholder="Address in home country"
+                      onChange={(e) =>
+                        setEditForm((f) => ({ ...f, addressHomeCountry: e.target.value }))
+                      }
+                      placeholder="Street, city, region (home country)"
                     />
                   </div>
                   <div>
                     <Label>Program</Label>
-                    <Input
+                    <Select
                       value={editForm.program ?? ''}
-                      onChange={(e) => setEditForm((f) => ({ ...f, program: e.target.value }))}
-                      placeholder="Program"
-                    />
+                      onValueChange={(value) => setEditForm((f) => ({ ...f, program: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select program" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[
+                          ...new Set([editForm.program, ...filterOptions.programs].filter(Boolean)),
+                        ].map((program) => (
+                          <SelectItem key={program} value={program}>
+                            {program}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <Label>Year</Label>
-                    <Input
+                    <Select
                       value={editForm.year ?? ''}
-                      onChange={(e) => setEditForm((f) => ({ ...f, year: e.target.value }))}
-                      placeholder="Academic year"
-                    />
+                      onValueChange={(value) => setEditForm((f) => ({ ...f, year: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select academic year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[
+                          ...new Set([
+                            editForm.year,
+                            ...filterOptions.years,
+                            ...ACADEMIC_YEAR_OPTIONS,
+                          ].filter(Boolean)),
+                        ].map((year) => (
+                          <SelectItem key={year} value={year}>
+                            {year}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <Label>University</Label>
-                    <Input
+                    <Select
                       value={editForm.university ?? ''}
-                      onChange={(e) => setEditForm((f) => ({ ...f, university: e.target.value }))}
-                      placeholder="University"
-                    />
+                      onValueChange={(value) => setEditForm((f) => ({ ...f, university: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select university" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[
+                          ...new Set([
+                            editForm.university,
+                            ...filterOptions.universities,
+                            ...DEFAULT_UNIVERSITY_OPTIONS,
+                          ].filter(Boolean)),
+                        ].map((uni) => (
+                          <SelectItem key={uni} value={uni}>
+                            {uni}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <Label>Start date</Label>
@@ -318,7 +435,9 @@ export function ScholarProfilePage({
                     <Input
                       type="date"
                       value={editForm.graduationDate ?? ''}
-                      onChange={(e) => setEditForm((f) => ({ ...f, graduationDate: e.target.value }))}
+                      onChange={(e) =>
+                        setEditForm((f) => ({ ...f, graduationDate: e.target.value }))
+                      }
                     />
                   </div>
                   <div className="col-span-2">
