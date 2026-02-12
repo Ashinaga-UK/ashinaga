@@ -45,16 +45,16 @@ function StaffDashboardContent() {
   const tabFromUrl = searchParams.get('tab') || 'overview';
   const viewFromUrl = searchParams.get('view') || 'dashboard';
   const scholarIdFromUrl = searchParams.get('scholarId');
-  const scholarTabFromUrl = searchParams.get('scholarTab') || 'goals';
+  const scholarTabFromUrl = searchParams.get('scholarTab') || 'profile';
 
   const [activeTab, setActiveTab] = useState(tabFromUrl);
   const [currentView, setCurrentView] = useState<
     'dashboard' | 'scholar-profile' | 'onboarding' | 'task-assignment' | 'my-profile'
   >(viewFromUrl as any);
   const [selectedScholarId, setSelectedScholarId] = useState<string | null>(scholarIdFromUrl);
-  const [scholarProfileTab, setScholarProfileTab] = useState<'goals' | 'tasks' | 'documents'>(
-    scholarTabFromUrl as any
-  );
+  const [scholarProfileTab, setScholarProfileTab] = useState<
+    'profile' | 'goals' | 'tasks' | 'documents'
+  >((scholarTabFromUrl as 'profile' | 'goals' | 'tasks' | 'documents') || 'profile');
   const [requestStatusFilter, setRequestStatusFilter] = useState('all');
   const [requests, setRequests] = useState<Request[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(true);
@@ -92,7 +92,7 @@ function StaffDashboardContent() {
     const newTab = searchParams.get('tab') || 'overview';
     const newView = searchParams.get('view') || 'dashboard';
     const newScholarId = searchParams.get('scholarId');
-    const newScholarTab = searchParams.get('scholarTab') || 'goals';
+    const newScholarTab = searchParams.get('scholarTab') || 'profile';
 
     setActiveTab(newTab);
     setCurrentView(
@@ -104,7 +104,9 @@ function StaffDashboardContent() {
         | 'my-profile'
     );
     setSelectedScholarId(newScholarId);
-    setScholarProfileTab((newScholarTab || 'goals') as 'goals' | 'tasks' | 'documents');
+    setScholarProfileTab(
+      (newScholarTab || 'profile') as 'profile' | 'goals' | 'tasks' | 'documents'
+    );
   }, [searchParams]);
 
   const _getPriorityColor = (priority: string) => {
