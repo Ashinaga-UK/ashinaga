@@ -32,8 +32,8 @@ export class GetScholarsQueryDto {
   university?: string;
 
   @IsOptional()
-  @IsEnum(['active', 'inactive', 'on_hold'])
-  status?: 'active' | 'inactive' | 'on_hold';
+  @IsEnum(['active', 'inactive', 'on_hold', 'archived'])
+  status?: 'active' | 'inactive' | 'on_hold' | 'archived';
 
   @IsOptional()
   @IsEnum(['name', 'lastActivity', 'createdAt'])
@@ -139,7 +139,7 @@ export class ScholarResponseDto {
   university: string;
   location?: string | null;
   bio?: string | null;
-  status: 'active' | 'inactive' | 'on_hold';
+  status: 'active' | 'inactive' | 'on_hold' | 'archived';
   startDate: Date;
   lastActivity?: Date | null;
   goals: ScholarGoalsStatsDto;
@@ -161,7 +161,7 @@ export class ScholarProfileDto {
   university: string;
   location?: string | null;
   bio?: string | null;
-  status: 'active' | 'inactive' | 'on_hold';
+  status: 'active' | 'inactive' | 'on_hold' | 'archived';
   startDate: Date;
   lastActivity?: Date | null;
 
@@ -181,6 +181,8 @@ export class ScholarProfileDto {
   kokorozashi?: string | null;
   longTermCareerPlan?: string | null;
   postGraduationPlan?: string | null;
+  majorCategory?: string | null;
+  fieldOfStudy?: string | null;
 
   // Related data
   goals: GoalDto[];

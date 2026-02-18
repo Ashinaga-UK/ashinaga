@@ -6,39 +6,83 @@ import {
   CheckCircle,
   Clock,
   Download,
+  Edit,
   FileText,
   Loader2,
   Mail,
   MapPin,
   Phone,
   Plus,
+  User,
 } from 'lucide-react';
-import { getFileDownloadUrl, type CreateTaskData } from '../lib/api-client';
+import { useEffect, useState } from 'react';
+import {
+  type CreateTaskData,
+  getFileDownloadUrl,
+  getFilterOptions,
+  type ScholarFilterOptions,
+  type UpdateScholarProfileData,
+} from '../lib/api-client';
 import { useSession } from '../lib/auth-client';
-import { useScholarProfile } from '../lib/hooks/use-queries';
+import {
+  ACADEMIC_YEAR_OPTIONS,
+  COUNTRY_OPTIONS,
+  DEFAULT_UNIVERSITY_OPTIONS,
+  GENDER_OPTIONS,
+  normalizeLocation,
+  normalizeNationality,
+} from '../lib/constants';
+import { useScholarProfile, useUpdateScholarProfile } from '../lib/hooks/use-queries';
 import { CommentThread } from './comment-thread';
 import { TaskAssignment } from './task-assignment';
 import { Alert, AlertDescription } from './ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { Card, CardContent } from './ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from './ui/dialog';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
 import { Progress } from './ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Textarea } from './ui/textarea';
 
 interface ScholarProfileProps {
   scholarId: string;
   onBack: () => void;
-  initialTab?: 'goals' | 'tasks' | 'documents';
+  initialTab?: 'goals' | 'tasks' | 'documents' | 'profile';
 }
 
 export function ScholarProfilePage({
   scholarId,
   onBack,
-  initialTab = 'goals',
+  initialTab = 'profile',
 }: ScholarProfileProps) {
   const { data: session } = useSession();
   const { data: scholar, isLoading, error } = useScholarProfile(scholarId);
+  const updateProfile = useUpdateScholarProfile(scholarId);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState<UpdateScholarProfileData>({});
+  const [filterOptions, setFilterOptions] = useState<ScholarFilterOptions>({
+    programs: [],
+    years: [],
+    universities: [],
+  });
+
+  useEffect(() => {
+    getFilterOptions()
+      .then(setFilterOptions)
+      .catch(() => {});
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -172,13 +216,290 @@ export function ScholarProfilePage({
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Students
         </Button>
-        <Button
-          onClick={handleDownloadLDF}
-          className="bg-ashinaga-teal-600 hover:bg-ashinaga-teal-700"
-        >
-          <Download className="h-4 w-4 mr-2" />
-          Download LDF Report
-        </Button>
+        <div className="flex items-center gap-2">
+          <Dialog
+            open={editOpen}
+            onOpenChange={(open) => {
+              setEditOpen(open);
+              if (open && scholar) {
+                setEditForm({
+                  phone: scholar.phone ?? '',
+                  dateOfBirth: scholar.dateOfBirth ?? '',
+                  gender: scholar.gender ?? undefined,
+                  nationality: normalizeNationality(scholar.nationality ?? ''),
+                  location: normalizeLocation(scholar.location ?? ''),
+                  addressHomeCountry: scholar.addressHomeCountry ?? '',
+                  passportExpirationDate: scholar.passportExpirationDate ?? '',
+                  visaExpirationDate: scholar.visaExpirationDate ?? '',
+                  emergencyContactCountryOfStudy: scholar.emergencyContactCountryOfStudy ?? '',
+                  emergencyContactHomeCountry: scholar.emergencyContactHomeCountry ?? '',
+                  program: scholar.program ?? '',
+                  university: scholar.university ?? '',
+                  year: scholar.year ?? '',
+                  startDate: scholar.startDate
+                    ? new Date(scholar.startDate).toISOString().split('T')[0]
+                    : '',
+                  graduationDate: scholar.graduationDate
+                    ? new Date(scholar.graduationDate).toISOString().split('T')[0]
+                    : '',
+                  universityId: scholar.universityId ?? '',
+                  dietaryInformation: scholar.dietaryInformation ?? '',
+                  kokorozashi: scholar.kokorozashi ?? '',
+                  longTermCareerPlan: scholar.longTermCareerPlan ?? '',
+                  postGraduationPlan: scholar.postGraduationPlan ?? '',
+                  bio: scholar.bio ?? '',
+                  majorCategory: scholar.majorCategory ?? '',
+                  fieldOfStudy: scholar.fieldOfStudy ?? '',
+                });
+              }
+            }}
+          >
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Edit className="h-4 w-4 mr-2" />
+                Edit profile
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Edit scholar profile</DialogTitle>
+                <DialogDescription>
+                  Update basic info, contact details, and academic information.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Phone</Label>
+                    <Input
+                      value={editForm.phone ?? ''}
+                      onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))}
+                      placeholder="Phone"
+                    />
+                  </div>
+                  <div>
+                    <Label>Date of birth</Label>
+                    <Input
+                      type="date"
+                      value={editForm.dateOfBirth ?? ''}
+                      onChange={(e) => setEditForm((f) => ({ ...f, dateOfBirth: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label>Gender</Label>
+                    <Select
+                      value={editForm.gender ?? '_none'}
+                      onValueChange={(value) =>
+                        setEditForm((f) => ({
+                          ...f,
+                          gender:
+                            value === '_none'
+                              ? undefined
+                              : (value as 'male' | 'female' | 'other' | 'prefer_not_to_say'),
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select gender" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="_none">Not specified</SelectItem>
+                        {GENDER_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Nationality</Label>
+                    <Select
+                      value={editForm.nationality || '_none'}
+                      onValueChange={(value) =>
+                        setEditForm((f) => ({ ...f, nationality: value === '_none' ? '' : value }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select nationality" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="_none">Select nationality</SelectItem>
+                        {COUNTRY_OPTIONS.map((country) => (
+                          <SelectItem key={country} value={country}>
+                            {country}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Location (country of study)</Label>
+                    <Select
+                      value={editForm.location || '_none'}
+                      onValueChange={(value) =>
+                        setEditForm((f) => ({ ...f, location: value === '_none' ? '' : value }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select country" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="_none">Select country</SelectItem>
+                        {COUNTRY_OPTIONS.map((country) => (
+                          <SelectItem key={country} value={country}>
+                            {country}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="col-span-2">
+                    <Label>Address (home country)</Label>
+                    <Input
+                      value={editForm.addressHomeCountry ?? ''}
+                      onChange={(e) =>
+                        setEditForm((f) => ({ ...f, addressHomeCountry: e.target.value }))
+                      }
+                      placeholder="Street, city, region (home country)"
+                    />
+                  </div>
+                  <div>
+                    <Label>Program</Label>
+                    <Select
+                      value={editForm.program ?? ''}
+                      onValueChange={(value) => setEditForm((f) => ({ ...f, program: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select program" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[
+                          ...new Set(
+                            [editForm.program, ...filterOptions.programs].filter(
+                              (x): x is string => typeof x === 'string' && x !== ''
+                            )
+                          ),
+                        ].map((program) => (
+                          <SelectItem key={program} value={program}>
+                            {program}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Year</Label>
+                    <Select
+                      value={editForm.year ?? ''}
+                      onValueChange={(value) => setEditForm((f) => ({ ...f, year: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select academic year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[
+                          ...new Set(
+                            [
+                              editForm.year,
+                              ...filterOptions.years,
+                              ...ACADEMIC_YEAR_OPTIONS,
+                            ].filter((x): x is string => typeof x === 'string' && x !== '')
+                          ),
+                        ].map((year) => (
+                          <SelectItem key={year} value={year}>
+                            {year}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>University</Label>
+                    <Select
+                      value={editForm.university ?? ''}
+                      onValueChange={(value) => setEditForm((f) => ({ ...f, university: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select university" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[
+                          ...new Set(
+                            [
+                              editForm.university,
+                              ...filterOptions.universities,
+                              ...DEFAULT_UNIVERSITY_OPTIONS,
+                            ].filter((x): x is string => typeof x === 'string' && x !== '')
+                          ),
+                        ].map((uni) => (
+                          <SelectItem key={uni} value={uni}>
+                            {uni}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Start date</Label>
+                    <Input
+                      type="date"
+                      value={editForm.startDate ?? ''}
+                      onChange={(e) => setEditForm((f) => ({ ...f, startDate: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label>Graduation date</Label>
+                    <Input
+                      type="date"
+                      value={editForm.graduationDate ?? ''}
+                      onChange={(e) =>
+                        setEditForm((f) => ({ ...f, graduationDate: e.target.value }))
+                      }
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Label>Bio</Label>
+                    <Textarea
+                      value={editForm.bio ?? ''}
+                      onChange={(e) => setEditForm((f) => ({ ...f, bio: e.target.value }))}
+                      placeholder="Short bio"
+                      rows={3}
+                    />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={async () => {
+                    try {
+                      await updateProfile.mutateAsync(editForm);
+                      setEditOpen(false);
+                    } catch (e) {
+                      console.error(e);
+                    }
+                  }}
+                  disabled={updateProfile.isPending}
+                >
+                  {updateProfile.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : null}
+                  Save
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          <Button
+            onClick={handleDownloadLDF}
+            className="bg-ashinaga-teal-600 hover:bg-ashinaga-teal-700"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Download LDF Report
+          </Button>
+        </div>
       </div>
 
       {/* Student Info Card */}
@@ -197,7 +518,17 @@ export function ScholarProfilePage({
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-2xl font-bold">{scholar.name}</h1>
-                <Badge className="bg-green-100 text-green-800">{scholar.status}</Badge>
+                <Badge
+                  className={
+                    scholar.status === 'archived'
+                      ? 'bg-gray-200 text-gray-800'
+                      : scholar.status === 'active'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-amber-100 text-amber-800'
+                  }
+                >
+                  {scholar.status}
+                </Badge>
               </div>
               <p className="text-gray-600 mb-4">{scholar.bio || 'No bio available'}</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -210,8 +541,11 @@ export function ScholarProfilePage({
                   <span>{scholar.phone || 'No phone number'}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-gray-400" />
-                  <span>{scholar.location || 'No location'}</span>
+                  <MapPin
+                    className="h-4 w-4 text-gray-400 shrink-0"
+                    aria-label="Country of study"
+                  />
+                  <span>{normalizeLocation(scholar.location ?? '') || 'No location'}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-gray-400" />
@@ -234,10 +568,166 @@ export function ScholarProfilePage({
       {/* Tabs */}
       <Tabs defaultValue={initialTab} className="space-y-4">
         <TabsList>
+          <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="goals">LDF Goals</TabsTrigger>
           <TabsTrigger value="tasks">Tasks</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="profile" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Personal information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 text-sm">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-muted-foreground">AAI Scholar ID</span>
+                  <p className="font-medium">{scholar.aaiScholarId || '—'}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Date of birth</span>
+                  <p className="font-medium">
+                    {scholar.dateOfBirth ? new Date(scholar.dateOfBirth).toLocaleDateString() : '—'}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Gender</span>
+                  <p className="font-medium capitalize">{scholar.gender ?? '—'}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Nationality</span>
+                  <p className="font-medium">
+                    {normalizeNationality(scholar.nationality ?? '') || '—'}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Passport expiration</span>
+                  <p className="font-medium">
+                    {scholar.passportExpirationDate
+                      ? new Date(scholar.passportExpirationDate).toLocaleDateString()
+                      : '—'}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Visa expiration</span>
+                  <p className="font-medium">
+                    {scholar.visaExpirationDate
+                      ? new Date(scholar.visaExpirationDate).toLocaleDateString()
+                      : '—'}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Emergency contacts</CardTitle>
+              <CardDescription>
+                Contact person (name, email, phone) for country of study and home country
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div>
+                <span className="text-muted-foreground">Emergency contact (country of study)</span>
+                <p className="font-medium whitespace-pre-wrap mt-0.5">
+                  {scholar.emergencyContactCountryOfStudy || '—'}
+                </p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Emergency contact (home country)</span>
+                <p className="font-medium whitespace-pre-wrap mt-0.5">
+                  {scholar.emergencyContactHomeCountry || '—'}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Academic information</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 text-sm">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-muted-foreground">Program</span>
+                  <p className="font-medium">{scholar.program}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Year</span>
+                  <p className="font-medium">{scholar.year}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">University</span>
+                  <p className="font-medium">{scholar.university}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">University ID</span>
+                  <p className="font-medium">{scholar.universityId || '—'}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Major category</span>
+                  <p className="font-medium">{scholar.majorCategory || '—'}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Field of study</span>
+                  <p className="font-medium">{scholar.fieldOfStudy || '—'}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Start date</span>
+                  <p className="font-medium">{new Date(scholar.startDate).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Graduation date</span>
+                  <p className="font-medium">
+                    {scholar.graduationDate
+                      ? new Date(scholar.graduationDate).toLocaleDateString()
+                      : '—'}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Additional information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              {scholar.dietaryInformation && (
+                <div>
+                  <span className="text-muted-foreground">Dietary information</span>
+                  <p className="font-medium whitespace-pre-wrap">{scholar.dietaryInformation}</p>
+                </div>
+              )}
+              {scholar.kokorozashi && (
+                <div>
+                  <span className="text-muted-foreground">Kokorozashi</span>
+                  <p className="font-medium whitespace-pre-wrap">{scholar.kokorozashi}</p>
+                </div>
+              )}
+              {scholar.longTermCareerPlan && (
+                <div>
+                  <span className="text-muted-foreground">Long-term career plan</span>
+                  <p className="font-medium whitespace-pre-wrap">{scholar.longTermCareerPlan}</p>
+                </div>
+              )}
+              {scholar.postGraduationPlan && (
+                <div>
+                  <span className="text-muted-foreground">Post-graduation plan</span>
+                  <p className="font-medium whitespace-pre-wrap">{scholar.postGraduationPlan}</p>
+                </div>
+              )}
+              {scholar.bio && (
+                <div>
+                  <span className="text-muted-foreground">Bio</span>
+                  <p className="font-medium whitespace-pre-wrap">{scholar.bio}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="goals" className="space-y-4">
           <div className="flex items-center justify-between">

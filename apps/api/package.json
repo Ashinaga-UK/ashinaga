@@ -14,6 +14,7 @@
     "test:watch": "jest --watch",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:integration": "jest --config ./jest.integration.config.ts",
     "test:coverage": "jest --coverage && node scripts/update-coverage-title.js",
     "test:coverage:open": "jest --coverage && node scripts/update-coverage-title.js && open coverage/lcov-report/index.html",
     "lint": "biome check --write .",

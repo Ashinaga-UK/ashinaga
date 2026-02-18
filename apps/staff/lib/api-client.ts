@@ -26,7 +26,7 @@ export interface Scholar {
   university: string;
   location?: string | null;
   bio?: string | null;
-  status: 'active' | 'inactive' | 'on_hold';
+  status: 'active' | 'inactive' | 'on_hold' | 'archived';
   startDate: string;
   lastActivity?: string | null;
   goals: ScholarGoalsStats;
@@ -113,14 +113,57 @@ export interface ScholarProfile {
   university: string;
   location?: string | null;
   bio?: string | null;
-  status: 'active' | 'inactive' | 'on_hold';
+  status: 'active' | 'inactive' | 'on_hold' | 'archived';
   startDate: string;
   lastActivity?: string | null;
+  aaiScholarId?: string | null;
+  dateOfBirth?: string | null;
+  gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say' | null;
+  nationality?: string | null;
+  addressHomeCountry?: string | null;
+  passportExpirationDate?: string | null;
+  visaExpirationDate?: string | null;
+  emergencyContactCountryOfStudy?: string | null;
+  emergencyContactHomeCountry?: string | null;
+  graduationDate?: string | null;
+  universityId?: string | null;
+  dietaryInformation?: string | null;
+  kokorozashi?: string | null;
+  longTermCareerPlan?: string | null;
+  postGraduationPlan?: string | null;
+  majorCategory?: string | null;
+  fieldOfStudy?: string | null;
   goals: Goal[];
   tasks: Task[];
   documents: Document[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface UpdateScholarProfileData {
+  dateOfBirth?: string;
+  gender?: string;
+  nationality?: string;
+  phone?: string;
+  location?: string;
+  addressHomeCountry?: string;
+  passportExpirationDate?: string;
+  visaExpirationDate?: string;
+  emergencyContactCountryOfStudy?: string;
+  emergencyContactHomeCountry?: string;
+  program?: string;
+  university?: string;
+  year?: string;
+  startDate?: string;
+  graduationDate?: string;
+  universityId?: string;
+  dietaryInformation?: string;
+  kokorozashi?: string;
+  longTermCareerPlan?: string;
+  postGraduationPlan?: string;
+  bio?: string;
+  majorCategory?: string;
+  fieldOfStudy?: string;
 }
 
 export interface PaginationMeta {
@@ -144,7 +187,7 @@ export interface GetScholarsParams {
   program?: string;
   year?: string;
   university?: string;
-  status?: 'active' | 'inactive' | 'on_hold';
+  status?: 'active' | 'inactive' | 'on_hold' | 'archived';
   sortBy?: 'name' | 'lastActivity' | 'createdAt';
   sortOrder?: 'asc' | 'desc';
 }
@@ -235,6 +278,43 @@ export async function getScholar(id: string): Promise<Scholar> {
 
 export async function getScholarProfile(id: string): Promise<ScholarProfile> {
   return fetchAPI<ScholarProfile>(`/api/scholars/${id}/profile`);
+}
+
+export async function updateScholarProfile(
+  scholarId: string,
+  data: UpdateScholarProfileData
+): Promise<ScholarProfile> {
+  return fetchAPI<ScholarProfile>(`/api/scholars/${scholarId}/profile`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+/** Trigger download of all scholars CSV (staff). */
+export async function downloadAllScholarsCSV(): Promise<void> {
+  const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace(/\/$/, '');
+  const url = `${baseUrl}/api/scholars/export/csv`;
+  const res = await fetch(url, { credentials: 'include' });
+  if (!res.ok) throw new Error('Failed to download scholars CSV');
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `scholars-export-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+export async function archiveScholar(scholarId: string): Promise<Scholar> {
+  return fetchAPI<Scholar>(`/api/scholars/${scholarId}/archive`, {
+    method: 'PATCH',
+  });
+}
+
+export async function deleteScholar(scholarId: string): Promise<{ success: boolean }> {
+  return fetchAPI<{ success: boolean }>(`/api/scholars/${scholarId}`, {
+    method: 'DELETE',
+  });
 }
 
 // File download function
