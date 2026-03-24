@@ -9,6 +9,7 @@ import { MyProfile } from '../components/my-profile';
 import { RequestManagement } from '../components/request-management';
 import { ScholarManagementTable } from '../components/scholar-management-table';
 import { ScholarOnboarding } from '../components/scholar-onboarding';
+import { StaffInviteDialog } from '../components/staff-invite-dialog';
 import { ScholarProfilePage } from '../components/scholar-profile';
 import { TaskAssignment } from '../components/task-assignment';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
@@ -369,7 +370,7 @@ function StaffDashboardContent() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
                     <Button
                       className="h-20 flex-col gap-2 bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
                       onClick={() => router.push('?view=onboarding')}
@@ -410,6 +411,7 @@ function StaffDashboardContent() {
                       <FileText className="h-6 w-6" />
                       Review Requests
                     </Button>
+                    <StaffInviteDialog />
                   </div>
                 </CardContent>
               </Card>
