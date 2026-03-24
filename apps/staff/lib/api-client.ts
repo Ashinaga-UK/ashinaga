@@ -663,3 +663,62 @@ export async function createScholar(data: CreateScholarData): Promise<{
     body: JSON.stringify(data),
   });
 }
+
+// Invitations (staff portal)
+export interface InvitationSummary {
+  id: string;
+  email: string;
+  userType: 'staff' | 'scholar';
+  status: 'pending' | 'accepted' | 'expired' | 'cancelled';
+  expiresAt: string;
+  acceptedAt: string | null;
+  sentAt: string | null;
+  lastResentAt: string | null;
+  resentCount: string;
+  invitedBy: string;
+  createdAt: string;
+}
+
+export interface CreateInvitationResponse {
+  id: string;
+  email: string;
+  userType: string;
+  status: string;
+  expiresAt: string;
+  sentAt: string;
+}
+
+export async function createStaffInvitation(email: string): Promise<CreateInvitationResponse> {
+  return fetchAPI<CreateInvitationResponse>('/api/invitations', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email, userType: 'staff' }),
+  });
+}
+
+export async function getInvitations(
+  status?: 'pending' | 'accepted' | 'expired' | 'cancelled'
+): Promise<InvitationSummary[]> {
+  const qs = status ? `?status=${encodeURIComponent(status)}` : '';
+  return fetchAPI<InvitationSummary[]>(`/api/invitations${qs}`);
+}
+
+export async function resendInvitation(
+  invitationId: string
+): Promise<{ message: string; resentCount: number }> {
+  return fetchAPI<{ message: string; resentCount: number }>('/api/invitations/resend', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ invitationId }),
+  });
+}
+
+export async function cancelInvitation(invitationId: string): Promise<{ message: string }> {
+  return fetchAPI<{ message: string }>(`/api/invitations/${invitationId}`, {
+    method: 'DELETE',
+  });
+}
