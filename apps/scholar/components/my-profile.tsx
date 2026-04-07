@@ -147,7 +147,9 @@ export function MyProfile() {
     return (
       <Alert className="border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10">
         <AlertTriangle className="h-4 w-4" />
-        <AlertDescription className="text-red-800 dark:text-red-300">Failed to load profile. Please try again later.</AlertDescription>
+        <AlertDescription className="text-red-800 dark:text-red-300">
+          Failed to load profile. Please try again later.
+        </AlertDescription>
       </Alert>
     );
   }
@@ -378,7 +380,9 @@ export function MyProfile() {
                 rows={3}
                 placeholder="Please include Name, Email, Phone Number"
               />
-              <p className="text-xs text-muted-foreground mt-1">Please include Name, Email, Phone Number</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Please include Name, Email, Phone Number
+              </p>
             </div>
             <div>
               <Label htmlFor="emergencyContactHomeCountry">Emergency Contact (Home Country)</Label>
@@ -392,7 +396,9 @@ export function MyProfile() {
                 rows={3}
                 placeholder="Please include Name, Email, Phone Number"
               />
-              <p className="text-xs text-muted-foreground mt-1">Please include Name, Email, Phone Number</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Please include Name, Email, Phone Number
+              </p>
             </div>
           </CardContent>
         </Card>

@@ -1050,11 +1050,7 @@ export class ScholarsService {
   }
 
   async archiveScholar(scholarId: string): Promise<ScholarResponseDto> {
-    const [row] = await database
-      .select()
-      .from(scholars)
-      .where(eq(scholars.id, scholarId))
-      .limit(1);
+    const [row] = await database.select().from(scholars).where(eq(scholars.id, scholarId)).limit(1);
     if (!row) {
       throw new NotFoundException('Scholar not found');
     }
@@ -1066,21 +1062,23 @@ export class ScholarsService {
   }
 
   async deleteScholar(scholarId: string): Promise<void> {
-    const [row] = await database
-      .select()
-      .from(scholars)
-      .where(eq(scholars.id, scholarId))
-      .limit(1);
+    const [row] = await database.select().from(scholars).where(eq(scholars.id, scholarId)).limit(1);
     if (!row) {
       throw new NotFoundException('Scholar not found');
     }
-    const goalRows = await database.select({ id: goals.id }).from(goals).where(eq(goals.scholarId, scholarId));
+    const goalRows = await database
+      .select({ id: goals.id })
+      .from(goals)
+      .where(eq(goals.scholarId, scholarId));
     const goalIds = goalRows.map((r) => r.id);
     if (goalIds.length > 0) {
       await database.delete(goalComments).where(inArray(goalComments.goalId, goalIds));
     }
     await database.delete(goals).where(eq(goals.scholarId, scholarId));
-    const taskRows = await database.select({ id: tasks.id }).from(tasks).where(eq(tasks.scholarId, scholarId));
+    const taskRows = await database
+      .select({ id: tasks.id })
+      .from(tasks)
+      .where(eq(tasks.scholarId, scholarId));
     const taskIds = taskRows.map((r) => r.id);
     if (taskIds.length > 0) {
       const trRows = await database
@@ -1089,14 +1087,18 @@ export class ScholarsService {
         .where(inArray(taskResponses.taskId, taskIds));
       const trIds = trRows.map((r) => r.id);
       if (trIds.length > 0) {
-        await database.delete(taskAttachments).where(inArray(taskAttachments.taskResponseId, trIds));
+        await database
+          .delete(taskAttachments)
+          .where(inArray(taskAttachments.taskResponseId, trIds));
       }
       await database.delete(taskResponses).where(inArray(taskResponses.taskId, taskIds));
     }
     await database.delete(tasks).where(eq(tasks.scholarId, scholarId));
     await database.delete(documents).where(eq(documents.scholarId, scholarId));
     await database.delete(requests).where(eq(requests.scholarId, scholarId));
-    await database.delete(announcementRecipients).where(eq(announcementRecipients.scholarId, scholarId));
+    await database
+      .delete(announcementRecipients)
+      .where(eq(announcementRecipients.scholarId, scholarId));
     await database.delete(scholars).where(eq(scholars.id, scholarId));
   }
 }

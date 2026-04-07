@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { and, desc, eq } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { generateInvitationToken } from '../auth/auth.config';
 import { getDatabase } from '../db/connection';
 import { invitations, users } from '../db/schema';
@@ -40,23 +40,22 @@ export class InvitationsService {
       throw new ConflictException('A user with this email already exists');
     }
 
-    // Check for existing pending invitation
+    // Check for existing invitation with this email
     const existingInvitation = await db
       .select()
       .from(invitations)
-      .where(and(eq(invitations.email, emailLower), eq(invitations.status, 'pending')))
+      .where(eq(invitations.email, emailLower))
       .limit(1);
 
     if (existingInvitation[0]) {
-      // Check if invitation is still valid
-      if (new Date() < new Date(existingInvitation[0].expiresAt)) {
-        throw new ConflictException('An active invitation already exists for this email');
+      if (existingInvitation[0].status === 'pending') {
+        // Check if pending invitation is still valid
+        if (new Date() < new Date(existingInvitation[0].expiresAt)) {
+          throw new ConflictException('An active invitation already exists for this email');
+        }
       }
-      // Mark old invitation as expired
-      await db
-        .update(invitations)
-        .set({ status: 'expired', updatedAt: new Date() })
-        .where(eq(invitations.id, existingInvitation[0].id));
+      // Delete old invitation (expired, cancelled, or expired-pending) to free the unique constraint
+      await db.delete(invitations).where(eq(invitations.id, existingInvitation[0].id));
     }
 
     // Generate invitation token
