@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle, Download, Eye, Paperclip, Printer, Trash2, X } from 'lucide-react';
+import { CheckCircle, Download, Eye, Paperclip, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import {
   deleteRequest,
@@ -9,7 +9,6 @@ import {
   updateRequestStatus,
 } from '../lib/api-client';
 import { useSession } from '../lib/auth-client';
-import { useToast } from './ui/use-toast';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
@@ -24,6 +23,7 @@ import {
 } from './ui/dialog';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
+import { useToast } from './ui/use-toast';
 
 interface RequestManagementProps {
   request: Request;
@@ -119,17 +119,7 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
   };
 
   const handlePrint = () => {
-    // Open print view in a new window
-    const printWindow = window.open(
-      `/print-request/${request.id}`,
-      '_blank',
-      'width=800,height=1000'
-    );
-    if (printWindow) {
-      printWindow.addEventListener('load', () => {
-        printWindow.print();
-      });
-    }
+    window.open(`/print-request/${request.id}`, '_blank');
   };
 
   const getPriorityColor = (priority: string) => {
@@ -328,8 +318,8 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
             {/* Print Button for approved and rejected requests */}
             {(request.status === 'approved' || request.status === 'rejected') && (
               <Button size="sm" variant="outline" onClick={handlePrint}>
-                <Printer className="h-4 w-4 mr-1" />
-                Print
+                <Download className="h-4 w-4 mr-1" />
+                Download Application
               </Button>
             )}
 

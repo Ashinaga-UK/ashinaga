@@ -3,8 +3,9 @@
 import { Printer } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { getRequests, type Request } from '../../../lib/api-client';
 import { Button } from '../../../components/ui/button';
+import { getRequests, type Request } from '../../../lib/api-client';
+import { getFormDataDisplayItems, REQUEST_TYPE_LABELS } from '../../../lib/form-data-labels';
 
 export default function PrintRequestPage() {
   const params = useParams();
@@ -70,8 +71,8 @@ export default function PrintRequestPage() {
         <div className="border-b-2 border-gray-900 pb-4 mb-6">
           <div className="flex justify-between items-start">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Ashinaga Scholar Request</h1>
-              <p className="text-sm text-gray-600 mt-1">Official Request Proof</p>
+              <h1 className="text-3xl font-bold text-gray-900">Ashinaga UK</h1>
+              <p className="text-sm text-gray-600 mt-1">Scholar Application</p>
             </div>
             <div className="text-right">
               <p className="text-sm font-medium text-gray-900">Request ID</p>
@@ -147,6 +148,30 @@ export default function PrintRequestPage() {
             </div>
           </div>
         </div>
+
+        {/* Application Responses (formData) */}
+        {request.formData && Object.keys(request.formData).length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-3 border-b border-gray-300 pb-2">
+              {REQUEST_TYPE_LABELS[request.type] || request.type.replace(/_/g, ' ')} — Application
+              Responses
+            </h2>
+            <div className="space-y-3">
+              {getFormDataDisplayItems(request.type, request.formData).map((item, index) => (
+                <div key={index} className="break-inside-avoid">
+                  <p className="text-sm font-medium text-gray-700">{item.label}</p>
+                  {item.value.length > 100 ? (
+                    <p className="text-base text-gray-900 whitespace-pre-wrap bg-gray-50 p-3 rounded border border-gray-200">
+                      {item.value}
+                    </p>
+                  ) : (
+                    <p className="text-base text-gray-900">{item.value}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Review Details */}
         {request.reviewComment && (
@@ -238,13 +263,16 @@ export default function PrintRequestPage() {
         {/* Footer */}
         <div className="mt-12 pt-6 border-t-2 border-gray-300">
           <div className="text-center text-sm text-gray-600">
-            <p>This document serves as official proof of the request and its approval status.</p>
+            <p>
+              This document serves as official proof of the scholar's application and its review
+              status.
+            </p>
             <p className="mt-1">
               Generated on {new Date().toLocaleString('en-GB', { dateStyle: 'full' })} at{' '}
               {new Date().toLocaleString('en-GB', { timeStyle: 'short' })}
             </p>
             <p className="mt-4 font-medium text-gray-900">
-              © {new Date().getFullYear()} Ashinaga. All rights reserved.
+              © {new Date().getFullYear()} Ashinaga UK. All rights reserved.
             </p>
           </div>
         </div>
@@ -267,6 +295,9 @@ export default function PrintRequestPage() {
           .break-inside-avoid {
             break-inside: avoid;
             page-break-inside: avoid;
+          }
+          h2 {
+            break-after: avoid;
           }
         }
       `}</style>

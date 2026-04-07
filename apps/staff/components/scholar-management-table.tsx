@@ -248,11 +248,7 @@ export function ScholarManagementTable({
             }
           />
           */}
-          <Button
-            variant="outline"
-            onClick={handleExportCsv}
-            disabled={exportingCsv}
-          >
+          <Button variant="outline" onClick={handleExportCsv} disabled={exportingCsv}>
             {exportingCsv ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
@@ -271,7 +267,10 @@ export function ScholarManagementTable({
       </div>
 
       <div className="flex items-center gap-4 flex-wrap">
-        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}
+        >
           <SelectTrigger className="w-[140px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
