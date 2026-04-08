@@ -39,42 +39,29 @@ async function resetDatabase() {
   const db = drizzle(pool);
 
   try {
-    console.log('🗑️  Dropping all tables...');
+    console.log('🗑️  Dropping all tables, enums, and schemas...');
 
-    // Drop all tables in the correct order (respecting foreign keys)
-    await db.execute(sql`DROP TABLE IF EXISTS request_audit_logs CASCADE`);
-    await db.execute(sql`DROP TABLE IF EXISTS request_attachments CASCADE`);
-    await db.execute(sql`DROP TABLE IF EXISTS requests CASCADE`);
-    await db.execute(sql`DROP TABLE IF EXISTS documents CASCADE`);
-    await db.execute(sql`DROP TABLE IF EXISTS milestones CASCADE`);
-    await db.execute(sql`DROP TABLE IF EXISTS goals CASCADE`);
-    await db.execute(sql`DROP TABLE IF EXISTS tasks CASCADE`);
-    await db.execute(sql`DROP TABLE IF EXISTS announcement_recipients CASCADE`);
-    await db.execute(sql`DROP TABLE IF EXISTS announcement_filters CASCADE`);
-    await db.execute(sql`DROP TABLE IF EXISTS announcements CASCADE`);
-    await db.execute(sql`DROP TABLE IF EXISTS scholars CASCADE`);
-    await db.execute(sql`DROP TABLE IF EXISTS staff CASCADE`);
-    await db.execute(sql`DROP TABLE IF EXISTS invitations CASCADE`);
-    await db.execute(sql`DROP TABLE IF EXISTS session CASCADE`);
-    await db.execute(sql`DROP TABLE IF EXISTS account CASCADE`);
-    await db.execute(sql`DROP TABLE IF EXISTS "user" CASCADE`);
+    // Drop ALL tables in the public schema dynamically (no hardcoded list to maintain)
+    await db.execute(sql`
+      DO $$ DECLARE r RECORD;
+      BEGIN
+        FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP
+          EXECUTE 'DROP TABLE IF EXISTS "' || r.tablename || '" CASCADE';
+        END LOOP;
+      END $$
+    `);
 
-    // Drop enums
-    await db.execute(sql`DROP TYPE IF EXISTS user_type CASCADE`);
-    await db.execute(sql`DROP TYPE IF EXISTS user_role CASCADE`);
-    await db.execute(sql`DROP TYPE IF EXISTS scholar_status CASCADE`);
-    await db.execute(sql`DROP TYPE IF EXISTS task_type CASCADE`);
-    await db.execute(sql`DROP TYPE IF EXISTS task_priority CASCADE`);
-    await db.execute(sql`DROP TYPE IF EXISTS task_status CASCADE`);
-    await db.execute(sql`DROP TYPE IF EXISTS goal_category CASCADE`);
-    await db.execute(sql`DROP TYPE IF EXISTS goal_status CASCADE`);
-    await db.execute(sql`DROP TYPE IF EXISTS request_type CASCADE`);
-    await db.execute(sql`DROP TYPE IF EXISTS request_status CASCADE`);
-    await db.execute(sql`DROP TYPE IF EXISTS request_priority CASCADE`);
-    await db.execute(sql`DROP TYPE IF EXISTS invitation_status CASCADE`);
+    // Drop ALL custom enum types in the public schema dynamically
+    await db.execute(sql`
+      DO $$ DECLARE r RECORD;
+      BEGIN
+        FOR r IN (SELECT t.typname FROM pg_type t JOIN pg_namespace n ON t.typnamespace = n.oid WHERE n.nspname = 'public' AND t.typtype = 'e') LOOP
+          EXECUTE 'DROP TYPE IF EXISTS "' || r.typname || '" CASCADE';
+        END LOOP;
+      END $$
+    `);
 
-    // Drop Drizzle migration tables
-    await db.execute(sql`DROP TABLE IF EXISTS drizzle.__drizzle_migrations CASCADE`);
+    // Drop Drizzle migration schema
     await db.execute(sql`DROP SCHEMA IF EXISTS drizzle CASCADE`);
 
     console.log('✅ All tables dropped successfully!');
