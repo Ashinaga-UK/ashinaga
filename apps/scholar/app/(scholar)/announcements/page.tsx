@@ -29,7 +29,9 @@ export default function AnnouncementsPage() {
           <CardContent className="pt-6">
             <div className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
-              <p className="text-red-600 dark:text-red-400">Failed to load announcements. Please try again later.</p>
+              <p className="text-red-600 dark:text-red-400">
+                Failed to load announcements. Please try again later.
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -39,7 +41,9 @@ export default function AnnouncementsPage() {
             <div className="text-center py-8">
               <Bell className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
               <p className="text-muted-foreground">No announcements yet</p>
-              <p className="text-sm text-muted-foreground mt-2">Check back later for updates from staff</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Check back later for updates from staff
+              </p>
             </div>
           </CardContent>
         </Card>

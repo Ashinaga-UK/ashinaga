@@ -20,8 +20,7 @@ export default async function globalSetup(): Promise<void> {
     process.env.DB_NAME = process.env.DB_NAME || 'ashinaga_integration';
     process.env.DB_SSL = process.env.DB_SSL || 'false';
     process.env.BETTER_AUTH_SECRET =
-      process.env.BETTER_AUTH_SECRET ||
-      'integration-test-secret-key-minimum-32-characters-long';
+      process.env.BETTER_AUTH_SECRET || 'integration-test-secret-key-minimum-32-characters-long';
     process.env.BETTER_AUTH_URL = process.env.BETTER_AUTH_URL || 'http://localhost:4000';
   }
 

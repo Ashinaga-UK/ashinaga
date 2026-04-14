@@ -1,9 +1,20 @@
+import * as readline from 'node:readline';
 import * as bcrypt from 'bcryptjs';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { generateInvitationToken } from '../auth/auth.config';
 import * as schema from './schema';
+
+function promptEmail(): Promise<string> {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise((resolve) => {
+    rl.question('📧 Enter your email for staff invitation (or press Enter to skip): ', (answer) => {
+      rl.close();
+      resolve(answer.trim());
+    });
+  });
+}
 
 // Generate Better Auth compatible IDs
 function generateId(): string {
@@ -769,6 +780,7 @@ async function populateDevData() {
         acceptedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
         userId: user.id,
         scholarData: JSON.stringify({
+          name: fullName,
           program,
           year,
           university,
@@ -1156,74 +1168,43 @@ async function populateDevData() {
       uploadedBy: adminUser.id,
     });
 
-    // Create invitations for real staff members
-    console.log('📧 Creating staff invitations...');
+    // Create invitations
+    console.log('📧 Creating invitations...');
     const invitations: InvitationRow[] = [];
 
-    // Real Ashinaga staff invitations
-    invitations.push(
-      await upsertInvitationByEmail({
-        email: 'kimeshan@gmail.com',
+    // Prompt developer for their staff invitation email
+    const devEmail = await promptEmail();
+    if (devEmail) {
+      const staffInvitation = await upsertInvitationByEmail({
+        email: devEmail,
         userType: 'staff',
         invitedBy: adminUser.id,
         token: generateInvitationToken(),
         expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
         sentAt: new Date(),
-      })
-    );
-
-    invitations.push(
-      await upsertInvitationByEmail({
-        email: 'mcfarlane.j@ashinaga.org',
-        userType: 'staff',
-        invitedBy: adminUser.id,
-        token: generateInvitationToken(),
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-        sentAt: new Date(),
-      })
-    );
-
-    invitations.push(
-      await upsertInvitationByEmail({
-        email: 'chukwu.o@ashinaga.org',
-        userType: 'staff',
-        invitedBy: adminUser.id,
-        token: generateInvitationToken(),
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-        sentAt: new Date(),
-      })
-    );
-
-    invitations.push(
-      await upsertInvitationByEmail({
-        email: 'harty.s@ashinaga.org',
-        userType: 'staff',
-        invitedBy: adminUser.id,
-        token: generateInvitationToken(),
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-        sentAt: new Date(),
-      })
-    );
+      });
+      invitations.push(staffInvitation);
+    }
 
     // Demo scholar invitation
-    invitations.push(
-      await upsertInvitationByEmail({
-        email: 'new.scholar@example.com',
-        userType: 'scholar',
-        invitedBy: adminUser.id,
-        token: generateInvitationToken(),
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        sentAt: new Date(),
-        scholarData: JSON.stringify({
-          program: 'Engineering',
-          year: '2025',
-          university: 'University of Manchester',
-          location: 'Manchester, UK',
-        }),
-      })
-    );
+    const scholarInvitation = await upsertInvitationByEmail({
+      email: 'new.scholar@example.com',
+      userType: 'scholar',
+      invitedBy: adminUser.id,
+      token: generateInvitationToken(),
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      sentAt: new Date(),
+      scholarData: JSON.stringify({
+        name: 'New Scholar',
+        program: 'Engineering',
+        year: '2025',
+        university: 'University of Manchester',
+        location: 'Manchester, UK',
+      }),
+    });
+    invitations.push(scholarInvitation);
 
-    console.log('✅ Development data populated successfully!');
+    console.log('\n✅ Development data populated successfully!');
     console.log(`Created or updated:
     - ${2} system users for seed data (not for login)
     - ${scholars.length} scholars
@@ -1234,12 +1215,12 @@ async function populateDevData() {
     - ${4} documents
     - ${invitations.length} invitations`);
 
-    console.log('\n📧 Staff invitations created for:');
-    console.log('- kimeshan@gmail.com');
-    console.log('- mcfarlane.j@ashinaga.org');
-    console.log('- chukwu.o@ashinaga.org');
-    console.log('- harty.s@ashinaga.org');
-    console.log('\nStaff members should use these invitations to sign up via the invite link.');
+    if (devEmail) {
+      console.log(`\n📧 Staff invitation created for: ${devEmail}`);
+      console.log('Use the invitation token from the database to sign up via the staff portal.');
+    } else {
+      console.log('\n📧 No staff invitation created (skipped).');
+    }
 
     console.log('\n🎓 Test data:');
     console.log('- 30 demo scholars created (amara.okafor0@example.com, etc.)');

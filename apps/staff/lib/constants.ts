@@ -311,7 +311,10 @@ export function normalizeLocation(
   if (!trimmed) return '';
   if (countryOptions.includes(trimmed)) return trimmed;
   // Looks like an address: try to find a country in it (e.g. last part after comma, or substring)
-  const parts = trimmed.split(/[,;]/).map((p) => p.trim()).filter(Boolean);
+  const parts = trimmed
+    .split(/[,;]/)
+    .map((p) => p.trim())
+    .filter(Boolean);
   for (let i = parts.length - 1; i >= 0; i--) {
     const part = parts[i];
     if (part && countryOptions.includes(part)) return part;
