@@ -3,6 +3,8 @@
 import {
   AlertCircle,
   Archive,
+  ChevronLeft,
+  ChevronRight,
   Download,
   Eye,
   Loader2,
@@ -13,10 +15,11 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  type GetScholarsParams,
   downloadAllScholarsCSV,
+  type GetScholarsParams,
   getFilterOptions,
   getScholars,
+  type PaginationMeta,
   type Scholar,
   type ScholarFilterOptions,
 } from '../lib/api-client';
@@ -53,7 +56,7 @@ export function ScholarManagementTable({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [_totalPages, setTotalPages] = useState(1);
+  const [pagination, setPagination] = useState<PaginationMeta | null>(null);
 
   const [programFilter, setProgramFilter] = useState('all');
   const [yearFilter, setYearFilter] = useState('all');
@@ -84,6 +87,12 @@ export function ScholarManagementTable({
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
+  const scholarListFilterKey = `${programFilter}|${yearFilter}|${universityFilter}|${statusFilter}`;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset pagination when program/year/university/status filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [scholarListFilterKey]);
+
   const fetchScholars = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -103,7 +112,7 @@ export function ScholarManagementTable({
 
       const response = await getScholars(params);
       setScholars(response.data);
-      setTotalPages(response.pagination.totalPages);
+      setPagination(response.pagination);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load scholars');
       console.error('Error fetching scholars:', err);
@@ -514,6 +523,52 @@ export function ScholarManagementTable({
           </TableBody>
         </Table>
       </div>
+
+      {pagination && pagination.totalItems > 0 && (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-gray-600">
+          <p>
+            Showing{' '}
+            <span className="font-medium text-gray-900">
+              {(pagination.page - 1) * pagination.limit + 1}
+            </span>
+            –
+            <span className="font-medium text-gray-900">
+              {Math.min(pagination.page * pagination.limit, pagination.totalItems)}
+            </span>{' '}
+            of <span className="font-medium text-gray-900">{pagination.totalItems}</span> scholars
+            {pagination.totalPages > 1 && (
+              <>
+                {' '}
+                (page {pagination.page} of {pagination.totalPages})
+              </>
+            )}
+          </p>
+          {pagination.totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!pagination.hasPrev}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Previous
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!pagination.hasNext}
+                onClick={() => setCurrentPage((p) => p + 1)}
+              >
+                Next
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
