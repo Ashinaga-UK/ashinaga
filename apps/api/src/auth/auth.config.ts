@@ -340,7 +340,7 @@ If you didn't request this, you can ignore this email.
           // Return user data with userType from invitation
           console.log('Returning user data for signup with name:', name);
           return {
-            email,
+            email: emailLower,
             name: name || '', // Use the name from signup form
             userType: invitation.userType,
             emailVerified: false,

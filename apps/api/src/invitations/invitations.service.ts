@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, sql } from 'drizzle-orm';
 import { generateInvitationToken } from '../auth/auth.config';
 import { getDatabase } from '../db/connection';
 import { invitations, users } from '../db/schema';
@@ -33,8 +33,12 @@ export class InvitationsService {
     console.log('  - User type:', dto.userType);
     console.log('==========================================');
 
-    // Check if user already exists
-    const existingUser = await db.select().from(users).where(eq(users.email, emailLower)).limit(1);
+    // Check if user already exists (case-insensitive; signup may preserve typed casing)
+    const existingUser = await db
+      .select()
+      .from(users)
+      .where(sql`lower(trim(${users.email})) = ${emailLower}`)
+      .limit(1);
 
     if (existingUser[0]) {
       throw new ConflictException('A user with this email already exists');
