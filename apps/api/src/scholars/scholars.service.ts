@@ -38,22 +38,25 @@ export class ScholarsService {
     createScholarDto: CreateScholarDto,
     createdBy: string
   ): Promise<{ success: boolean; message: string; scholar?: any }> {
-    // Check if a user with this email already exists
+    // Match invitation + auth flows (always lowercase in `invitations`; users may differ by case from signup)
+    const emailNormalized = createScholarDto.email.trim().toLowerCase();
+
+    // Check if a user with this email already exists (case-insensitive)
     const existingUser = await database
       .select()
       .from(users)
-      .where(eq(users.email, createScholarDto.email))
+      .where(sql`lower(trim(${users.email})) = ${emailNormalized}`)
       .limit(1);
 
     if (existingUser.length > 0) {
       throw new ConflictException('A user with this email already exists');
     }
 
-    // Check if there's an existing pending invitation
+    // Check if there's an existing pending invitation (emails are stored lowercase)
     const existingInvitation = await database
       .select()
       .from(invitations)
-      .where(and(eq(invitations.email, createScholarDto.email), eq(invitations.status, 'pending')))
+      .where(and(eq(invitations.email, emailNormalized), eq(invitations.status, 'pending')))
       .limit(1);
 
     if (existingInvitation.length > 0) {
@@ -62,7 +65,7 @@ export class ScholarsService {
 
     // Create the invitation with scholar data
     const invitationData = {
-      email: createScholarDto.email,
+      email: emailNormalized,
       userType: 'scholar' as const,
       scholarData: {
         name: createScholarDto.name,
@@ -96,7 +99,7 @@ export class ScholarsService {
 
     return {
       success: true,
-      message: `Scholar invitation sent to ${createScholarDto.email}`,
+      message: `Scholar invitation sent to ${emailNormalized}`,
       scholar: invitation,
     };
   }
