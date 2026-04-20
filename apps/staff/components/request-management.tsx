@@ -9,7 +9,6 @@ import {
   updateRequestStatus,
 } from '../lib/api-client';
 import { useSession } from '../lib/auth-client';
-import { getFormDataDisplayItems, REQUEST_TYPE_LABELS } from '../lib/form-data-labels';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
@@ -234,7 +233,7 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
                       Review
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogContent>
                     <DialogHeader>
                       <DialogTitle>Review Request</DialogTitle>
                       <DialogDescription>
@@ -278,28 +277,6 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
                           </div>
                         )}
                       </div>
-                      {request.formData && Object.keys(request.formData).length > 0 && (
-                        <div className="bg-gray-50 p-4 rounded-lg">
-                          <h4 className="font-medium mb-2">
-                            {REQUEST_TYPE_LABELS[request.type] || request.type.replace(/_/g, ' ')} —
-                            Submission Details
-                          </h4>
-                          <div className="space-y-2">
-                            {getFormDataDisplayItems(request.type, request.formData).map(
-                              (item, index) => (
-                                <div key={index}>
-                                  <p className="text-sm text-gray-600">
-                                    <strong>{item.label}:</strong>
-                                  </p>
-                                  <p className="text-sm text-gray-800 ml-2 whitespace-pre-wrap">
-                                    {item.value}
-                                  </p>
-                                </div>
-                              )
-                            )}
-                          </div>
-                        </div>
-                      )}
                       <div>
                         <Label htmlFor="approvalComment">Comments (Optional)</Label>
                         <Textarea
@@ -357,7 +334,7 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
                     View Review
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Review Details</DialogTitle>
                     <DialogDescription>
@@ -400,28 +377,6 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
                         </div>
                       )}
                     </div>
-                    {request.formData && Object.keys(request.formData).length > 0 && (
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="font-medium mb-2">
-                          {REQUEST_TYPE_LABELS[request.type] || request.type.replace(/_/g, ' ')} —
-                          Submission Details
-                        </h4>
-                        <div className="space-y-2">
-                          {getFormDataDisplayItems(request.type, request.formData).map(
-                            (item, index) => (
-                              <div key={index}>
-                                <p className="text-sm text-gray-600">
-                                  <strong>{item.label}:</strong>
-                                </p>
-                                <p className="text-sm text-gray-800 ml-2 whitespace-pre-wrap">
-                                  {item.value}
-                                </p>
-                              </div>
-                            )
-                          )}
-                        </div>
-                      </div>
-                    )}
                     <div>
                       <Label>Review Decision</Label>
                       <div className="mt-2">
