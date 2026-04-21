@@ -4,7 +4,7 @@
   "description": "Linear ticket creation skill for VS Code Copilot and Claude Code",
   "type": "module",
   "scripts": {
-    "dev": "ts-node src/index.ts"
+    "dev": "tsx src/dev.ts"
   },
   "dependencies": {
     "@linear/sdk": "^82.0.0"

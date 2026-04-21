@@ -270,6 +270,23 @@ This will install all packages needed for all apps and packages in the monorepo.
    NEXT_PUBLIC_API_URL=http://localhost:4000
    ```
 
+#### Agent Skills Environment Variables (Optional)
+
+If you use the Linear ticket helper in `packages/agent-skills`:
+
+1. Copy the example file:
+   ```bash
+   cd packages/agent-skills
+   cp .env.example .env.local
+   ```
+
+2. Add your personal key:
+   ```env
+   LINEAR_API_KEY=lin_api_...
+   ```
+
+`LINEAR_API_KEY` is personal and should stay local. Do not commit `.env.local`.
+
 ### Step 5: Start the Database
 
 From the root directory:
@@ -350,6 +367,19 @@ This starts all applications:
 
 **Problem**: TypeScript errors
 - **Solution**: Run `pnpm build` from root to build packages first
+
+### Adding New Skill Packages (Contributors)
+
+When adding a new skill package, follow the shared skill contract so root `pnpm dev` remains stable for all contributors.
+
+1. Read [Skill Package Contract](./SKILL_PACKAGE_CONTRACT.md)
+2. Start from templates in [docs/skills-template/](./skills-template)
+3. Ensure your package passes:
+   ```bash
+   pnpm check:skills
+   ```
+
+`pnpm lint` and CI enforce this contract.
 
 ---
 

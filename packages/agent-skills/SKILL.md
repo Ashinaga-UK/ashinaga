@@ -35,7 +35,12 @@
 1. Create a Linear API key: Linear → Settings → Account → Security & Access → API Keys
 	- Permission needed: Create issues only
 	- Suggested name: {your-project}-turborepo-cli
-2. Export it: add `export LINEAR_API_KEY="lin_api_..."` to ~/.zshrc then `source ~/.zshrc`
+2. Configure package-local env file:
+	```bash
+	cd packages/agent-skills
+	cp .env.example .env.local
+	```
+	Then set `LINEAR_API_KEY` in `.env.local`
 3. Find your teamId:
 	curl -s -X POST -H "Content-Type: application/json" \
 	  -H "Authorization: $LINEAR_API_KEY" \
@@ -45,7 +50,7 @@
 
 ## Troubleshooting
 
-- "Authentication required" → run: source ~/.zshrc
+- "Missing API key" → add `LINEAR_API_KEY` to `packages/agent-skills/.env.local`
 - "Entity not found: Team" → wrong teamId, re-run the curl above
 - "command not found" → run: pnpm install from repo root
 
@@ -56,15 +61,21 @@ Creates a Linear issue with Ashinaga-formatted context from the terminal.
 ## Command
 
 ```bash
-pnpm --filter agent-skills dev "<ticket title>"
+pnpm --filter @ashinaga/agent-skills dev "<ticket title>"
 ```
 
 ## Examples
 
 ```bash
-pnpm --filter agent-skills dev "Fix login"
-pnpm --filter agent-skills dev "Scholar dashboard filtering is broken"
+pnpm --filter @ashinaga/agent-skills dev "Fix login"
+pnpm --filter @ashinaga/agent-skills dev "Scholar dashboard filtering is broken"
 ```
+
+## Monorepo dev behavior
+
+- Root `pnpm dev` runs this package `dev` task via Turborepo.
+- If no ticket title is provided, this task exits successfully with a skip message.
+- Ticket creation only runs when you intentionally provide a title argument.
 
 ## Required environment variables
 
@@ -110,7 +121,7 @@ On success, prints:
 ## Quick test
 
 ```bash
-pnpm --filter agent-skills dev "Fix login"
+pnpm --filter @ashinaga/agent-skills dev "Fix login"
 ```
 
 Expected result: a new issue like `ENG-123` is created and URL is printed.
