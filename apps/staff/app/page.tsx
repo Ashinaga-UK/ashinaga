@@ -57,6 +57,9 @@ function StaffDashboardContent() {
     'profile' | 'goals' | 'tasks' | 'documents'
   >((scholarTabFromUrl as 'profile' | 'goals' | 'tasks' | 'documents') || 'profile');
   const [requestStatusFilter, setRequestStatusFilter] = useState('all');
+  const [requestArchiveFilter, setRequestArchiveFilter] = useState<'active' | 'archived' | 'all'>(
+    'active'
+  );
   const [requests, setRequests] = useState<Request[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(true);
   const [requestsError, setRequestsError] = useState<string | null>(null);
@@ -156,6 +159,7 @@ function StaffDashboardContent() {
                 | 'reviewed'
                 | 'commented')
             : undefined,
+        archivedFilter: requestArchiveFilter,
         sortBy: 'submittedDate',
         sortOrder: 'desc',
       });
@@ -166,7 +170,7 @@ function StaffDashboardContent() {
     } finally {
       setRequestsLoading(false);
     }
-  }, [requestStatusFilter]);
+  }, [requestArchiveFilter, requestStatusFilter]);
 
   const fetchScholarStats = useCallback(async () => {
     setScholarStatsLoading(true);
@@ -452,18 +456,35 @@ function StaffDashboardContent() {
                       <CardTitle>Scholar Requests</CardTitle>
                       <CardDescription>Review and respond to scholar submissions</CardDescription>
                     </div>
-                    <Select value={requestStatusFilter} onValueChange={setRequestStatusFilter}>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Filter by status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Statuses</SelectItem>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="approved">Approved</SelectItem>
-                        <SelectItem value="rejected">Rejected</SelectItem>
-                        <SelectItem value="reviewed">Reviewed</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="flex items-center gap-2">
+                      <Select value={requestStatusFilter} onValueChange={setRequestStatusFilter}>
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="Filter by status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Statuses</SelectItem>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="approved">Approved</SelectItem>
+                          <SelectItem value="rejected">Rejected</SelectItem>
+                          <SelectItem value="reviewed">Reviewed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={requestArchiveFilter}
+                        onValueChange={(value) =>
+                          setRequestArchiveFilter(value as 'active' | 'archived' | 'all')
+                        }
+                      >
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="Filter by archived state" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active">Active only</SelectItem>
+                          <SelectItem value="archived">Archived only</SelectItem>
+                          <SelectItem value="all">All</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>

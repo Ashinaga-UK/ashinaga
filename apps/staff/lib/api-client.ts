@@ -82,6 +82,10 @@ export interface Task {
   dueDate: string;
   status: 'pending' | 'in_progress' | 'completed';
   assignedBy: string;
+  scholarId: string;
+  archived: boolean;
+  archivedAt?: string | null;
+  archivedBy?: string | null;
   completedAt?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -358,6 +362,9 @@ export interface Request {
   priority: 'high' | 'medium' | 'low';
   status: 'pending' | 'approved' | 'rejected' | 'reviewed' | 'commented';
   submittedDate: string;
+  archived: boolean;
+  archivedAt?: string | null;
+  archivedBy?: string | null;
   reviewedBy?: string | null;
   reviewComment?: string | null;
   reviewDate?: string | null;
@@ -378,6 +385,7 @@ export interface GetRequestsParams {
     | 'requirement_submission';
   status?: 'pending' | 'approved' | 'rejected' | 'reviewed' | 'commented';
   priority?: 'high' | 'medium' | 'low';
+  archivedFilter?: 'active' | 'archived' | 'all';
   sortBy?: 'submittedDate' | 'status' | 'priority' | 'createdAt';
   sortOrder?: 'asc' | 'desc';
 }
@@ -438,11 +446,19 @@ export async function updateRequestStatus(
   });
 }
 
-export async function deleteRequest(requestId: string): Promise<void> {
+export async function archiveRequest(requestId: string): Promise<void> {
   return fetchAPI(`/api/requests/${requestId}`, {
     method: 'DELETE',
   });
 }
+
+export async function restoreRequest(requestId: string): Promise<void> {
+  return fetchAPI(`/api/requests/${requestId}/restore`, {
+    method: 'PATCH',
+  });
+}
+
+export const deleteRequest = archiveRequest;
 
 // Announcement types and functions
 export interface ScholarFilter {
@@ -619,6 +635,18 @@ export async function updateTask(taskId: string, data: UpdateTaskData): Promise<
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(data),
+  });
+}
+
+export async function archiveTask(taskId: string): Promise<Task> {
+  return fetchAPI<Task>(`/api/tasks/${taskId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function restoreTask(taskId: string): Promise<Task> {
+  return fetchAPI<Task>(`/api/tasks/${taskId}/restore`, {
+    method: 'PATCH',
   });
 }
 

@@ -3,9 +3,10 @@
 import { CheckCircle, Download, Eye, Paperclip, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import {
-  deleteRequest,
+  archiveRequest,
   getFileDownloadUrl,
   type Request,
+  restoreRequest,
   updateRequestStatus,
 } from '../lib/api-client';
 import { useSession } from '../lib/auth-client';
@@ -94,25 +95,32 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
   };
 
   const handleDelete = async () => {
-    if (
-      !window.confirm('Are you sure you want to delete this request? This action cannot be undone.')
-    ) {
+    const action = request.archived ? 'restore' : 'archive';
+
+    if (!window.confirm(`Are you sure you want to ${action} this request?`)) {
       return;
     }
 
     try {
-      await deleteRequest(request.id);
+      if (request.archived) {
+        await restoreRequest(request.id);
+      } else {
+        await archiveRequest(request.id);
+      }
+
       toast({
-        title: 'Request deleted',
-        description: 'The request has been successfully deleted.',
+        title: request.archived ? 'Request restored' : 'Request archived',
+        description: request.archived
+          ? 'The request has been successfully restored.'
+          : 'The request has been successfully archived.',
       });
       // Notify parent to refresh
-      onStatusUpdate(request.id, 'deleted');
+      onStatusUpdate(request.id, request.archived ? 'restored' : 'archived');
     } catch (error) {
-      console.error('Failed to delete request:', error);
+      console.error(`Failed to ${request.archived ? 'restore' : 'archive'} request:`, error);
       toast({
-        title: 'Delete failed',
-        description: 'Failed to delete the request. Please try again.',
+        title: request.archived ? 'Restore failed' : 'Archive failed',
+        description: `Failed to ${request.archived ? 'restore' : 'archive'} the request. Please try again.`,
         variant: 'destructive',
       });
     }
@@ -411,14 +419,18 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
               </Dialog>
             )}
 
-            {/* Delete Button */}
+            {/* Archive / Restore Button */}
             <Button
               size="sm"
               variant="ghost"
-              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+              className={
+                request.archived
+                  ? 'text-ashinaga-teal-600 hover:text-ashinaga-teal-700 hover:bg-ashinaga-teal-50'
+                  : 'text-red-500 hover:text-red-700 hover:bg-red-50'
+              }
               onClick={handleDelete}
             >
-              <Trash2 className="h-4 w-4" />
+              {request.archived ? 'Restore' : <Trash2 className="h-4 w-4" />}
             </Button>
           </div>
         </div>

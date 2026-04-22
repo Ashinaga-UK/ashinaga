@@ -140,7 +140,9 @@ describe('RequestsService', () => {
       const mockDatabase = require('../db/connection').database;
       mockDatabase.select = jest.fn().mockReturnValue({
         from: jest.fn().mockReturnValue({
-          groupBy: jest.fn().mockResolvedValue(mockStats),
+          where: jest.fn().mockReturnValue({
+            groupBy: jest.fn().mockResolvedValue(mockStats),
+          }),
         }),
       });
 

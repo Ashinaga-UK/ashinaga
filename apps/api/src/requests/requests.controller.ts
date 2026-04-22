@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -75,12 +76,12 @@ export class RequestsController {
 
   @Get('my-requests')
   @UseGuards(AuthGuard)
-  async getMyRequests(@Req() req: AuthenticatedRequest) {
+  async getMyRequests(@Req() req: AuthenticatedRequest, @Query('includeArchived') includeArchived?: string) {
     const userId = req.user?.id;
     if (!userId) {
       throw new Error('User not authenticated');
     }
-    return this.requestsService.getRequestsForScholar(userId);
+    return this.requestsService.getRequestsForScholar(userId, includeArchived === 'true');
   }
 
   @Post()
@@ -104,5 +105,16 @@ export class RequestsController {
       throw new Error('User not authenticated');
     }
     return this.requestsService.archiveRequest(id, userId);
+  }
+
+  @Patch(':id/restore')
+  @UseGuards(AuthGuard)
+  async restoreRequest(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new Error('User not authenticated');
+    }
+
+    return this.requestsService.restoreRequest(id, userId);
   }
 }
