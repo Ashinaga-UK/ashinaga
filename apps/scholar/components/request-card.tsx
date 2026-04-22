@@ -1,6 +1,6 @@
 'use client';
 
-import { Calendar, ChevronDown, ChevronUp, Download, Paperclip } from 'lucide-react';
+import { Calendar, ChevronDown, ChevronUp, Download, Paperclip, RotateCcw, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import type { Request } from '../lib/api-client';
 import { Badge } from './ui/badge';
@@ -9,9 +9,12 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
 interface RequestCardProps {
   request: Request;
+  onArchive?: (requestId: string) => void;
+  onRestore?: (requestId: string) => void;
+  isMutating?: boolean;
 }
 
-export function RequestCard({ request }: RequestCardProps) {
+export function RequestCard({ request, onArchive, onRestore, isMutating = false }: RequestCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const getPriorityColor = (priority: string) => {
@@ -58,7 +61,7 @@ export function RequestCard({ request }: RequestCardProps) {
       .replace(/_/g, ' ');
   };
 
-  const formatFormDataValue = (value: any) => {
+  const formatFormDataValue = (value: unknown) => {
     if (typeof value === 'boolean') {
       return value ? 'Yes' : 'No';
     }
@@ -203,6 +206,33 @@ export function RequestCard({ request }: RequestCardProps) {
                   day: 'numeric',
                 })}
               </p>
+            )}
+          </div>
+        )}
+
+        {(onArchive || onRestore) && (
+          <div className="pt-2 border-t flex justify-end">
+            {request.archived ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onRestore?.(request.id)}
+                disabled={isMutating}
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Restore
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                onClick={() => onArchive?.(request.id)}
+                disabled={isMutating}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Archive
+              </Button>
             )}
           </div>
         )}
