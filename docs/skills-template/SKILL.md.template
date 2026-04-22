@@ -1,0 +1,27 @@
+# /your-skill-command
+
+## Setup
+
+1. Create any required provider API key(s).
+2. Configure package-local env:
+   ```bash
+   cd packages/your-skill-package
+   cp .env.example .env.local
+   ```
+3. Add your key(s) to `.env.local`.
+
+## Command
+
+```bash
+pnpm --filter @your-scope/your-skill-package dev "<required arguments>"
+```
+
+## Monorepo dev behavior
+
+- Root `pnpm dev` runs this package `dev` task via Turborepo.
+- If no arguments are provided, `src/dev.ts` exits successfully with a skip message.
+- Real execution runs only when intentional arguments are provided.
+
+## Required environment variables
+
+- `EXAMPLE_API_KEY`
