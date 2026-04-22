@@ -1,4 +1,4 @@
-import { pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { boolean, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { scholars } from './scholars';
 import { users } from './users';
 
@@ -29,6 +29,9 @@ export const tasks = pgTable('tasks', {
     .notNull()
     .references(() => users.id),
   completedAt: timestamp('completed_at', { withTimezone: true }),
+  archived: boolean('archived').notNull().default(false),
+  archivedAt: timestamp('archived_at', { withTimezone: true }),
+  archivedBy: text('archived_by').references(() => users.id),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });

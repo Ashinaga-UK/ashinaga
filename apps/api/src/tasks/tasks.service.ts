@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { and, eq } from 'drizzle-orm';
 import { getDatabase } from '../db/connection';
 import { scholars } from '../db/schema/scholars';
 import { taskAttachments, taskResponses } from '../db/schema/task-responses';
@@ -12,6 +12,26 @@ import { UpdateTaskDto } from './dto/update-task.dto';
 @Injectable()
 export class TasksService {
   private db = getDatabase();
+
+  private getArchiveWhereCondition(scholarId: string, includeArchived = false) {
+    if (includeArchived) {
+      return eq(tasks.scholarId, scholarId);
+    }
+
+    return and(eq(tasks.scholarId, scholarId), eq(tasks.archived, false));
+  }
+
+  private async ensureStaffUser(userId: string) {
+    const [user] = await this.db.select().from(users).where(eq(users.id, userId));
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.userType !== 'staff') {
+      throw new ForbiddenException('Only staff can manage task archive state');
+    }
+  }
 
   async createTask(createTaskDto: CreateTaskDto, assignedBy: string) {
     const [task] = await this.db
@@ -31,7 +51,7 @@ export class TasksService {
     return task;
   }
 
-  async getTasksByUser(userId: string) {
+  async getTasksByUser(userId: string, includeArchived = false) {
     // First get the scholar record for this user
     const [scholar] = await this.db.select().from(scholars).where(eq(scholars.userId, userId));
 
@@ -39,10 +59,10 @@ export class TasksService {
       return [];
     }
 
-    return this.getTasksByScholar(scholar.id);
+    return this.getTasksByScholar(scholar.id, includeArchived);
   }
 
-  async getTasksByScholar(scholarId: string) {
+  async getTasksByScholar(scholarId: string, includeArchived = false) {
     const results = await this.db
       .select({
         id: tasks.id,
@@ -54,19 +74,24 @@ export class TasksService {
         status: tasks.status,
         assignedBy: tasks.assignedBy,
         assignedByName: users.name,
+        scholarId: tasks.scholarId,
+        archived: tasks.archived,
+        archivedAt: tasks.archivedAt,
+        archivedBy: tasks.archivedBy,
         createdAt: tasks.createdAt,
+        updatedAt: tasks.updatedAt,
         completedAt: tasks.completedAt,
       })
       .from(tasks)
       .leftJoin(users, eq(tasks.assignedBy, users.id))
-      .where(eq(tasks.scholarId, scholarId))
+      .where(this.getArchiveWhereCondition(scholarId, includeArchived))
       .orderBy(tasks.dueDate);
 
     return results;
   }
 
   async updateTaskStatus(taskId: string, status: 'pending' | 'in_progress' | 'completed') {
-    const updateData: any = { status, updatedAt: new Date() };
+    const updateData: Partial<typeof tasks.$inferInsert> = { status, updatedAt: new Date() };
     if (status === 'completed') {
       updateData.completedAt = new Date();
     }
@@ -81,7 +106,7 @@ export class TasksService {
   }
 
   async updateTask(taskId: string, updateTaskDto: UpdateTaskDto) {
-    const updateData: any = {
+    const updateData: Partial<typeof tasks.$inferInsert> = {
       ...updateTaskDto,
       updatedAt: new Date(),
     };
@@ -98,6 +123,60 @@ export class TasksService {
       .returning();
 
     return task;
+  }
+
+  async archiveTask(taskId: string, archivedBy: string) {
+    await this.ensureStaffUser(archivedBy);
+
+    const [task] = await this.db.select().from(tasks).where(eq(tasks.id, taskId));
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    if (task.archived) {
+      throw new Error('Task is already archived');
+    }
+
+    const [archivedTask] = await this.db
+      .update(tasks)
+      .set({
+        archived: true,
+        archivedAt: new Date(),
+        archivedBy,
+        updatedAt: new Date(),
+      })
+      .where(eq(tasks.id, taskId))
+      .returning();
+
+    return archivedTask;
+  }
+
+  async restoreTask(taskId: string, restoredBy: string) {
+    await this.ensureStaffUser(restoredBy);
+
+    const [task] = await this.db.select().from(tasks).where(eq(tasks.id, taskId));
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    if (!task.archived) {
+      throw new Error('Task is not archived');
+    }
+
+    const [restoredTask] = await this.db
+      .update(tasks)
+      .set({
+        archived: false,
+        archivedAt: null,
+        archivedBy: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(tasks.id, taskId))
+      .returning();
+
+    return restoredTask;
   }
 
   async completeTask(taskId: string, completeTaskDto: CompleteTaskDto, userId: string) {

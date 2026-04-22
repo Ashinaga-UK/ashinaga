@@ -13,6 +13,8 @@ import {
   MapPin,
   Phone,
   Plus,
+  RotateCcw,
+  Trash2,
   User,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -32,7 +34,12 @@ import {
   normalizeLocation,
   normalizeNationality,
 } from '../lib/constants';
-import { useScholarProfile, useUpdateScholarProfile } from '../lib/hooks/use-queries';
+import {
+  useArchiveTask,
+  useRestoreTask,
+  useScholarProfile,
+  useUpdateScholarProfile,
+} from '../lib/hooks/use-queries';
 import { CommentThread } from './comment-thread';
 import { TaskAssignment } from './task-assignment';
 import { Alert, AlertDescription } from './ui/alert';
@@ -70,6 +77,8 @@ export function ScholarProfilePage({
   const { data: session } = useSession();
   const { data: scholar, isLoading, error } = useScholarProfile(scholarId);
   const updateProfile = useUpdateScholarProfile(scholarId);
+  const archiveTask = useArchiveTask();
+  const restoreTask = useRestoreTask();
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState<UpdateScholarProfileData>({});
   const [filterOptions, setFilterOptions] = useState<ScholarFilterOptions>({
@@ -932,6 +941,28 @@ export function ScholarProfilePage({
                           // Tasks will be refetched automatically via React Query
                         }}
                       />
+                      {task.archived ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => restoreTask.mutate(task.id)}
+                          disabled={restoreTask.isPending}
+                        >
+                          <RotateCcw className="h-4 w-4 mr-2" />
+                          Restore
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => archiveTask.mutate(task.id)}
+                          disabled={archiveTask.isPending}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Archive
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

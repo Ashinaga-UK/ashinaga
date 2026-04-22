@@ -1,6 +1,6 @@
 'use client';
 
-import { Calendar, ChevronDown, ChevronUp, Download, Paperclip } from 'lucide-react';
+import { Calendar, ChevronDown, ChevronUp, Download, Paperclip, RotateCcw, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import type { Request } from '../lib/api-client';
 import { Badge } from './ui/badge';
@@ -9,10 +9,18 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
 interface RequestCardProps {
   request: Request;
+  onArchive?: (requestId: string) => void;
+  onRestore?: (requestId: string) => void;
+  isMutating?: boolean;
 }
 
-export function RequestCard({ request }: RequestCardProps) {
+export function RequestCard({ request, onArchive, onRestore, isMutating = false }: RequestCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const isRestoreExpired = Boolean(
+    request.archived &&
+      request.archivedAt &&
+      new Date(request.archivedAt).getTime() + 7 * 24 * 60 * 60 * 1000 < Date.now()
+  );
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -58,7 +66,7 @@ export function RequestCard({ request }: RequestCardProps) {
       .replace(/_/g, ' ');
   };
 
-  const formatFormDataValue = (value: any) => {
+  const formatFormDataValue = (value: unknown) => {
     if (typeof value === 'boolean') {
       return value ? 'Yes' : 'No';
     }
@@ -203,6 +211,40 @@ export function RequestCard({ request }: RequestCardProps) {
                   day: 'numeric',
                 })}
               </p>
+            )}
+          </div>
+        )}
+
+        {(onArchive || onRestore) && (
+          <div className="pt-2 border-t flex flex-col items-end gap-2">
+            {request.archived ? (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onRestore?.(request.id)}
+                  disabled={isMutating || isRestoreExpired}
+                >
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Restore
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  {isRestoreExpired
+                    ? 'Restore window expired after 7 days.'
+                    : 'You can restore this request within 7 days of withdrawal.'}
+                </p>
+              </>
+            ) : (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                onClick={() => onArchive?.(request.id)}
+                disabled={isMutating}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Withdraw
+              </Button>
             )}
           </div>
         )}

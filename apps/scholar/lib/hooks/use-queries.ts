@@ -1,10 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createRequest, getMyAnnouncements, getMyRequests, getStaffList } from '../api-client';
+import {
+  archiveRequest,
+  createRequest,
+  getMyAnnouncements,
+  getMyRequests,
+  getStaffList,
+  restoreRequest,
+} from '../api-client';
 
 // Query keys
 export const queryKeys = {
   myAnnouncements: ['my-announcements'] as const,
-  myRequests: ['my-requests'] as const,
+  myRequests: (includeArchived = false) => ['my-requests', includeArchived] as const,
   staffList: ['staff-list'] as const,
 };
 
@@ -18,10 +25,10 @@ export function useMyAnnouncements(enabled = true) {
 }
 
 // My requests query
-export function useMyRequests(enabled = true) {
+export function useMyRequests(enabled = true, includeArchived = false) {
   return useQuery({
-    queryKey: queryKeys.myRequests,
-    queryFn: getMyRequests,
+    queryKey: queryKeys.myRequests(includeArchived),
+    queryFn: () => getMyRequests(includeArchived),
     enabled,
   });
 }
@@ -44,8 +51,30 @@ export function useCreateRequest() {
     onSuccess: () => {
       // Invalidate and refetch requests
       queryClient.invalidateQueries({
-        queryKey: queryKeys.myRequests,
+        queryKey: ['my-requests'],
       });
+    },
+  });
+}
+
+export function useArchiveRequest() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: archiveRequest,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-requests'] });
+    },
+  });
+}
+
+export function useRestoreRequest() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: restoreRequest,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-requests'] });
     },
   });
 }
