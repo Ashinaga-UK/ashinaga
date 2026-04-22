@@ -1,13 +1,7 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { and, count, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 import { database } from '../db/connection';
 import {
-  requestAssignees,
   requestAttachments,
   requestAuditLogs,
   requests,
@@ -28,26 +22,60 @@ import {
 export class RequestsService {
   constructor(private readonly emailService: EmailService) {}
 
+  private buildArchivedWhereCondition(mode: 'active' | 'archived' | 'all' = 'active') {
+    if (mode === 'all') {
+      return undefined;
+    }
+
+    return eq(requests.archived, mode === 'archived');
+  }
+
+  private async assertCanMutateRequest(requestId: string, userId: string) {
+    const [request] = await database.select().from(requests).where(eq(requests.id, requestId));
+
+    if (!request) {
+      throw new NotFoundException('Request not found');
+    }
+
+    const [staffRecord] = await database.select().from(staff).where(eq(staff.userId, userId));
+    if (staffRecord) {
+      return request;
+    }
+
+    const [scholarRecord] = await database.select().from(scholars).where(eq(scholars.userId, userId));
+    if (!scholarRecord) {
+      throw new ForbiddenException('User is not authorized for this request');
+    }
+
+    if (request.scholarId !== scholarRecord.id) {
+      throw new ForbiddenException('You can only manage your own requests');
+    }
+
+    return request;
+  }
+
   async getRequests(query: GetRequestsQueryDto, userId: string): Promise<GetRequestsResponseDto> {
-    const { page = 1, limit = 20, search, type, status, priority } = query;
+    const { page = 1, limit = 20, search, type, status, priority, archivedFilter = 'active' } =
+      query;
 
     const offset = (page - 1) * limit;
 
     const whereConditions = [];
 
-    // Always filter out archived requests
-    whereConditions.push(eq(requests.archived, false));
-
-    // Check if user is a super admin
     const [staffRecord] = await database.select().from(staff).where(eq(staff.userId, userId));
 
-    // If not a super admin, only show requests where this user is one of the assignees
+    if (!staffRecord) {
+      throw new ForbiddenException('Only staff can access this endpoint');
+    }
+
+    const archivedCondition = this.buildArchivedWhereCondition(archivedFilter);
+    if (archivedCondition) {
+      whereConditions.push(archivedCondition);
+    }
+
+    // If not a super admin, only show requests assigned to this user
     if (!staffRecord?.isSuperAdmin) {
-      const assignedRequestIds = database
-        .select({ requestId: requestAssignees.requestId })
-        .from(requestAssignees)
-        .where(eq(requestAssignees.userId, userId));
-      whereConditions.push(inArray(requests.id, assignedRequestIds));
+      whereConditions.push(eq(requests.assignedTo, userId));
     }
 
     if (search) {
@@ -115,7 +143,6 @@ export class RequestsService {
 
     const attachments = await this.getAttachments(requestIds);
     const auditLogs = await this.getAuditLogs(requestIds);
-    const assignees = await this.getAssignees(requestIds);
 
     const data: RequestResponseDto[] = requestsWithScholars.map((row) => ({
       id: row.request.id,
@@ -128,10 +155,12 @@ export class RequestsService {
       priority: row.request.priority,
       status: row.request.status,
       submittedDate: row.request.submittedDate,
+      archived: row.request.archived,
+      archivedAt: row.request.archivedAt,
+      archivedBy: row.request.archivedBy,
       reviewedBy: row.request.reviewedBy,
       reviewComment: row.request.reviewComment,
       reviewDate: row.request.reviewDate,
-      assignees: assignees[row.request.id] || [],
       attachments: attachments[row.request.id] || [],
       auditLogs: auditLogs[row.request.id] || [],
       createdAt: row.request.createdAt,
@@ -209,7 +238,7 @@ export class RequestsService {
     return auditLogs;
   }
 
-  async getRequestStats(userId: string): Promise<{
+  async getRequestStats(): Promise<{
     total: number;
     pending: number;
     approved: number;
@@ -217,27 +246,13 @@ export class RequestsService {
     reviewed: number;
     commented: number;
   }> {
-    const whereConditions = [eq(requests.archived, false)];
-
-    // Match getRequests visibility: super admins see all active requests,
-    // regular staff only see requests assigned to them.
-    const [staffRecord] = await database.select().from(staff).where(eq(staff.userId, userId));
-
-    if (!staffRecord?.isSuperAdmin) {
-      const assignedRequestIds = database
-        .select({ requestId: requestAssignees.requestId })
-        .from(requestAssignees)
-        .where(eq(requestAssignees.userId, userId));
-      whereConditions.push(inArray(requests.id, assignedRequestIds));
-    }
-
     const statsResult = await database
       .select({
         status: requests.status,
         count: count(),
       })
       .from(requests)
-      .where(and(...whereConditions))
+      .where(eq(requests.archived, false))
       .groupBy(requests.status);
 
     const stats = {
@@ -273,7 +288,7 @@ export class RequestsService {
     return stats;
   }
 
-  async getRequestsForScholar(userId: string) {
+  async getRequestsForScholar(userId: string, includeArchived = false) {
     // First, get the scholar ID from the user ID
     const scholar = await database
       .select()
@@ -288,6 +303,11 @@ export class RequestsService {
     const scholarId = scholar[0].id;
 
     // Get requests for this scholar with user info (excluding archived)
+    const whereConditions = [eq(requests.scholarId, scholarId)];
+    if (!includeArchived) {
+      whereConditions.push(eq(requests.archived, false));
+    }
+
     const requestsWithScholars = await database
       .select({
         request: requests,
@@ -297,14 +317,13 @@ export class RequestsService {
       .from(requests)
       .innerJoin(scholars, eq(requests.scholarId, scholars.id))
       .innerJoin(users, eq(scholars.userId, users.id))
-      .where(and(eq(requests.scholarId, scholarId), eq(requests.archived, false)))
+      .where(and(...whereConditions))
       .orderBy(desc(requests.submittedDate));
 
-    // Get attachments, audit logs and assignees for all requests
+    // Get attachments and audit logs for all requests
     const requestIds = requestsWithScholars.map((row) => row.request.id);
     const attachments = await this.getAttachments(requestIds);
     const auditLogs = await this.getAuditLogs(requestIds);
-    const assignees = await this.getAssignees(requestIds);
 
     // Format the response
     const data: RequestResponseDto[] = requestsWithScholars.map((row) => ({
@@ -318,10 +337,12 @@ export class RequestsService {
       priority: row.request.priority,
       status: row.request.status,
       submittedDate: row.request.submittedDate,
+      archived: row.request.archived,
+      archivedAt: row.request.archivedAt,
+      archivedBy: row.request.archivedBy,
       reviewedBy: row.request.reviewedBy,
       reviewComment: row.request.reviewComment,
       reviewDate: row.request.reviewDate,
-      assignees: assignees[row.request.id] || [],
       attachments: attachments[row.request.id] || [],
       auditLogs: auditLogs[row.request.id] || [],
       createdAt: row.request.createdAt,
@@ -329,30 +350,6 @@ export class RequestsService {
     }));
 
     return data;
-  }
-
-  private async getAssignees(
-    requestIds: string[]
-  ): Promise<Record<string, { id: string; name: string; email: string }[]>> {
-    if (requestIds.length === 0) return {};
-
-    const rows = await database
-      .select({
-        requestId: requestAssignees.requestId,
-        userId: users.id,
-        userName: users.name,
-        userEmail: users.email,
-      })
-      .from(requestAssignees)
-      .innerJoin(users, eq(users.id, requestAssignees.userId))
-      .where(inArray(requestAssignees.requestId, requestIds));
-
-    const out: Record<string, { id: string; name: string; email: string }[]> = {};
-    for (const row of rows) {
-      if (!out[row.requestId]) out[row.requestId] = [];
-      out[row.requestId].push({ id: row.userId, name: row.userName, email: row.userEmail });
-    }
-    return out;
   }
 
   async createRequest(
@@ -372,12 +369,6 @@ export class RequestsService {
 
     const scholarId = scholar[0].id;
 
-    // Dedupe assignees and keep the first as the primary (legacy assignedTo)
-    const assigneeIds = Array.from(new Set(createRequestDto.assigneeIds.filter(Boolean)));
-    if (assigneeIds.length === 0) {
-      throw new NotFoundException('At least one assignee is required');
-    }
-
     // Create the request
     const [newRequest] = await database
       .insert(requests)
@@ -388,14 +379,9 @@ export class RequestsService {
         formData: createRequestDto.formData ? JSON.stringify(createRequestDto.formData) : null,
         priority: createRequestDto.priority || 'medium',
         status: 'pending',
-        assignedTo: assigneeIds[0],
+        assignedTo: createRequestDto.assignedTo || null,
       })
       .returning();
-
-    // Insert all assignees into the join table
-    await database
-      .insert(requestAssignees)
-      .values(assigneeIds.map((id) => ({ requestId: newRequest.id, userId: id })));
 
     // Create audit log for request creation
     await database.insert(requestAuditLogs).values({
@@ -432,7 +418,6 @@ export class RequestsService {
       priority: newRequest.priority,
       status: newRequest.status,
       submittedDate: newRequest.submittedDate,
-      assigneeIds,
       createdAt: newRequest.createdAt,
       updatedAt: newRequest.updatedAt,
     };
@@ -510,126 +495,8 @@ export class RequestsService {
     return updatedRequest;
   }
 
-  async respondToCommentedRequest(
-    requestId: string,
-    userId: string,
-    comment: string,
-    attachmentIds: string[] = []
-  ) {
-    // Find the scholar profile for this user
-    const [scholar] = await database
-      .select()
-      .from(scholars)
-      .where(eq(scholars.userId, userId))
-      .limit(1);
-
-    if (!scholar) {
-      throw new NotFoundException('Scholar not found for this user');
-    }
-
-    // Load the request together with the scholar's user record (for emails)
-    const [requestRow] = await database
-      .select({
-        request: requests,
-        user: users,
-      })
-      .from(requests)
-      .innerJoin(scholars, eq(requests.scholarId, scholars.id))
-      .innerJoin(users, eq(scholars.userId, users.id))
-      .where(eq(requests.id, requestId))
-      .limit(1);
-
-    if (!requestRow) {
-      throw new NotFoundException(`Request with ID ${requestId} not found`);
-    }
-
-    if (requestRow.request.scholarId !== scholar.id) {
-      throw new ForbiddenException('You can only respond to your own requests');
-    }
-
-    if (requestRow.request.archived) {
-      throw new BadRequestException('Cannot respond to an archived request');
-    }
-
-    if (requestRow.request.status !== 'commented') {
-      throw new BadRequestException(
-        'You can only respond when staff have requested additional information'
-      );
-    }
-
-    const previousStatus = requestRow.request.status;
-
-    // Re-open the request so it returns to the staff queue
-    const [updatedRequest] = await database
-      .update(requests)
-      .set({
-        status: 'pending',
-        updatedAt: new Date(),
-      })
-      .where(eq(requests.id, requestId))
-      .returning();
-
-    // Link new attachments to this request (if any)
-    if (attachmentIds.length > 0) {
-      await database
-        .update(requestAttachments)
-        .set({ requestId })
-        .where(inArray(requestAttachments.id, attachmentIds));
-
-      await database.insert(requestAuditLogs).values({
-        requestId,
-        action: 'attachment_added',
-        performedBy: userId,
-        comment: `${attachmentIds.length} file(s) attached with response`,
-        metadata: JSON.stringify({ attachmentIds }),
-      });
-    }
-
-    // Audit log for the response itself
-    await database.insert(requestAuditLogs).values({
-      requestId,
-      action: 'scholar_responded',
-      performedBy: userId,
-      previousStatus,
-      newStatus: 'pending',
-      comment,
-    });
-
-    // Notify the staff members assigned to this request
-    try {
-      const assigneeRows = await database
-        .select({ name: users.name, email: users.email })
-        .from(requestAssignees)
-        .innerJoin(users, eq(users.id, requestAssignees.userId))
-        .where(eq(requestAssignees.requestId, requestId));
-
-      const formattedType = requestRow.request.type.replace(/_/g, ' ');
-      await Promise.allSettled(
-        assigneeRows.map((assignee) =>
-          this.emailService.sendRequestResponseNotification(
-            assignee.email,
-            assignee.name,
-            requestRow.user.name,
-            formattedType,
-            comment
-          )
-        )
-      );
-    } catch (error) {
-      console.error('Failed to notify staff about scholar response:', error);
-      // Don't break the response flow on email failures
-    }
-
-    return updatedRequest;
-  }
-
   async archiveRequest(requestId: string, archivedBy: string) {
-    // Check if request exists and is not already archived
-    const [request] = await database.select().from(requests).where(eq(requests.id, requestId));
-
-    if (!request) {
-      throw new NotFoundException('Request not found');
-    }
+    const request = await this.assertCanMutateRequest(requestId, archivedBy);
 
     if (request.archived) {
       throw new Error('Request is already archived');
@@ -657,5 +524,34 @@ export class RequestsService {
     });
 
     return archivedRequest;
+  }
+
+  async restoreRequest(requestId: string, restoredBy: string) {
+    const request = await this.assertCanMutateRequest(requestId, restoredBy);
+
+    if (!request.archived) {
+      throw new Error('Request is not archived');
+    }
+
+    const [restoredRequest] = await database
+      .update(requests)
+      .set({
+        archived: false,
+        archivedAt: null,
+        archivedBy: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(requests.id, requestId))
+      .returning();
+
+    await database.insert(requestAuditLogs).values({
+      requestId,
+      action: 'restored',
+      performedBy: restoredBy,
+      comment: 'Request restored',
+      metadata: JSON.stringify({ restoredBy, restoredAt: new Date() }),
+    });
+
+    return restoredRequest;
   }
 }

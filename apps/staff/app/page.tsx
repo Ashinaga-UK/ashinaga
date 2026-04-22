@@ -1,33 +1,21 @@
 'use client';
 
-import {
-  AlertCircle,
-  FileText,
-  Loader2,
-  LogOut,
-  Mail,
-  MessageSquare,
-  Trash2,
-  UserPlus,
-  Users,
-} from 'lucide-react';
+import { AlertCircle, FileText, Loader2, MessageSquare, Plus, Trash2, Users } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { forwardRef, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { AnnouncementCreator } from '../components/announcement-creator';
-import { InvitationsManagement } from '../components/invitations-management';
 import { LoginPage } from '../components/login-page';
 import { MyProfile } from '../components/my-profile';
 import { RequestManagement } from '../components/request-management';
 import { ScholarManagementTable } from '../components/scholar-management-table';
 import { ScholarOnboarding } from '../components/scholar-onboarding';
-import { ScholarProfilePage } from '../components/scholar-profile';
 import { StaffInviteDialog } from '../components/staff-invite-dialog';
+import { ScholarProfilePage } from '../components/scholar-profile';
 import { TaskAssignment } from '../components/task-assignment';
-import { ThemeToggle } from '../components/theme-toggle';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
-import { Card, CardContent } from '../components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import {
   Select,
   SelectContent,
@@ -35,12 +23,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../components/ui/select';
-import { Skeleton } from '../components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import {
-  type AnnouncementFilterOptions,
+  type Announcement,
   deleteAnnouncement,
-  getAnnouncementFilterOptions,
   getRequestStats,
   getRequests,
   getScholarStats,
@@ -50,63 +36,6 @@ import {
 } from '../lib/api-client';
 import { signOut, useSession } from '../lib/auth-client';
 import { useAnnouncements } from '../lib/hooks/use-queries';
-import { cn } from '../lib/utils';
-
-type StaffDashboardView =
-  | 'dashboard'
-  | 'scholar-profile'
-  | 'onboarding'
-  | 'task-assignment'
-  | 'my-profile';
-
-const STAFF_NAV_ITEMS = [
-  { value: 'overview', label: 'Overview' },
-  { value: 'scholars', label: 'Scholars' },
-  { value: 'requests', label: 'Requests' },
-  { value: 'announcements', label: 'Announcements' },
-  { value: 'invitations', label: 'Invitations' },
-];
-
-interface QuickActionButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  icon: React.ReactNode;
-  label: string;
-  description?: string;
-  primary?: boolean;
-}
-
-const QuickActionButton = forwardRef<HTMLButtonElement, QuickActionButtonProps>(
-  ({ icon, label, description, primary, className, ...props }, ref) => (
-    <button
-      ref={ref}
-      type="button"
-      className={cn(
-        'group relative flex min-w-0 items-center gap-3 bg-card px-4 py-4 text-left text-sm transition-colors sm:px-5',
-        'hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:z-10',
-        'lg:flex-col lg:items-start lg:justify-between lg:rounded-lg lg:border lg:border-border lg:p-4 lg:hover:border-foreground/20',
-        className
-      )}
-      {...props}
-    >
-      <span
-        className={cn(
-          'flex h-7 w-7 items-center justify-center rounded-md border border-border bg-background transition-colors',
-          primary && 'border-transparent bg-brand text-brand-foreground'
-        )}
-      >
-        {icon}
-      </span>
-      <span className="min-w-0">
-        <span className="block font-medium text-foreground">{label}</span>
-        {description && (
-          <span className="mt-1 hidden text-xs leading-5 text-muted-foreground lg:block">
-            {description}
-          </span>
-        )}
-      </span>
-    </button>
-  )
-);
-QuickActionButton.displayName = 'QuickActionButton';
 
 function StaffDashboardContent() {
   const router = useRouter();
@@ -120,30 +49,17 @@ function StaffDashboardContent() {
   const scholarTabFromUrl = searchParams.get('scholarTab') || 'profile';
 
   const [activeTab, setActiveTab] = useState(tabFromUrl);
-  const [currentView, setCurrentView] = useState<StaffDashboardView>(
-    viewFromUrl as StaffDashboardView
-  );
+  const [currentView, setCurrentView] = useState<
+    'dashboard' | 'scholar-profile' | 'onboarding' | 'task-assignment' | 'my-profile'
+  >(viewFromUrl as any);
   const [selectedScholarId, setSelectedScholarId] = useState<string | null>(scholarIdFromUrl);
   const [scholarProfileTab, setScholarProfileTab] = useState<
     'profile' | 'goals' | 'tasks' | 'documents'
   >((scholarTabFromUrl as 'profile' | 'goals' | 'tasks' | 'documents') || 'profile');
-  const [requestCategoryFilter, setRequestCategoryFilter] = useState('all');
   const [requestStatusFilter, setRequestStatusFilter] = useState('all');
-  const [announcementYearFilter, setAnnouncementYearFilter] = useState('all');
-  const [announcementProgramFilter, setAnnouncementProgramFilter] = useState('all');
-  const [announcementUniversityFilter, setAnnouncementUniversityFilter] = useState('all');
-  const [announcementStatusFilter, setAnnouncementStatusFilter] = useState<
-    'active' | 'archived' | 'all'
-  >('active');
-  const [announcementSortOrder, setAnnouncementSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [announcementFilterOptions, setAnnouncementFilterOptions] =
-    useState<AnnouncementFilterOptions>({
-      programs: [],
-      years: [],
-      universities: [],
-      locations: [],
-      statuses: [],
-    });
+  const [requestArchiveFilter, setRequestArchiveFilter] = useState<'active' | 'archived' | 'all'>(
+    'active'
+  );
   const [requests, setRequests] = useState<Request[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(true);
   const [requestsError, setRequestsError] = useState<string | null>(null);
@@ -157,22 +73,6 @@ function StaffDashboardContent() {
   const isLoading = session.isPending;
   const isAuthenticated = !!user;
   const isStaff = user?.userType === 'staff';
-  const announcementParams = useMemo(
-    () => ({
-      year: announcementYearFilter !== 'all' ? announcementYearFilter : undefined,
-      program: announcementProgramFilter !== 'all' ? announcementProgramFilter : undefined,
-      university: announcementUniversityFilter !== 'all' ? announcementUniversityFilter : undefined,
-      status: announcementStatusFilter,
-      sortOrder: announcementSortOrder,
-    }),
-    [
-      announcementYearFilter,
-      announcementProgramFilter,
-      announcementUniversityFilter,
-      announcementStatusFilter,
-      announcementSortOrder,
-    ]
-  );
 
   // Handle non-staff users
   useEffect(() => {
@@ -189,7 +89,7 @@ function StaffDashboardContent() {
     isLoading: announcementsLoading,
     error: announcementsError,
     refetch: refetchAnnouncements,
-  } = useAnnouncements(announcementParams, isAuthenticated);
+  } = useAnnouncements(isAuthenticated);
 
   // Update state when URL changes
   useEffect(() => {
@@ -229,19 +129,19 @@ function StaffDashboardContent() {
   const _getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'text-green-600 dark:text-green-400';
+        return 'text-green-600';
       case 'approved':
-        return 'text-green-600 dark:text-green-400';
+        return 'text-green-600';
       case 'in-progress':
-        return 'text-blue-600 dark:text-blue-400';
+        return 'text-blue-600';
       case 'pending':
         return 'text-orange-600';
       case 'reviewed':
-        return 'text-purple-600 dark:text-purple-400';
+        return 'text-purple-600';
       case 'rejected':
         return 'text-red-600';
       default:
-        return 'text-muted-foreground';
+        return 'text-gray-600';
     }
   };
 
@@ -250,14 +150,6 @@ function StaffDashboardContent() {
     setRequestsError(null);
     try {
       const response = await getRequests({
-        type:
-          requestCategoryFilter !== 'all'
-            ? (requestCategoryFilter as
-                | 'extenuating_circumstances'
-                | 'summer_funding_request'
-                | 'summer_funding_report'
-                | 'requirement_submission')
-            : undefined,
         status:
           requestStatusFilter !== 'all'
             ? (requestStatusFilter as
@@ -267,6 +159,7 @@ function StaffDashboardContent() {
                 | 'reviewed'
                 | 'commented')
             : undefined,
+        archivedFilter: requestArchiveFilter,
         sortBy: 'submittedDate',
         sortOrder: 'desc',
       });
@@ -277,7 +170,7 @@ function StaffDashboardContent() {
     } finally {
       setRequestsLoading(false);
     }
-  }, [requestCategoryFilter, requestStatusFilter]);
+  }, [requestArchiveFilter, requestStatusFilter]);
 
   const fetchScholarStats = useCallback(async () => {
     setScholarStatsLoading(true);
@@ -303,15 +196,6 @@ function StaffDashboardContent() {
     }
   }, []);
 
-  const fetchAnnouncementFilterOptions = useCallback(async () => {
-    try {
-      const options = await getAnnouncementFilterOptions();
-      setAnnouncementFilterOptions(options);
-    } catch (err) {
-      console.error('Error fetching announcement filter options:', err);
-    }
-  }, []);
-
   // Announcements are now fetched via React Query
 
   useEffect(() => {
@@ -320,29 +204,15 @@ function StaffDashboardContent() {
       fetchRequests();
       fetchScholarStats();
       fetchRequestStats();
-      fetchAnnouncementFilterOptions();
       // Announcements are now auto-fetched by React Query
     }
-  }, [
-    isAuthenticated,
-    fetchRequests,
-    fetchScholarStats,
-    fetchRequestStats,
-    fetchAnnouncementFilterOptions,
-  ]);
-
-  const clearAnnouncementFilters = () => {
-    setAnnouncementYearFilter('all');
-    setAnnouncementProgramFilter('all');
-    setAnnouncementUniversityFilter('all');
-    setAnnouncementStatusFilter('active');
-    setAnnouncementSortOrder('desc');
-  };
+  }, [isAuthenticated, fetchRequests, fetchScholarStats, fetchRequestStats]);
 
   const handleRequestStatusUpdate = (requestId: string, status: string, comment?: string) => {
     console.log('Request updated:', { requestId, status, comment });
+    // In real app, update the request status in your state/API
+    // For now, just refetch the data
     fetchRequests();
-    fetchRequestStats();
   };
 
   const navigateToScholars = () => {
@@ -351,10 +221,6 @@ function StaffDashboardContent() {
 
   const navigateToRequests = () => {
     router.push('?tab=requests');
-  };
-
-  const handleTabChange = (tab: string) => {
-    router.push(tab === 'overview' ? '/' : `?tab=${tab}`);
   };
 
   const handleSignOut = async () => {
@@ -366,12 +232,12 @@ function StaffDashboardContent() {
   // Show loading state while checking authentication
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-9 w-9 rounded-md bg-brand flex items-center justify-center">
-            <span className="text-brand-foreground font-semibold text-base">A</span>
+      <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 rounded-lg flex items-center justify-center mx-auto mb-4 animate-pulse">
+            <span className="text-white font-bold text-2xl">A</span>
           </div>
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     );
@@ -383,220 +249,176 @@ function StaffDashboardContent() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header — sticky, glassy, sleek */}
-      <header className="sticky top-0 z-40 w-full border-b border-border bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:gap-3 sm:px-6">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand">
-              <span className="text-brand-foreground font-semibold text-sm">A</span>
+    <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50">
+      {/* Header */}
+      <header className="bg-white border-b border-ashinaga-teal-100 px-6 py-4">
+        <div className="flex items-center justify-between max-w-7xl mx-auto">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-lg">A</span>
             </div>
-            <div className="flex min-w-0 flex-col leading-tight">
-              <h1 className="truncate text-sm font-medium text-foreground">Ashinaga Staff</h1>
-              <p className="hidden truncate text-[11px] text-muted-foreground sm:block">
-                Supporting Scholar Success
-              </p>
+            <div>
+              <h1 className="text-xl font-semibold text-gray-900">Ashinaga Staff Portal</h1>
+              <p className="text-sm text-gray-600">Supporting Scholar Success</p>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-1">
-            <ThemeToggle />
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 px-0 sm:w-auto sm:px-3"
-              onClick={handleSignOut}
-              aria-label="Logout"
-            >
-              <LogOut className="h-4 w-4 sm:hidden" />
-              <span className="hidden sm:inline">Logout</span>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => router.push('?view=my-profile')}>
+              My Profile
             </Button>
-            <button
-              type="button"
-              className="ml-2 rounded-full transition-opacity hover:opacity-80 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              onClick={() => router.push('?view=my-profile')}
-              aria-label="Open my profile"
-            >
-              <Avatar className="h-8 w-8 cursor-pointer max-[380px]:hidden">
-                {user?.image && <AvatarImage src={user.image} alt={user.name || 'User'} />}
-                <AvatarFallback className="text-xs">
-                  {user?.name
-                    ?.split(' ')
-                    .map((n: string) => n[0])
-                    .join('')
-                    .toUpperCase() || 'U'}
-                </AvatarFallback>
-              </Avatar>
-            </button>
+            <Button variant="outline" size="sm" onClick={handleSignOut}>
+              Logout
+            </Button>
+            <Avatar>
+              <AvatarFallback>
+                {user?.name
+                  ?.split(' ')
+                  .map((n: string) => n[0])
+                  .join('')
+                  .toUpperCase() || 'U'}
+              </AvatarFallback>
+            </Avatar>
           </div>
         </div>
       </header>
 
-      <div className="mx-auto max-w-7xl px-3 py-5 animate-fade-in sm:px-6 sm:py-8">
+      <div className="max-w-7xl mx-auto px-6 py-8">
         {currentView === 'onboarding' ? (
           <ScholarOnboarding onBack={() => router.push('/')} />
         ) : currentView === 'my-profile' ? (
           <MyProfile onBack={() => router.push('/')} />
         ) : (
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div className="min-w-0">
-                <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-                  {activeTab === 'overview' && 'Overview'}
-                  {activeTab === 'scholars' && 'Scholars'}
-                  {activeTab === 'requests' && 'Requests'}
-                  {activeTab === 'announcements' && 'Announcements'}
-                  {activeTab === 'invitations' && 'Invitations'}
-                </h2>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  {activeTab === 'overview' && 'Your dashboard at a glance.'}
-                  {activeTab === 'scholars' && 'View and manage your assigned scholars.'}
-                  {activeTab === 'requests' && 'Review and respond to scholar submissions.'}
-                  {activeTab === 'announcements' && 'Create and manage announcements.'}
-                  {activeTab === 'invitations' && 'Invite scholars and staff to the portal.'}
-                </p>
-              </div>
-              <div className="sm:hidden">
-                <Select value={activeTab} onValueChange={handleTabChange}>
-                  <SelectTrigger aria-label="Section" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STAFF_NAV_ITEMS.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <TabsList className="hidden h-auto flex-wrap sm:inline-flex">
+          <Tabs
+            value={activeTab}
+            onValueChange={(tab) => router.push(tab === 'overview' ? '/' : `?tab=${tab}`)}
+            className="space-y-6"
+          >
+            <TabsList className="grid w-full grid-cols-4 lg:w-[600px]">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="scholars">Scholars</TabsTrigger>
               <TabsTrigger value="requests">Requests</TabsTrigger>
               <TabsTrigger value="announcements">Announcements</TabsTrigger>
-              <TabsTrigger value="invitations" className="gap-1.5">
-                <Mail className="h-3.5 w-3.5" />
-                Invitations
-              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
-              {/* Stats Overview — flatter, tabular numerals, brand chip rather than gradient tile */}
-              <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2">
-                <button
-                  type="button"
+              {/* Stats Overview */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card
+                  className="cursor-pointer hover:shadow-md transition-shadow"
                   onClick={navigateToScholars}
-                  className="group text-left rounded-lg border bg-card p-4 transition-colors hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:p-5"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 space-y-1">
-                      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                        Total Scholars
-                      </p>
-                      {scholarStatsLoading ? (
-                        <Skeleton className="h-9 w-20" />
-                      ) : (
-                        <p className="text-3xl font-semibold tracking-tight tabular-nums text-foreground">
-                          {scholarStats?.total || 0}
+                  <CardContent className="pt-6">
+                    <div className="flex items-center">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-600">Total Scholars</p>
+                        {scholarStatsLoading ? (
+                          <div className="flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span className="text-2xl font-bold text-gray-900">Loading...</span>
+                          </div>
+                        ) : (
+                          <p className="text-2xl font-bold text-gray-900">
+                            {scholarStats?.total || 0}
+                          </p>
+                        )}
+                        <p className="text-xs text-green-600 mt-1">
+                          {scholarStats?.active || 0} active
                         </p>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[hsl(var(--success))] mr-1.5 align-middle" />
-                        {scholarStats?.active || 0} active
-                      </p>
+                      </div>
+                      <div className="w-12 h-12 bg-gradient-to-r from-ashinaga-teal-100 to-ashinaga-green-100 rounded-lg flex items-center justify-center">
+                        <Users className="h-6 w-6 text-ashinaga-teal-600" />
+                      </div>
                     </div>
-                    <div className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40 transition-colors group-hover:bg-muted min-[430px]:flex sm:h-9 sm:w-9">
-                      <Users className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                  </div>
-                </button>
+                  </CardContent>
+                </Card>
 
-                <button
-                  type="button"
+                <Card
+                  className="cursor-pointer hover:shadow-md transition-shadow"
                   onClick={navigateToRequests}
-                  className="group text-left rounded-lg border bg-card p-4 transition-colors hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:p-5"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 space-y-1">
-                      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                        Pending Requests
-                      </p>
-                      {requestStatsLoading ? (
-                        <Skeleton className="h-9 w-20" />
-                      ) : (
-                        <p className="text-3xl font-semibold tracking-tight tabular-nums text-foreground">
-                          {requestStats?.pending || 0}
+                  <CardContent className="pt-6">
+                    <div className="flex items-center">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-600">Pending Requests</p>
+                        {requestStatsLoading ? (
+                          <div className="flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span className="text-2xl font-bold text-gray-900">Loading...</span>
+                          </div>
+                        ) : (
+                          <p className="text-2xl font-bold text-gray-900">
+                            {requestStats?.pending || 0}
+                          </p>
+                        )}
+                        <p className="text-xs text-orange-600 mt-1">
+                          {requestStats?.total || 0} total requests
                         </p>
-                      )}
-                      <p className="text-xs text-muted-foreground tabular-nums">
-                        of {requestStats?.total || 0} total
-                      </p>
+                      </div>
+                      <div className="w-12 h-12 bg-gradient-to-r from-orange-100 to-red-100 rounded-lg flex items-center justify-center">
+                        <AlertCircle className="h-6 w-6 text-orange-600" />
+                      </div>
                     </div>
-                    <div className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40 transition-colors group-hover:bg-muted min-[430px]:flex sm:h-9 sm:w-9">
-                      <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                  </div>
-                </button>
+                  </CardContent>
+                </Card>
               </div>
 
               {/* Quick Actions */}
-              <div className="rounded-lg border bg-card">
-                <div className="flex items-center justify-between p-4 pb-3 sm:p-5 sm:pb-3">
-                  <div className="space-y-0.5">
-                    <h3 className="text-sm font-semibold leading-none tracking-tight">
-                      Quick actions
-                    </h3>
-                    <p className="text-xs text-muted-foreground">
-                      Common tasks to keep scholars moving forward.
-                    </p>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Plus className="h-5 w-5" />
+                    Quick Actions
+                  </CardTitle>
+                  <CardDescription>
+                    Common tasks to help you support scholars efficiently
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                    <Button
+                      className="h-20 flex-col gap-2 bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
+                      onClick={() => router.push('?view=onboarding')}
+                    >
+                      <Users className="h-6 w-6" />
+                      Onboard Scholar
+                    </Button>
+                    <TaskAssignment
+                      trigger={
+                        <Button
+                          variant="outline"
+                          className="h-20 flex-col gap-2 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent w-full"
+                        >
+                          <FileText className="h-6 w-6" />
+                          Assign Task to Scholar
+                        </Button>
+                      }
+                      onSuccess={(scholarId) => {
+                        // Navigate to scholar profile with tasks tab open
+                        router.push(
+                          `?tab=scholars&view=scholar-profile&scholarId=${scholarId}&scholarTab=tasks`
+                        );
+                      }}
+                    />
+                    <Button
+                      variant="outline"
+                      className="h-20 flex-col gap-2 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent"
+                      onClick={() => router.push('?tab=announcements')}
+                    >
+                      <MessageSquare className="h-6 w-6" />
+                      Create Announcement
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="h-20 flex-col gap-2 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent"
+                      onClick={() => router.push('?tab=requests')}
+                    >
+                      <FileText className="h-6 w-6" />
+                      Review Requests
+                    </Button>
+                    <StaffInviteDialog />
                   </div>
-                </div>
-                <div className="grid grid-cols-1 gap-px border-t bg-border min-[520px]:grid-cols-2 lg:grid-cols-5 lg:gap-3 lg:border-t-0 lg:bg-transparent lg:p-5 lg:pt-2">
-                  <QuickActionButton
-                    icon={<Users className="h-4 w-4" />}
-                    label="Onboard Scholar"
-                    description="Create a new scholar profile and invitation."
-                    onClick={() => router.push('?view=onboarding')}
-                    primary
-                  />
-                  <TaskAssignment
-                    trigger={
-                      <QuickActionButton
-                        icon={<FileText className="h-4 w-4" />}
-                        label="Assign Task"
-                        description="Send a task to one or more scholars."
-                      />
-                    }
-                    onSuccess={(scholarId) => {
-                      router.push(
-                        `?tab=scholars&view=scholar-profile&scholarId=${scholarId}&scholarTab=tasks`
-                      );
-                    }}
-                  />
-                  <QuickActionButton
-                    icon={<MessageSquare className="h-4 w-4" />}
-                    label="Create Announcement"
-                    description="Publish an update for filtered scholars."
-                    onClick={() => router.push('?tab=announcements')}
-                  />
-                  <QuickActionButton
-                    icon={<FileText className="h-4 w-4" />}
-                    label="Review Requests"
-                    description="Triage funding and requirement submissions."
-                    onClick={() => router.push('?tab=requests')}
-                  />
-                  <StaffInviteDialog
-                    trigger={
-                      <QuickActionButton
-                        icon={<UserPlus className="h-4 w-4" />}
-                        label="Invite Staff"
-                        description="Add another staff member to the portal."
-                      />
-                    }
-                  />
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             </TabsContent>
 
             <TabsContent value="scholars" className="space-y-6">
@@ -610,7 +432,11 @@ function StaffDashboardContent() {
                 />
               ) : (
                 <Card>
-                  <CardContent className="p-4 sm:p-5">
+                  <CardHeader>
+                    <CardTitle>Scholar Management</CardTitle>
+                    <CardDescription>View and manage your assigned scholars</CardDescription>
+                  </CardHeader>
+                  <CardContent>
                     <ScholarManagementTable
                       onViewProfile={(scholarId) => {
                         router.push(`?tab=scholars&view=scholar-profile&scholarId=${scholarId}`);
@@ -624,65 +450,58 @@ function StaffDashboardContent() {
 
             <TabsContent value="requests" className="space-y-6">
               <Card>
-                <div className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <Select value={requestCategoryFilter} onValueChange={setRequestCategoryFilter}>
-                      <SelectTrigger className="w-full sm:w-[220px]">
-                        <SelectValue placeholder="All Categories" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Categories</SelectItem>
-                        <SelectItem value="extenuating_circumstances">
-                          Extenuating Circumstances
-                        </SelectItem>
-                        <SelectItem value="summer_funding_request">
-                          Summer Funding Request
-                        </SelectItem>
-                        <SelectItem value="summer_funding_report">Summer Funding Report</SelectItem>
-                        <SelectItem value="requirement_submission">
-                          Requirement Submission
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select value={requestStatusFilter} onValueChange={setRequestStatusFilter}>
-                      <SelectTrigger className="w-full sm:w-[180px]">
-                        <SelectValue placeholder="All Statuses" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Statuses</SelectItem>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="approved">Approved</SelectItem>
-                        <SelectItem value="rejected">Rejected</SelectItem>
-                        <SelectItem value="reviewed">Reviewed</SelectItem>
-                        <SelectItem value="commented">Commented</SelectItem>
-                      </SelectContent>
-                    </Select>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Scholar Requests</CardTitle>
+                      <CardDescription>Review and respond to scholar submissions</CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Select value={requestStatusFilter} onValueChange={setRequestStatusFilter}>
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="Filter by status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Statuses</SelectItem>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="approved">Approved</SelectItem>
+                          <SelectItem value="rejected">Rejected</SelectItem>
+                          <SelectItem value="reviewed">Reviewed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={requestArchiveFilter}
+                        onValueChange={(value) =>
+                          setRequestArchiveFilter(value as 'active' | 'archived' | 'all')
+                        }
+                      >
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="Filter by archived state" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active">Active only</SelectItem>
+                          <SelectItem value="archived">Archived only</SelectItem>
+                          <SelectItem value="all">All</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                </div>
-                <CardContent className="p-4 sm:p-5">
+                </CardHeader>
+                <CardContent>
                   {requestsLoading ? (
-                    <div className="space-y-3">
-                      <Skeleton className="h-24 w-full" />
-                      <Skeleton className="h-24 w-full" />
-                      <Skeleton className="h-24 w-full" />
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                      <span className="ml-2">Loading requests...</span>
                     </div>
                   ) : requestsError ? (
-                    <div className="flex flex-col items-center justify-center py-16 text-center">
-                      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
-                        <AlertCircle className="h-5 w-5 text-destructive" />
-                      </div>
-                      <p className="text-sm font-medium text-foreground">Couldn't load requests</p>
-                      <p className="mt-1 max-w-sm text-sm text-muted-foreground">{requestsError}</p>
+                    <div className="text-center py-12">
+                      <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-500" />
+                      <p className="text-red-600">{requestsError}</p>
                     </div>
                   ) : requests.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16 text-center">
-                      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/40">
-                        <MessageSquare className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <p className="text-sm font-medium text-foreground">No requests</p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Scholar submissions will show up here.
-                      </p>
+                    <div className="text-center py-12 text-gray-500">
+                      <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No requests found</p>
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -699,196 +518,98 @@ function StaffDashboardContent() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="invitations" className="space-y-6">
-              <InvitationsManagement onOnboardScholar={() => router.push('?view=onboarding')} />
-            </TabsContent>
-
             <TabsContent value="announcements" className="space-y-6">
-              <div className="flex items-center justify-end">
-                <AnnouncementCreator />
-              </div>
               <Card>
-                <CardContent className="p-4 sm:p-5">
-                  <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
-                      <Select
-                        value={announcementStatusFilter}
-                        onValueChange={(value) =>
-                          setAnnouncementStatusFilter(value as 'active' | 'archived' | 'all')
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="active">Active</SelectItem>
-                          <SelectItem value="archived">Archived</SelectItem>
-                          <SelectItem value="all">All Statuses</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Select
-                        value={announcementYearFilter}
-                        onValueChange={setAnnouncementYearFilter}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Year" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Years</SelectItem>
-                          {announcementFilterOptions.years.map((year) => (
-                            <SelectItem key={year} value={year}>
-                              {year}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Select
-                        value={announcementProgramFilter}
-                        onValueChange={setAnnouncementProgramFilter}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Program" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Programs</SelectItem>
-                          {announcementFilterOptions.programs.map((program) => (
-                            <SelectItem key={program} value={program}>
-                              {program}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Select
-                        value={announcementUniversityFilter}
-                        onValueChange={setAnnouncementUniversityFilter}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="University" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Universities</SelectItem>
-                          {announcementFilterOptions.universities.map((university) => (
-                            <SelectItem key={university} value={university}>
-                              {university}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Select
-                        value={announcementSortOrder}
-                        onValueChange={(value) => setAnnouncementSortOrder(value as 'asc' | 'desc')}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sort" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="desc">Most Recent</SelectItem>
-                          <SelectItem value="asc">Oldest First</SelectItem>
-                        </SelectContent>
-                      </Select>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Announcements</CardTitle>
+                      <CardDescription>
+                        Create and manage announcements for scholars
+                      </CardDescription>
                     </div>
-                    <Button variant="outline" onClick={clearAnnouncementFilters}>
-                      Reset
-                    </Button>
+                    <AnnouncementCreator />
                   </div>
+                </CardHeader>
+                <CardContent>
                   {announcementsLoading ? (
-                    <div className="space-y-3">
-                      <Skeleton className="h-28 w-full" />
-                      <Skeleton className="h-28 w-full" />
-                      <Skeleton className="h-28 w-full" />
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                      <span className="ml-2">Loading announcements...</span>
                     </div>
                   ) : announcementsError ? (
-                    <div className="flex flex-col items-center justify-center py-16 text-center">
-                      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
-                        <AlertCircle className="h-5 w-5 text-destructive" />
-                      </div>
-                      <p className="text-sm font-medium text-foreground">
-                        Couldn't load announcements
-                      </p>
-                      <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-                        {announcementsError?.message || 'Please try again.'}
+                    <div className="text-center py-12">
+                      <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-500" />
+                      <p className="text-red-600">
+                        {announcementsError?.message || 'Failed to load announcements'}
                       </p>
                     </div>
                   ) : announcements.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16 text-center">
-                      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/40">
-                        <MessageSquare className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <p className="text-sm font-medium text-foreground">No announcements</p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Nothing matches the current filters.
-                      </p>
+                    <div className="text-center py-12 text-gray-500">
+                      <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No announcements yet. Create your first announcement to get started.</p>
                     </div>
                   ) : (
-                    <div className="divide-y border-t -mx-5">
+                    <div className="space-y-4">
                       {announcements.map((announcement) => (
-                        <div
-                          key={announcement.id}
-                          className="group flex items-start justify-between gap-4 px-5 py-4 transition-colors hover:bg-muted/30"
-                        >
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="text-sm font-semibold text-foreground truncate">
-                                {announcement.title}
-                              </h3>
-                              <Badge
-                                variant={announcement.archived ? 'muted' : 'success'}
-                                className="shrink-0"
-                              >
-                                {announcement.archived ? 'Archived' : 'Active'}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground line-clamp-2 whitespace-pre-wrap mb-2">
-                              {announcement.content}
-                            </p>
-                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                              <span>By {announcement.createdBy}</span>
-                              <span className="text-border">·</span>
-                              <span className="tabular-nums">
-                                {new Date(announcement.createdAt).toLocaleDateString()}
-                              </span>
-                              <span className="text-border">·</span>
-                              <span className="tabular-nums">
-                                {announcement.recipientCount} scholar
-                                {announcement.recipientCount !== 1 ? 's' : ''}
-                              </span>
-                              {announcement.filters.length > 0 && (
-                                <div className="flex gap-1 ml-1">
-                                  {announcement.filters.map((filter, index) => (
-                                    <Badge
-                                      key={`${filter.type}-${filter.value}-${index}`}
-                                      variant="outline"
-                                      className="text-[10px] font-normal"
-                                    >
-                                      {filter.type}: {filter.value}
-                                    </Badge>
-                                  ))}
+                        <div key={announcement.id} className="border rounded-lg p-4">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-lg mb-2">{announcement.title}</h3>
+                              <p className="text-gray-600 mb-3 whitespace-pre-wrap">
+                                {announcement.content}
+                              </p>
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center text-sm text-gray-500">
+                                  <span>By {announcement.createdBy}</span>
+                                  <span className="mx-2">•</span>
+                                  <span>
+                                    {new Date(announcement.createdAt).toLocaleDateString()}
+                                  </span>
+                                  <span className="mx-2">•</span>
+                                  <span>
+                                    Sent to {announcement.recipientCount} scholar
+                                    {announcement.recipientCount !== 1 ? 's' : ''}
+                                  </span>
                                 </div>
-                              )}
+                                {announcement.filters.length > 0 && (
+                                  <div className="flex gap-1">
+                                    {announcement.filters.map((filter, index) => (
+                                      <Badge
+                                        key={`${filter.type}-${filter.value}-${index}`}
+                                        variant="outline"
+                                        className="text-xs"
+                                      >
+                                        {filter.type}: {filter.value}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
-                            onClick={async () => {
-                              if (
-                                window.confirm(
-                                  'Are you sure you want to delete this announcement? This action cannot be undone.'
-                                )
-                              ) {
-                                try {
-                                  await deleteAnnouncement(announcement.id);
-                                  refetchAnnouncements();
-                                } catch (error) {
-                                  console.error('Failed to delete announcement:', error);
-                                  alert('Failed to delete announcement. Please try again.');
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                              onClick={async () => {
+                                if (
+                                  window.confirm(
+                                    'Are you sure you want to delete this announcement? This action cannot be undone.'
+                                  )
+                                ) {
+                                  try {
+                                    await deleteAnnouncement(announcement.id);
+                                    refetchAnnouncements();
+                                  } catch (error) {
+                                    console.error('Failed to delete announcement:', error);
+                                    alert('Failed to delete announcement. Please try again.');
+                                  }
                                 }
-                              }
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>

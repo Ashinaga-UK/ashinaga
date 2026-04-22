@@ -1,18 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  archiveScholar,
   type CreateTaskData,
+  archiveTask,
+  archiveScholar,
   createAnnouncement,
   createTask,
   deleteScholar,
-  deleteTask,
-  type GetAnnouncementsParams,
   getAnnouncements,
   getScholarProfile,
   getTasksByScholar,
   type Task,
   type UpdateScholarProfileData,
   type UpdateTaskData,
+  restoreTask,
   updateScholarProfile,
   updateTask,
   updateUser,
@@ -23,7 +23,7 @@ export const queryKeys = {
   scholarProfile: (id: string) => ['scholar', id, 'profile'] as const,
   scholarTasks: (id: string) => ['scholar', id, 'tasks'] as const,
   user: ['user'] as const,
-  announcements: (params?: GetAnnouncementsParams) => ['announcements', params] as const,
+  announcements: ['announcements'] as const,
 };
 
 // Scholar profile query
@@ -85,10 +85,10 @@ export function useUpdateUser() {
 }
 
 // Announcements query
-export function useAnnouncements(params?: GetAnnouncementsParams, enabled = true) {
+export function useAnnouncements(enabled = true) {
   return useQuery({
-    queryKey: queryKeys.announcements(params),
-    queryFn: () => getAnnouncements(params),
+    queryKey: queryKeys.announcements,
+    queryFn: getAnnouncements,
     enabled,
   });
 }
@@ -102,7 +102,7 @@ export function useCreateAnnouncement() {
     onSuccess: () => {
       // Invalidate and refetch announcements
       queryClient.invalidateQueries({
-        queryKey: ['announcements'],
+        queryKey: queryKeys.announcements,
       });
     },
   });
@@ -125,19 +125,28 @@ export function useUpdateTask() {
   });
 }
 
-// Delete task mutation (soft delete)
-export function useDeleteTask(scholarId?: string) {
+export function useArchiveTask() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (taskId: string) => deleteTask(taskId),
-    onSuccess: () => {
-      if (scholarId) {
-        queryClient.invalidateQueries({ queryKey: queryKeys.scholarTasks(scholarId) });
-        queryClient.invalidateQueries({ queryKey: queryKeys.scholarProfile(scholarId) });
-      } else {
-        queryClient.invalidateQueries({ queryKey: ['scholar'] });
-      }
+    mutationFn: archiveTask,
+    onSuccess: (updatedTask) => {
+      const scholarId = updatedTask.scholarId;
+      queryClient.invalidateQueries({ queryKey: queryKeys.scholarTasks(scholarId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.scholarProfile(scholarId) });
+    },
+  });
+}
+
+export function useRestoreTask() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: restoreTask,
+    onSuccess: (updatedTask) => {
+      const scholarId = updatedTask.scholarId;
+      queryClient.invalidateQueries({ queryKey: queryKeys.scholarTasks(scholarId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.scholarProfile(scholarId) });
     },
   });
 }

@@ -1,8 +1,6 @@
 // API client for making authenticated requests to the backend
 // Works alongside better-auth for non-auth endpoints
 
-import type { Gender } from './constants';
-
 export interface ScholarGoalsStats {
   total: number;
   completed: number;
@@ -84,6 +82,10 @@ export interface Task {
   dueDate: string;
   status: 'pending' | 'in_progress' | 'completed';
   assignedBy: string;
+  scholarId: string;
+  archived: boolean;
+  archivedAt?: string | null;
+  archivedBy?: string | null;
   completedAt?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -120,7 +122,7 @@ export interface ScholarProfile {
   lastActivity?: string | null;
   aaiScholarId?: string | null;
   dateOfBirth?: string | null;
-  gender?: Gender | null;
+  gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say' | null;
   nationality?: string | null;
   addressHomeCountry?: string | null;
   passportExpirationDate?: string | null;
@@ -144,7 +146,7 @@ export interface ScholarProfile {
 
 export interface UpdateScholarProfileData {
   dateOfBirth?: string;
-  gender?: Gender;
+  gender?: string;
   nationality?: string;
   phone?: string;
   location?: string;
@@ -345,12 +347,6 @@ export interface RequestAuditLog {
   createdAt: string;
 }
 
-export interface RequestAssignee {
-  id: string;
-  name: string;
-  email: string;
-}
-
 export interface Request {
   id: string;
   scholarId: string;
@@ -362,14 +358,16 @@ export interface Request {
     | 'summer_funding_report'
     | 'requirement_submission';
   description: string;
-  formData?: Record<string, unknown> | null;
+  formData?: Record<string, any> | null;
   priority: 'high' | 'medium' | 'low';
   status: 'pending' | 'approved' | 'rejected' | 'reviewed' | 'commented';
   submittedDate: string;
+  archived: boolean;
+  archivedAt?: string | null;
+  archivedBy?: string | null;
   reviewedBy?: string | null;
   reviewComment?: string | null;
   reviewDate?: string | null;
-  assignees?: RequestAssignee[];
   attachments: RequestAttachment[];
   auditLogs: RequestAuditLog[];
   createdAt: string;
@@ -387,6 +385,7 @@ export interface GetRequestsParams {
     | 'requirement_submission';
   status?: 'pending' | 'approved' | 'rejected' | 'reviewed' | 'commented';
   priority?: 'high' | 'medium' | 'low';
+  archivedFilter?: 'active' | 'archived' | 'all';
   sortBy?: 'submittedDate' | 'status' | 'priority' | 'createdAt';
   sortOrder?: 'asc' | 'desc';
 }
@@ -447,11 +446,19 @@ export async function updateRequestStatus(
   });
 }
 
-export async function deleteRequest(requestId: string): Promise<void> {
+export async function archiveRequest(requestId: string): Promise<void> {
   return fetchAPI(`/api/requests/${requestId}`, {
     method: 'DELETE',
   });
 }
+
+export async function restoreRequest(requestId: string): Promise<void> {
+  return fetchAPI(`/api/requests/${requestId}/restore`, {
+    method: 'PATCH',
+  });
+}
+
+export const deleteRequest = archiveRequest;
 
 // Announcement types and functions
 export interface ScholarFilter {
@@ -472,14 +479,6 @@ export interface AnnouncementFilterOptions {
   universities: string[];
   locations: string[];
   statuses: string[];
-}
-
-export interface GetAnnouncementsParams {
-  year?: string;
-  program?: string;
-  university?: string;
-  status?: 'active' | 'archived' | 'all';
-  sortOrder?: 'asc' | 'desc';
 }
 
 export interface CreateAnnouncementData {
@@ -523,30 +522,12 @@ export interface Announcement {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
-  archived: boolean;
-  archivedAt?: string | null;
   filters: Array<{ type: string; value: string }>;
   recipientCount: number;
 }
 
-export async function getAnnouncements(params?: GetAnnouncementsParams): Promise<Announcement[]> {
-  const queryParams = new URLSearchParams();
-
-  if (params) {
-    Object.entries(params).forEach(([key, value]) => {
-      if (
-        value !== undefined &&
-        value !== null &&
-        value !== '' &&
-        (key === 'status' || value !== 'all')
-      ) {
-        queryParams.append(key, String(value));
-      }
-    });
-  }
-
-  const queryString = queryParams.toString();
-  return fetchAPI<Announcement[]>(`/api/announcements${queryString ? `?${queryString}` : ''}`);
+export async function getAnnouncements(): Promise<Announcement[]> {
+  return fetchAPI<Announcement[]>('/api/announcements');
 }
 
 export async function deleteAnnouncement(announcementId: string): Promise<void> {
@@ -580,20 +561,9 @@ export async function getFilterOptions(): Promise<ScholarFilterOptions> {
 // User management functions
 export interface UpdateUserData {
   name?: string;
-  image?: string | null;
 }
 
-export interface UserProfile {
-  id: string;
-  name: string;
-  email: string;
-  image?: string | null;
-  userType?: 'staff' | 'scholar';
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export async function updateUser(data: UpdateUserData): Promise<UserProfile> {
+export async function updateUser(data: UpdateUserData): Promise<any> {
   return fetchAPI('/api/users/me', {
     method: 'PATCH',
     headers: {
@@ -640,27 +610,6 @@ export async function createTask(data: CreateTaskData): Promise<{
   });
 }
 
-export interface CreateBulkTasksData {
-  title: string;
-  description?: string;
-  type: CreateTaskData['type'];
-  priority?: 'high' | 'medium' | 'low';
-  dueDate: string;
-  scholarIds: string[];
-}
-
-export async function createBulkTasks(
-  data: CreateBulkTasksData
-): Promise<{ created: number; tasks: unknown[] }> {
-  return fetchAPI('/api/tasks/bulk', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-  });
-}
-
 export async function getTasksByScholar(scholarId: string): Promise<Task[]> {
   return fetchAPI<Task[]>(`/api/tasks/scholar/${scholarId}`);
 }
@@ -689,35 +638,16 @@ export async function updateTask(taskId: string, data: UpdateTaskData): Promise<
   });
 }
 
-export async function deleteTask(taskId: string): Promise<{ id: string; alreadyDeleted: boolean }> {
-  return fetchAPI(`/api/tasks/${taskId}`, {
+export async function archiveTask(taskId: string): Promise<Task> {
+  return fetchAPI<Task>(`/api/tasks/${taskId}`, {
     method: 'DELETE',
   });
 }
 
-export interface TaskTitleSuggestion {
-  title: string;
-  description?: string | null;
-  type:
-    | 'document_upload'
-    | 'form_completion'
-    | 'meeting_attendance'
-    | 'goal_update'
-    | 'feedback_submission'
-    | 'other';
-  priority: 'high' | 'medium' | 'low';
-  lastUsedAt: string;
-  useCount: number;
-}
-
-export async function getTaskTitleSuggestions(
-  query: string,
-  limit = 8
-): Promise<TaskTitleSuggestion[]> {
-  const params = new URLSearchParams();
-  if (query) params.set('q', query);
-  params.set('limit', String(limit));
-  return fetchAPI<TaskTitleSuggestion[]>(`/api/tasks/suggestions?${params.toString()}`);
+export async function restoreTask(taskId: string): Promise<Task> {
+  return fetchAPI<Task>(`/api/tasks/${taskId}/restore`, {
+    method: 'PATCH',
+  });
 }
 
 // Scholar creation function
@@ -730,7 +660,7 @@ export interface CreateScholarData {
   startDate: string;
   aaiScholarId?: string;
   dateOfBirth?: string;
-  gender?: Gender;
+  gender?: string;
   nationality?: string;
   phone?: string;
   location?: string;
@@ -746,14 +676,12 @@ export interface CreateScholarData {
   longTermCareerPlan?: string;
   postGraduationPlan?: string;
   bio?: string;
-  majorCategory?: string;
-  fieldOfStudy?: string;
 }
 
 export async function createScholar(data: CreateScholarData): Promise<{
   success: boolean;
   message: string;
-  scholar?: unknown;
+  scholar?: any;
 }> {
   return fetchAPI('/api/scholars', {
     method: 'POST',
@@ -819,35 +747,6 @@ export async function resendInvitation(
 
 export async function cancelInvitation(invitationId: string): Promise<{ message: string }> {
   return fetchAPI<{ message: string }>(`/api/invitations/${invitationId}`, {
-    method: 'DELETE',
-  });
-}
-
-// Staff management
-export interface StaffMember {
-  id: string;
-  userId: string;
-  name: string;
-  email: string;
-  role: 'admin' | 'viewer';
-  isSuperAdmin: boolean;
-  joinedAt: string;
-  isSelf: boolean;
-}
-
-export interface StaffManagementResponse {
-  staff: StaffMember[];
-  canManage: boolean;
-}
-
-export async function getStaffForManagement(): Promise<StaffManagementResponse> {
-  return fetchAPI<StaffManagementResponse>('/api/users/staff/manage');
-}
-
-export async function removeStaffMember(
-  userId: string
-): Promise<{ success: boolean; alreadyInactive: boolean }> {
-  return fetchAPI<{ success: boolean; alreadyInactive: boolean }>(`/api/users/staff/${userId}`, {
     method: 'DELETE',
   });
 }
