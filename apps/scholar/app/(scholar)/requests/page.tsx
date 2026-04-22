@@ -1,28 +1,73 @@
 'use client';
 
 import { AlertCircle, FileText, Plus } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '../../../components/ui/button';
 import { Card, CardContent } from '../../../components/ui/card';
-import { useMyRequests } from '../../../lib/hooks/use-queries';
+import {
+  useArchiveRequest,
+  useMyRequests,
+  useRestoreRequest,
+} from '../../../lib/hooks/use-queries';
 import { RequestCard } from '../../../components/request-card';
 import { NewRequestDialog } from '../../../components/new-request-dialog';
+import { useToast } from '../../../components/ui/use-toast';
 
 export default function RequestsPage() {
-  const { data: requests, isLoading, error, refetch } = useMyRequests();
+  const [showArchived, setShowArchived] = useState(false);
+  const { toast } = useToast();
+  const { data: requests, isLoading, error, refetch } = useMyRequests(true, showArchived);
+  const archiveRequest = useArchiveRequest();
+  const restoreRequest = useRestoreRequest();
+
+  const handleArchive = (requestId: string) => {
+    archiveRequest.mutate(requestId, {
+      onSuccess: () => {
+        toast({ title: 'Request archived', description: 'The request was archived successfully.' });
+      },
+      onError: () => {
+        toast({
+          title: 'Archive failed',
+          description: 'Could not archive the request. Please try again.',
+          variant: 'destructive',
+        });
+      },
+    });
+  };
+
+  const handleRestore = (requestId: string) => {
+    restoreRequest.mutate(requestId, {
+      onSuccess: () => {
+        toast({ title: 'Request restored', description: 'The request was restored successfully.' });
+      },
+      onError: () => {
+        toast({
+          title: 'Restore failed',
+          description: 'Could not restore the request. Please try again.',
+          variant: 'destructive',
+        });
+      },
+    });
+  };
 
   return (
     <div className="p-6 space-y-4">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold text-foreground">My Requests</h2>
-        <NewRequestDialog
-          trigger={
-            <Button className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700">
-              <Plus className="h-4 w-4 mr-2" />
-              New Request
-            </Button>
-          }
-          onSuccess={() => refetch()}
-        />
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setShowArchived((prev) => !prev)}>
+            {showArchived ? 'Show Active' : 'Show Archived'}
+          </Button>
+          <NewRequestDialog
+            trigger={
+              <Button className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700">
+                <Plus className="h-4 w-4 mr-2" />
+                New Request
+              </Button>
+            }
+            onSuccess={() => refetch()}
+          />
+        </div>
       </div>
 
       {isLoading ? (
@@ -56,7 +101,9 @@ export default function RequestsPage() {
               <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
               <p className="text-muted-foreground">No requests yet</p>
               <p className="text-sm text-muted-foreground mt-2">
-                Click "New Request" to submit your first request
+                {showArchived
+                  ? 'No archived requests found'
+                  : 'Click "New Request" to submit your first request'}
               </p>
             </div>
           </CardContent>
@@ -64,7 +111,13 @@ export default function RequestsPage() {
       ) : (
         <div className="space-y-4">
           {requests.map((request) => (
-            <RequestCard key={request.id} request={request} />
+            <RequestCard
+              key={request.id}
+              request={request}
+              onArchive={handleArchive}
+              onRestore={handleRestore}
+              isMutating={archiveRequest.isPending || restoreRequest.isPending}
+            />
           ))}
         </div>
       )}

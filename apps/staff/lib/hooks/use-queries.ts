@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   type CreateTaskData,
+  archiveTask,
   archiveScholar,
   createAnnouncement,
   createTask,
@@ -11,6 +12,7 @@ import {
   type Task,
   type UpdateScholarProfileData,
   type UpdateTaskData,
+  restoreTask,
   updateScholarProfile,
   updateTask,
   updateUser,
@@ -119,6 +121,32 @@ export function useUpdateTask() {
         queryClient.invalidateQueries({ queryKey: queryKeys.scholarTasks(scholarId) });
         queryClient.invalidateQueries({ queryKey: queryKeys.scholarProfile(scholarId) });
       }
+    },
+  });
+}
+
+export function useArchiveTask() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: archiveTask,
+    onSuccess: (updatedTask) => {
+      const scholarId = updatedTask.scholarId;
+      queryClient.invalidateQueries({ queryKey: queryKeys.scholarTasks(scholarId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.scholarProfile(scholarId) });
+    },
+  });
+}
+
+export function useRestoreTask() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: restoreTask,
+    onSuccess: (updatedTask) => {
+      const scholarId = updatedTask.scholarId;
+      queryClient.invalidateQueries({ queryKey: queryKeys.scholarTasks(scholarId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.scholarProfile(scholarId) });
     },
   });
 }

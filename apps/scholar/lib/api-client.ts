@@ -85,6 +85,9 @@ export interface Request {
   priority: 'high' | 'medium' | 'low';
   status: 'pending' | 'approved' | 'rejected' | 'reviewed' | 'commented';
   submittedDate: string;
+  archived: boolean;
+  archivedAt?: string | null;
+  archivedBy?: string | null;
   reviewedBy?: string | null;
   reviewComment?: string | null;
   reviewDate?: string | null;
@@ -94,8 +97,9 @@ export interface Request {
   updatedAt: string;
 }
 
-export async function getMyRequests(): Promise<Request[]> {
-  return fetchAPI<Request[]>('/api/requests/my-requests');
+export async function getMyRequests(includeArchived = false): Promise<Request[]> {
+  const query = includeArchived ? '?includeArchived=true' : '';
+  return fetchAPI<Request[]>(`/api/requests/my-requests${query}`);
 }
 
 export interface CreateRequestData {
@@ -115,6 +119,18 @@ export async function createRequest(data: CreateRequestData): Promise<Request> {
   return fetchAPI<Request>('/api/requests', {
     method: 'POST',
     body: JSON.stringify(data),
+  });
+}
+
+export async function archiveRequest(requestId: string): Promise<Request> {
+  return fetchAPI<Request>(`/api/requests/${requestId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function restoreRequest(requestId: string): Promise<Request> {
+  return fetchAPI<Request>(`/api/requests/${requestId}/restore`, {
+    method: 'PATCH',
   });
 }
 

@@ -48,6 +48,10 @@ export class GetRequestsQueryDto {
   @IsEnum(['asc', 'desc'])
   @Transform(({ value }) => value?.toLowerCase())
   sortOrder?: 'asc' | 'desc' = 'desc';
+
+  @IsOptional()
+  @IsEnum(['active', 'archived', 'all'])
+  archivedFilter?: 'active' | 'archived' | 'all' = 'active';
 }
 
 export class RequestAttachmentDto {
@@ -85,6 +89,9 @@ export class RequestResponseDto {
   priority: 'high' | 'medium' | 'low';
   status: 'pending' | 'approved' | 'rejected' | 'reviewed' | 'commented';
   submittedDate: Date;
+  archived: boolean;
+  archivedAt?: Date | null;
+  archivedBy?: string | null;
   reviewedBy?: string | null;
   reviewComment?: string | null;
   reviewDate?: Date | null;

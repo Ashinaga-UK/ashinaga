@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { and, count, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 import { database } from '../db/connection';
 import {
@@ -22,18 +22,56 @@ import {
 export class RequestsService {
   constructor(private readonly emailService: EmailService) {}
 
+  private buildArchivedWhereCondition(mode: 'active' | 'archived' | 'all' = 'active') {
+    if (mode === 'all') {
+      return undefined;
+    }
+
+    return eq(requests.archived, mode === 'archived');
+  }
+
+  private async assertCanMutateRequest(requestId: string, userId: string) {
+    const [request] = await database.select().from(requests).where(eq(requests.id, requestId));
+
+    if (!request) {
+      throw new NotFoundException('Request not found');
+    }
+
+    const [staffRecord] = await database.select().from(staff).where(eq(staff.userId, userId));
+    if (staffRecord) {
+      return request;
+    }
+
+    const [scholarRecord] = await database.select().from(scholars).where(eq(scholars.userId, userId));
+    if (!scholarRecord) {
+      throw new ForbiddenException('User is not authorized for this request');
+    }
+
+    if (request.scholarId !== scholarRecord.id) {
+      throw new ForbiddenException('You can only manage your own requests');
+    }
+
+    return request;
+  }
+
   async getRequests(query: GetRequestsQueryDto, userId: string): Promise<GetRequestsResponseDto> {
-    const { page = 1, limit = 20, search, type, status, priority } = query;
+    const { page = 1, limit = 20, search, type, status, priority, archivedFilter = 'active' } =
+      query;
 
     const offset = (page - 1) * limit;
 
     const whereConditions = [];
 
-    // Always filter out archived requests
-    whereConditions.push(eq(requests.archived, false));
-
-    // Check if user is a super admin
     const [staffRecord] = await database.select().from(staff).where(eq(staff.userId, userId));
+
+    if (!staffRecord) {
+      throw new ForbiddenException('Only staff can access this endpoint');
+    }
+
+    const archivedCondition = this.buildArchivedWhereCondition(archivedFilter);
+    if (archivedCondition) {
+      whereConditions.push(archivedCondition);
+    }
 
     // If not a super admin, only show requests assigned to this user
     if (!staffRecord?.isSuperAdmin) {
@@ -117,6 +155,9 @@ export class RequestsService {
       priority: row.request.priority,
       status: row.request.status,
       submittedDate: row.request.submittedDate,
+      archived: row.request.archived,
+      archivedAt: row.request.archivedAt,
+      archivedBy: row.request.archivedBy,
       reviewedBy: row.request.reviewedBy,
       reviewComment: row.request.reviewComment,
       reviewDate: row.request.reviewDate,
@@ -211,6 +252,7 @@ export class RequestsService {
         count: count(),
       })
       .from(requests)
+      .where(eq(requests.archived, false))
       .groupBy(requests.status);
 
     const stats = {
@@ -246,7 +288,7 @@ export class RequestsService {
     return stats;
   }
 
-  async getRequestsForScholar(userId: string) {
+  async getRequestsForScholar(userId: string, includeArchived = false) {
     // First, get the scholar ID from the user ID
     const scholar = await database
       .select()
@@ -261,6 +303,11 @@ export class RequestsService {
     const scholarId = scholar[0].id;
 
     // Get requests for this scholar with user info (excluding archived)
+    const whereConditions = [eq(requests.scholarId, scholarId)];
+    if (!includeArchived) {
+      whereConditions.push(eq(requests.archived, false));
+    }
+
     const requestsWithScholars = await database
       .select({
         request: requests,
@@ -270,7 +317,7 @@ export class RequestsService {
       .from(requests)
       .innerJoin(scholars, eq(requests.scholarId, scholars.id))
       .innerJoin(users, eq(scholars.userId, users.id))
-      .where(and(eq(requests.scholarId, scholarId), eq(requests.archived, false)))
+      .where(and(...whereConditions))
       .orderBy(desc(requests.submittedDate));
 
     // Get attachments and audit logs for all requests
@@ -290,6 +337,9 @@ export class RequestsService {
       priority: row.request.priority,
       status: row.request.status,
       submittedDate: row.request.submittedDate,
+      archived: row.request.archived,
+      archivedAt: row.request.archivedAt,
+      archivedBy: row.request.archivedBy,
       reviewedBy: row.request.reviewedBy,
       reviewComment: row.request.reviewComment,
       reviewDate: row.request.reviewDate,
@@ -446,12 +496,7 @@ export class RequestsService {
   }
 
   async archiveRequest(requestId: string, archivedBy: string) {
-    // Check if request exists and is not already archived
-    const [request] = await database.select().from(requests).where(eq(requests.id, requestId));
-
-    if (!request) {
-      throw new NotFoundException('Request not found');
-    }
+    const request = await this.assertCanMutateRequest(requestId, archivedBy);
 
     if (request.archived) {
       throw new Error('Request is already archived');
@@ -479,5 +524,34 @@ export class RequestsService {
     });
 
     return archivedRequest;
+  }
+
+  async restoreRequest(requestId: string, restoredBy: string) {
+    const request = await this.assertCanMutateRequest(requestId, restoredBy);
+
+    if (!request.archived) {
+      throw new Error('Request is not archived');
+    }
+
+    const [restoredRequest] = await database
+      .update(requests)
+      .set({
+        archived: false,
+        archivedAt: null,
+        archivedBy: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(requests.id, requestId))
+      .returning();
+
+    await database.insert(requestAuditLogs).values({
+      requestId,
+      action: 'restored',
+      performedBy: restoredBy,
+      comment: 'Request restored',
+      metadata: JSON.stringify({ restoredBy, restoredAt: new Date() }),
+    });
+
+    return restoredRequest;
   }
 }
