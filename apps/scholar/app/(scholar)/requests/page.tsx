@@ -21,14 +21,28 @@ export default function RequestsPage() {
   const restoreRequest = useRestoreRequest();
 
   const handleArchive = (requestId: string) => {
+    const confirmed = window.confirm(
+      'Withdraw this request?\n\nYou can restore it within 7 days. After 7 days, restoration is no longer possible and you will need to create a new request.'
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
     archiveRequest.mutate(requestId, {
       onSuccess: () => {
-        toast({ title: 'Request archived', description: 'The request was archived successfully.' });
-      },
-      onError: () => {
         toast({
-          title: 'Archive failed',
-          description: 'Could not archive the request. Please try again.',
+          title: 'Request withdrawn',
+          description: 'Your request was withdrawn. You can restore it within 7 days.',
+        });
+      },
+      onError: (error) => {
+        toast({
+          title: 'Withdraw failed',
+          description:
+            error instanceof Error
+              ? error.message
+              : 'Could not withdraw the request. Please try again.',
           variant: 'destructive',
         });
       },
@@ -40,10 +54,13 @@ export default function RequestsPage() {
       onSuccess: () => {
         toast({ title: 'Request restored', description: 'The request was restored successfully.' });
       },
-      onError: () => {
+      onError: (error) => {
         toast({
           title: 'Restore failed',
-          description: 'Could not restore the request. Please try again.',
+          description:
+            error instanceof Error
+              ? error.message
+              : 'Could not restore the request. Please try again.',
           variant: 'destructive',
         });
       },
@@ -56,7 +73,7 @@ export default function RequestsPage() {
         <h2 className="text-2xl font-bold text-foreground">My Requests</h2>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => setShowArchived((prev) => !prev)}>
-            {showArchived ? 'Show Active' : 'Show Archived'}
+            {showArchived ? 'Show Active' : 'Show Withdrawn'}
           </Button>
           <NewRequestDialog
             trigger={
@@ -102,7 +119,7 @@ export default function RequestsPage() {
               <p className="text-muted-foreground">No requests yet</p>
               <p className="text-sm text-muted-foreground mt-2">
                 {showArchived
-                  ? 'No archived requests found'
+                  ? 'No withdrawn requests found'
                   : 'Click "New Request" to submit your first request'}
               </p>
             </div>
