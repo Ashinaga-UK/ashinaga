@@ -16,6 +16,11 @@ interface RequestCardProps {
 
 export function RequestCard({ request, onArchive, onRestore, isMutating = false }: RequestCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const isRestoreExpired = Boolean(
+    request.archived &&
+      request.archivedAt &&
+      new Date(request.archivedAt).getTime() + 7 * 24 * 60 * 60 * 1000 < Date.now()
+  );
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -211,17 +216,24 @@ export function RequestCard({ request, onArchive, onRestore, isMutating = false 
         )}
 
         {(onArchive || onRestore) && (
-          <div className="pt-2 border-t flex justify-end">
+          <div className="pt-2 border-t flex flex-col items-end gap-2">
             {request.archived ? (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => onRestore?.(request.id)}
-                disabled={isMutating}
-              >
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Restore
-              </Button>
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onRestore?.(request.id)}
+                  disabled={isMutating || isRestoreExpired}
+                >
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Restore
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  {isRestoreExpired
+                    ? 'Restore window expired after 7 days.'
+                    : 'You can restore this request within 7 days of withdrawal.'}
+                </p>
+              </>
             ) : (
               <Button
                 size="sm"
@@ -231,7 +243,7 @@ export function RequestCard({ request, onArchive, onRestore, isMutating = false 
                 disabled={isMutating}
               >
                 <Trash2 className="h-4 w-4 mr-2" />
-                Archive
+                Withdraw
               </Button>
             )}
           </div>
