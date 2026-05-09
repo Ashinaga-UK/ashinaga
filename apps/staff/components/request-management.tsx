@@ -165,6 +165,7 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
 
   const applicationItems = getFormDataDisplayItems(request.type, request.formData);
   const requestTypeLabel = REQUEST_TYPE_LABELS[request.type] || request.type.replace(/_/g, ' ');
+  const canMakeDecision = request.status === 'pending' || request.status === 'reviewed';
 
   const renderCompletedApplication = () => (
     <div className="bg-gray-50 p-4 rounded-lg">
@@ -300,7 +301,7 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
 
           <div className="flex gap-2">
             {/* Show different buttons based on status */}
-            {request.status === 'pending' && (
+            {canMakeDecision && (
               <>
                 {/* Approval Dialog */}
                 <Dialog open={approvalOpen} onOpenChange={setApprovalOpen}>
@@ -343,15 +344,17 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
                         <X className="h-4 w-4 mr-2" />
                         {isSubmitting ? 'Processing...' : 'Reject'}
                       </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => handleStatusUpdate('reviewed')}
-                        disabled={isSubmitting}
-                        className="text-purple-700 border-purple-200 hover:bg-purple-50"
-                      >
-                        <Clock className="h-4 w-4 mr-2" />
-                        {isSubmitting ? 'Processing...' : 'Reviewed'}
-                      </Button>
+                      {request.status !== 'reviewed' && (
+                        <Button
+                          variant="outline"
+                          onClick={() => handleStatusUpdate('reviewed')}
+                          disabled={isSubmitting}
+                          className="text-purple-700 border-purple-200 hover:bg-purple-50"
+                        >
+                          <Clock className="h-4 w-4 mr-2" />
+                          {isSubmitting ? 'Processing...' : 'Reviewed'}
+                        </Button>
+                      )}
                       <Button
                         onClick={() => handleApproval(true)}
                         disabled={isSubmitting}
