@@ -9,10 +9,10 @@ import { MyProfile } from '../components/my-profile';
 import { RequestManagement } from '../components/request-management';
 import { ScholarManagementTable } from '../components/scholar-management-table';
 import { ScholarOnboarding } from '../components/scholar-onboarding';
-import { StaffInviteDialog } from '../components/staff-invite-dialog';
 import { ScholarProfilePage } from '../components/scholar-profile';
+import { StaffInviteDialog } from '../components/staff-invite-dialog';
 import { TaskAssignment } from '../components/task-assignment';
-import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+import { Avatar, AvatarFallback } from '../components/ui/avatar';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -25,7 +25,6 @@ import {
 } from '../components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import {
-  type Announcement,
   deleteAnnouncement,
   getRequestStats,
   getRequests,
@@ -36,6 +35,13 @@ import {
 } from '../lib/api-client';
 import { signOut, useSession } from '../lib/auth-client';
 import { useAnnouncements } from '../lib/hooks/use-queries';
+
+type StaffDashboardView =
+  | 'dashboard'
+  | 'scholar-profile'
+  | 'onboarding'
+  | 'task-assignment'
+  | 'my-profile';
 
 function StaffDashboardContent() {
   const router = useRouter();
@@ -49,13 +55,14 @@ function StaffDashboardContent() {
   const scholarTabFromUrl = searchParams.get('scholarTab') || 'profile';
 
   const [activeTab, setActiveTab] = useState(tabFromUrl);
-  const [currentView, setCurrentView] = useState<
-    'dashboard' | 'scholar-profile' | 'onboarding' | 'task-assignment' | 'my-profile'
-  >(viewFromUrl as any);
+  const [currentView, setCurrentView] = useState<StaffDashboardView>(
+    viewFromUrl as StaffDashboardView
+  );
   const [selectedScholarId, setSelectedScholarId] = useState<string | null>(scholarIdFromUrl);
   const [scholarProfileTab, setScholarProfileTab] = useState<
     'profile' | 'goals' | 'tasks' | 'documents'
   >((scholarTabFromUrl as 'profile' | 'goals' | 'tasks' | 'documents') || 'profile');
+  const [requestCategoryFilter, setRequestCategoryFilter] = useState('all');
   const [requestStatusFilter, setRequestStatusFilter] = useState('all');
   const [requestArchiveFilter, setRequestArchiveFilter] = useState<'active' | 'archived' | 'all'>(
     'active'
@@ -150,6 +157,14 @@ function StaffDashboardContent() {
     setRequestsError(null);
     try {
       const response = await getRequests({
+        type:
+          requestCategoryFilter !== 'all'
+            ? (requestCategoryFilter as
+                | 'extenuating_circumstances'
+                | 'summer_funding_request'
+                | 'summer_funding_report'
+                | 'requirement_submission')
+            : undefined,
         status:
           requestStatusFilter !== 'all'
             ? (requestStatusFilter as
@@ -170,7 +185,7 @@ function StaffDashboardContent() {
     } finally {
       setRequestsLoading(false);
     }
-  }, [requestArchiveFilter, requestStatusFilter]);
+  }, [requestCategoryFilter, requestStatusFilter]);
 
   const fetchScholarStats = useCallback(async () => {
     setScholarStatsLoading(true);
@@ -456,9 +471,32 @@ function StaffDashboardContent() {
                       <CardTitle>Scholar Requests</CardTitle>
                       <CardDescription>Review and respond to scholar submissions</CardDescription>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                      <Select
+                        value={requestCategoryFilter}
+                        onValueChange={setRequestCategoryFilter}
+                      >
+                        <SelectTrigger className="w-full sm:w-[220px]">
+                          <SelectValue placeholder="Filter by category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Categories</SelectItem>
+                          <SelectItem value="extenuating_circumstances">
+                            Extenuating Circumstances
+                          </SelectItem>
+                          <SelectItem value="summer_funding_request">
+                            Summer Funding Request
+                          </SelectItem>
+                          <SelectItem value="summer_funding_report">
+                            Summer Funding Report
+                          </SelectItem>
+                          <SelectItem value="requirement_submission">
+                            Requirement Submission
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
                       <Select value={requestStatusFilter} onValueChange={setRequestStatusFilter}>
-                        <SelectTrigger className="w-[180px]">
+                        <SelectTrigger className="w-full sm:w-[180px]">
                           <SelectValue placeholder="Filter by status" />
                         </SelectTrigger>
                         <SelectContent>
@@ -467,21 +505,6 @@ function StaffDashboardContent() {
                           <SelectItem value="approved">Approved</SelectItem>
                           <SelectItem value="rejected">Rejected</SelectItem>
                           <SelectItem value="reviewed">Reviewed</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Select
-                        value={requestArchiveFilter}
-                        onValueChange={(value) =>
-                          setRequestArchiveFilter(value as 'active' | 'archived' | 'all')
-                        }
-                      >
-                        <SelectTrigger className="w-[180px]">
-                          <SelectValue placeholder="Filter by archived state" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="active">Active only</SelectItem>
-                          <SelectItem value="archived">Archived only</SelectItem>
-                          <SelectItem value="all">All</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
