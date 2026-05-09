@@ -12,7 +12,7 @@ import { ScholarOnboarding } from '../components/scholar-onboarding';
 import { ScholarProfilePage } from '../components/scholar-profile';
 import { StaffInviteDialog } from '../components/staff-invite-dialog';
 import { TaskAssignment } from '../components/task-assignment';
-import { Avatar, AvatarFallback } from '../components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -280,15 +280,23 @@ function StaffDashboardContent() {
             <Button variant="outline" size="sm" onClick={handleSignOut}>
               Logout
             </Button>
-            <Avatar>
-              <AvatarFallback>
-                {user?.name
-                  ?.split(' ')
-                  .map((n: string) => n[0])
-                  .join('')
-                  .toUpperCase() || 'U'}
-              </AvatarFallback>
-            </Avatar>
+            <button
+              type="button"
+              className="rounded-full focus:outline-none focus:ring-2 focus:ring-ashinaga-teal-600 focus:ring-offset-2"
+              onClick={() => router.push('?view=my-profile')}
+              aria-label="Open my profile"
+            >
+              <Avatar className="cursor-pointer">
+                {user?.image && <AvatarImage src={user.image} alt={user.name || 'User'} />}
+                <AvatarFallback>
+                  {user?.name
+                    ?.split(' ')
+                    .map((n: string) => n[0])
+                    .join('')
+                    .toUpperCase() || 'U'}
+                </AvatarFallback>
+              </Avatar>
+            </button>
           </div>
         </div>
       </header>
