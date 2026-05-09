@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle, Download, Eye, Paperclip, Trash2, X } from 'lucide-react';
+import { CheckCircle, Clock, Download, Eye, Paperclip, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import {
   deleteRequest,
@@ -9,6 +9,7 @@ import {
   updateRequestStatus,
 } from '../lib/api-client';
 import { useSession } from '../lib/auth-client';
+import { getFormDataDisplayItems, REQUEST_TYPE_LABELS } from '../lib/form-data-labels';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
@@ -30,6 +31,8 @@ interface RequestManagementProps {
   onStatusUpdate: (requestId: string, status: string, comment?: string) => void;
 }
 
+type ReviewStatus = 'approved' | 'rejected' | 'reviewed';
+
 export function RequestManagement({ request, onStatusUpdate }: RequestManagementProps) {
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [viewReviewOpen, setViewReviewOpen] = useState(false);
@@ -46,7 +49,7 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
   // Debug logging
   console.log('Auth state:', { user, isLoading, isAuthenticated });
 
-  const handleApproval = async (approved: boolean) => {
+  const handleStatusUpdate = async (status: ReviewStatus) => {
     if (!user?.id) {
       console.error('User not authenticated. Auth state:', { user, isLoading, isAuthenticated });
       alert('Please log in to perform this action.');
@@ -55,7 +58,6 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
 
     setIsSubmitting(true);
     try {
-      const status = approved ? 'approved' : 'rejected';
       await updateRequestStatus(request.id, status, approvalComment, user.id);
       onStatusUpdate(request.id, status, approvalComment);
       setApprovalOpen(false);
@@ -66,6 +68,10 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleApproval = async (approved: boolean) => {
+    await handleStatusUpdate(approved ? 'approved' : 'rejected');
   };
 
   const handleDownload = async (attachmentId: string, filename: string) => {
@@ -152,6 +158,72 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
     }
   };
 
+  const getStatusLabel = (status: string) => {
+    if (status === 'reviewed') return 'on hold';
+    return status;
+  };
+
+  const applicationItems = getFormDataDisplayItems(request.type, request.formData);
+  const requestTypeLabel = REQUEST_TYPE_LABELS[request.type] || request.type.replace(/_/g, ' ');
+
+  const renderCompletedApplication = () => (
+    <div className="bg-gray-50 p-4 rounded-lg">
+      <h4 className="font-medium mb-3">Completed Application</h4>
+      <div className="space-y-3">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Request Type</p>
+          <p className="text-sm text-gray-700">{requestTypeLabel}</p>
+        </div>
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Description</p>
+          <p className="text-sm text-gray-700 whitespace-pre-wrap">{request.description}</p>
+        </div>
+        {applicationItems.length > 0 && (
+          <div className="border-t border-gray-200 pt-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-500 mb-2">
+              Application Responses
+            </p>
+            <div className="space-y-3">
+              {applicationItems.map((item, index) => (
+                <div key={`${item.label}-${index}`}>
+                  <p className="text-sm font-medium text-gray-800">{item.label}</p>
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap">{item.value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {request.attachments && request.attachments.length > 0 && (
+          <div className="border-t border-gray-200 pt-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-500 mb-2">
+              Attachments ({request.attachments.length})
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {request.attachments.map((attachment) => (
+                <div
+                  key={attachment.id}
+                  className="flex items-center gap-2 bg-white rounded px-2 py-1"
+                >
+                  <span className="text-xs text-gray-700">{attachment.name}</span>
+                  <span className="text-xs text-gray-500">({attachment.size})</span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-4 w-4 p-0"
+                    disabled={isDownloading === attachment.id}
+                    onClick={() => handleDownload(attachment.id, attachment.name)}
+                  >
+                    <Download className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <Card className="p-4 border border-ashinaga-teal-100 rounded-lg">
       <CardContent className="p-0">
@@ -160,7 +232,9 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
             <div className="flex items-center gap-2 mb-2">
               <h4 className="font-medium text-gray-900">{request.scholarName}</h4>
               <Badge variant={getPriorityColor(request.priority)}>{request.priority}</Badge>
-              <Badge className={getStatusBadgeColor(request.status)}>{request.status}</Badge>
+              <Badge className={getStatusBadgeColor(request.status)}>
+                {getStatusLabel(request.status)}
+              </Badge>
             </div>
             <p className="text-sm text-gray-600 mb-2">{request.description}</p>
 
@@ -197,19 +271,22 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
             )}
 
             <div className="flex items-center gap-4 text-sm text-gray-500">
-              <span>Type: {request.type.replace('_', ' ')}</span>
+              <span>Type: {requestTypeLabel}</span>
               <span>Submitted: {new Date(request.submittedDate).toLocaleDateString()}</span>
             </div>
 
             {/* Show review details if already reviewed */}
             {(request.status === 'approved' ||
               request.status === 'rejected' ||
+              request.status === 'reviewed' ||
               request.status === 'commented') &&
               request.reviewComment && (
                 <div className="mt-3 p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-sm font-medium text-gray-700">Review:</span>
-                    <Badge className={getStatusBadgeColor(request.status)}>{request.status}</Badge>
+                    <Badge className={getStatusBadgeColor(request.status)}>
+                      {getStatusLabel(request.status)}
+                    </Badge>
                   </div>
                   <p className="text-sm text-gray-600">{request.reviewComment}</p>
                   {request.reviewDate && (
@@ -233,50 +310,15 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
                       Review
                     </Button>
                   </DialogTrigger>
-                  <DialogContent>
+                  <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Review Request</DialogTitle>
                       <DialogDescription>
-                        Approve or reject the request from {request.scholarName}
+                        Review the completed application from {request.scholarName}
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="font-medium mb-2">Request Details</h4>
-                        <p className="text-sm text-gray-600 mb-2">
-                          <strong>Type:</strong> {request.type.replace('_', ' ')}
-                        </p>
-                        <p className="text-sm text-gray-600 mb-2">
-                          <strong>Description:</strong> {request.description}
-                        </p>
-                        {request.attachments && request.attachments.length > 0 && (
-                          <div className="mt-2">
-                            <p className="text-sm text-gray-600 mb-2">
-                              <strong>Attachments:</strong> {request.attachments.length} file(s)
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                              {request.attachments.map((attachment) => (
-                                <div
-                                  key={attachment.name}
-                                  className="flex items-center gap-2 bg-white rounded px-2 py-1"
-                                >
-                                  <span className="text-xs text-gray-700">{attachment.name}</span>
-                                  <span className="text-xs text-gray-500">({attachment.size})</span>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-4 w-4 p-0"
-                                    disabled={isDownloading === attachment.id}
-                                    onClick={() => handleDownload(attachment.id, attachment.name)}
-                                  >
-                                    <Download className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                      {renderCompletedApplication()}
                       <div>
                         <Label htmlFor="approvalComment">Comments (Optional)</Label>
                         <Textarea
@@ -300,6 +342,15 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
                       >
                         <X className="h-4 w-4 mr-2" />
                         {isSubmitting ? 'Processing...' : 'Reject'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => handleStatusUpdate('reviewed')}
+                        disabled={isSubmitting}
+                        className="text-purple-700 border-purple-200 hover:bg-purple-50"
+                      >
+                        <Clock className="h-4 w-4 mr-2" />
+                        {isSubmitting ? 'Processing...' : 'Put On Hold'}
                       </Button>
                       <Button
                         onClick={() => handleApproval(true)}
@@ -326,6 +377,7 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
             {/* View Review Button for already reviewed requests */}
             {(request.status === 'approved' ||
               request.status === 'rejected' ||
+              request.status === 'reviewed' ||
               request.status === 'commented') && (
               <Dialog open={viewReviewOpen} onOpenChange={setViewReviewOpen}>
                 <DialogTrigger asChild>
@@ -334,7 +386,7 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
                     View Review
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Review Details</DialogTitle>
                     <DialogDescription>
@@ -342,46 +394,12 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <h4 className="font-medium mb-2">Request Details</h4>
-                      <p className="text-sm text-gray-600 mb-2">
-                        <strong>Type:</strong> {request.type.replace('_', ' ')}
-                      </p>
-                      <p className="text-sm text-gray-600 mb-2">
-                        <strong>Description:</strong> {request.description}
-                      </p>
-                      {request.attachments && request.attachments.length > 0 && (
-                        <div className="mt-2">
-                          <p className="text-sm text-gray-600 mb-2">
-                            <strong>Attachments:</strong> {request.attachments.length} file(s)
-                          </p>
-                          <div className="flex flex-wrap gap-2">
-                            {request.attachments.map((attachment) => (
-                              <div
-                                key={attachment.name}
-                                className="flex items-center gap-2 bg-white rounded px-2 py-1"
-                              >
-                                <span className="text-xs text-gray-700">{attachment.name}</span>
-                                <span className="text-xs text-gray-500">({attachment.size})</span>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-4 w-4 p-0"
-                                  onClick={() => handleDownload(attachment.url, attachment.name)}
-                                >
-                                  <Download className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    {renderCompletedApplication()}
                     <div>
                       <Label>Review Decision</Label>
                       <div className="mt-2">
                         <Badge className={getStatusBadgeColor(request.status)}>
-                          {request.status}
+                          {getStatusLabel(request.status)}
                         </Badge>
                       </div>
                     </div>

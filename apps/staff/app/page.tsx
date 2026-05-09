@@ -500,7 +500,7 @@ function StaffDashboardContent() {
                           <SelectItem value="pending">Pending</SelectItem>
                           <SelectItem value="approved">Approved</SelectItem>
                           <SelectItem value="rejected">Rejected</SelectItem>
-                          <SelectItem value="reviewed">Reviewed</SelectItem>
+                          <SelectItem value="reviewed">On Hold</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
