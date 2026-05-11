@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  type CreateTaskData,
   archiveScholar,
+  type CreateTaskData,
   createAnnouncement,
   createTask,
   deleteScholar,
+  type GetAnnouncementsParams,
   getAnnouncements,
   getScholarProfile,
   getTasksByScholar,
@@ -21,7 +22,7 @@ export const queryKeys = {
   scholarProfile: (id: string) => ['scholar', id, 'profile'] as const,
   scholarTasks: (id: string) => ['scholar', id, 'tasks'] as const,
   user: ['user'] as const,
-  announcements: ['announcements'] as const,
+  announcements: (params?: GetAnnouncementsParams) => ['announcements', params] as const,
 };
 
 // Scholar profile query
@@ -83,10 +84,10 @@ export function useUpdateUser() {
 }
 
 // Announcements query
-export function useAnnouncements(enabled = true) {
+export function useAnnouncements(params?: GetAnnouncementsParams, enabled = true) {
   return useQuery({
-    queryKey: queryKeys.announcements,
-    queryFn: getAnnouncements,
+    queryKey: queryKeys.announcements(params),
+    queryFn: () => getAnnouncements(params),
     enabled,
   });
 }
@@ -100,7 +101,7 @@ export function useCreateAnnouncement() {
     onSuccess: () => {
       // Invalidate and refetch announcements
       queryClient.invalidateQueries({
-        queryKey: queryKeys.announcements,
+        queryKey: ['announcements'],
       });
     },
   });

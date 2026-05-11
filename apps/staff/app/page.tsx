@@ -2,7 +2,7 @@
 
 import { AlertCircle, FileText, Loader2, MessageSquare, Plus, Trash2, Users } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { AnnouncementCreator } from '../components/announcement-creator';
 import { LoginPage } from '../components/login-page';
 import { MyProfile } from '../components/my-profile';
@@ -25,7 +25,9 @@ import {
 } from '../components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import {
+  type AnnouncementFilterOptions,
   deleteAnnouncement,
+  getAnnouncementFilterOptions,
   getRequestStats,
   getRequests,
   getScholarStats,
@@ -64,6 +66,21 @@ function StaffDashboardContent() {
   >((scholarTabFromUrl as 'profile' | 'goals' | 'tasks' | 'documents') || 'profile');
   const [requestCategoryFilter, setRequestCategoryFilter] = useState('all');
   const [requestStatusFilter, setRequestStatusFilter] = useState('all');
+  const [announcementYearFilter, setAnnouncementYearFilter] = useState('all');
+  const [announcementProgramFilter, setAnnouncementProgramFilter] = useState('all');
+  const [announcementUniversityFilter, setAnnouncementUniversityFilter] = useState('all');
+  const [announcementStatusFilter, setAnnouncementStatusFilter] = useState<
+    'active' | 'archived' | 'all'
+  >('active');
+  const [announcementSortOrder, setAnnouncementSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [announcementFilterOptions, setAnnouncementFilterOptions] =
+    useState<AnnouncementFilterOptions>({
+      programs: [],
+      years: [],
+      universities: [],
+      locations: [],
+      statuses: [],
+    });
   const [requests, setRequests] = useState<Request[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(true);
   const [requestsError, setRequestsError] = useState<string | null>(null);
@@ -77,6 +94,22 @@ function StaffDashboardContent() {
   const isLoading = session.isPending;
   const isAuthenticated = !!user;
   const isStaff = user?.userType === 'staff';
+  const announcementParams = useMemo(
+    () => ({
+      year: announcementYearFilter !== 'all' ? announcementYearFilter : undefined,
+      program: announcementProgramFilter !== 'all' ? announcementProgramFilter : undefined,
+      university: announcementUniversityFilter !== 'all' ? announcementUniversityFilter : undefined,
+      status: announcementStatusFilter,
+      sortOrder: announcementSortOrder,
+    }),
+    [
+      announcementYearFilter,
+      announcementProgramFilter,
+      announcementUniversityFilter,
+      announcementStatusFilter,
+      announcementSortOrder,
+    ]
+  );
 
   // Handle non-staff users
   useEffect(() => {
@@ -93,7 +126,7 @@ function StaffDashboardContent() {
     isLoading: announcementsLoading,
     error: announcementsError,
     refetch: refetchAnnouncements,
-  } = useAnnouncements(isAuthenticated);
+  } = useAnnouncements(announcementParams, isAuthenticated);
 
   // Update state when URL changes
   useEffect(() => {
@@ -207,6 +240,15 @@ function StaffDashboardContent() {
     }
   }, []);
 
+  const fetchAnnouncementFilterOptions = useCallback(async () => {
+    try {
+      const options = await getAnnouncementFilterOptions();
+      setAnnouncementFilterOptions(options);
+    } catch (err) {
+      console.error('Error fetching announcement filter options:', err);
+    }
+  }, []);
+
   // Announcements are now fetched via React Query
 
   useEffect(() => {
@@ -215,9 +257,24 @@ function StaffDashboardContent() {
       fetchRequests();
       fetchScholarStats();
       fetchRequestStats();
+      fetchAnnouncementFilterOptions();
       // Announcements are now auto-fetched by React Query
     }
-  }, [isAuthenticated, fetchRequests, fetchScholarStats, fetchRequestStats]);
+  }, [
+    isAuthenticated,
+    fetchRequests,
+    fetchScholarStats,
+    fetchRequestStats,
+    fetchAnnouncementFilterOptions,
+  ]);
+
+  const clearAnnouncementFilters = () => {
+    setAnnouncementYearFilter('all');
+    setAnnouncementProgramFilter('all');
+    setAnnouncementUniversityFilter('all');
+    setAnnouncementStatusFilter('active');
+    setAnnouncementSortOrder('desc');
+  };
 
   const handleRequestStatusUpdate = (requestId: string, status: string, comment?: string) => {
     console.log('Request updated:', { requestId, status, comment });
@@ -559,6 +616,88 @@ function StaffDashboardContent() {
                   </div>
                 </CardHeader>
                 <CardContent>
+                  <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
+                      <Select
+                        value={announcementStatusFilter}
+                        onValueChange={(value) =>
+                          setAnnouncementStatusFilter(value as 'active' | 'archived' | 'all')
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="archived">Archived</SelectItem>
+                          <SelectItem value="all">All Statuses</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={announcementYearFilter}
+                        onValueChange={setAnnouncementYearFilter}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Year" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Years</SelectItem>
+                          {announcementFilterOptions.years.map((year) => (
+                            <SelectItem key={year} value={year}>
+                              {year}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={announcementProgramFilter}
+                        onValueChange={setAnnouncementProgramFilter}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Program" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Programs</SelectItem>
+                          {announcementFilterOptions.programs.map((program) => (
+                            <SelectItem key={program} value={program}>
+                              {program}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={announcementUniversityFilter}
+                        onValueChange={setAnnouncementUniversityFilter}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="University" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Universities</SelectItem>
+                          {announcementFilterOptions.universities.map((university) => (
+                            <SelectItem key={university} value={university}>
+                              {university}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={announcementSortOrder}
+                        onValueChange={(value) => setAnnouncementSortOrder(value as 'asc' | 'desc')}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sort" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="desc">Most Recent</SelectItem>
+                          <SelectItem value="asc">Oldest First</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button variant="outline" onClick={clearAnnouncementFilters}>
+                      Reset
+                    </Button>
+                  </div>
                   {announcementsLoading ? (
                     <div className="flex items-center justify-center py-12">
                       <Loader2 className="h-6 w-6 animate-spin" />
@@ -574,7 +713,7 @@ function StaffDashboardContent() {
                   ) : announcements.length === 0 ? (
                     <div className="text-center py-12 text-gray-500">
                       <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>No announcements yet. Create your first announcement to get started.</p>
+                      <p>No announcements match the current filters.</p>
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -598,6 +737,8 @@ function StaffDashboardContent() {
                                     Sent to {announcement.recipientCount} scholar
                                     {announcement.recipientCount !== 1 ? 's' : ''}
                                   </span>
+                                  <span className="mx-2">•</span>
+                                  <span>{announcement.archived ? 'Archived' : 'Active'}</span>
                                 </div>
                                 {announcement.filters.length > 0 && (
                                   <div className="flex gap-1">

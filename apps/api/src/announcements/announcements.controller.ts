@@ -1,9 +1,21 @@
-import { Body, Controller, Delete, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+  ValidationPipe,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
 import { AnnouncementsService } from './announcements.service';
 import { CreateAnnouncementDto, ScholarFilterDto } from './dto/create-announcement.dto';
+import { GetAnnouncementsQueryDto } from './dto/get-announcements.dto';
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -20,8 +32,11 @@ export class AnnouncementsController {
   constructor(private readonly announcementsService: AnnouncementsService) {}
 
   @Get()
-  async getAnnouncements() {
-    return this.announcementsService.getAnnouncements();
+  async getAnnouncements(
+    @Query(new ValidationPipe({ transform: true, whitelist: true }))
+    query: GetAnnouncementsQueryDto
+  ) {
+    return this.announcementsService.getAnnouncements(query);
   }
 
   @Post()
@@ -47,12 +62,16 @@ export class AnnouncementsController {
   }
 
   @Get('my-announcements')
-  async getMyAnnouncements(@Req() req: AuthenticatedRequest) {
+  async getMyAnnouncements(
+    @Query(new ValidationPipe({ transform: true, whitelist: true }))
+    query: GetAnnouncementsQueryDto,
+    @Req() req: AuthenticatedRequest
+  ) {
     const userId = req.user?.id;
     if (!userId) {
       throw new Error('User not authenticated');
     }
-    return this.announcementsService.getAnnouncementsForScholar(userId);
+    return this.announcementsService.getAnnouncementsForScholar(userId, query);
   }
 
   @Delete(':id')
