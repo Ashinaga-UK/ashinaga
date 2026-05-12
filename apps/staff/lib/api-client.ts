@@ -545,9 +545,20 @@ export async function getFilterOptions(): Promise<ScholarFilterOptions> {
 // User management functions
 export interface UpdateUserData {
   name?: string;
+  image?: string | null;
 }
 
-export async function updateUser(data: UpdateUserData): Promise<any> {
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  image?: string | null;
+  userType?: 'staff' | 'scholar';
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export async function updateUser(data: UpdateUserData): Promise<UserProfile> {
   return fetchAPI('/api/users/me', {
     method: 'PATCH',
     headers: {
