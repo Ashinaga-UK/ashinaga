@@ -465,6 +465,14 @@ export interface AnnouncementFilterOptions {
   statuses: string[];
 }
 
+export interface GetAnnouncementsParams {
+  year?: string;
+  program?: string;
+  university?: string;
+  status?: 'active' | 'archived' | 'all';
+  sortOrder?: 'asc' | 'desc';
+}
+
 export interface CreateAnnouncementData {
   title: string;
   content: string;
@@ -506,12 +514,30 @@ export interface Announcement {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  archived: boolean;
+  archivedAt?: string | null;
   filters: Array<{ type: string; value: string }>;
   recipientCount: number;
 }
 
-export async function getAnnouncements(): Promise<Announcement[]> {
-  return fetchAPI<Announcement[]>('/api/announcements');
+export async function getAnnouncements(params?: GetAnnouncementsParams): Promise<Announcement[]> {
+  const queryParams = new URLSearchParams();
+
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (
+        value !== undefined &&
+        value !== null &&
+        value !== '' &&
+        (key === 'status' || value !== 'all')
+      ) {
+        queryParams.append(key, String(value));
+      }
+    });
+  }
+
+  const queryString = queryParams.toString();
+  return fetchAPI<Announcement[]>(`/api/announcements${queryString ? `?${queryString}` : ''}`);
 }
 
 export async function deleteAnnouncement(announcementId: string): Promise<void> {
