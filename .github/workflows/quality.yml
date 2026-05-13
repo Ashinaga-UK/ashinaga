@@ -35,6 +35,13 @@ jobs:
     - name: Install dependencies
       run: pnpm install --frozen-lockfile
 
+    - name: CI: Print revision and requests.service.ts snippet
+      run: |
+        echo "CI_COMMIT=$(git rev-parse --short HEAD)"
+        echo "CI_REF=$(git rev-parse HEAD)"
+        echo "----- apps/api/src/requests/requests.service.ts (first 220 lines) -----"
+        sed -n '1,220p' apps/api/src/requests/requests.service.ts || true
+
     - name: Run lint
       run: pnpm lint
 
