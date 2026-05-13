@@ -267,7 +267,7 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
           name: 'John Doe',
           aaiScholarId: 'AAI123',
           dateOfBirth: '2000-01-01',
-          gender: 'Male',
+          gender: 'male',
           nationality: 'British',
           phone: '+44 7123 456789',
           email: 'john.doe@scholar.ac.uk',
@@ -295,7 +295,7 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
           name: 'Jane Smith',
           aaiScholarId: 'AAI456',
           dateOfBirth: '2001-02-02',
-          gender: 'Female',
+          gender: 'female',
           nationality: 'American',
           phone: '+44 7234 567890',
           email: 'jane.smith@scholar.ac.uk',
@@ -550,9 +550,10 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
                         <SelectValue placeholder="Select gender" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Male">Male</SelectItem>
-                        <SelectItem value="Female">Female</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                        <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
