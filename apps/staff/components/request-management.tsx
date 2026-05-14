@@ -144,17 +144,17 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
       case 'approved':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
       case 'rejected':
         return 'bg-red-100 text-red-800';
       case 'pending':
         return 'bg-orange-100 text-orange-800';
       case 'reviewed':
-        return 'bg-purple-100 text-purple-800';
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300';
       case 'commented':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-muted text-foreground';
     }
   };
 
@@ -168,45 +168,49 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
   const canMakeDecision = request.status === 'pending' || request.status === 'reviewed';
 
   const renderCompletedApplication = () => (
-    <div className="bg-gray-50 p-4 rounded-lg">
+    <div className="bg-muted p-4 rounded-lg">
       <h4 className="font-medium mb-3">Completed Application</h4>
       <div className="space-y-3">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Request Type</p>
-          <p className="text-sm text-gray-700">{requestTypeLabel}</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Request Type
+          </p>
+          <p className="text-sm text-foreground">{requestTypeLabel}</p>
         </div>
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Description</p>
-          <p className="text-sm text-gray-700 whitespace-pre-wrap">{request.description}</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Description
+          </p>
+          <p className="text-sm text-foreground whitespace-pre-wrap">{request.description}</p>
         </div>
         {applicationItems.length > 0 && (
-          <div className="border-t border-gray-200 pt-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-500 mb-2">
+          <div className="border-t border-border pt-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">
               Application Responses
             </p>
             <div className="space-y-3">
               {applicationItems.map((item, index) => (
                 <div key={`${item.label}-${index}`}>
-                  <p className="text-sm font-medium text-gray-800">{item.label}</p>
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap">{item.value}</p>
+                  <p className="text-sm font-medium text-foreground">{item.label}</p>
+                  <p className="text-sm text-foreground whitespace-pre-wrap">{item.value}</p>
                 </div>
               ))}
             </div>
           </div>
         )}
         {request.attachments && request.attachments.length > 0 && (
-          <div className="border-t border-gray-200 pt-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-500 mb-2">
+          <div className="border-t border-border pt-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">
               Attachments ({request.attachments.length})
             </p>
             <div className="flex flex-wrap gap-2">
               {request.attachments.map((attachment) => (
                 <div
                   key={attachment.id}
-                  className="flex items-center gap-2 bg-white rounded px-2 py-1"
+                  className="flex items-center gap-2 bg-background rounded px-2 py-1"
                 >
-                  <span className="text-xs text-gray-700">{attachment.name}</span>
-                  <span className="text-xs text-gray-500">({attachment.size})</span>
+                  <span className="text-xs text-foreground">{attachment.name}</span>
+                  <span className="text-xs text-muted-foreground">({attachment.size})</span>
                   <Button
                     size="sm"
                     variant="ghost"
@@ -226,25 +230,25 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
   );
 
   return (
-    <Card className="p-4 border border-ashinaga-teal-100 rounded-lg">
+    <Card className="p-4 border border-border rounded-lg">
       <CardContent className="p-0">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
-              <h4 className="font-medium text-gray-900">{request.scholarName}</h4>
+              <h4 className="font-medium text-foreground">{request.scholarName}</h4>
               <Badge variant={getPriorityColor(request.priority)}>{request.priority}</Badge>
               <Badge className={getStatusBadgeColor(request.status)}>
                 {getStatusLabel(request.status)}
               </Badge>
             </div>
-            <p className="text-sm text-gray-600 mb-2">{request.description}</p>
+            <p className="text-sm text-muted-foreground mb-2">{request.description}</p>
 
             {/* Attachments */}
             {request.attachments && request.attachments.length > 0 && (
               <div className="mb-3">
                 <div className="flex items-center gap-1 mb-2">
-                  <Paperclip className="h-4 w-4 text-gray-400" />
-                  <span className="text-sm text-gray-600">
+                  <Paperclip className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">
                     Attachments ({request.attachments.length})
                   </span>
                 </div>
@@ -252,10 +256,10 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
                   {request.attachments.map((attachment) => (
                     <div
                       key={attachment.name}
-                      className="flex items-center gap-2 bg-gray-50 rounded px-2 py-1"
+                      className="flex items-center gap-2 bg-muted rounded px-2 py-1"
                     >
-                      <span className="text-xs text-gray-700">{attachment.name}</span>
-                      <span className="text-xs text-gray-500">({attachment.size})</span>
+                      <span className="text-xs text-foreground">{attachment.name}</span>
+                      <span className="text-xs text-muted-foreground">({attachment.size})</span>
                       <Button
                         size="sm"
                         variant="ghost"
@@ -271,7 +275,7 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
               </div>
             )}
 
-            <div className="flex items-center gap-4 text-sm text-gray-500">
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <span>Type: {requestTypeLabel}</span>
               <span>Submitted: {new Date(request.submittedDate).toLocaleDateString()}</span>
             </div>
@@ -282,16 +286,16 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
               request.status === 'reviewed' ||
               request.status === 'commented') &&
               request.reviewComment && (
-                <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                <div className="mt-3 p-3 bg-muted rounded-lg">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-sm font-medium text-gray-700">Review:</span>
+                    <span className="text-sm font-medium text-foreground">Review:</span>
                     <Badge className={getStatusBadgeColor(request.status)}>
                       {getStatusLabel(request.status)}
                     </Badge>
                   </div>
-                  <p className="text-sm text-gray-600">{request.reviewComment}</p>
+                  <p className="text-sm text-muted-foreground">{request.reviewComment}</p>
                   {request.reviewDate && (
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       Reviewed on {new Date(request.reviewDate).toLocaleDateString()}
                     </p>
                   )}
@@ -409,15 +413,15 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
                     {request.reviewComment && (
                       <div>
                         <Label>Review Comment</Label>
-                        <div className="mt-2 p-3 bg-gray-50 rounded-lg">
-                          <p className="text-sm text-gray-600">{request.reviewComment}</p>
+                        <div className="mt-2 p-3 bg-muted rounded-lg">
+                          <p className="text-sm text-muted-foreground">{request.reviewComment}</p>
                         </div>
                       </div>
                     )}
                     {request.reviewDate && (
                       <div>
                         <Label>Review Date</Label>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="text-sm text-muted-foreground mt-1">
                           {new Date(request.reviewDate).toLocaleDateString()}
                         </p>
                       </div>

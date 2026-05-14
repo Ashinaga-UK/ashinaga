@@ -408,8 +408,10 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
           <CardContent className="pt-6">
             <div className="text-center space-y-4">
               <CheckCircle className="h-16 w-16 text-green-600 mx-auto" />
-              <h2 className="text-2xl font-bold text-gray-900">Scholars Successfully Onboarded!</h2>
-              <p className="text-gray-600">
+              <h2 className="text-2xl font-bold text-foreground">
+                Scholars Successfully Onboarded!
+              </h2>
+              <p className="text-muted-foreground">
                 {activeTab === 'single'
                   ? `${scholarData.name} has been added to the system and invitation sent.`
                   : `${csvData.length} scholars have been added to the system and invitations sent.`}
@@ -443,9 +445,9 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h4 className="font-medium text-blue-900 mb-2">Invitation Preview</h4>
-              <p className="text-sm text-blue-800">
+            <div className="bg-muted p-4 rounded-lg">
+              <h4 className="font-medium text-foreground mb-2">Invitation Preview</h4>
+              <p className="text-sm text-muted-foreground">
                 Scholars will receive an email with login credentials and instructions to access the
                 Ashinaga platform. They'll be able to set up their profile and start tracking their
                 goals.
@@ -857,10 +859,10 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
 
             <TabsContent value="bulk" className="space-y-6">
               <div className="space-y-4">
-                <div className="border-2 border-dashed border-ashinaga-teal-200 rounded-lg p-8 text-center">
+                <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
                   <FileSpreadsheet className="h-12 w-12 text-ashinaga-teal-400 mx-auto mb-4" />
                   <h3 className="text-lg font-medium mb-2">Upload CSV File</h3>
-                  <p className="text-gray-600 mb-4">
+                  <p className="text-muted-foreground mb-4">
                     Upload a CSV file with student information. Make sure it includes: name, email,
                     program, university, year.
                   </p>

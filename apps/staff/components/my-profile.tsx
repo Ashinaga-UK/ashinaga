@@ -173,7 +173,7 @@ export function MyProfile({ onBack }: MyProfileProps) {
             )}
             <div>
               <h3 className="text-lg font-medium">{profileData.name}</h3>
-              <p className="text-sm text-gray-600">{profileData.email}</p>
+              <p className="text-sm text-muted-foreground">{profileData.email}</p>
               {isEditing && (
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <Button asChild variant="outline" size="sm">

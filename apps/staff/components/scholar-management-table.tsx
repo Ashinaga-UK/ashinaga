@@ -141,15 +141,15 @@ export function ScholarManagementTable({
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'active':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
       case 'inactive':
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-muted text-foreground';
       case 'on_hold':
         return 'bg-yellow-100 text-yellow-800';
       case 'archived':
-        return 'bg-gray-200 text-gray-700';
+        return 'bg-muted text-foreground';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-muted text-foreground';
     }
   };
 
@@ -226,7 +226,7 @@ export function ScholarManagementTable({
       {/* Search Bar */}
       <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
             placeholder="Search students..."
             value={searchTerm}
@@ -353,7 +353,7 @@ export function ScholarManagementTable({
       </div>
 
       {/* Students Table */}
-      <div className="border border-ashinaga-teal-100 rounded-lg">
+      <div className="border border-border rounded-lg">
         <Table>
           <TableHeader>
             <TableRow>
@@ -383,7 +383,7 @@ export function ScholarManagementTable({
               <TableRow>
                 <TableCell colSpan={9} className="text-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-                  <div className="text-sm text-gray-500">Loading scholars...</div>
+                  <div className="text-sm text-muted-foreground">Loading scholars...</div>
                 </TableCell>
               </TableRow>
             ) : error ? (
@@ -397,7 +397,7 @@ export function ScholarManagementTable({
               </TableRow>
             ) : scholars.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                   No scholars found
                 </TableCell>
               </TableRow>
@@ -405,7 +405,7 @@ export function ScholarManagementTable({
               scholars.map((scholar) => (
                 <TableRow
                   key={scholar.id}
-                  className="hover:bg-ashinaga-teal-50 cursor-pointer"
+                  className="hover:bg-muted cursor-pointer"
                   onClick={() => onViewProfile(scholar.id)}
                 >
                   <TableCell onClick={(e) => e.stopPropagation()}>
@@ -429,7 +429,7 @@ export function ScholarManagementTable({
                       </Avatar>
                       <div>
                         <div className="font-medium">{scholar.name}</div>
-                        <div className="text-sm text-gray-500">{scholar.email}</div>
+                        <div className="text-sm text-muted-foreground">{scholar.email}</div>
                       </div>
                     </div>
                   </TableCell>
@@ -440,7 +440,7 @@ export function ScholarManagementTable({
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <div className="w-16 bg-gray-200 rounded-full h-2">
+                      <div className="w-16 bg-muted rounded-full h-2">
                         <div
                           className="bg-ashinaga-teal-600 h-2 rounded-full"
                           style={{
@@ -448,7 +448,7 @@ export function ScholarManagementTable({
                           }}
                         />
                       </div>
-                      <span className="text-sm text-gray-600">
+                      <span className="text-sm text-muted-foreground">
                         {scholar.goals.completed}/{scholar.goals.total}
                       </span>
                     </div>
@@ -456,7 +456,7 @@ export function ScholarManagementTable({
                   <TableCell>
                     <Badge className={getStatusColor(scholar.status)}>{scholar.status}</Badge>
                   </TableCell>
-                  <TableCell className="text-sm text-gray-500">
+                  <TableCell className="text-sm text-muted-foreground">
                     {formatDate(scholar.lastActivity)}
                   </TableCell>
                   <TableCell className="text-right">
@@ -525,17 +525,17 @@ export function ScholarManagementTable({
       </div>
 
       {pagination && pagination.totalItems > 0 && (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-gray-600">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-muted-foreground">
           <p>
             Showing{' '}
-            <span className="font-medium text-gray-900">
+            <span className="font-medium text-foreground">
               {(pagination.page - 1) * pagination.limit + 1}
             </span>
             –
-            <span className="font-medium text-gray-900">
+            <span className="font-medium text-foreground">
               {Math.min(pagination.page * pagination.limit, pagination.totalItems)}
             </span>{' '}
-            of <span className="font-medium text-gray-900">{pagination.totalItems}</span> scholars
+            of <span className="font-medium text-foreground">{pagination.totalItems}</span> scholars
             {pagination.totalPages > 1 && (
               <>
                 {' '}
