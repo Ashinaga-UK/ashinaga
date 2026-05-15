@@ -29,6 +29,7 @@ import {
   COUNTRY_OPTIONS,
   DEFAULT_UNIVERSITY_OPTIONS,
   GENDER_OPTIONS,
+  type Gender,
   normalizeLocation,
   normalizeNationality,
 } from '../lib/constants';
@@ -295,7 +296,7 @@ export function ScholarProfilePage({
                           gender:
                             value === '_none'
                               ? undefined
-                              : (value as 'male' | 'female' | 'other' | 'prefer_not_to_say'),
+                              : (value as Gender),
                         }))
                       }
                     >

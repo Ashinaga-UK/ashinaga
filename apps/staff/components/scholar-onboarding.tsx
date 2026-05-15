@@ -11,7 +11,8 @@ import {
 } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
-import { createScholar } from '../lib/api-client';
+import { type CreateScholarData, createScholar } from '../lib/api-client';
+import { GENDER_OPTIONS, type Gender } from '../lib/constants';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -30,7 +31,7 @@ interface ScholarData {
   name: string;
   aaiScholarId: string;
   dateOfBirth: string;
-  gender: string;
+  gender: Gender | '';
   nationality: string;
   phone: string;
   email: string;
@@ -235,7 +236,6 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
-  const [fieldOfStudySearch, setFieldOfStudySearch] = useState('');
 
   const handleInputChange = (field: keyof ScholarData, value: string) => {
     setScholarData((prev) => ({ ...prev, [field]: value }));
@@ -349,12 +349,9 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
     console.log('Submitting scholar data:', scholarData);
 
     // Clean up the data - remove empty strings for optional fields
-    const cleanedData: any = {};
-    Object.entries(scholarData).forEach(([key, value]) => {
-      if (value !== '' && value !== undefined && value !== null) {
-        cleanedData[key] = value;
-      }
-    });
+    const cleanedData = Object.fromEntries(
+      Object.entries(scholarData).filter(([, value]) => value !== '' && value !== undefined)
+    ) as CreateScholarData;
 
     console.log('Cleaned scholar data:', cleanedData);
 
@@ -366,13 +363,13 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
       } else {
         console.error('Failed to create scholar:', result);
         // Show specific error message if available
-        const errorMessage =
-          (result as any).message || 'Failed to create scholar. Please try again.';
+        const errorMessage = result.message || 'Failed to create scholar. Please try again.';
         setValidationErrors({ submit: errorMessage });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating scholar:', error);
-      const errorMessage = error?.message || 'Error creating scholar. Please try again.';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Error creating scholar. Please try again.';
       setValidationErrors({ submit: errorMessage });
     } finally {
       setIsSubmitting(false);
@@ -544,16 +541,17 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
                     <Label htmlFor="gender">Gender</Label>
                     <Select
                       value={scholarData.gender}
-                      onValueChange={(value) => handleInputChange('gender', value)}
+                      onValueChange={(value) => handleInputChange('gender', value as Gender)}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select gender" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="male">Male</SelectItem>
-                        <SelectItem value="female">Female</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                        <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
+                        {GENDER_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
