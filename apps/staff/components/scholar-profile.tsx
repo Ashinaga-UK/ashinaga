@@ -87,13 +87,13 @@ export function ScholarProfilePage({
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'text-green-600';
+        return 'text-green-600 dark:text-green-400';
       case 'in-progress':
-        return 'text-blue-600';
+        return 'text-blue-600 dark:text-blue-400';
       case 'pending':
         return 'text-orange-600';
       default:
-        return 'text-gray-600';
+        return 'text-muted-foreground';
     }
   };
 
@@ -521,44 +521,44 @@ export function ScholarProfilePage({
                 <Badge
                   className={
                     scholar.status === 'archived'
-                      ? 'bg-gray-200 text-gray-800'
+                      ? 'bg-muted text-foreground'
                       : scholar.status === 'active'
-                        ? 'bg-green-100 text-green-800'
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
                         : 'bg-amber-100 text-amber-800'
                   }
                 >
                   {scholar.status}
                 </Badge>
               </div>
-              <p className="text-gray-600 mb-4">{scholar.bio || 'No bio available'}</p>
+              <p className="text-muted-foreground mb-4">{scholar.bio || 'No bio available'}</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div className="flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-gray-400" />
+                  <Mail className="h-4 w-4 text-muted-foreground" />
                   <span>{scholar.email}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-gray-400" />
+                  <Phone className="h-4 w-4 text-muted-foreground" />
                   <span>{scholar.phone || 'No phone number'}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <MapPin
-                    className="h-4 w-4 text-gray-400 shrink-0"
+                    className="h-4 w-4 text-muted-foreground shrink-0"
                     aria-label="Country of study"
                   />
                   <span>{normalizeLocation(scholar.location ?? '') || 'No location'}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-gray-400" />
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
                   <span>Started {new Date(scholar.startDate).toLocaleDateString()}</span>
                 </div>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-sm text-gray-500">Program</p>
+              <p className="text-sm text-muted-foreground">Program</p>
               <p className="font-medium">{scholar.program}</p>
-              <p className="text-sm text-gray-500 mt-2">Year</p>
+              <p className="text-sm text-muted-foreground mt-2">Year</p>
               <Badge variant="outline">{scholar.year}</Badge>
-              <p className="text-sm text-gray-500 mt-2">University</p>
+              <p className="text-sm text-muted-foreground mt-2">University</p>
               <p className="font-medium text-sm">{scholar.university}</p>
             </div>
           </div>
@@ -737,7 +737,7 @@ export function ScholarProfilePage({
             {scholar.goals.length === 0 ? (
               <Card>
                 <CardContent className="pt-4">
-                  <p className="text-gray-500 text-center py-4">No LDF goals set yet</p>
+                  <p className="text-muted-foreground text-center py-4">No LDF goals set yet</p>
                 </CardContent>
               </Card>
             ) : (
@@ -750,7 +750,7 @@ export function ScholarProfilePage({
                           <span className="text-2xl">{getCategoryIcon(goal.category)}</span>
                           <div>
                             <h4 className="font-semibold text-lg">{goal.title}</h4>
-                            <div className="flex items-center gap-4 text-sm text-gray-600">
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
                               <span>{getCategoryLabel(goal.category)}</span>
                               <span>•</span>
                               <span className="flex items-center gap-1">
@@ -763,36 +763,38 @@ export function ScholarProfilePage({
 
                         {/* Related Skills */}
                         {goal.relatedSkills && (
-                          <div className="mt-3 p-3 bg-blue-50 rounded-lg">
-                            <p className="text-xs font-semibold text-blue-900 mb-1">
+                          <div className="mt-3 p-3 bg-muted rounded-lg">
+                            <p className="text-xs font-semibold text-foreground mb-1">
                               Related LDF Skills & Qualities
                             </p>
-                            <p className="text-sm text-blue-800">{goal.relatedSkills}</p>
+                            <p className="text-sm text-muted-foreground">{goal.relatedSkills}</p>
                           </div>
                         )}
 
                         {/* Action Plan */}
                         {goal.actionPlan && (
-                          <div className="mt-3 p-3 bg-green-50 rounded-lg">
-                            <p className="text-xs font-semibold text-green-900 mb-1">Action Plan</p>
-                            <p className="text-sm text-green-800">{goal.actionPlan}</p>
+                          <div className="mt-3 p-3 bg-muted rounded-lg">
+                            <p className="text-xs font-semibold text-foreground mb-1">
+                              Action Plan
+                            </p>
+                            <p className="text-sm text-muted-foreground">{goal.actionPlan}</p>
                           </div>
                         )}
 
                         {/* Review Notes */}
                         {goal.reviewNotes && (
-                          <div className="mt-3 p-3 bg-purple-50 rounded-lg">
-                            <p className="text-xs font-semibold text-purple-900 mb-1">
+                          <div className="mt-3 p-3 bg-muted rounded-lg">
+                            <p className="text-xs font-semibold text-foreground mb-1">
                               Goal Review & Self-Reflection
                             </p>
-                            <p className="text-sm text-purple-800">{goal.reviewNotes}</p>
+                            <p className="text-sm text-muted-foreground">{goal.reviewNotes}</p>
                           </div>
                         )}
 
                         {/* Completion Scale */}
                         <div className="mt-4">
                           <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm text-gray-600">Completion Scale</span>
+                            <span className="text-sm text-muted-foreground">Completion Scale</span>
                             <span className="text-sm font-medium">{goal.completionScale}/10</span>
                           </div>
                           <Progress value={(goal.completionScale / 10) * 100} className="h-2" />
@@ -848,7 +850,7 @@ export function ScholarProfilePage({
             {scholar.tasks.length === 0 ? (
               <Card>
                 <CardContent className="pt-4">
-                  <p className="text-gray-500 text-center py-4">No tasks assigned yet</p>
+                  <p className="text-muted-foreground text-center py-4">No tasks assigned yet</p>
                 </CardContent>
               </Card>
             ) : (
@@ -861,10 +863,10 @@ export function ScholarProfilePage({
                           <h4 className="font-medium">{task.title}</h4>
                           <Badge variant={getPriorityColor(task.priority)}>{task.priority}</Badge>
                         </div>
-                        <p className="text-sm text-gray-600 mb-2">
+                        <p className="text-sm text-muted-foreground mb-2">
                           {task.description || 'No description'}
                         </p>
-                        <div className="flex items-center gap-4 text-sm text-gray-500">
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
                           <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
                           <span className={getStatusColor(task.status)}>
                             Status: {task.status.replace('_', ' ')}
@@ -876,7 +878,7 @@ export function ScholarProfilePage({
                             {task.response.responseText && (
                               <div className="mb-2">
                                 <span className="text-sm font-medium">Response: </span>
-                                <span className="text-sm text-gray-600">
+                                <span className="text-sm text-muted-foreground">
                                   {task.response.responseText}
                                 </span>
                               </div>
@@ -889,7 +891,7 @@ export function ScholarProfilePage({
                                     <Badge
                                       key={attachment.id}
                                       variant="secondary"
-                                      className="cursor-pointer hover:bg-gray-200"
+                                      className="cursor-pointer hover:bg-muted"
                                       onClick={async () => {
                                         try {
                                           // Use the attachment ID to get the download URL
@@ -948,7 +950,9 @@ export function ScholarProfilePage({
             {scholar.documents.length === 0 ? (
               <Card>
                 <CardContent className="pt-4">
-                  <p className="text-gray-500 text-center py-4">No documents uploaded yet</p>
+                  <p className="text-muted-foreground text-center py-4">
+                    No documents uploaded yet
+                  </p>
                 </CardContent>
               </Card>
             ) : (
@@ -957,10 +961,10 @@ export function ScholarProfilePage({
                   <CardContent className="pt-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <FileText className="h-8 w-8 text-gray-400" />
+                        <FileText className="h-8 w-8 text-muted-foreground" />
                         <div>
                           <h4 className="font-medium">{doc.name}</h4>
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-muted-foreground">
                             Uploaded {new Date(doc.uploadDate).toLocaleDateString()} • {doc.type}
                           </p>
                         </div>

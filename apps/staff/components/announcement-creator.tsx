@@ -203,7 +203,7 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
               rows={8}
               className="resize-none"
             />
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               Basic formatting supported. For rich text editing, we'll add a WYSIWYG editor in the
               next update.
             </p>
@@ -283,7 +283,7 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
                 )}
 
                 {filters.length === 0 && (
-                  <p className="text-sm text-gray-500 italic">
+                  <p className="text-sm text-muted-foreground italic">
                     No filters applied - announcement will be sent to all students
                   </p>
                 )}
@@ -301,7 +301,7 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
               </CardHeader>
               <CardContent>
                 {loading ? (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className="text-center py-8 text-muted-foreground">
                     <p>Loading scholars...</p>
                   </div>
                 ) : previewStudents.length > 0 ? (
@@ -328,7 +328,7 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
                     </Table>
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className="text-center py-8 text-muted-foreground">
                     <p>No students match the current filters</p>
                   </div>
                 )}
