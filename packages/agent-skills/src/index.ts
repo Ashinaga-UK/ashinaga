@@ -45,43 +45,86 @@ async function main(): Promise<void> {
     let isMigration = false;
 
     // Domain inference from keywords
-    if (keywords.has('security') || keywords.has('csrf') || keywords.has('xss')) domains.push('security');
+    if (keywords.has('security') || keywords.has('csrf') || keywords.has('xss'))
+      domains.push('security');
     if (keywords.has('helmet') || keywords.has('cors')) domains.push('security');
-    if (keywords.has('auth') || keywords.has('login') || keywords.has('session')) domains.push('auth');
-    if (keywords.has('database') || keywords.has('db') || keywords.has('pool') || keywords.has('migrate')) domains.push('database');
-    if (keywords.has('performance') || keywords.has('memory') || keywords.has('leak') || keywords.has('cache')) domains.push('performance');
-    if (keywords.has('timeout') || keywords.has('retry') || keywords.has('throttle')) domains.push('reliability');
-    if (keywords.has('log') || keywords.has('monitor') || keywords.has('metric')) domains.push('observability');
-    if (keywords.has('error') || keywords.has('exception') || keywords.has('handling')) domains.push('error-handling');
+    if (keywords.has('auth') || keywords.has('login') || keywords.has('session'))
+      domains.push('auth');
+    if (
+      keywords.has('database') ||
+      keywords.has('db') ||
+      keywords.has('pool') ||
+      keywords.has('migrate')
+    )
+      domains.push('database');
+    if (
+      keywords.has('performance') ||
+      keywords.has('memory') ||
+      keywords.has('leak') ||
+      keywords.has('cache')
+    )
+      domains.push('performance');
+    if (keywords.has('timeout') || keywords.has('retry') || keywords.has('throttle'))
+      domains.push('reliability');
+    if (keywords.has('log') || keywords.has('monitor') || keywords.has('metric'))
+      domains.push('observability');
+    if (keywords.has('error') || keywords.has('exception') || keywords.has('handling'))
+      domains.push('error-handling');
 
     // Action type inference
-    if (keywords.has('add') || keywords.has('install') || keywords.has('register') || keywords.has('enable')) isInstall = true;
+    if (
+      keywords.has('add') ||
+      keywords.has('install') ||
+      keywords.has('register') ||
+      keywords.has('enable')
+    )
+      isInstall = true;
     if (keywords.has('fix') || keywords.has('resolve') || keywords.has('patch')) isFix = true;
-    if (keywords.has('migrate') || keywords.has('upgrade') || keywords.has('refactor')) isMigration = true;
+    if (keywords.has('migrate') || keywords.has('upgrade') || keywords.has('refactor'))
+      isMigration = true;
 
     return { domains, keywords, isInstall, isFix, isMigration };
   }
 
   // Generate context based on inferred domain
-  function generateContext(domain: { domains: string[]; keywords: Set<string>; isInstall: boolean; isFix: boolean; isMigration: boolean; }): string {
+  function generateContext(domain: {
+    domains: string[];
+    keywords: Set<string>;
+    isInstall: boolean;
+    isFix: boolean;
+    isMigration: boolean;
+  }): string {
     const primaryDomain = domain.domains[0] || 'general';
 
     const contextMap: Record<string, string> = {
-      security: 'Security vulnerabilities and missing protections expose the application to attacks. Implementing security best practices protects user data and builds confidence.',
+      security:
+        'Security vulnerabilities and missing protections expose the application to attacks. Implementing security best practices protects user data and builds confidence.',
       auth: 'Authentication and session management are critical for application security and user trust. Reliability in auth systems prevents lockouts and data breaches.',
-      database: 'Database connection management and migrations impact application stability, performance, and data integrity. Proper pool configuration prevents connection exhaustion.',
-      performance: 'Performance issues degrade user experience and increase infrastructure costs. Addressing bottlenecks improves responsiveness and resource efficiency.',
-      reliability: 'Reliability patterns like timeouts and retries prevent cascading failures and improve user experience during transient issues.',
-      observability: 'Logging and monitoring provide visibility into application behavior, making it easier to diagnose issues and track performance.',
-      'error-handling': 'Comprehensive error handling improves debuggability and allows graceful degradation when issues occur.',
-      general: 'This change improves code quality, maintainability, or functionality in the Ashinaga monorepo.',
+      database:
+        'Database connection management and migrations impact application stability, performance, and data integrity. Proper pool configuration prevents connection exhaustion.',
+      performance:
+        'Performance issues degrade user experience and increase infrastructure costs. Addressing bottlenecks improves responsiveness and resource efficiency.',
+      reliability:
+        'Reliability patterns like timeouts and retries prevent cascading failures and improve user experience during transient issues.',
+      observability:
+        'Logging and monitoring provide visibility into application behavior, making it easier to diagnose issues and track performance.',
+      'error-handling':
+        'Comprehensive error handling improves debuggability and allows graceful degradation when issues occur.',
+      general:
+        'This change improves code quality, maintainability, or functionality in the Ashinaga monorepo.',
     };
 
     return contextMap[primaryDomain] || contextMap.general;
   }
 
   // Generate severity label if warranted
-  function generateSeverity(domain: { domains: string[]; keywords: Set<string>; isInstall: boolean; isFix: boolean; isMigration: boolean; }): string {
+  function generateSeverity(domain: {
+    domains: string[];
+    keywords: Set<string>;
+    isInstall: boolean;
+    isFix: boolean;
+    isMigration: boolean;
+  }): string {
     const highSeverityDomains = ['security', 'database'];
     const mediumSeverityDomains = ['reliability', 'auth', 'performance'];
 
@@ -95,19 +138,25 @@ async function main(): Promise<void> {
   }
 
   // Infer likely files to modify from title
-  function inferFiles(title: string, domain: { domains: string[]; keywords: Set<string> }): string[] {
+  function inferFiles(
+    title: string,
+    domain: { domains: string[]; keywords: Set<string> }
+  ): string[] {
     const files: Set<string> = new Set();
     const lowerTitle = title.toLowerCase();
 
     // Add based on domain
-    if (domain.domains.includes('security') || domain.domains.includes('auth')) files.add('apps/api/src/main.ts');
+    if (domain.domains.includes('security') || domain.domains.includes('auth'))
+      files.add('apps/api/src/main.ts');
     if (domain.domains.includes('database')) files.add('apps/api/src/db');
     if (domain.domains.includes('observability') || domain.domains.includes('error-handling'))
       files.add('apps/api/src/common');
 
     // Add based on keywords
-    if (domain.keywords.has('helmet') || domain.keywords.has('cors')) files.add('apps/api/src/main.ts');
-    if (domain.keywords.has('pool') || domain.keywords.has('migrate')) files.add('apps/api/drizzle.config.ts');
+    if (domain.keywords.has('helmet') || domain.keywords.has('cors'))
+      files.add('apps/api/src/main.ts');
+    if (domain.keywords.has('pool') || domain.keywords.has('migrate'))
+      files.add('apps/api/drizzle.config.ts');
     if (domain.keywords.has('login') || domain.keywords.has('auth')) files.add('apps/api/src/auth');
 
     // Generic
@@ -123,7 +172,10 @@ async function main(): Promise<void> {
   }
 
   // Generate code snippet
-  function generateCodeSnippet(title: string, domain: { keywords: Set<string>; isInstall: boolean }): string {
+  function generateCodeSnippet(
+    title: string,
+    domain: { keywords: Set<string>; isInstall: boolean }
+  ): string {
     const lowerTitle = title.toLowerCase();
 
     if (domain.keywords.has('helmet')) {
