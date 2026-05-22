@@ -9,11 +9,15 @@
  *  - Staff dev server on STAFF_APP_URL (auto-managed by Playwright webServer)
  */
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { test as setup } from '@playwright/test';
 import { hashPassword } from 'better-auth/crypto';
 import pg from 'pg';
 
 const { Pool } = pg;
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const API_URL = process.env.API_URL || 'http://localhost:4000';
 const STAFF_EMAIL = (process.env.E2E_STAFF_EMAIL || 'e2e-staff@ashinaga.org').toLowerCase();

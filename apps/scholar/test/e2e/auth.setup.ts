@@ -7,11 +7,15 @@
  * has options to render.
  */
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { test as setup } from '@playwright/test';
 import { hashPassword } from 'better-auth/crypto';
 import pg from 'pg';
 
 const { Pool } = pg;
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const API_URL = process.env.API_URL || 'http://localhost:4000';
 const SCHOLAR_EMAIL = (process.env.E2E_SCHOLAR_EMAIL || 'e2e-scholar@example.com').toLowerCase();
