@@ -109,6 +109,8 @@ export class ScholarsService {
         postGraduationPlan: createScholarDto.postGraduationPlan,
         startDate: createScholarDto.startDate,
         graduationDate: createScholarDto.graduationDate,
+        majorCategory: createScholarDto.majorCategory,
+        fieldOfStudy: createScholarDto.fieldOfStudy,
       },
     };
 

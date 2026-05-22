@@ -1,6 +1,8 @@
 // API client for making authenticated requests to the backend
 // Works alongside better-auth for non-auth endpoints
 
+import type { Gender } from './constants';
+
 export interface ScholarGoalsStats {
   total: number;
   completed: number;
@@ -118,7 +120,7 @@ export interface ScholarProfile {
   lastActivity?: string | null;
   aaiScholarId?: string | null;
   dateOfBirth?: string | null;
-  gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say' | null;
+  gender?: Gender | null;
   nationality?: string | null;
   addressHomeCountry?: string | null;
   passportExpirationDate?: string | null;
@@ -142,7 +144,7 @@ export interface ScholarProfile {
 
 export interface UpdateScholarProfileData {
   dateOfBirth?: string;
-  gender?: string;
+  gender?: Gender;
   nationality?: string;
   phone?: string;
   location?: string;
@@ -354,7 +356,7 @@ export interface Request {
     | 'summer_funding_report'
     | 'requirement_submission';
   description: string;
-  formData?: Record<string, any> | null;
+  formData?: Record<string, unknown> | null;
   priority: 'high' | 'medium' | 'low';
   status: 'pending' | 'approved' | 'rejected' | 'reviewed' | 'commented';
   submittedDate: string;
@@ -669,7 +671,7 @@ export interface CreateScholarData {
   startDate: string;
   aaiScholarId?: string;
   dateOfBirth?: string;
-  gender?: string;
+  gender?: Gender;
   nationality?: string;
   phone?: string;
   location?: string;
@@ -685,12 +687,14 @@ export interface CreateScholarData {
   longTermCareerPlan?: string;
   postGraduationPlan?: string;
   bio?: string;
+  majorCategory?: string;
+  fieldOfStudy?: string;
 }
 
 export async function createScholar(data: CreateScholarData): Promise<{
   success: boolean;
   message: string;
-  scholar?: any;
+  scholar?: unknown;
 }> {
   return fetchAPI('/api/scholars', {
     method: 'POST',
