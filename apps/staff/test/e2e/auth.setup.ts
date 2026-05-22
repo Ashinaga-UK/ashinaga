@@ -8,6 +8,7 @@
  *  - API running on API_URL (default http://localhost:4000)
  *  - Staff dev server on STAFF_APP_URL (auto-managed by Playwright webServer)
  */
+import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test as setup } from '@playwright/test';
@@ -141,5 +142,6 @@ setup('authenticate as staff', async ({ request }) => {
     throw new Error(`Sign-in failed: ${signInRes.status()} ${body}`);
   }
 
+  await mkdir(path.dirname(AUTH_FILE), { recursive: true });
   await request.storageState({ path: AUTH_FILE });
 });

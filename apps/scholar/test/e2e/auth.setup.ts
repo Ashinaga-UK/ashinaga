@@ -6,6 +6,7 @@
  * Also seeds a couple of staff users so the request multi-select picker
  * has options to render.
  */
+import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test as setup } from '@playwright/test';
@@ -116,5 +117,6 @@ setup('authenticate as scholar', async ({ request }) => {
     throw new Error(`Scholar sign-in failed: ${signInRes.status()} ${body}`);
   }
 
+  await mkdir(path.dirname(AUTH_FILE), { recursive: true });
   await request.storageState({ path: AUTH_FILE });
 });
