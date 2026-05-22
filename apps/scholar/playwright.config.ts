@@ -10,7 +10,6 @@ export default defineConfig({
   use: {
     baseURL: process.env.SCHOLAR_APP_URL || 'http://localhost:4002',
     trace: 'on-first-retry',
-    storageState: './test/e2e/.auth/scholar.json',
   },
 
   projects: [
@@ -20,7 +19,11 @@ export default defineConfig({
     },
     {
       name: 'Google Chrome',
-      use: { ...devices['Desktop Chrome'], channel: 'chrome' },
+      use: {
+        ...devices['Desktop Chrome'],
+        channel: 'chrome',
+        storageState: './test/e2e/.auth/scholar.json',
+      },
       dependencies: ['setup'],
     },
   ],
