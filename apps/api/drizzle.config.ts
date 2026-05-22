@@ -11,10 +11,12 @@ export default defineConfig({
     password: process.env.DB_PASSWORD || 'postgres',
     database: process.env.DB_NAME || 'postgres',
     ssl:
-      process.env.DB_SSL === 'true' ||
-      process.env.NODE_ENV === 'production' ||
-      process.env.NODE_ENV === 'test'
-        ? { rejectUnauthorized: false }
-        : false,
+      process.env.DB_SSL === 'false'
+        ? false
+        : process.env.DB_SSL === 'true' ||
+            process.env.NODE_ENV === 'production' ||
+            process.env.NODE_ENV === 'test'
+          ? { rejectUnauthorized: false }
+          : false,
   },
 });
