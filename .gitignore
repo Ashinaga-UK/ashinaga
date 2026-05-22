@@ -19,6 +19,8 @@ coverage
 test-results/
 playwright/.cache/
 playwright-report/
+# Playwright storage state (per-app)
+apps/*/test/e2e/.auth/
 
 
 # Turbo

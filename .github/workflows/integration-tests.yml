@@ -3,6 +3,8 @@ name: Integration Tests
 on:
   push:
     branches: [main, final-v1-features]
+  pull_request:
+    branches: [test, main]
   workflow_dispatch:
 
 concurrency:
