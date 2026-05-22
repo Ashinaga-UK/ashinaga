@@ -108,12 +108,21 @@ describe('RequestsService', () => {
               }),
             }),
           };
-        } else {
+        } else if (callCount === 5) {
           // Fifth call - audit logs query
           return {
             from: jest.fn().mockReturnValue({
               where: jest.fn().mockReturnValue({
                 orderBy: jest.fn().mockResolvedValue([]),
+              }),
+            }),
+          };
+        } else {
+          // Sixth call - assignees query (request_assignees join with users)
+          return {
+            from: jest.fn().mockReturnValue({
+              innerJoin: jest.fn().mockReturnValue({
+                where: jest.fn().mockResolvedValue([]),
               }),
             }),
           };

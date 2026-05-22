@@ -147,7 +147,7 @@ export function StaffInviteDialog({ trigger }: StaffInviteDialogProps) {
           <DialogTitle>Invite a staff member</DialogTitle>
           <DialogDescription>
             They will receive an email with a link to create their Ashinaga staff account.
-            Invitations expire after 7 days.
+            Invitations expire after 30 days.
           </DialogDescription>
         </DialogHeader>
 

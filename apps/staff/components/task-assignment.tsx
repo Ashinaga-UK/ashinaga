@@ -2,11 +2,13 @@
 
 import { Plus } from 'lucide-react';
 import type React from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   type CreateTaskData,
   getScholars,
+  getTaskTitleSuggestions,
   type Scholar,
+  type TaskTitleSuggestion,
   type UpdateTaskData,
 } from '../lib/api-client';
 import { useCreateTask, useUpdateTask } from '../lib/hooks/use-queries';
@@ -65,6 +67,10 @@ export function TaskAssignment({
   const [dueDate, setDueDate] = useState('');
   const [priority, setPriority] = useState<'high' | 'medium' | 'low'>('medium');
   const [taskType, setTaskType] = useState<CreateTaskData['type']>('other');
+  const [suggestions, setSuggestions] = useState<TaskTitleSuggestion[]>([]);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const titleInputRef = useRef<HTMLInputElement | null>(null);
+  const suggestDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Initialize form with existing task data if in edit mode
   useEffect(() => {
@@ -86,6 +92,32 @@ export function TaskAssignment({
       fetchScholars();
     }
   }, [open, preselectedScholarId]);
+
+  // Debounced fetch of title suggestions when typing
+  useEffect(() => {
+    if (!open || mode === 'edit') return;
+    if (suggestDebounceRef.current) clearTimeout(suggestDebounceRef.current);
+    suggestDebounceRef.current = setTimeout(async () => {
+      try {
+        const rows = await getTaskTitleSuggestions(taskTitle, 8);
+        setSuggestions(rows);
+      } catch (err) {
+        console.error('Failed to load task title suggestions:', err);
+        setSuggestions([]);
+      }
+    }, 200);
+    return () => {
+      if (suggestDebounceRef.current) clearTimeout(suggestDebounceRef.current);
+    };
+  }, [taskTitle, open, mode]);
+
+  const applySuggestion = (s: TaskTitleSuggestion) => {
+    setTaskTitle(s.title);
+    if (s.description) setTaskDescription(s.description);
+    setTaskType(s.type);
+    setPriority(s.priority);
+    setSuggestionsOpen(false);
+  };
 
   const fetchScholars = async () => {
     setLoadingScholars(true);
@@ -276,14 +308,45 @@ export function TaskAssignment({
           {/* Task Details */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-4">
-              <div>
+              <div className="relative">
                 <Label htmlFor="taskTitle">Task Title *</Label>
                 <Input
                   id="taskTitle"
+                  ref={titleInputRef}
                   value={taskTitle}
-                  onChange={(e) => setTaskTitle(e.target.value)}
+                  onChange={(e) => {
+                    setTaskTitle(e.target.value);
+                    setSuggestionsOpen(true);
+                  }}
+                  onFocus={() => setSuggestionsOpen(true)}
+                  onBlur={() => {
+                    // Delay so a click on a suggestion still registers
+                    setTimeout(() => setSuggestionsOpen(false), 150);
+                  }}
                   placeholder="Enter task title"
+                  autoComplete="off"
                 />
+                {mode !== 'edit' && suggestionsOpen && suggestions.length > 0 && (
+                  <ul className="absolute z-20 mt-1 w-full max-h-60 overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md">
+                    {suggestions.map((s) => (
+                      <li key={s.title}>
+                        <button
+                          type="button"
+                          className="w-full text-left px-3 py-2 hover:bg-muted focus:bg-muted focus:outline-none"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            applySuggestion(s);
+                          }}
+                        >
+                          <div className="text-sm font-medium truncate">{s.title}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {s.type.replace('_', ' ')} • {s.priority} • used {s.useCount}×
+                          </div>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
               <div>
                 <Label htmlFor="taskType">Task Type</Label>

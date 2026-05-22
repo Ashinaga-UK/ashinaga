@@ -65,9 +65,9 @@ export class InvitationsService {
     // Generate invitation token
     const token = generateInvitationToken();
 
-    // Create expiry date (7 days from now)
+    // Create expiry date (30 days from now)
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
+    expiresAt.setDate(expiresAt.getDate() + 30);
 
     // Create invitation
     const [invitation] = await db
@@ -281,7 +281,7 @@ export class InvitationsService {
       <p><a href="${inviteUrl}" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">Complete Registration</a></p>
       <p>Or copy and paste this link into your browser:</p>
       <p>${inviteUrl}</p>
-      <p>This invitation will expire in 7 days.</p>
+      <p>This invitation will expire in 30 days.</p>
       <p>If you did not expect this invitation, please ignore this email.</p>
     `;
 
@@ -293,7 +293,7 @@ export class InvitationsService {
       Complete your registration at:
       ${inviteUrl}
       
-      This invitation will expire in 7 days.
+      This invitation will expire in 30 days.
       
       If you did not expect this invitation, please ignore this email.
     `;

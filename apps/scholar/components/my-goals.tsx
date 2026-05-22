@@ -11,7 +11,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { deleteGoal, getMyGoals, type Goal, updateGoal } from '../lib/api/goals';
+import { deleteGoal, type Goal, getMyGoals, updateGoal } from '../lib/api/goals';
 import { useSession } from '../lib/auth-client';
 import { CommentThread } from './comment-thread';
 import { CreateGoalDialog } from './create-goal-dialog';

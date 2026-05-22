@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, count, desc, eq, ilike, inArray, not, or, sql } from 'drizzle-orm';
+import { and, count, desc, eq, ilike, inArray, isNull, not, or, sql } from 'drizzle-orm';
 import { database } from '../db/connection';
 import {
   announcementRecipients,
@@ -351,7 +351,7 @@ export class ScholarsService {
         count: count(),
       })
       .from(tasks)
-      .where(inArray(tasks.scholarId, scholarIds))
+      .where(and(inArray(tasks.scholarId, scholarIds), isNull(tasks.deletedAt)))
       .groupBy(tasks.scholarId, tasks.status, tasks.dueDate);
 
     const stats: Record<string, ScholarTasksStatsDto> = {};
@@ -418,7 +418,7 @@ export class ScholarsService {
     const tasksData = await database
       .select()
       .from(tasks)
-      .where(eq(tasks.scholarId, id))
+      .where(and(eq(tasks.scholarId, id), isNull(tasks.deletedAt)))
       .orderBy(desc(tasks.createdAt));
 
     // Get task responses and attachments
@@ -678,7 +678,7 @@ export class ScholarsService {
     const tasksResult = await database
       .select()
       .from(tasks)
-      .where(eq(tasks.scholarId, row.scholar.id))
+      .where(and(eq(tasks.scholarId, row.scholar.id), isNull(tasks.deletedAt)))
       .orderBy(desc(tasks.createdAt));
 
     const tasksList = tasksResult.map(

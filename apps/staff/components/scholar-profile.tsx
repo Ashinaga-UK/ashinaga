@@ -13,6 +13,7 @@ import {
   MapPin,
   Phone,
   Plus,
+  Trash2,
   User,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -33,7 +34,11 @@ import {
   normalizeLocation,
   normalizeNationality,
 } from '../lib/constants';
-import { useScholarProfile, useUpdateScholarProfile } from '../lib/hooks/use-queries';
+import {
+  useDeleteTask,
+  useScholarProfile,
+  useUpdateScholarProfile,
+} from '../lib/hooks/use-queries';
 import { CommentThread } from './comment-thread';
 import { TaskAssignment } from './task-assignment';
 import { Alert, AlertDescription } from './ui/alert';
@@ -293,10 +298,7 @@ export function ScholarProfilePage({
                       onValueChange={(value) =>
                         setEditForm((f) => ({
                           ...f,
-                          gender:
-                            value === '_none'
-                              ? undefined
-                              : (value as Gender),
+                          gender: value === '_none' ? undefined : (value as Gender),
                         }))
                       }
                     >
@@ -914,27 +916,30 @@ export function ScholarProfilePage({
                           </div>
                         )}
                       </div>
-                      <TaskAssignment
-                        trigger={
-                          <Button size="sm" variant="outline">
-                            Edit
-                          </Button>
-                        }
-                        preselectedScholarId={scholar.id}
-                        existingTask={{
-                          id: task.id,
-                          title: task.title,
-                          description: task.description,
-                          type: task.type as CreateTaskData['type'],
-                          priority: task.priority,
-                          dueDate: task.dueDate,
-                          status: task.status,
-                        }}
-                        mode="edit"
-                        onSuccess={() => {
-                          // Tasks will be refetched automatically via React Query
-                        }}
-                      />
+                      <div className="flex items-center gap-2">
+                        <TaskAssignment
+                          trigger={
+                            <Button size="sm" variant="outline">
+                              Edit
+                            </Button>
+                          }
+                          preselectedScholarId={scholar.id}
+                          existingTask={{
+                            id: task.id,
+                            title: task.title,
+                            description: task.description,
+                            type: task.type as CreateTaskData['type'],
+                            priority: task.priority,
+                            dueDate: task.dueDate,
+                            status: task.status,
+                          }}
+                          mode="edit"
+                          onSuccess={() => {
+                            // Tasks will be refetched automatically via React Query
+                          }}
+                        />
+                        <DeleteTaskButton scholarId={scholar.id} taskId={task.id} />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -982,5 +987,55 @@ export function ScholarProfilePage({
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+function DeleteTaskButton({ scholarId, taskId }: { scholarId: string; taskId: string }) {
+  const [open, setOpen] = useState(false);
+  const deleteMutation = useDeleteTask(scholarId);
+
+  const handleDelete = async () => {
+    try {
+      await deleteMutation.mutateAsync(taskId);
+      setOpen(false);
+    } catch (err) {
+      console.error('Failed to delete task:', err);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40"
+          aria-label="Delete task"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Delete task?</DialogTitle>
+          <DialogDescription>
+            The task will be archived and hidden from both staff and scholar views. This can be
+            undone by a developer if needed.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button
+            variant="outline"
+            onClick={() => setOpen(false)}
+            disabled={deleteMutation.isPending}
+          >
+            Cancel
+          </Button>
+          <Button variant="destructive" onClick={handleDelete} disabled={deleteMutation.isPending}>
+            {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
