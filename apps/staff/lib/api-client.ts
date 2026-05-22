@@ -1,6 +1,8 @@
 // API client for making authenticated requests to the backend
 // Works alongside better-auth for non-auth endpoints
 
+import type { Gender } from './constants';
+
 export interface ScholarGoalsStats {
   total: number;
   completed: number;
@@ -118,7 +120,7 @@ export interface ScholarProfile {
   lastActivity?: string | null;
   aaiScholarId?: string | null;
   dateOfBirth?: string | null;
-  gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say' | null;
+  gender?: Gender | null;
   nationality?: string | null;
   addressHomeCountry?: string | null;
   passportExpirationDate?: string | null;
@@ -142,7 +144,7 @@ export interface ScholarProfile {
 
 export interface UpdateScholarProfileData {
   dateOfBirth?: string;
-  gender?: string;
+  gender?: Gender;
   nationality?: string;
   phone?: string;
   location?: string;
@@ -354,7 +356,7 @@ export interface Request {
     | 'summer_funding_report'
     | 'requirement_submission';
   description: string;
-  formData?: Record<string, any> | null;
+  formData?: Record<string, unknown> | null;
   priority: 'high' | 'medium' | 'low';
   status: 'pending' | 'approved' | 'rejected' | 'reviewed' | 'commented';
   submittedDate: string;
@@ -465,6 +467,14 @@ export interface AnnouncementFilterOptions {
   statuses: string[];
 }
 
+export interface GetAnnouncementsParams {
+  year?: string;
+  program?: string;
+  university?: string;
+  status?: 'active' | 'archived' | 'all';
+  sortOrder?: 'asc' | 'desc';
+}
+
 export interface CreateAnnouncementData {
   title: string;
   content: string;
@@ -506,12 +516,30 @@ export interface Announcement {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  archived: boolean;
+  archivedAt?: string | null;
   filters: Array<{ type: string; value: string }>;
   recipientCount: number;
 }
 
-export async function getAnnouncements(): Promise<Announcement[]> {
-  return fetchAPI<Announcement[]>('/api/announcements');
+export async function getAnnouncements(params?: GetAnnouncementsParams): Promise<Announcement[]> {
+  const queryParams = new URLSearchParams();
+
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (
+        value !== undefined &&
+        value !== null &&
+        value !== '' &&
+        (key === 'status' || value !== 'all')
+      ) {
+        queryParams.append(key, String(value));
+      }
+    });
+  }
+
+  const queryString = queryParams.toString();
+  return fetchAPI<Announcement[]>(`/api/announcements${queryString ? `?${queryString}` : ''}`);
 }
 
 export async function deleteAnnouncement(announcementId: string): Promise<void> {
@@ -545,9 +573,20 @@ export async function getFilterOptions(): Promise<ScholarFilterOptions> {
 // User management functions
 export interface UpdateUserData {
   name?: string;
+  image?: string | null;
 }
 
-export async function updateUser(data: UpdateUserData): Promise<any> {
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  image?: string | null;
+  userType?: 'staff' | 'scholar';
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export async function updateUser(data: UpdateUserData): Promise<UserProfile> {
   return fetchAPI('/api/users/me', {
     method: 'PATCH',
     headers: {
@@ -632,7 +671,7 @@ export interface CreateScholarData {
   startDate: string;
   aaiScholarId?: string;
   dateOfBirth?: string;
-  gender?: string;
+  gender?: Gender;
   nationality?: string;
   phone?: string;
   location?: string;
@@ -648,12 +687,14 @@ export interface CreateScholarData {
   longTermCareerPlan?: string;
   postGraduationPlan?: string;
   bio?: string;
+  majorCategory?: string;
+  fieldOfStudy?: string;
 }
 
 export async function createScholar(data: CreateScholarData): Promise<{
   success: boolean;
   message: string;
-  scholar?: any;
+  scholar?: unknown;
 }> {
   return fetchAPI('/api/scholars', {
     method: 'POST',

@@ -2,7 +2,7 @@
 
 import { AlertCircle, FileText, Loader2, MessageSquare, Plus, Trash2, Users } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { AnnouncementCreator } from '../components/announcement-creator';
 import { LoginPage } from '../components/login-page';
 import { MyProfile } from '../components/my-profile';
@@ -12,7 +12,8 @@ import { ScholarOnboarding } from '../components/scholar-onboarding';
 import { ScholarProfilePage } from '../components/scholar-profile';
 import { StaffInviteDialog } from '../components/staff-invite-dialog';
 import { TaskAssignment } from '../components/task-assignment';
-import { Avatar, AvatarFallback } from '../components/ui/avatar';
+import { ThemeToggle } from '../components/theme-toggle';
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -25,7 +26,9 @@ import {
 } from '../components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import {
+  type AnnouncementFilterOptions,
   deleteAnnouncement,
+  getAnnouncementFilterOptions,
   getRequestStats,
   getRequests,
   getScholarStats,
@@ -64,6 +67,21 @@ function StaffDashboardContent() {
   >((scholarTabFromUrl as 'profile' | 'goals' | 'tasks' | 'documents') || 'profile');
   const [requestCategoryFilter, setRequestCategoryFilter] = useState('all');
   const [requestStatusFilter, setRequestStatusFilter] = useState('all');
+  const [announcementYearFilter, setAnnouncementYearFilter] = useState('all');
+  const [announcementProgramFilter, setAnnouncementProgramFilter] = useState('all');
+  const [announcementUniversityFilter, setAnnouncementUniversityFilter] = useState('all');
+  const [announcementStatusFilter, setAnnouncementStatusFilter] = useState<
+    'active' | 'archived' | 'all'
+  >('active');
+  const [announcementSortOrder, setAnnouncementSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [announcementFilterOptions, setAnnouncementFilterOptions] =
+    useState<AnnouncementFilterOptions>({
+      programs: [],
+      years: [],
+      universities: [],
+      locations: [],
+      statuses: [],
+    });
   const [requests, setRequests] = useState<Request[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(true);
   const [requestsError, setRequestsError] = useState<string | null>(null);
@@ -77,6 +95,22 @@ function StaffDashboardContent() {
   const isLoading = session.isPending;
   const isAuthenticated = !!user;
   const isStaff = user?.userType === 'staff';
+  const announcementParams = useMemo(
+    () => ({
+      year: announcementYearFilter !== 'all' ? announcementYearFilter : undefined,
+      program: announcementProgramFilter !== 'all' ? announcementProgramFilter : undefined,
+      university: announcementUniversityFilter !== 'all' ? announcementUniversityFilter : undefined,
+      status: announcementStatusFilter,
+      sortOrder: announcementSortOrder,
+    }),
+    [
+      announcementYearFilter,
+      announcementProgramFilter,
+      announcementUniversityFilter,
+      announcementStatusFilter,
+      announcementSortOrder,
+    ]
+  );
 
   // Handle non-staff users
   useEffect(() => {
@@ -93,7 +127,7 @@ function StaffDashboardContent() {
     isLoading: announcementsLoading,
     error: announcementsError,
     refetch: refetchAnnouncements,
-  } = useAnnouncements(isAuthenticated);
+  } = useAnnouncements(announcementParams, isAuthenticated);
 
   // Update state when URL changes
   useEffect(() => {
@@ -133,19 +167,19 @@ function StaffDashboardContent() {
   const _getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'text-green-600';
+        return 'text-green-600 dark:text-green-400';
       case 'approved':
-        return 'text-green-600';
+        return 'text-green-600 dark:text-green-400';
       case 'in-progress':
-        return 'text-blue-600';
+        return 'text-blue-600 dark:text-blue-400';
       case 'pending':
         return 'text-orange-600';
       case 'reviewed':
-        return 'text-purple-600';
+        return 'text-purple-600 dark:text-purple-400';
       case 'rejected':
         return 'text-red-600';
       default:
-        return 'text-gray-600';
+        return 'text-muted-foreground';
     }
   };
 
@@ -207,6 +241,15 @@ function StaffDashboardContent() {
     }
   }, []);
 
+  const fetchAnnouncementFilterOptions = useCallback(async () => {
+    try {
+      const options = await getAnnouncementFilterOptions();
+      setAnnouncementFilterOptions(options);
+    } catch (err) {
+      console.error('Error fetching announcement filter options:', err);
+    }
+  }, []);
+
   // Announcements are now fetched via React Query
 
   useEffect(() => {
@@ -215,9 +258,24 @@ function StaffDashboardContent() {
       fetchRequests();
       fetchScholarStats();
       fetchRequestStats();
+      fetchAnnouncementFilterOptions();
       // Announcements are now auto-fetched by React Query
     }
-  }, [isAuthenticated, fetchRequests, fetchScholarStats, fetchRequestStats]);
+  }, [
+    isAuthenticated,
+    fetchRequests,
+    fetchScholarStats,
+    fetchRequestStats,
+    fetchAnnouncementFilterOptions,
+  ]);
+
+  const clearAnnouncementFilters = () => {
+    setAnnouncementYearFilter('all');
+    setAnnouncementProgramFilter('all');
+    setAnnouncementUniversityFilter('all');
+    setAnnouncementStatusFilter('active');
+    setAnnouncementSortOrder('desc');
+  };
 
   const handleRequestStatusUpdate = (requestId: string, status: string, comment?: string) => {
     console.log('Request updated:', { requestId, status, comment });
@@ -243,12 +301,12 @@ function StaffDashboardContent() {
   // Show loading state while checking authentication
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:from-background dark:to-background flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 rounded-lg flex items-center justify-center mx-auto mb-4 animate-pulse">
             <span className="text-white font-bold text-2xl">A</span>
           </div>
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
     );
@@ -260,35 +318,44 @@ function StaffDashboardContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50">
+    <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:from-background dark:to-background">
       {/* Header */}
-      <header className="bg-white border-b border-ashinaga-teal-100 px-6 py-4">
+      <header className="bg-card border-b border-border px-6 py-4">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-lg">A</span>
             </div>
             <div>
-              <h1 className="text-xl font-semibold text-gray-900">Ashinaga Staff Portal</h1>
-              <p className="text-sm text-gray-600">Supporting Scholar Success</p>
+              <h1 className="text-xl font-semibold text-foreground">Ashinaga Staff Portal</h1>
+              <p className="text-sm text-muted-foreground">Supporting Scholar Success</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             <Button variant="ghost" size="sm" onClick={() => router.push('?view=my-profile')}>
               My Profile
             </Button>
             <Button variant="outline" size="sm" onClick={handleSignOut}>
               Logout
             </Button>
-            <Avatar>
-              <AvatarFallback>
-                {user?.name
-                  ?.split(' ')
-                  .map((n: string) => n[0])
-                  .join('')
-                  .toUpperCase() || 'U'}
-              </AvatarFallback>
-            </Avatar>
+            <button
+              type="button"
+              className="rounded-full focus:outline-none focus:ring-2 focus:ring-ashinaga-teal-600 focus:ring-offset-2"
+              onClick={() => router.push('?view=my-profile')}
+              aria-label="Open my profile"
+            >
+              <Avatar className="cursor-pointer">
+                {user?.image && <AvatarImage src={user.image} alt={user.name || 'User'} />}
+                <AvatarFallback>
+                  {user?.name
+                    ?.split(' ')
+                    .map((n: string) => n[0])
+                    .join('')
+                    .toUpperCase() || 'U'}
+                </AvatarFallback>
+              </Avatar>
+            </button>
           </div>
         </div>
       </header>
@@ -315,20 +382,20 @@ function StaffDashboardContent() {
               {/* Stats Overview */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card
-                  className="cursor-pointer hover:shadow-md transition-shadow"
+                  className="cursor-pointer border-border hover:shadow-md transition-shadow"
                   onClick={navigateToScholars}
                 >
                   <CardContent className="pt-6">
                     <div className="flex items-center">
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-600">Total Scholars</p>
+                        <p className="text-sm font-medium text-muted-foreground">Total Scholars</p>
                         {scholarStatsLoading ? (
                           <div className="flex items-center gap-2">
                             <Loader2 className="h-4 w-4 animate-spin" />
-                            <span className="text-2xl font-bold text-gray-900">Loading...</span>
+                            <span className="text-2xl font-bold text-foreground">Loading...</span>
                           </div>
                         ) : (
-                          <p className="text-2xl font-bold text-gray-900">
+                          <p className="text-2xl font-bold text-foreground">
                             {scholarStats?.total || 0}
                           </p>
                         )}
@@ -336,28 +403,30 @@ function StaffDashboardContent() {
                           {scholarStats?.active || 0} active
                         </p>
                       </div>
-                      <div className="w-12 h-12 bg-gradient-to-r from-ashinaga-teal-100 to-ashinaga-green-100 rounded-lg flex items-center justify-center">
-                        <Users className="h-6 w-6 text-ashinaga-teal-600" />
+                      <div className="w-12 h-12 bg-gradient-to-r from-ashinaga-teal-100 to-ashinaga-green-100 dark:from-ashinaga-teal-900/40 dark:to-ashinaga-green-900/40 rounded-lg flex items-center justify-center">
+                        <Users className="h-6 w-6 text-ashinaga-teal-600 dark:text-ashinaga-teal-400" />
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
                 <Card
-                  className="cursor-pointer hover:shadow-md transition-shadow"
+                  className="cursor-pointer border-border hover:shadow-md transition-shadow"
                   onClick={navigateToRequests}
                 >
                   <CardContent className="pt-6">
                     <div className="flex items-center">
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-600">Pending Requests</p>
+                        <p className="text-sm font-medium text-muted-foreground">
+                          Pending Requests
+                        </p>
                         {requestStatsLoading ? (
                           <div className="flex items-center gap-2">
                             <Loader2 className="h-4 w-4 animate-spin" />
-                            <span className="text-2xl font-bold text-gray-900">Loading...</span>
+                            <span className="text-2xl font-bold text-foreground">Loading...</span>
                           </div>
                         ) : (
-                          <p className="text-2xl font-bold text-gray-900">
+                          <p className="text-2xl font-bold text-foreground">
                             {requestStats?.pending || 0}
                           </p>
                         )}
@@ -365,8 +434,8 @@ function StaffDashboardContent() {
                           {requestStats?.total || 0} total requests
                         </p>
                       </div>
-                      <div className="w-12 h-12 bg-gradient-to-r from-orange-100 to-red-100 rounded-lg flex items-center justify-center">
-                        <AlertCircle className="h-6 w-6 text-orange-600" />
+                      <div className="w-12 h-12 bg-gradient-to-r from-orange-100 to-red-100 dark:from-orange-900/30 dark:to-red-900/30 rounded-lg flex items-center justify-center">
+                        <AlertCircle className="h-6 w-6 text-orange-600 dark:text-orange-400" />
                       </div>
                     </div>
                   </CardContent>
@@ -374,7 +443,7 @@ function StaffDashboardContent() {
               </div>
 
               {/* Quick Actions */}
-              <Card>
+              <Card className="border-border">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Plus className="h-5 w-5" />
@@ -397,7 +466,7 @@ function StaffDashboardContent() {
                       trigger={
                         <Button
                           variant="outline"
-                          className="h-20 flex-col gap-2 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent w-full"
+                          className="h-20 flex-col gap-2 border-ashinaga-teal-200 dark:border-border hover:bg-ashinaga-teal-50 dark:hover:bg-muted bg-transparent w-full"
                         >
                           <FileText className="h-6 w-6" />
                           Assign Task to Scholar
@@ -412,7 +481,7 @@ function StaffDashboardContent() {
                     />
                     <Button
                       variant="outline"
-                      className="h-20 flex-col gap-2 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent"
+                      className="h-20 flex-col gap-2 border-ashinaga-teal-200 dark:border-border hover:bg-ashinaga-teal-50 dark:hover:bg-muted bg-transparent"
                       onClick={() => router.push('?tab=announcements')}
                     >
                       <MessageSquare className="h-6 w-6" />
@@ -420,7 +489,7 @@ function StaffDashboardContent() {
                     </Button>
                     <Button
                       variant="outline"
-                      className="h-20 flex-col gap-2 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent"
+                      className="h-20 flex-col gap-2 border-ashinaga-teal-200 dark:border-border hover:bg-ashinaga-teal-50 dark:hover:bg-muted bg-transparent"
                       onClick={() => router.push('?tab=requests')}
                     >
                       <FileText className="h-6 w-6" />
@@ -442,7 +511,7 @@ function StaffDashboardContent() {
                   }}
                 />
               ) : (
-                <Card>
+                <Card className="border-border">
                   <CardHeader>
                     <CardTitle>Scholar Management</CardTitle>
                     <CardDescription>View and manage your assigned scholars</CardDescription>
@@ -460,7 +529,7 @@ function StaffDashboardContent() {
             </TabsContent>
 
             <TabsContent value="requests" className="space-y-6">
-              <Card>
+              <Card className="border-border">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div>
@@ -518,7 +587,7 @@ function StaffDashboardContent() {
                       <p className="text-red-600">{requestsError}</p>
                     </div>
                   ) : requests.length === 0 ? (
-                    <div className="text-center py-12 text-gray-500">
+                    <div className="text-center py-12 text-muted-foreground">
                       <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
                       <p>No requests found</p>
                     </div>
@@ -538,7 +607,7 @@ function StaffDashboardContent() {
             </TabsContent>
 
             <TabsContent value="announcements" className="space-y-6">
-              <Card>
+              <Card className="border-border">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div>
@@ -551,6 +620,88 @@ function StaffDashboardContent() {
                   </div>
                 </CardHeader>
                 <CardContent>
+                  <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
+                      <Select
+                        value={announcementStatusFilter}
+                        onValueChange={(value) =>
+                          setAnnouncementStatusFilter(value as 'active' | 'archived' | 'all')
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="archived">Archived</SelectItem>
+                          <SelectItem value="all">All Statuses</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={announcementYearFilter}
+                        onValueChange={setAnnouncementYearFilter}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Year" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Years</SelectItem>
+                          {announcementFilterOptions.years.map((year) => (
+                            <SelectItem key={year} value={year}>
+                              {year}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={announcementProgramFilter}
+                        onValueChange={setAnnouncementProgramFilter}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Program" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Programs</SelectItem>
+                          {announcementFilterOptions.programs.map((program) => (
+                            <SelectItem key={program} value={program}>
+                              {program}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={announcementUniversityFilter}
+                        onValueChange={setAnnouncementUniversityFilter}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="University" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Universities</SelectItem>
+                          {announcementFilterOptions.universities.map((university) => (
+                            <SelectItem key={university} value={university}>
+                              {university}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={announcementSortOrder}
+                        onValueChange={(value) => setAnnouncementSortOrder(value as 'asc' | 'desc')}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sort" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="desc">Most Recent</SelectItem>
+                          <SelectItem value="asc">Oldest First</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button variant="outline" onClick={clearAnnouncementFilters}>
+                      Reset
+                    </Button>
+                  </div>
                   {announcementsLoading ? (
                     <div className="flex items-center justify-center py-12">
                       <Loader2 className="h-6 w-6 animate-spin" />
@@ -564,9 +715,9 @@ function StaffDashboardContent() {
                       </p>
                     </div>
                   ) : announcements.length === 0 ? (
-                    <div className="text-center py-12 text-gray-500">
+                    <div className="text-center py-12 text-muted-foreground">
                       <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>No announcements yet. Create your first announcement to get started.</p>
+                      <p>No announcements match the current filters.</p>
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -575,11 +726,11 @@ function StaffDashboardContent() {
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1">
                               <h3 className="font-semibold text-lg mb-2">{announcement.title}</h3>
-                              <p className="text-gray-600 mb-3 whitespace-pre-wrap">
+                              <p className="text-muted-foreground mb-3 whitespace-pre-wrap">
                                 {announcement.content}
                               </p>
                               <div className="flex items-center justify-between">
-                                <div className="flex items-center text-sm text-gray-500">
+                                <div className="flex items-center text-sm text-muted-foreground">
                                   <span>By {announcement.createdBy}</span>
                                   <span className="mx-2">•</span>
                                   <span>
@@ -590,6 +741,8 @@ function StaffDashboardContent() {
                                     Sent to {announcement.recipientCount} scholar
                                     {announcement.recipientCount !== 1 ? 's' : ''}
                                   </span>
+                                  <span className="mx-2">•</span>
+                                  <span>{announcement.archived ? 'Archived' : 'Active'}</span>
                                 </div>
                                 {announcement.filters.length > 0 && (
                                   <div className="flex gap-1">

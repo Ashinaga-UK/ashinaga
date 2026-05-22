@@ -1,7 +1,10 @@
 'use client';
 
 import {
+  AlertTriangle,
   Calendar,
+  Camera,
+  Edit,
   FileText,
   Globe,
   GraduationCap,
@@ -9,25 +12,27 @@ import {
   Lock,
   Phone,
   Save,
+  Trash2,
   User,
-  AlertTriangle,
-  Edit,
   X,
 } from 'lucide-react';
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import {
   getMyProfile,
-  updateMyProfile,
   type ScholarProfile,
   type UpdateProfileData,
+  updateMyProfile,
 } from '../lib/api/profile';
+import { Alert, AlertDescription } from './ui/alert';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Textarea } from './ui/textarea';
-import { Alert, AlertDescription } from './ui/alert';
 
 export function MyProfile() {
   const [profile, setProfile] = useState<ScholarProfile | null>(null);
@@ -35,6 +40,7 @@ export function MyProfile() {
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [formData, setFormData] = useState<UpdateProfileData>({});
 
@@ -44,6 +50,7 @@ export function MyProfile() {
       setProfile(data);
       // Initialize form data with current profile values
       setFormData({
+        image: data.image || null,
         phone: data.phone || '',
         dateOfBirth: data.dateOfBirth || '',
         gender: data.gender || undefined,
@@ -84,6 +91,7 @@ export function MyProfile() {
     e.preventDefault();
     setSaving(true);
     setError(null);
+    setImageError(null);
     setSuccess(false);
 
     try {
@@ -105,6 +113,7 @@ export function MyProfile() {
     // Reset form data to current profile values
     if (profile) {
       setFormData({
+        image: profile.image || null,
         phone: profile.phone || '',
         dateOfBirth: profile.dateOfBirth || '',
         gender: profile.gender || undefined,
@@ -132,6 +141,31 @@ export function MyProfile() {
     }
   };
 
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    setImageError(null);
+
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setImageError('Please choose an image file.');
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      setImageError('Please choose an image smaller than 2MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setFormData((current) => ({ ...current, image: reader.result as string }));
+    };
+    reader.onerror = () => setImageError('Could not read that image. Please try another file.');
+    reader.readAsDataURL(file);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -153,6 +187,8 @@ export function MyProfile() {
       </Alert>
     );
   }
+
+  const profileImage = formData.image || profile.image;
 
   return (
     <div className="space-y-6">
@@ -202,6 +238,84 @@ export function MyProfile() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="flex items-center gap-6">
+              {profileImage ? (
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <button
+                      type="button"
+                      className="rounded-full focus:outline-none focus:ring-2 focus:ring-ashinaga-teal-600 focus:ring-offset-2"
+                      aria-label="Open profile picture"
+                    >
+                      <Avatar className="h-20 w-20 cursor-pointer">
+                        <AvatarImage src={profileImage} alt={profile.name} />
+                        <AvatarFallback className="text-lg bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 text-white">
+                          {profile.name
+                            ?.split(' ')
+                            .map((n) => n[0])
+                            .join('')
+                            .toUpperCase() || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-xl p-4">
+                    <DialogTitle className="sr-only">Profile picture</DialogTitle>
+                    <Image
+                      src={profileImage}
+                      alt={profile.name || 'Profile picture'}
+                      width={800}
+                      height={800}
+                      unoptimized
+                      className="max-h-[75vh] w-full rounded-md object-contain"
+                    />
+                  </DialogContent>
+                </Dialog>
+              ) : (
+                <Avatar className="h-20 w-20">
+                  <AvatarFallback className="text-lg bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 text-white">
+                    {profile.name
+                      ?.split(' ')
+                      .map((n) => n[0])
+                      .join('')
+                      .toUpperCase() || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+              )}
+              <div>
+                <p className="font-medium text-foreground">{profile.name}</p>
+                <p className="text-sm text-muted-foreground">{profile.email}</p>
+                {editing && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <Button asChild variant="outline" size="sm">
+                      <label htmlFor="profile-picture">
+                        <Camera className="h-4 w-4" />
+                        Upload Photo
+                      </label>
+                    </Button>
+                    {(formData.image || profile.image) && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setFormData((current) => ({ ...current, image: null }))}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Remove
+                      </Button>
+                    )}
+                    <Input
+                      id="profile-picture"
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      onChange={handleImageChange}
+                    />
+                  </div>
+                )}
+                {imageError && <p className="mt-2 text-sm text-red-600">{imageError}</p>}
+              </div>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="name">Name</Label>
@@ -248,7 +362,9 @@ export function MyProfile() {
                 <Label htmlFor="gender">Gender</Label>
                 <Select
                   value={formData.gender}
-                  onValueChange={(value: any) => setFormData({ ...formData, gender: value })}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, gender: value as UpdateProfileData['gender'] })
+                  }
                   disabled={!editing}
                 >
                   <SelectTrigger>

@@ -53,7 +53,7 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:from-background dark:to-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="w-16 h-16 bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 rounded-lg flex items-center justify-center mx-auto mb-4">
@@ -71,7 +71,9 @@ export function LoginPage() {
                 <p className="text-sm text-orange-600">This portal is for staff members only</p>
               </div>
               <div className="text-center">
-                <p className="text-sm text-gray-600 mb-2">Looking for the Scholar Portal?</p>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Looking for the Scholar Portal?
+                </p>
                 <Button
                   variant="outline"
                   size="sm"
@@ -86,10 +88,10 @@ export function LoginPage() {
               </div>
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-gray-300" />
+                  <span className="w-full border-t border-border" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-2 text-gray-500">Or sign in as staff</span>
+                  <span className="bg-card px-2 text-muted-foreground">Or sign in as staff</span>
                 </div>
               </div>
             </div>
@@ -139,7 +141,7 @@ export function LoginPage() {
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
                   id="email"
                   type="email"
@@ -150,13 +152,15 @@ export function LoginPage() {
                   required
                 />
               </div>
-              <p className="text-xs text-gray-500">You must have an invitation to sign in</p>
+              <p className="text-xs text-muted-foreground">
+                You must have an invitation to sign in
+              </p>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
@@ -174,9 +178,9 @@ export function LoginPage() {
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? (
-                    <EyeOff className="h-4 w-4 text-gray-400" />
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
                   ) : (
-                    <Eye className="h-4 w-4 text-gray-400" />
+                    <Eye className="h-4 w-4 text-muted-foreground" />
                   )}
                 </Button>
               </div>
@@ -193,7 +197,7 @@ export function LoginPage() {
 
           <div className="text-center space-y-2">
             <div>
-              <span className="text-sm text-gray-600">Don't have an account? </span>
+              <span className="text-sm text-muted-foreground">Don't have an account? </span>
               <Button
                 variant="link"
                 className="p-0 h-auto text-sm font-normal text-ashinaga-teal hover:text-ashinaga-teal/80"
@@ -205,7 +209,7 @@ export function LoginPage() {
             <div>
               <Button
                 variant="link"
-                className="text-sm text-gray-600"
+                className="text-sm text-muted-foreground"
                 onClick={() => router.push('/forgot-password')}
               >
                 Forgot your password?

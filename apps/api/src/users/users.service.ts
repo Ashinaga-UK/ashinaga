@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { database } from '../db/connection';
 import { staff, users } from '../db/schema';
@@ -6,6 +6,19 @@ import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UsersService {
+  private validateProfileImage(image: string | null | undefined) {
+    if (!image) return;
+
+    const isSupportedDataUrl = /^data:image\/(jpeg|png|webp|gif);base64,/i.test(image);
+    if (!isSupportedDataUrl) {
+      throw new BadRequestException('Profile image must be a JPEG, PNG, WebP, or GIF data URL');
+    }
+
+    if (image.length > 3_000_000) {
+      throw new BadRequestException('Profile image must be smaller than 2MB');
+    }
+  }
+
   async findById(userId: string) {
     const user = await database.select().from(users).where(eq(users.id, userId)).limit(1);
 
@@ -18,14 +31,21 @@ export class UsersService {
   }
 
   async updateUser(userId: string, updateUserDto: UpdateUserDto) {
-    // Only update name in users table if provided
-    if (updateUserDto.name) {
+    const updateData: Partial<typeof users.$inferInsert> = { updatedAt: new Date() };
+
+    if (updateUserDto.name !== undefined) {
+      updateData.name = updateUserDto.name;
+    }
+
+    if (updateUserDto.image !== undefined) {
+      this.validateProfileImage(updateUserDto.image);
+      updateData.image = updateUserDto.image || null;
+    }
+
+    if (Object.keys(updateData).length > 1) {
       const updatedUser = await database
         .update(users)
-        .set({
-          name: updateUserDto.name,
-          updatedAt: new Date(),
-        })
+        .set(updateData)
         .where(eq(users.id, userId))
         .returning();
 
@@ -36,7 +56,7 @@ export class UsersService {
       return updatedUser[0];
     }
 
-    // If no name provided, just return the existing user
+    // If no supported fields were provided, just return the existing user
     return this.findById(userId);
   }
 

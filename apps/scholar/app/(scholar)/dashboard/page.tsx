@@ -1,18 +1,10 @@
 'use client';
 
-import {
-  ArrowRight,
-  Bell,
-  Calendar,
-  CheckSquare,
-  FileText,
-  Plus,
-  Target,
-  TrendingUp,
-  User,
-} from 'lucide-react';
+import { ArrowRight, Bell, CheckSquare, FileText, Plus, Target, User } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { NewRequestDialog } from '../../../components/new-request-dialog';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import {
@@ -23,20 +15,19 @@ import {
   CardTitle,
 } from '../../../components/ui/card';
 import { Progress } from '../../../components/ui/progress';
+import { type Goal, getMyGoals } from '../../../lib/api/goals';
+import { getMyProfile, type ScholarProfile } from '../../../lib/api/profile';
+import { getMyTasks, type Task } from '../../../lib/api/tasks';
 import { useSession } from '../../../lib/auth-client';
 import { useMyAnnouncements, useMyRequests } from '../../../lib/hooks/use-queries';
-import { NewRequestDialog } from '../../../components/new-request-dialog';
-import { getMyTasks } from '../../../lib/api/tasks';
-import { getMyGoals } from '../../../lib/api/goals';
-import { getMyProfile, type ScholarProfile } from '../../../lib/api/profile';
 
 export default function DashboardPage() {
   const router = useRouter();
   const { data: session } = useSession();
   const { data: requests } = useMyRequests();
   const { data: announcements } = useMyAnnouncements();
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [goals, setGoals] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
   const [profile, setProfile] = useState<ScholarProfile | null>(null);
   const [loadingData, setLoadingData] = useState(true);
 
@@ -94,6 +85,46 @@ export default function DashboardPage() {
 
   // Get recent announcements count
   const recentAnnouncements = announcements?.length || 0;
+  const statCards = [
+    {
+      href: '/tasks',
+      title: 'Pending Tasks',
+      icon: <CheckSquare className="h-4 w-4 text-ashinaga-teal-600" />,
+      value: pendingTasks,
+      description: dueSoon === 0 ? 'None due this week' : `${dueSoon} due this week`,
+    },
+    {
+      href: '/goals',
+      title: 'Active LDF Goals',
+      icon: <Target className="h-4 w-4 text-ashinaga-green-600" />,
+      value: activeGoals,
+      description: `${onTrackPercentage}% on track`,
+    },
+    {
+      href: '/requests',
+      title: 'Open Requests',
+      icon: <FileText className="h-4 w-4 text-orange-600" />,
+      value: openRequests,
+      description:
+        openRequests === 0
+          ? 'All clear'
+          : openRequests === 1
+            ? 'Awaiting response'
+            : `${openRequests} awaiting response`,
+    },
+    {
+      href: '/announcements',
+      title: 'New Announcements',
+      icon: <Bell className="h-4 w-4 text-blue-600" />,
+      value: recentAnnouncements,
+      description:
+        recentAnnouncements === 0
+          ? 'No new'
+          : recentAnnouncements === 1
+            ? 'New announcement'
+            : 'New announcements',
+    },
+  ];
 
   return (
     <div className="p-6 space-y-6">
@@ -107,63 +138,25 @@ export default function DashboardPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-ashinaga-teal-100 dark:border-gray-700">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Tasks</CardTitle>
-            <CheckSquare className="h-4 w-4 text-ashinaga-teal-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{pendingTasks}</div>
-            <p className="text-xs text-muted-foreground">
-              {dueSoon === 0 ? 'None due this week' : `${dueSoon} due this week`}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-ashinaga-teal-100 dark:border-gray-700">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active LDF Goals</CardTitle>
-            <Target className="h-4 w-4 text-ashinaga-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{activeGoals}</div>
-            <p className="text-xs text-muted-foreground">{onTrackPercentage}% on track</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-ashinaga-teal-100 dark:border-gray-700">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Open Requests</CardTitle>
-            <FileText className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{openRequests}</div>
-            <p className="text-xs text-muted-foreground">
-              {openRequests === 0
-                ? 'All clear'
-                : openRequests === 1
-                  ? 'Awaiting response'
-                  : `${openRequests} awaiting response`}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-ashinaga-teal-100 dark:border-gray-700">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">New Announcements</CardTitle>
-            <Bell className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{recentAnnouncements}</div>
-            <p className="text-xs text-muted-foreground">
-              {recentAnnouncements === 0
-                ? 'No new'
-                : recentAnnouncements === 1
-                  ? 'New announcement'
-                  : 'New announcements'}
-            </p>
-          </CardContent>
-        </Card>
+        {statCards.map((stat) => (
+          <Link
+            key={stat.href}
+            href={stat.href}
+            aria-label={`${stat.title}: ${stat.value}. ${stat.description}`}
+            className="group rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ashinaga-teal-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-background"
+          >
+            <Card className="h-full border-ashinaga-teal-100 dark:border-gray-700 transition-colors duration-200 group-hover:border-ashinaga-teal-300 group-hover:bg-ashinaga-teal-50/60 dark:group-hover:border-gray-600 dark:group-hover:bg-muted/50">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+                {stat.icon}
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stat.value}</div>
+                <p className="text-xs text-muted-foreground">{stat.description}</p>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -252,7 +252,7 @@ export function TaskAssignment({
 
           {/* Selected Student Display */}
           {selectedScholar && (
-            <div className="bg-ashinaga-teal-50 p-4 rounded-lg">
+            <div className="bg-muted p-4 rounded-lg">
               <div className="flex items-center gap-3">
                 <Avatar>
                   <AvatarImage src={selectedScholar.image || '/placeholder.svg'} />
@@ -265,7 +265,7 @@ export function TaskAssignment({
                 </Avatar>
                 <div>
                   <h4 className="font-medium">{selectedScholar.name}</h4>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-muted-foreground">
                     {selectedScholar.program} • {selectedScholar.year}
                   </p>
                 </div>

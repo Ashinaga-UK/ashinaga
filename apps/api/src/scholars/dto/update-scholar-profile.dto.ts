@@ -13,6 +13,10 @@ export class UpdateScholarProfileDto {
   // - email (from users table)
   // - aaiScholarId
 
+  @IsOptional()
+  @IsString()
+  image?: string | null;
+
   // Personal Information
   @IsOptional()
   @IsString() // Changed from @IsDateString() to allow empty strings

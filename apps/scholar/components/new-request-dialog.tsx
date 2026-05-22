@@ -2,9 +2,10 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { FileText, Paperclip, X } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
+import type { CreateRequestData } from '../lib/api-client';
 import { useFileUpload } from '../lib/hooks/use-file-upload';
 import { useCreateRequest, useStaffList } from '../lib/hooks/use-queries';
 import { Button } from './ui/button';
@@ -36,22 +37,56 @@ import { Textarea } from './ui/textarea';
 import { useToast } from './ui/use-toast';
 
 // Form schema for the base request
-const baseSchema = z.object({
-  type: z.enum([
-    'extenuating_circumstances',
-    'summer_funding_request',
-    'summer_funding_report',
-    'requirement_submission',
-  ]),
-  description: z
-    .string()
-    .min(20, 'Please provide at least 20 characters')
-    .max(2000, 'Maximum 2000 characters'),
-  priority: z.enum(['high', 'medium', 'low']).optional(),
-  assignedTo: z.string().min(1, 'Please select a staff member'),
-});
+const baseSchema = z
+  .object({
+    type: z.enum([
+      'extenuating_circumstances',
+      'summer_funding_request',
+      'summer_funding_report',
+      'requirement_submission',
+    ]),
+    description: z
+      .string()
+      .trim()
+      .max(
+        2000,
+        'Description must be 2000 characters or fewer. Shorten the request before submitting.'
+      ),
+    priority: z.enum(['high', 'medium', 'low']).optional(),
+    assignedTo: z
+      .string()
+      .min(1, 'Assign this request to a staff member so the right person can review it.'),
+  })
+  .superRefine((values, context) => {
+    if (values.type === 'extenuating_circumstances' && values.description.trim().length < 20) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['description'],
+        message:
+          'Description must be at least 20 characters. Add what happened, when it happened, and what support you need.',
+      });
+    }
+  });
 
 type FormValues = z.infer<typeof baseSchema>;
+type TypeSpecificErrors = Partial<
+  Record<
+    | 'activityType'
+    | 'riskOfNotCarryingOut'
+    | 'riskDetails'
+    | 'appliedForAlternativeFunding'
+    | 'receivingOtherFunding'
+    | 'otherFundingSource'
+    | 'otherFundingAmount'
+    | 'travelInsuranceAcknowledged'
+    | 'informationTruthful'
+    | 'activitySummary'
+    | 'learningOutcomes'
+    | 'submissionType'
+    | 'attachments',
+    string
+  >
+>;
 
 interface NewRequestDialogProps {
   trigger?: React.ReactNode;
@@ -82,6 +117,7 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
   const [submissionType, setSubmissionType] = useState<string>('');
   const [riskOfNotCarryingOut, setRiskOfNotCarryingOut] = useState<string>('');
   const [riskDetails, setRiskDetails] = useState<string>('');
+  const [typeSpecificErrors, setTypeSpecificErrors] = useState<TypeSpecificErrors>({});
 
   const form = useForm<FormValues>({
     resolver: zodResolver(baseSchema),
@@ -89,11 +125,63 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
       type: 'extenuating_circumstances',
       description: '',
       priority: 'medium',
-      assignedTo: undefined,
+      assignedTo: '',
     },
   });
 
   const selectedType = form.watch('type');
+
+  useEffect(() => {
+    if (!staffList) return;
+
+    const currentAssignee = form.getValues('assignedTo');
+    const isCurrentAssigneeAvailable = staffList.some((staff) => staff.id === currentAssignee);
+
+    const onlyStaffMember = staffList[0];
+
+    if (staffList.length === 1 && onlyStaffMember && !currentAssignee) {
+      form.setValue('assignedTo', onlyStaffMember.id);
+      return;
+    }
+
+    if (currentAssignee && !isCurrentAssigneeAvailable) {
+      form.setValue('assignedTo', '');
+    }
+  }, [form, staffList]);
+
+  const buildRequestDescription = (type: FormValues['type'], description: string) => {
+    const trimmedDescription = description.trim();
+    if (trimmedDescription) return trimmedDescription;
+
+    if (type === 'summer_funding_request') {
+      const activityTypeLabels: Record<string, string> = {
+        internship_ssa: '8-week+ internship in sub-Saharan Africa',
+        research_placement: 'university research placement',
+        visiting_home_volunteering: 'visiting home and volunteering',
+      };
+
+      return `Summer funding request: ${activityTypeLabels[activityType] || 'summer activity'}`;
+    }
+
+    if (type === 'summer_funding_report') {
+      return 'Summer funding report';
+    }
+
+    if (type === 'requirement_submission') {
+      const submissionTypeLabels: Record<string, string> = {
+        ashinaga_proposal: 'Ashinaga Proposal',
+        transcript: 'Transcript',
+        tenancy_agreement: 'Tenancy Agreement',
+        other: 'Other requirement',
+      };
+
+      return `Requirement submission: ${
+        submissionTypeLabels[submissionType] || 'supporting document'
+      }`;
+    }
+
+    return trimmedDescription;
+  };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
@@ -134,6 +222,103 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
     setSubmissionType('');
     setRiskOfNotCarryingOut('');
     setRiskDetails('');
+    setTypeSpecificErrors({});
+  };
+
+  const clearTypeSpecificError = (field: keyof TypeSpecificErrors) => {
+    setTypeSpecificErrors((previous) => {
+      if (!previous[field]) return previous;
+      const next = { ...previous };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const requiredLabel = (
+    <>
+      <span className="text-red-500" aria-hidden="true">
+        *
+      </span>
+      <span className="sr-only"> required</span>
+    </>
+  );
+
+  const optionalLabel = <span className="text-muted-foreground font-normal">(optional)</span>;
+
+  const fieldError = (field: keyof TypeSpecificErrors) =>
+    typeSpecificErrors[field] ? (
+      <p className="text-sm font-medium text-destructive">{typeSpecificErrors[field]}</p>
+    ) : null;
+
+  const validateTypeSpecificData = () => {
+    const type = form.getValues('type');
+    const errors: TypeSpecificErrors = {};
+
+    if (type === 'summer_funding_request') {
+      if (!activityType) {
+        errors.activityType =
+          'Select the summer activity type that matches the funding you are requesting.';
+      }
+      if (!riskOfNotCarryingOut) {
+        errors.riskOfNotCarryingOut =
+          'Choose Yes or No so staff know whether your summer activity is confirmed.';
+      }
+      if (riskOfNotCarryingOut === 'yes' && riskDetails.trim().length < 20) {
+        errors.riskDetails =
+          'Risk details must be at least 20 characters. Explain what could prevent the activity and when you will know more.';
+      }
+      if (!appliedForAlternativeFunding) {
+        errors.appliedForAlternativeFunding =
+          'Select the option that describes whether you applied for other funding.';
+      }
+      if (!receivingOtherFunding) {
+        errors.receivingOtherFunding =
+          'Choose Yes or No so staff can understand the full funding picture.';
+      }
+      if (receivingOtherFunding === 'yes' && otherFundingSource.trim().length < 3) {
+        errors.otherFundingSource =
+          'Enter the name of the funding source, such as a university bursary or employer grant.';
+      }
+      if (receivingOtherFunding === 'yes' && otherFundingAmount.trim().length < 1) {
+        errors.otherFundingAmount = 'Enter the funding amount and currency, for example GBP 500.';
+      }
+      if (!travelInsuranceAcknowledged) {
+        errors.travelInsuranceAcknowledged =
+          'Confirm that you understand you must arrange your own travel insurance.';
+      }
+      if (!informationTruthful) {
+        errors.informationTruthful =
+          'Confirm the information is true and accurate before submitting.';
+      }
+      if (selectedFiles.length === 0) {
+        errors.attachments =
+          'Attach an offer letter or activity confirmation before submitting a summer funding request.';
+      }
+    }
+
+    if (type === 'summer_funding_report') {
+      if (activitySummary.trim().length < 50) {
+        errors.activitySummary =
+          'Activity summary must be at least 50 characters. Include what you did, where, and when.';
+      }
+      if (learningOutcomes.trim().length < 50) {
+        errors.learningOutcomes =
+          'Learning outcomes must be at least 50 characters. Describe what changed in your skills, plans, or understanding.';
+      }
+    }
+
+    if (type === 'requirement_submission') {
+      if (!submissionType) {
+        errors.submissionType = 'Select the type of requirement you are submitting.';
+      }
+      if (selectedFiles.length === 0) {
+        errors.attachments =
+          'Attach the document or file that satisfies this requirement before submitting.';
+      }
+    }
+
+    setTypeSpecificErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const collectFormData = () => {
@@ -172,22 +357,18 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
 
   const onSubmit = async (values: FormValues) => {
     try {
-      if (
-        values.type === 'summer_funding_request' &&
-        riskOfNotCarryingOut === 'yes' &&
-        !riskDetails?.trim()
-      ) {
+      if (!validateTypeSpecificData()) {
         toast({
-          title: 'Details required',
-          description: 'Please provide details about the risk when you answer Yes.',
+          title: 'Review required fields',
+          description: 'Some fields need more detail before this request can be submitted.',
           variant: 'destructive',
         });
         return;
       }
       const formData = collectFormData();
-      const requestData: any = {
+      const requestData: CreateRequestData = {
         type: values.type,
-        description: values.description,
+        description: buildRequestDescription(values.type, values.description),
         priority: values.priority,
         assignedTo: values.assignedTo,
         formData,
@@ -198,7 +379,7 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
       if (selectedFiles.length > 0 && newRequest.id) {
         try {
           await uploadFiles(selectedFiles, newRequest.id);
-        } catch (uploadError) {
+        } catch {
           toast({
             title: 'Request created',
             description: 'Your request was submitted but some files failed to upload.',
@@ -225,7 +406,7 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
       resetTypeSpecificData();
       setOpen(false);
       onSuccess?.();
-    } catch (error) {
+    } catch {
       toast({
         title: 'Error',
         description: 'Failed to submit request. Please try again.',
@@ -235,9 +416,9 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
   };
 
   const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   const requestTypeOptions = [
@@ -256,15 +437,7 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
   const renderTypeSpecificFields = () => {
     switch (selectedType) {
       case 'extenuating_circumstances':
-        return (
-          <div className="space-y-4 border-t pt-4">
-            <h4 className="font-medium text-sm">Extenuating Circumstances Details</h4>
-            <p className="text-sm text-muted-foreground">
-              Please provide detailed information about the circumstances affecting your studies.
-              Include relevant dates and any supporting documentation.
-            </p>
-          </div>
-        );
+        return null;
 
       case 'summer_funding_request':
         return (
@@ -275,10 +448,17 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
             </p>
 
             <div className="space-y-2">
-              <Label>
-                Activity Type <span className="text-red-500">*</span>
-              </Label>
-              <RadioGroup value={activityType} onValueChange={setActivityType}>
+              <Label>Activity type {requiredLabel}</Label>
+              <p className="text-sm text-muted-foreground">
+                Select the option that best matches the activity your funding will support.
+              </p>
+              <RadioGroup
+                value={activityType}
+                onValueChange={(value) => {
+                  setActivityType(value);
+                  clearTypeSpecificError('activityType');
+                }}
+              >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="internship_ssa" id="internship_ssa" />
                   <label htmlFor="internship_ssa" className="text-sm">
@@ -301,18 +481,25 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
                   </label>
                 </div>
               </RadioGroup>
+              {fieldError('activityType')}
             </div>
 
             <div className="space-y-2">
               <Label>
                 Is there any strong risk of not being able to carry out the activities you are
-                applying for? <span className="text-red-500">*</span>
+                applying for? {requiredLabel}
               </Label>
               <p className="text-sm text-muted-foreground">
                 Examples include pending confirmation of exam resits or an unconfirmed internship
                 offer.
               </p>
-              <RadioGroup value={riskOfNotCarryingOut} onValueChange={setRiskOfNotCarryingOut}>
+              <RadioGroup
+                value={riskOfNotCarryingOut}
+                onValueChange={(value) => {
+                  setRiskOfNotCarryingOut(value);
+                  clearTypeSpecificError('riskOfNotCarryingOut');
+                }}
+              >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="yes" id="risk_yes" />
                   <label htmlFor="risk_yes" className="text-sm">
@@ -326,29 +513,40 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
                   </label>
                 </div>
               </RadioGroup>
+              {fieldError('riskOfNotCarryingOut')}
             </div>
 
             {riskOfNotCarryingOut === 'yes' && (
               <div className="space-y-2">
-                <Label>
-                  Please give details <span className="text-red-500">*</span>
-                </Label>
+                <Label>Risk details {requiredLabel}</Label>
+                <p className="text-sm text-muted-foreground">
+                  Explain what might stop the activity and when you expect the risk to be resolved.
+                </p>
                 <Textarea
-                  placeholder="Describe the risk and any relevant circumstances..."
+                  placeholder="For example: My internship confirmation is pending until 12 June..."
                   value={riskDetails}
-                  onChange={(e) => setRiskDetails(e.target.value)}
+                  onChange={(e) => {
+                    setRiskDetails(e.target.value);
+                    clearTypeSpecificError('riskDetails');
+                  }}
                   className="resize-none min-h-[80px]"
                 />
+                {fieldError('riskDetails')}
               </div>
             )}
 
             <div className="space-y-2">
-              <Label>
-                Have you applied for alternative funding? <span className="text-red-500">*</span>
-              </Label>
+              <Label>Have you applied for alternative funding? {requiredLabel}</Label>
+              <p className="text-sm text-muted-foreground">
+                Include applications to your university, employer, host organisation, or other
+                funders.
+              </p>
               <RadioGroup
                 value={appliedForAlternativeFunding}
-                onValueChange={setAppliedForAlternativeFunding}
+                onValueChange={(value) => {
+                  setAppliedForAlternativeFunding(value);
+                  clearTypeSpecificError('appliedForAlternativeFunding');
+                }}
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="yes_successful" id="yes_successful" />
@@ -369,14 +567,21 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
                   </label>
                 </div>
               </RadioGroup>
+              {fieldError('appliedForAlternativeFunding')}
             </div>
 
             <div className="space-y-2">
-              <Label>
-                Are you receiving any other funding for this activity?{' '}
-                <span className="text-red-500">*</span>
-              </Label>
-              <RadioGroup value={receivingOtherFunding} onValueChange={setReceivingOtherFunding}>
+              <Label>Are you receiving any other funding for this activity? {requiredLabel}</Label>
+              <p className="text-sm text-muted-foreground">
+                Select Yes if any part of the activity cost is already covered by another source.
+              </p>
+              <RadioGroup
+                value={receivingOtherFunding}
+                onValueChange={(value) => {
+                  setReceivingOtherFunding(value);
+                  clearTypeSpecificError('receivingOtherFunding');
+                }}
+              >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="yes" id="receiving_yes" />
                   <label htmlFor="receiving_yes" className="text-sm">
@@ -390,34 +595,49 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
                   </label>
                 </div>
               </RadioGroup>
+              {fieldError('receivingOtherFunding')}
             </div>
 
             {receivingOtherFunding === 'yes' && (
               <>
                 <div className="space-y-2">
-                  <Label>Funding Source</Label>
+                  <Label>Funding source {requiredLabel}</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Name the organisation, programme, or person providing the funding.
+                  </p>
                   <Textarea
-                    placeholder="Please specify the source of funding..."
+                    placeholder="For example: University travel bursary"
                     value={otherFundingSource}
-                    onChange={(e) => setOtherFundingSource(e.target.value)}
+                    onChange={(e) => {
+                      setOtherFundingSource(e.target.value);
+                      clearTypeSpecificError('otherFundingSource');
+                    }}
                     className="resize-none"
                   />
+                  {fieldError('otherFundingSource')}
                 </div>
                 <div className="space-y-2">
-                  <Label>Funding Amount</Label>
+                  <Label>Funding amount {requiredLabel}</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Include the amount and currency if it is confirmed or estimated.
+                  </p>
                   <Input
-                    placeholder="Please specify the amount..."
+                    placeholder="For example: GBP 500"
                     value={otherFundingAmount}
-                    onChange={(e) => setOtherFundingAmount(e.target.value)}
+                    onChange={(e) => {
+                      setOtherFundingAmount(e.target.value);
+                      clearTypeSpecificError('otherFundingAmount');
+                    }}
                   />
+                  {fieldError('otherFundingAmount')}
                 </div>
               </>
             )}
 
             <div className="space-y-2">
-              <Label>Anything further you would like to note?</Label>
+              <Label>Additional notes {optionalLabel}</Label>
               <Textarea
-                placeholder="Any additional information..."
+                placeholder="Add anything else staff should know about this request..."
                 value={additionalNotes}
                 onChange={(e) => setAdditionalNotes(e.target.value)}
                 className="resize-none"
@@ -427,30 +647,36 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
             <div className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
               <Checkbox
                 checked={travelInsuranceAcknowledged}
-                onCheckedChange={(checked) => setTravelInsuranceAcknowledged(checked === true)}
+                onCheckedChange={(checked) => {
+                  setTravelInsuranceAcknowledged(checked === true);
+                  clearTypeSpecificError('travelInsuranceAcknowledged');
+                }}
               />
               <div className="space-y-1 leading-none">
                 <Label>
-                  I acknowledge that I need to arrange my own travel insurance{' '}
-                  <span className="text-red-500">*</span>
+                  I acknowledge that I need to arrange my own travel insurance {requiredLabel}
                 </Label>
                 <p className="text-sm text-muted-foreground">
                   You are responsible for arranging appropriate travel insurance for your summer
                   activity.
                 </p>
+                {fieldError('travelInsuranceAcknowledged')}
               </div>
             </div>
 
             <div className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
               <Checkbox
                 checked={informationTruthful}
-                onCheckedChange={(checked) => setInformationTruthful(checked === true)}
+                onCheckedChange={(checked) => {
+                  setInformationTruthful(checked === true);
+                  clearTypeSpecificError('informationTruthful');
+                }}
               />
               <div className="space-y-1 leading-none">
                 <Label>
-                  I confirm that all information provided is true and accurate{' '}
-                  <span className="text-red-500">*</span>
+                  I confirm that all information provided is true and accurate {requiredLabel}
                 </Label>
+                {fieldError('informationTruthful')}
               </div>
             </div>
           </div>
@@ -465,32 +691,42 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
             </p>
 
             <div className="space-y-2">
-              <Label>
-                Activity Summary <span className="text-red-500">*</span>
-              </Label>
+              <Label>Activity summary {requiredLabel}</Label>
+              <p className="text-sm text-muted-foreground">
+                Summarise what you did, where the activity took place, and the dates covered.
+              </p>
               <Textarea
                 placeholder="Describe what you did during your summer activity..."
                 value={activitySummary}
-                onChange={(e) => setActivitySummary(e.target.value)}
+                onChange={(e) => {
+                  setActivitySummary(e.target.value);
+                  clearTypeSpecificError('activitySummary');
+                }}
                 className="min-h-[100px] resize-none"
               />
               <p className="text-sm text-muted-foreground">Minimum 50 characters</p>
+              {fieldError('activitySummary')}
             </div>
 
             <div className="space-y-2">
-              <Label>
-                Learning Outcomes <span className="text-red-500">*</span>
-              </Label>
+              <Label>Learning outcomes {requiredLabel}</Label>
+              <p className="text-sm text-muted-foreground">
+                Describe what you learned and how the experience affected your plans or skills.
+              </p>
               <Textarea
-                placeholder="What did you learn from this experience?"
+                placeholder="For example: I developed lab skills and confirmed my interest in..."
                 value={learningOutcomes}
-                onChange={(e) => setLearningOutcomes(e.target.value)}
+                onChange={(e) => {
+                  setLearningOutcomes(e.target.value);
+                  clearTypeSpecificError('learningOutcomes');
+                }}
                 className="min-h-[80px] resize-none"
               />
+              {fieldError('learningOutcomes')}
             </div>
 
             <div className="space-y-2">
-              <Label>Challenges Faced</Label>
+              <Label>Challenges faced {optionalLabel}</Label>
               <Textarea
                 placeholder="Were there any challenges you faced?"
                 value={challengesFaced}
@@ -500,7 +736,7 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
             </div>
 
             <div className="space-y-2">
-              <Label>Additional Notes</Label>
+              <Label>Additional notes {optionalLabel}</Label>
               <Textarea
                 placeholder="Any other comments or reflections..."
                 value={additionalNotes}
@@ -520,10 +756,17 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
             </p>
 
             <div className="space-y-2">
-              <Label>
-                Submission Type <span className="text-red-500">*</span>
-              </Label>
-              <RadioGroup value={submissionType} onValueChange={setSubmissionType}>
+              <Label>Submission type {requiredLabel}</Label>
+              <p className="text-sm text-muted-foreground">
+                Choose the requirement that matches the document or material you are uploading.
+              </p>
+              <RadioGroup
+                value={submissionType}
+                onValueChange={(value) => {
+                  setSubmissionType(value);
+                  clearTypeSpecificError('submissionType');
+                }}
+              >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="ashinaga_proposal" id="ashinaga_proposal" />
                   <label htmlFor="ashinaga_proposal" className="text-sm">
@@ -549,10 +792,11 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
                   </label>
                 </div>
               </RadioGroup>
+              {fieldError('submissionType')}
             </div>
 
             <div className="space-y-2">
-              <Label>Additional Notes</Label>
+              <Label>Additional notes {optionalLabel}</Label>
               <Textarea
                 placeholder="Any additional information about this submission..."
                 value={additionalNotes}
@@ -586,8 +830,17 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
               name="type"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Request Type</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormLabel>Request type {requiredLabel}</FormLabel>
+                  <Select
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      form.setValue('description', '');
+                      form.clearErrors('description');
+                      resetTypeSpecificData();
+                      setSelectedFiles([]);
+                    }}
+                    defaultValue={field.value}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select request type" />
@@ -602,7 +855,7 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
                     </SelectContent>
                   </Select>
                   <FormDescription>
-                    Choose the category that best describes your request
+                    Choose the category that best matches what you need staff to review.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -614,7 +867,7 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
               name="priority"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Priority Level</FormLabel>
+                  <FormLabel>Priority level {optionalLabel}</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
@@ -630,7 +883,8 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
                     </SelectContent>
                   </Select>
                   <FormDescription>
-                    Select high priority for urgent matters requiring immediate attention
+                    Use High only when the request needs immediate attention because a deadline or
+                    risk is close.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -642,9 +896,7 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
               name="assignedTo"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>
-                    Assign to Staff Member <span className="text-red-500">*</span>
-                  </FormLabel>
+                  <FormLabel>Assign to Staff Member {requiredLabel}</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value || ''}>
                     <FormControl>
                       <SelectTrigger>
@@ -664,37 +916,38 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
                     </SelectContent>
                   </Select>
                   <FormDescription>
-                    Select the staff member who should handle this request
+                    Select the staff member who should review and respond to this request.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Please describe your request in detail..."
-                      className="min-h-[120px] resize-none"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Provide detailed information about your request. Include relevant dates,
-                    amounts, or circumstances.
-                    <span className="block text-xs mt-1">
-                      {field.value?.length || 0}/2000 characters
-                    </span>
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {selectedType === 'extenuating_circumstances' && (
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description {requiredLabel}</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Explain what happened, when it happened, and what support or decision you need..."
+                        className="min-h-[120px] resize-none"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Include the key dates, circumstances, and outcome you are asking for.
+                      <span className="block text-xs mt-1">
+                        {field.value?.length || 0}/2000 characters
+                      </span>
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             {/* Type-specific fields */}
             {renderTypeSpecificFields()}
@@ -702,15 +955,13 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
             {/* File Upload Section */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <label className="text-sm font-medium">
+                <div className="text-sm font-medium">
                   Attachments{' '}
                   {selectedType === 'summer_funding_request' ||
-                  selectedType === 'requirement_submission' ? (
-                    <span className="text-red-500">*</span>
-                  ) : (
-                    '(Optional)'
-                  )}
-                </label>
+                  selectedType === 'requirement_submission'
+                    ? requiredLabel
+                    : optionalLabel}
+                </div>
                 <Button
                   type="button"
                   variant="outline"
@@ -728,7 +979,10 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
                 type="file"
                 multiple
                 accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.xls,.xlsx"
-                onChange={handleFileSelect}
+                onChange={(event) => {
+                  handleFileSelect(event);
+                  clearTypeSpecificError('attachments');
+                }}
                 className="hidden"
               />
 
@@ -738,7 +992,7 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
                     const progress = uploadProgress.find((p) => p.file === file);
                     return (
                       <div
-                        key={index}
+                        key={`${file.name}-${file.size}-${file.lastModified}`}
                         className="flex items-center justify-between p-2 bg-white rounded border"
                       >
                         <div className="flex items-center gap-2 flex-1">
@@ -773,6 +1027,7 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
               <p className="text-xs text-gray-500">
                 Accepted formats: PDF, Word, Excel, Text, Images. Max size: 10MB per file.
               </p>
+              {fieldError('attachments')}
             </div>
 
             <DialogFooter>
