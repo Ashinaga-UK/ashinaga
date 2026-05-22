@@ -5,6 +5,7 @@ import {
   createAnnouncement,
   createTask,
   deleteScholar,
+  deleteTask,
   type GetAnnouncementsParams,
   getAnnouncements,
   getScholarProfile,
@@ -119,6 +120,23 @@ export function useUpdateTask() {
         const scholarId = (updatedTask as { scholarId: string }).scholarId;
         queryClient.invalidateQueries({ queryKey: queryKeys.scholarTasks(scholarId) });
         queryClient.invalidateQueries({ queryKey: queryKeys.scholarProfile(scholarId) });
+      }
+    },
+  });
+}
+
+// Delete task mutation (soft delete)
+export function useDeleteTask(scholarId?: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (taskId: string) => deleteTask(taskId),
+    onSuccess: () => {
+      if (scholarId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.scholarTasks(scholarId) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.scholarProfile(scholarId) });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['scholar'] });
       }
     },
   });

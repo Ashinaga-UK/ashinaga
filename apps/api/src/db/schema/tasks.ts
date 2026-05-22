@@ -29,6 +29,8 @@ export const tasks = pgTable('tasks', {
     .notNull()
     .references(() => users.id),
   completedAt: timestamp('completed_at', { withTimezone: true }),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  deletedBy: text('deleted_by').references(() => users.id),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
