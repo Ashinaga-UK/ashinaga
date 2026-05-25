@@ -133,11 +133,8 @@ export function StaffInviteDialog({ trigger }: StaffInviteDialogProps) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger ?? (
-          <Button
-            variant="outline"
-            className="h-20 flex-col gap-2 border-ashinaga-teal-200 hover:bg-ashinaga-teal-50 bg-transparent w-full"
-          >
-            <UserPlus className="h-6 w-6" />
+          <Button variant="outline" size="sm">
+            <UserPlus className="h-4 w-4" />
             Invite Staff
           </Button>
         )}
