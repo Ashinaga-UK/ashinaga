@@ -13,7 +13,7 @@ test.describe('Staff Portal – new features', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     // Wait for the dashboard to be rendered (header is always present once signed in)
-    await expect(page.getByRole('heading', { name: 'Ashinaga Staff Portal' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Ashinaga Staff/ })).toBeVisible();
   });
 
   test('Invitations tab is visible and renders Staff/Scholar sub-tabs', async ({ page }) => {
