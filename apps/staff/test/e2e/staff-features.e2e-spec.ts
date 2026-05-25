@@ -83,7 +83,8 @@ test.describe('Staff Portal – new features', () => {
   test('Task assignment dialog hits the title-suggestions endpoint as you type', async ({
     page,
   }) => {
-    await page.getByRole('button', { name: /Assign Task to Scholar/i }).click();
+    // Quick Actions launcher on the dashboard (label was shortened in the UI uplift)
+    await page.getByRole('button', { name: /^Assign Task$/i }).click();
     await expect(page.getByRole('dialog')).toBeVisible();
 
     const titleInput = page.getByLabel(/Task Title/i);
