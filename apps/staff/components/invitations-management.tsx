@@ -25,32 +25,27 @@ import {
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Skeleton } from './ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { useToast } from './ui/use-toast';
 
 type InvitationStatus = 'pending' | 'accepted' | 'expired' | 'cancelled' | 'all';
 
 function StatusBadge({ status }: { status: InvitationSummary['status'] }) {
-  const variants: Record<InvitationSummary['status'], { className: string; label: string }> = {
-    pending: {
-      className: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200',
-      label: 'Pending',
-    },
-    accepted: {
-      className: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200',
-      label: 'Accepted',
-    },
-    expired: {
-      className: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
-      label: 'Expired',
-    },
-    cancelled: {
-      className: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-200',
-      label: 'Cancelled',
-    },
+  const variants: Record<
+    InvitationSummary['status'],
+    {
+      variant: 'warning' | 'success' | 'muted' | 'destructive';
+      label: string;
+    }
+  > = {
+    pending: { variant: 'warning', label: 'Pending' },
+    accepted: { variant: 'success', label: 'Accepted' },
+    expired: { variant: 'muted', label: 'Expired' },
+    cancelled: { variant: 'destructive', label: 'Cancelled' },
   };
   const v = variants[status];
-  return <Badge className={`${v.className} hover:${v.className}`}>{v.label}</Badge>;
+  return <Badge variant={v.variant}>{v.label}</Badge>;
 }
 
 interface InvitationListProps {
@@ -155,18 +150,33 @@ function InvitationList({ userType }: InvitationListProps) {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <span className="ml-2 text-muted-foreground">Loading invitations…</span>
+        <div className="rounded-lg border overflow-hidden">
+          <div className="grid grid-cols-12 gap-2 px-4 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground border-b bg-muted/30">
+            <div className="col-span-4">Email</div>
+            <div className="col-span-2">Status</div>
+            <div className="col-span-2">Sent / Resends</div>
+            <div className="col-span-2">Expires</div>
+            <div className="col-span-2 text-right">Actions</div>
+          </div>
+          <div className="divide-y">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="px-4 py-3.5">
+                <Skeleton className="h-4 w-3/4" />
+              </div>
+            ))}
+          </div>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <Mail className="h-10 w-10 mx-auto mb-3 opacity-50" />
-          <p>No invitations match the current filters.</p>
+        <div className="rounded-lg border flex flex-col items-center justify-center py-16 text-center">
+          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/40">
+            <Mail className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <p className="text-sm font-medium text-foreground">No invitations</p>
+          <p className="mt-1 text-sm text-muted-foreground">Nothing matches the current filters.</p>
         </div>
       ) : (
-        <div className="rounded-md border">
-          <div className="grid grid-cols-12 gap-2 px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/40 border-b">
+        <div className="rounded-lg border overflow-hidden">
+          <div className="grid grid-cols-12 gap-2 px-4 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground border-b bg-muted/30">
             <div className="col-span-4">Email</div>
             <div className="col-span-2">Status</div>
             <div className="col-span-2">Sent / Resends</div>
@@ -178,19 +188,26 @@ function InvitationList({ userType }: InvitationListProps) {
               const expires = new Date(inv.expiresAt);
               const isPending = inv.status === 'pending';
               return (
-                <li key={inv.id} className="grid grid-cols-12 gap-2 px-4 py-3 items-center text-sm">
-                  <div className="col-span-4 break-all font-medium">{inv.email}</div>
+                <li
+                  key={inv.id}
+                  className="grid grid-cols-12 gap-2 px-4 py-3 items-center text-sm transition-colors hover:bg-muted/30"
+                >
+                  <div className="col-span-4 break-all font-medium text-foreground">
+                    {inv.email}
+                  </div>
                   <div className="col-span-2">
                     <StatusBadge status={inv.status} />
                   </div>
                   <div className="col-span-2 text-muted-foreground">
-                    <div>{inv.sentAt ? new Date(inv.sentAt).toLocaleDateString() : '—'}</div>
-                    <div className="text-xs">Resends: {inv.resentCount}</div>
+                    <div className="tabular-nums">
+                      {inv.sentAt ? new Date(inv.sentAt).toLocaleDateString() : '—'}
+                    </div>
+                    <div className="text-xs tabular-nums">Resends: {inv.resentCount}</div>
                   </div>
-                  <div className="col-span-2 text-muted-foreground">
+                  <div className="col-span-2 text-muted-foreground tabular-nums">
                     {expires.toLocaleDateString()}
                   </div>
-                  <div className="col-span-2 flex justify-end gap-2">
+                  <div className="col-span-2 flex justify-end gap-1">
                     <Button
                       type="button"
                       variant="outline"
@@ -204,7 +221,7 @@ function InvitationList({ userType }: InvitationListProps) {
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40"
+                      className="text-muted-foreground hover:text-destructive"
                       disabled={!isPending || busyId !== null}
                       onClick={() => handleCancel(inv.id)}
                     >
