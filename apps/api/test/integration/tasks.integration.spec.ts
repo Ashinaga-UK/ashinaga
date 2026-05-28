@@ -14,10 +14,10 @@ import { type AuthContext, createAuthenticatedIntegrationApp } from './helpers/c
 import {
   cleanupSeeded,
   getTestPool,
-  seedScholarUser,
-  seedStaffUser,
   type SeededScholar,
   type SeededStaff,
+  seedScholarUser,
+  seedStaffUser,
 } from './helpers/seed';
 
 describe('Tasks API – bulk/soft-delete/suggestions (integration)', () => {

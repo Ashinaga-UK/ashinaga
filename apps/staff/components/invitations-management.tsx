@@ -1,14 +1,17 @@
 'use client';
 
-import { Loader2, Mail, Search, UserPlus } from 'lucide-react';
+import { Loader2, Mail, Search, Shield, Trash2, UserPlus, Users } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   cancelInvitation,
   createStaffInvitation,
   getInvitations,
+  getStaffForManagement,
   type InvitationSummary,
+  removeStaffMember,
   resendInvitation,
+  type StaffMember,
 } from '../lib/api-client';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -320,8 +323,187 @@ function InviteStaffButton({ onInvited }: { onInvited: () => void }) {
   );
 }
 
+function ActiveStaffList() {
+  const { toast } = useToast();
+  const [members, setMembers] = useState<StaffMember[]>([]);
+  const [canManage, setCanManage] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [busyUserId, setBusyUserId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await getStaffForManagement();
+      setMembers(res.staff);
+      setCanManage(res.canManage);
+    } catch (e) {
+      toast({
+        title: 'Could not load staff',
+        description: e instanceof Error ? e.message : 'Unknown error',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return members;
+    return members.filter(
+      (m) => m.email.toLowerCase().includes(q) || m.name.toLowerCase().includes(q)
+    );
+  }, [members, search]);
+
+  const handleRemove = async (member: StaffMember) => {
+    if (member.isSelf) return;
+    const confirmed = window.confirm(
+      `Remove ${member.name} (${member.email}) from staff?\n\nThey will lose access immediately and their active sessions will be ended. This cannot be undone from the app.`
+    );
+    if (!confirmed) return;
+    setBusyUserId(member.userId);
+    try {
+      await removeStaffMember(member.userId);
+      toast({
+        title: 'Staff member removed',
+        description: `${member.name} no longer has access to the staff portal.`,
+      });
+      await load();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      toast({
+        title: 'Could not remove staff member',
+        description: msg.replace(/^API Error:\s*\d+\s*-\s*/, ''),
+        variant: 'destructive',
+      });
+    } finally {
+      setBusyUserId(null);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full sm:max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by name or email…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        {!loading && !canManage && (
+          <p className="text-xs text-muted-foreground">
+            Only super-admins can remove staff members.
+          </p>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="rounded-lg border overflow-hidden">
+          <div className="grid grid-cols-12 gap-2 px-4 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground border-b bg-muted/30">
+            <div className="col-span-4">Name</div>
+            <div className="col-span-4">Email</div>
+            <div className="col-span-2">Role</div>
+            <div className="col-span-2 text-right">Actions</div>
+          </div>
+          <div className="divide-y">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="px-4 py-3.5">
+                <Skeleton className="h-4 w-3/4" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-lg border flex flex-col items-center justify-center py-16 text-center">
+          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/40">
+            <Users className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <p className="text-sm font-medium text-foreground">No active staff</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {search ? 'Nothing matches your search.' : 'Invite a colleague to get started.'}
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-lg border overflow-hidden">
+          <div className="grid grid-cols-12 gap-2 px-4 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground border-b bg-muted/30">
+            <div className="col-span-4">Name</div>
+            <div className="col-span-4">Email</div>
+            <div className="col-span-2">Role</div>
+            <div className="col-span-2 text-right">Actions</div>
+          </div>
+          <ul className="divide-y">
+            {filtered.map((member) => (
+              <li
+                key={member.userId}
+                className="grid grid-cols-12 gap-2 px-4 py-3 items-center text-sm transition-colors hover:bg-muted/30"
+              >
+                <div className="col-span-4 font-medium text-foreground flex items-center gap-2">
+                  <span className="truncate">{member.name}</span>
+                  {member.isSelf && (
+                    <Badge variant="outline" className="text-[10px] font-normal">
+                      You
+                    </Badge>
+                  )}
+                </div>
+                <div className="col-span-4 break-all text-muted-foreground">{member.email}</div>
+                <div className="col-span-2 flex items-center gap-1.5">
+                  <Badge
+                    variant={member.role === 'admin' ? 'success' : 'muted'}
+                    className="capitalize"
+                  >
+                    {member.role}
+                  </Badge>
+                  {member.isSuperAdmin && (
+                    <span title="Super admin" className="text-amber-600">
+                      <Shield className="h-3.5 w-3.5" />
+                    </span>
+                  )}
+                </div>
+                <div className="col-span-2 flex justify-end">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground hover:text-destructive"
+                    disabled={!canManage || member.isSelf || busyUserId !== null}
+                    onClick={() => handleRemove(member)}
+                    title={
+                      member.isSelf
+                        ? 'You cannot remove yourself'
+                        : !canManage
+                          ? 'Only super-admins can remove staff'
+                          : 'Remove staff member'
+                    }
+                  >
+                    {busyUserId === member.userId ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <>
+                        <Trash2 className="h-3.5 w-3.5 mr-1" />
+                        Remove
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function InvitationsManagement({ onOnboardScholar }: { onOnboardScholar: () => void }) {
-  const [tab, setTab] = useState<'staff' | 'scholar'>('staff');
+  const [tab, setTab] = useState<'staff-members' | 'staff' | 'scholar'>('staff-members');
   const [refreshKey, setRefreshKey] = useState(0);
 
   return (
@@ -329,15 +511,14 @@ export function InvitationsManagement({ onOnboardScholar }: { onOnboardScholar: 
       <CardHeader>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <CardTitle>Invitations</CardTitle>
+            <CardTitle>Staff & Invitations</CardTitle>
             <CardDescription>
-              Track and manage staff and scholar invitations. Invitations expire after 30 days.
+              Manage active staff, and track staff and scholar invitations. Invitations expire after
+              30 days.
             </CardDescription>
           </div>
           <div className="flex gap-2">
-            {tab === 'staff' ? (
-              <InviteStaffButton onInvited={() => setRefreshKey((k) => k + 1)} />
-            ) : (
+            {tab === 'scholar' ? (
               <Button
                 onClick={onOnboardScholar}
                 className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
@@ -345,6 +526,8 @@ export function InvitationsManagement({ onOnboardScholar }: { onOnboardScholar: 
                 <UserPlus className="mr-2 h-4 w-4" />
                 Onboard Scholar
               </Button>
+            ) : (
+              <InviteStaffButton onInvited={() => setRefreshKey((k) => k + 1)} />
             )}
           </div>
         </div>
@@ -352,13 +535,17 @@ export function InvitationsManagement({ onOnboardScholar }: { onOnboardScholar: 
       <CardContent>
         <Tabs
           value={tab}
-          onValueChange={(v) => setTab(v as 'staff' | 'scholar')}
+          onValueChange={(v) => setTab(v as 'staff-members' | 'staff' | 'scholar')}
           className="space-y-4"
         >
-          <TabsList className="grid w-full grid-cols-2 sm:w-[320px]">
-            <TabsTrigger value="staff">Staff</TabsTrigger>
-            <TabsTrigger value="scholar">Scholar</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 sm:w-[480px]">
+            <TabsTrigger value="staff-members">Active Staff</TabsTrigger>
+            <TabsTrigger value="staff">Staff Invites</TabsTrigger>
+            <TabsTrigger value="scholar">Scholar Invites</TabsTrigger>
           </TabsList>
+          <TabsContent value="staff-members">
+            <ActiveStaffList key={`staff-members-${refreshKey}`} />
+          </TabsContent>
           <TabsContent value="staff">
             <InvitationList key={`staff-${refreshKey}`} userType="staff" />
           </TabsContent>
