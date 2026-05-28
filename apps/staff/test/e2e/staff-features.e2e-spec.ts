@@ -16,23 +16,26 @@ test.describe('Staff Portal – new features', () => {
     await expect(page.getByRole('heading', { name: /Ashinaga Staff/ })).toBeVisible();
   });
 
-  test('Invitations tab is visible and renders Staff/Scholar sub-tabs', async ({ page }) => {
+  test('Invitations tab is visible and renders Active Staff / Staff Invites / Scholar Invites sub-tabs', async ({
+    page,
+  }) => {
     const invitationsTab = page.getByRole('tab', { name: /Invitations/i });
     await expect(invitationsTab).toBeVisible();
     await invitationsTab.click();
 
-    // Sub-tabs visible
-    await expect(page.getByRole('tab', { name: 'Staff', exact: true })).toBeVisible();
-    await expect(page.getByRole('tab', { name: 'Scholar', exact: true })).toBeVisible();
+    // Sub-tabs visible (renamed when the Active Staff management view was added)
+    await expect(page.getByRole('tab', { name: 'Active Staff', exact: true })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Staff Invites', exact: true })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Scholar Invites', exact: true })).toBeVisible();
 
     // The card header mentions the new 30-day expiry
     await expect(page.getByText(/expire after 30 days/i)).toBeVisible();
 
-    // Invite Staff button on the Staff sub-tab
+    // Invite Staff button is the default action on Active Staff / Staff Invites tabs
     await expect(page.getByRole('button', { name: /Invite Staff/i })).toBeVisible();
 
-    // Switching to Scholar shows the Onboard Scholar button instead
-    await page.getByRole('tab', { name: 'Scholar', exact: true }).click();
+    // Switching to Scholar Invites shows the Onboard Scholar button instead
+    await page.getByRole('tab', { name: 'Scholar Invites', exact: true }).click();
     await expect(page.getByRole('button', { name: /Onboard Scholar/i })).toBeVisible();
   });
 

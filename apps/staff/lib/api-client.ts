@@ -822,3 +822,32 @@ export async function cancelInvitation(invitationId: string): Promise<{ message:
     method: 'DELETE',
   });
 }
+
+// Staff management
+export interface StaffMember {
+  id: string;
+  userId: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'viewer';
+  isSuperAdmin: boolean;
+  joinedAt: string;
+  isSelf: boolean;
+}
+
+export interface StaffManagementResponse {
+  staff: StaffMember[];
+  canManage: boolean;
+}
+
+export async function getStaffForManagement(): Promise<StaffManagementResponse> {
+  return fetchAPI<StaffManagementResponse>('/api/users/staff/manage');
+}
+
+export async function removeStaffMember(
+  userId: string
+): Promise<{ success: boolean; alreadyInactive: boolean }> {
+  return fetchAPI<{ success: boolean; alreadyInactive: boolean }>(`/api/users/staff/${userId}`, {
+    method: 'DELETE',
+  });
+}

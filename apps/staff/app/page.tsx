@@ -609,6 +609,7 @@ function StaffDashboardContent() {
                         <SelectItem value="approved">Approved</SelectItem>
                         <SelectItem value="rejected">Rejected</SelectItem>
                         <SelectItem value="reviewed">Reviewed</SelectItem>
+                        <SelectItem value="commented">Commented</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

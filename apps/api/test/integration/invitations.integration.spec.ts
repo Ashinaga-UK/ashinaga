@@ -14,8 +14,8 @@ import {
   deleteInvitationByEmail,
   getTestPool,
   randomEmail,
-  seedStaffUser,
   type SeededStaff,
+  seedStaffUser,
 } from './helpers/seed';
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
