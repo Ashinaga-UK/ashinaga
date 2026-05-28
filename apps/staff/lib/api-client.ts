@@ -345,6 +345,12 @@ export interface RequestAuditLog {
   createdAt: string;
 }
 
+export interface RequestAssignee {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export interface Request {
   id: string;
   scholarId: string;
@@ -363,6 +369,7 @@ export interface Request {
   reviewedBy?: string | null;
   reviewComment?: string | null;
   reviewDate?: string | null;
+  assignees?: RequestAssignee[];
   attachments: RequestAttachment[];
   auditLogs: RequestAuditLog[];
   createdAt: string;
@@ -633,6 +640,27 @@ export async function createTask(data: CreateTaskData): Promise<{
   });
 }
 
+export interface CreateBulkTasksData {
+  title: string;
+  description?: string;
+  type: CreateTaskData['type'];
+  priority?: 'high' | 'medium' | 'low';
+  dueDate: string;
+  scholarIds: string[];
+}
+
+export async function createBulkTasks(
+  data: CreateBulkTasksData
+): Promise<{ created: number; tasks: unknown[] }> {
+  return fetchAPI('/api/tasks/bulk', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+}
+
 export async function getTasksByScholar(scholarId: string): Promise<Task[]> {
   return fetchAPI<Task[]>(`/api/tasks/scholar/${scholarId}`);
 }
@@ -659,6 +687,37 @@ export async function updateTask(taskId: string, data: UpdateTaskData): Promise<
     },
     body: JSON.stringify(data),
   });
+}
+
+export async function deleteTask(taskId: string): Promise<{ id: string; alreadyDeleted: boolean }> {
+  return fetchAPI(`/api/tasks/${taskId}`, {
+    method: 'DELETE',
+  });
+}
+
+export interface TaskTitleSuggestion {
+  title: string;
+  description?: string | null;
+  type:
+    | 'document_upload'
+    | 'form_completion'
+    | 'meeting_attendance'
+    | 'goal_update'
+    | 'feedback_submission'
+    | 'other';
+  priority: 'high' | 'medium' | 'low';
+  lastUsedAt: string;
+  useCount: number;
+}
+
+export async function getTaskTitleSuggestions(
+  query: string,
+  limit = 8
+): Promise<TaskTitleSuggestion[]> {
+  const params = new URLSearchParams();
+  if (query) params.set('q', query);
+  params.set('limit', String(limit));
+  return fetchAPI<TaskTitleSuggestion[]>(`/api/tasks/suggestions?${params.toString()}`);
 }
 
 // Scholar creation function

@@ -1,4 +1,4 @@
-import { boolean, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { boolean, pgEnum, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { scholars } from './scholars';
 import { users } from './users';
 
@@ -52,6 +52,22 @@ export const requestAttachments = pgTable('request_attachments', {
   mimeType: text('mime_type').notNull(),
   uploadedAt: timestamp('uploaded_at', { withTimezone: true }).defaultNow().notNull(),
 });
+
+export const requestAssignees = pgTable(
+  'request_assignees',
+  {
+    requestId: uuid('request_id')
+      .notNull()
+      .references(() => requests.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id),
+    assignedAt: timestamp('assigned_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.requestId, table.userId] }),
+  })
+);
 
 export const requestAuditLogs = pgTable('request_audit_logs', {
   id: uuid('id').defaultRandom().primaryKey(),

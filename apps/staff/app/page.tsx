@@ -1,9 +1,19 @@
 'use client';
 
-import { AlertCircle, FileText, Loader2, MessageSquare, Plus, Trash2, Users } from 'lucide-react';
+import {
+  AlertCircle,
+  FileText,
+  Loader2,
+  Mail,
+  MessageSquare,
+  Trash2,
+  UserPlus,
+  Users,
+} from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { forwardRef, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { AnnouncementCreator } from '../components/announcement-creator';
+import { InvitationsManagement } from '../components/invitations-management';
 import { LoginPage } from '../components/login-page';
 import { MyProfile } from '../components/my-profile';
 import { RequestManagement } from '../components/request-management';
@@ -16,7 +26,7 @@ import { ThemeToggle } from '../components/theme-toggle';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent } from '../components/ui/card';
 import {
   Select,
   SelectContent,
@@ -24,6 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../components/ui/select';
+import { Skeleton } from '../components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import {
   type AnnouncementFilterOptions,
@@ -38,6 +49,7 @@ import {
 } from '../lib/api-client';
 import { signOut, useSession } from '../lib/auth-client';
 import { useAnnouncements } from '../lib/hooks/use-queries';
+import { cn } from '../lib/utils';
 
 type StaffDashboardView =
   | 'dashboard'
@@ -45,6 +57,38 @@ type StaffDashboardView =
   | 'onboarding'
   | 'task-assignment'
   | 'my-profile';
+
+interface QuickActionButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  icon: React.ReactNode;
+  label: string;
+  primary?: boolean;
+}
+
+const QuickActionButton = forwardRef<HTMLButtonElement, QuickActionButtonProps>(
+  ({ icon, label, primary, className, ...props }, ref) => (
+    <button
+      ref={ref}
+      type="button"
+      className={cn(
+        'group relative flex items-center gap-3 bg-card px-5 py-4 text-sm transition-colors',
+        'hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:z-10',
+        className
+      )}
+      {...props}
+    >
+      <span
+        className={cn(
+          'flex h-7 w-7 items-center justify-center rounded-md border border-border bg-background transition-colors',
+          primary && 'border-transparent bg-brand text-brand-foreground'
+        )}
+      >
+        {icon}
+      </span>
+      <span className="font-medium text-foreground">{label}</span>
+    </button>
+  )
+);
+QuickActionButton.displayName = 'QuickActionButton';
 
 function StaffDashboardContent() {
   const router = useRouter();
@@ -301,12 +345,12 @@ function StaffDashboardContent() {
   // Show loading state while checking authentication
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:from-background dark:to-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 rounded-lg flex items-center justify-center mx-auto mb-4 animate-pulse">
-            <span className="text-white font-bold text-2xl">A</span>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-9 w-9 rounded-md bg-brand flex items-center justify-center">
+            <span className="text-brand-foreground font-semibold text-base">A</span>
           </div>
-          <p className="text-muted-foreground">Loading...</p>
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
         </div>
       </div>
     );
@@ -318,36 +362,33 @@ function StaffDashboardContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:from-background dark:to-background">
-      {/* Header */}
-      <header className="bg-card border-b border-border px-6 py-4">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">A</span>
+    <div className="min-h-screen bg-background">
+      {/* Header — sticky, glassy, sleek */}
+      <header className="sticky top-0 z-40 w-full border-b border-border bg-background/80 backdrop-blur-xl">
+        <div className="flex h-14 items-center justify-between max-w-7xl mx-auto px-6">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-md bg-brand flex items-center justify-center">
+              <span className="text-brand-foreground font-semibold text-sm">A</span>
             </div>
-            <div>
-              <h1 className="text-xl font-semibold text-foreground">Ashinaga Staff Portal</h1>
-              <p className="text-sm text-muted-foreground">Supporting Scholar Success</p>
+            <div className="flex flex-col leading-tight">
+              <h1 className="text-sm font-medium text-foreground">Ashinaga Staff</h1>
+              <p className="text-[11px] text-muted-foreground">Supporting Scholar Success</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <ThemeToggle />
-            <Button variant="ghost" size="sm" onClick={() => router.push('?view=my-profile')}>
-              My Profile
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleSignOut}>
+            <Button variant="ghost" size="sm" onClick={handleSignOut}>
               Logout
             </Button>
             <button
               type="button"
-              className="rounded-full focus:outline-none focus:ring-2 focus:ring-ashinaga-teal-600 focus:ring-offset-2"
+              className="ml-2 rounded-full transition-opacity hover:opacity-80 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               onClick={() => router.push('?view=my-profile')}
               aria-label="Open my profile"
             >
-              <Avatar className="cursor-pointer">
+              <Avatar className="h-8 w-8 cursor-pointer">
                 {user?.image && <AvatarImage src={user.image} alt={user.name || 'User'} />}
-                <AvatarFallback>
+                <AvatarFallback className="text-xs">
                   {user?.name
                     ?.split(' ')
                     .map((n: string) => n[0])
@@ -360,7 +401,7 @@ function StaffDashboardContent() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-6 py-8 animate-fade-in">
         {currentView === 'onboarding' ? (
           <ScholarOnboarding onBack={() => router.push('/')} />
         ) : currentView === 'my-profile' ? (
@@ -371,134 +412,146 @@ function StaffDashboardContent() {
             onValueChange={(tab) => router.push(tab === 'overview' ? '/' : `?tab=${tab}`)}
             className="space-y-6"
           >
-            <TabsList className="grid w-full grid-cols-4 lg:w-[600px]">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+                  {activeTab === 'overview' && 'Overview'}
+                  {activeTab === 'scholars' && 'Scholars'}
+                  {activeTab === 'requests' && 'Requests'}
+                  {activeTab === 'announcements' && 'Announcements'}
+                  {activeTab === 'invitations' && 'Invitations'}
+                </h2>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {activeTab === 'overview' && 'Your dashboard at a glance.'}
+                  {activeTab === 'scholars' && 'View and manage your assigned scholars.'}
+                  {activeTab === 'requests' && 'Review and respond to scholar submissions.'}
+                  {activeTab === 'announcements' && 'Create and manage announcements.'}
+                  {activeTab === 'invitations' && 'Invite scholars and staff to the portal.'}
+                </p>
+              </div>
+            </div>
+            <TabsList className="inline-flex">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="scholars">Scholars</TabsTrigger>
               <TabsTrigger value="requests">Requests</TabsTrigger>
               <TabsTrigger value="announcements">Announcements</TabsTrigger>
+              <TabsTrigger value="invitations" className="gap-1.5">
+                <Mail className="h-3.5 w-3.5" />
+                Invitations
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
-              {/* Stats Overview */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card
-                  className="cursor-pointer border-border hover:shadow-md transition-shadow"
+              {/* Stats Overview — flatter, tabular numerals, brand chip rather than gradient tile */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button
+                  type="button"
                   onClick={navigateToScholars}
+                  className="group text-left rounded-lg border bg-card p-5 transition-colors hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
-                  <CardContent className="pt-6">
-                    <div className="flex items-center">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-muted-foreground">Total Scholars</p>
-                        {scholarStatsLoading ? (
-                          <div className="flex items-center gap-2">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            <span className="text-2xl font-bold text-foreground">Loading...</span>
-                          </div>
-                        ) : (
-                          <p className="text-2xl font-bold text-foreground">
-                            {scholarStats?.total || 0}
-                          </p>
-                        )}
-                        <p className="text-xs text-green-600 mt-1">
-                          {scholarStats?.active || 0} active
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        Total Scholars
+                      </p>
+                      {scholarStatsLoading ? (
+                        <Skeleton className="h-9 w-20" />
+                      ) : (
+                        <p className="text-3xl font-semibold tracking-tight tabular-nums text-foreground">
+                          {scholarStats?.total || 0}
                         </p>
-                      </div>
-                      <div className="w-12 h-12 bg-gradient-to-r from-ashinaga-teal-100 to-ashinaga-green-100 dark:from-ashinaga-teal-900/40 dark:to-ashinaga-green-900/40 rounded-lg flex items-center justify-center">
-                        <Users className="h-6 w-6 text-ashinaga-teal-600 dark:text-ashinaga-teal-400" />
-                      </div>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[hsl(var(--success))] mr-1.5 align-middle" />
+                        {scholarStats?.active || 0} active
+                      </p>
                     </div>
-                  </CardContent>
-                </Card>
+                    <div className="h-9 w-9 rounded-md border border-border bg-muted/40 flex items-center justify-center transition-colors group-hover:bg-muted">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  </div>
+                </button>
 
-                <Card
-                  className="cursor-pointer border-border hover:shadow-md transition-shadow"
+                <button
+                  type="button"
                   onClick={navigateToRequests}
+                  className="group text-left rounded-lg border bg-card p-5 transition-colors hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
-                  <CardContent className="pt-6">
-                    <div className="flex items-center">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-muted-foreground">
-                          Pending Requests
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        Pending Requests
+                      </p>
+                      {requestStatsLoading ? (
+                        <Skeleton className="h-9 w-20" />
+                      ) : (
+                        <p className="text-3xl font-semibold tracking-tight tabular-nums text-foreground">
+                          {requestStats?.pending || 0}
                         </p>
-                        {requestStatsLoading ? (
-                          <div className="flex items-center gap-2">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            <span className="text-2xl font-bold text-foreground">Loading...</span>
-                          </div>
-                        ) : (
-                          <p className="text-2xl font-bold text-foreground">
-                            {requestStats?.pending || 0}
-                          </p>
-                        )}
-                        <p className="text-xs text-orange-600 mt-1">
-                          {requestStats?.total || 0} total requests
-                        </p>
-                      </div>
-                      <div className="w-12 h-12 bg-gradient-to-r from-orange-100 to-red-100 dark:from-orange-900/30 dark:to-red-900/30 rounded-lg flex items-center justify-center">
-                        <AlertCircle className="h-6 w-6 text-orange-600 dark:text-orange-400" />
-                      </div>
+                      )}
+                      <p className="text-xs text-muted-foreground tabular-nums">
+                        of {requestStats?.total || 0} total
+                      </p>
                     </div>
-                  </CardContent>
-                </Card>
+                    <div className="h-9 w-9 rounded-md border border-border bg-muted/40 flex items-center justify-center transition-colors group-hover:bg-muted">
+                      <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  </div>
+                </button>
               </div>
 
               {/* Quick Actions */}
-              <Card className="border-border">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Plus className="h-5 w-5" />
-                    Quick Actions
-                  </CardTitle>
-                  <CardDescription>
-                    Common tasks to help you support scholars efficiently
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-                    <Button
-                      className="h-20 flex-col gap-2 bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
-                      onClick={() => router.push('?view=onboarding')}
-                    >
-                      <Users className="h-6 w-6" />
-                      Onboard Scholar
-                    </Button>
-                    <TaskAssignment
-                      trigger={
-                        <Button
-                          variant="outline"
-                          className="h-20 flex-col gap-2 border-ashinaga-teal-200 dark:border-border hover:bg-ashinaga-teal-50 dark:hover:bg-muted bg-transparent w-full"
-                        >
-                          <FileText className="h-6 w-6" />
-                          Assign Task to Scholar
-                        </Button>
-                      }
-                      onSuccess={(scholarId) => {
-                        // Navigate to scholar profile with tasks tab open
-                        router.push(
-                          `?tab=scholars&view=scholar-profile&scholarId=${scholarId}&scholarTab=tasks`
-                        );
-                      }}
-                    />
-                    <Button
-                      variant="outline"
-                      className="h-20 flex-col gap-2 border-ashinaga-teal-200 dark:border-border hover:bg-ashinaga-teal-50 dark:hover:bg-muted bg-transparent"
-                      onClick={() => router.push('?tab=announcements')}
-                    >
-                      <MessageSquare className="h-6 w-6" />
-                      Create Announcement
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="h-20 flex-col gap-2 border-ashinaga-teal-200 dark:border-border hover:bg-ashinaga-teal-50 dark:hover:bg-muted bg-transparent"
-                      onClick={() => router.push('?tab=requests')}
-                    >
-                      <FileText className="h-6 w-6" />
-                      Review Requests
-                    </Button>
-                    <StaffInviteDialog />
+              <div className="rounded-lg border bg-card">
+                <div className="flex items-center justify-between p-5 pb-3">
+                  <div className="space-y-0.5">
+                    <h3 className="text-sm font-semibold leading-none tracking-tight">
+                      Quick actions
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Common tasks to keep scholars moving forward.
+                    </p>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-px bg-border border-t">
+                  <QuickActionButton
+                    icon={<Users className="h-4 w-4" />}
+                    label="Onboard Scholar"
+                    onClick={() => router.push('?view=onboarding')}
+                    primary
+                  />
+                  <TaskAssignment
+                    trigger={
+                      <QuickActionButton
+                        icon={<FileText className="h-4 w-4" />}
+                        label="Assign Task"
+                      />
+                    }
+                    onSuccess={(scholarId) => {
+                      router.push(
+                        `?tab=scholars&view=scholar-profile&scholarId=${scholarId}&scholarTab=tasks`
+                      );
+                    }}
+                  />
+                  <QuickActionButton
+                    icon={<MessageSquare className="h-4 w-4" />}
+                    label="Create Announcement"
+                    onClick={() => router.push('?tab=announcements')}
+                  />
+                  <QuickActionButton
+                    icon={<FileText className="h-4 w-4" />}
+                    label="Review Requests"
+                    onClick={() => router.push('?tab=requests')}
+                  />
+                  <StaffInviteDialog
+                    trigger={
+                      <QuickActionButton
+                        icon={<UserPlus className="h-4 w-4" />}
+                        label="Invite Staff"
+                      />
+                    }
+                  />
+                </div>
+              </div>
             </TabsContent>
 
             <TabsContent value="scholars" className="space-y-6">
@@ -511,12 +564,8 @@ function StaffDashboardContent() {
                   }}
                 />
               ) : (
-                <Card className="border-border">
-                  <CardHeader>
-                    <CardTitle>Scholar Management</CardTitle>
-                    <CardDescription>View and manage your assigned scholars</CardDescription>
-                  </CardHeader>
-                  <CardContent>
+                <Card>
+                  <CardContent className="p-5">
                     <ScholarManagementTable
                       onViewProfile={(scholarId) => {
                         router.push(`?tab=scholars&view=scholar-profile&scholarId=${scholarId}`);
@@ -529,67 +578,65 @@ function StaffDashboardContent() {
             </TabsContent>
 
             <TabsContent value="requests" className="space-y-6">
-              <Card className="border-border">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle>Scholar Requests</CardTitle>
-                      <CardDescription>Review and respond to scholar submissions</CardDescription>
-                    </div>
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                      <Select
-                        value={requestCategoryFilter}
-                        onValueChange={setRequestCategoryFilter}
-                      >
-                        <SelectTrigger className="w-full sm:w-[220px]">
-                          <SelectValue placeholder="Filter by category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Categories</SelectItem>
-                          <SelectItem value="extenuating_circumstances">
-                            Extenuating Circumstances
-                          </SelectItem>
-                          <SelectItem value="summer_funding_request">
-                            Summer Funding Request
-                          </SelectItem>
-                          <SelectItem value="summer_funding_report">
-                            Summer Funding Report
-                          </SelectItem>
-                          <SelectItem value="requirement_submission">
-                            Requirement Submission
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Select value={requestStatusFilter} onValueChange={setRequestStatusFilter}>
-                        <SelectTrigger className="w-full sm:w-[180px]">
-                          <SelectValue placeholder="Filter by status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Statuses</SelectItem>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="approved">Approved</SelectItem>
-                          <SelectItem value="rejected">Rejected</SelectItem>
-                          <SelectItem value="reviewed">Reviewed</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+              <Card>
+                <div className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <Select value={requestCategoryFilter} onValueChange={setRequestCategoryFilter}>
+                      <SelectTrigger className="w-full sm:w-[220px]">
+                        <SelectValue placeholder="All Categories" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Categories</SelectItem>
+                        <SelectItem value="extenuating_circumstances">
+                          Extenuating Circumstances
+                        </SelectItem>
+                        <SelectItem value="summer_funding_request">
+                          Summer Funding Request
+                        </SelectItem>
+                        <SelectItem value="summer_funding_report">Summer Funding Report</SelectItem>
+                        <SelectItem value="requirement_submission">
+                          Requirement Submission
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={requestStatusFilter} onValueChange={setRequestStatusFilter}>
+                      <SelectTrigger className="w-full sm:w-[180px]">
+                        <SelectValue placeholder="All Statuses" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Statuses</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="rejected">Rejected</SelectItem>
+                        <SelectItem value="reviewed">Reviewed</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                </CardHeader>
-                <CardContent>
+                </div>
+                <CardContent className="p-5">
                   {requestsLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-6 w-6 animate-spin" />
-                      <span className="ml-2">Loading requests...</span>
+                    <div className="space-y-3">
+                      <Skeleton className="h-24 w-full" />
+                      <Skeleton className="h-24 w-full" />
+                      <Skeleton className="h-24 w-full" />
                     </div>
                   ) : requestsError ? (
-                    <div className="text-center py-12">
-                      <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-500" />
-                      <p className="text-red-600">{requestsError}</p>
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
+                        <AlertCircle className="h-5 w-5 text-destructive" />
+                      </div>
+                      <p className="text-sm font-medium text-foreground">Couldn't load requests</p>
+                      <p className="mt-1 max-w-sm text-sm text-muted-foreground">{requestsError}</p>
                     </div>
                   ) : requests.length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>No requests found</p>
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/40">
+                        <MessageSquare className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <p className="text-sm font-medium text-foreground">No requests</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Scholar submissions will show up here.
+                      </p>
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -606,21 +653,17 @@ function StaffDashboardContent() {
               </Card>
             </TabsContent>
 
+            <TabsContent value="invitations" className="space-y-6">
+              <InvitationsManagement onOnboardScholar={() => router.push('?view=onboarding')} />
+            </TabsContent>
+
             <TabsContent value="announcements" className="space-y-6">
-              <Card className="border-border">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle>Announcements</CardTitle>
-                      <CardDescription>
-                        Create and manage announcements for scholars
-                      </CardDescription>
-                    </div>
-                    <AnnouncementCreator />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex items-center justify-end">
+                <AnnouncementCreator />
+              </div>
+              <Card>
+                <CardContent className="p-5">
+                  <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
                       <Select
                         value={announcementStatusFilter}
@@ -703,85 +746,103 @@ function StaffDashboardContent() {
                     </Button>
                   </div>
                   {announcementsLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-6 w-6 animate-spin" />
-                      <span className="ml-2">Loading announcements...</span>
+                    <div className="space-y-3">
+                      <Skeleton className="h-28 w-full" />
+                      <Skeleton className="h-28 w-full" />
+                      <Skeleton className="h-28 w-full" />
                     </div>
                   ) : announcementsError ? (
-                    <div className="text-center py-12">
-                      <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-500" />
-                      <p className="text-red-600">
-                        {announcementsError?.message || 'Failed to load announcements'}
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
+                        <AlertCircle className="h-5 w-5 text-destructive" />
+                      </div>
+                      <p className="text-sm font-medium text-foreground">
+                        Couldn't load announcements
+                      </p>
+                      <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                        {announcementsError?.message || 'Please try again.'}
                       </p>
                     </div>
                   ) : announcements.length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>No announcements match the current filters.</p>
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/40">
+                        <MessageSquare className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <p className="text-sm font-medium text-foreground">No announcements</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Nothing matches the current filters.
+                      </p>
                     </div>
                   ) : (
-                    <div className="space-y-4">
+                    <div className="divide-y border-t -mx-5">
                       {announcements.map((announcement) => (
-                        <div key={announcement.id} className="border rounded-lg p-4">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1">
-                              <h3 className="font-semibold text-lg mb-2">{announcement.title}</h3>
-                              <p className="text-muted-foreground mb-3 whitespace-pre-wrap">
-                                {announcement.content}
-                              </p>
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center text-sm text-muted-foreground">
-                                  <span>By {announcement.createdBy}</span>
-                                  <span className="mx-2">•</span>
-                                  <span>
-                                    {new Date(announcement.createdAt).toLocaleDateString()}
-                                  </span>
-                                  <span className="mx-2">•</span>
-                                  <span>
-                                    Sent to {announcement.recipientCount} scholar
-                                    {announcement.recipientCount !== 1 ? 's' : ''}
-                                  </span>
-                                  <span className="mx-2">•</span>
-                                  <span>{announcement.archived ? 'Archived' : 'Active'}</span>
-                                </div>
-                                {announcement.filters.length > 0 && (
-                                  <div className="flex gap-1">
-                                    {announcement.filters.map((filter, index) => (
-                                      <Badge
-                                        key={`${filter.type}-${filter.value}-${index}`}
-                                        variant="outline"
-                                        className="text-xs"
-                                      >
-                                        {filter.type}: {filter.value}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
+                        <div
+                          key={announcement.id}
+                          className="group flex items-start justify-between gap-4 px-5 py-4 transition-colors hover:bg-muted/30"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="text-sm font-semibold text-foreground truncate">
+                                {announcement.title}
+                              </h3>
+                              <Badge
+                                variant={announcement.archived ? 'muted' : 'success'}
+                                className="shrink-0"
+                              >
+                                {announcement.archived ? 'Archived' : 'Active'}
+                              </Badge>
                             </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                              onClick={async () => {
-                                if (
-                                  window.confirm(
-                                    'Are you sure you want to delete this announcement? This action cannot be undone.'
-                                  )
-                                ) {
-                                  try {
-                                    await deleteAnnouncement(announcement.id);
-                                    refetchAnnouncements();
-                                  } catch (error) {
-                                    console.error('Failed to delete announcement:', error);
-                                    alert('Failed to delete announcement. Please try again.');
-                                  }
-                                }
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <p className="text-sm text-muted-foreground line-clamp-2 whitespace-pre-wrap mb-2">
+                              {announcement.content}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                              <span>By {announcement.createdBy}</span>
+                              <span className="text-border">·</span>
+                              <span className="tabular-nums">
+                                {new Date(announcement.createdAt).toLocaleDateString()}
+                              </span>
+                              <span className="text-border">·</span>
+                              <span className="tabular-nums">
+                                {announcement.recipientCount} scholar
+                                {announcement.recipientCount !== 1 ? 's' : ''}
+                              </span>
+                              {announcement.filters.length > 0 && (
+                                <div className="flex gap-1 ml-1">
+                                  {announcement.filters.map((filter, index) => (
+                                    <Badge
+                                      key={`${filter.type}-${filter.value}-${index}`}
+                                      variant="outline"
+                                      className="text-[10px] font-normal"
+                                    >
+                                      {filter.type}: {filter.value}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                            onClick={async () => {
+                              if (
+                                window.confirm(
+                                  'Are you sure you want to delete this announcement? This action cannot be undone.'
+                                )
+                              ) {
+                                try {
+                                  await deleteAnnouncement(announcement.id);
+                                  refetchAnnouncements();
+                                } catch (error) {
+                                  console.error('Failed to delete announcement:', error);
+                                  alert('Failed to delete announcement. Please try again.');
+                                }
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       ))}
                     </div>

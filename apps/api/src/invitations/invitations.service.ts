@@ -65,9 +65,9 @@ export class InvitationsService {
     // Generate invitation token
     const token = generateInvitationToken();
 
-    // Create expiry date (7 days from now)
+    // Create expiry date (30 days from now)
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
+    expiresAt.setDate(expiresAt.getDate() + 30);
 
     // Create invitation
     const [invitation] = await db
@@ -127,26 +127,28 @@ export class InvitationsService {
       throw new BadRequestException(`Cannot resend invitation with status: ${invitation.status}`);
     }
 
-    if (new Date() > new Date(invitation.expiresAt)) {
-      throw new BadRequestException('Invitation has expired. Please create a new invitation.');
-    }
-
     // Check resend count limit (max 5 resends)
     const resentCount = parseInt(invitation.resentCount) || 0;
     if (resentCount >= 5) {
       throw new BadRequestException('Maximum resend limit reached for this invitation');
     }
 
+    // If the invitation has passed its expiry, extend it so the resent link is usable.
+    const isExpired = new Date() > new Date(invitation.expiresAt);
+    const newExpiresAt = new Date();
+    newExpiresAt.setDate(newExpiresAt.getDate() + 30);
+
     // Send invitation email
     const inviteUrl = this.buildInviteUrl(invitation.token, invitation.userType);
     await this.sendInvitationEmail(invitation.email, inviteUrl, invitation.userType);
 
-    // Update resend information
+    // Update resend information (and refresh expiry if it had lapsed)
     await db
       .update(invitations)
       .set({
         lastResentAt: new Date(),
         resentCount: String(resentCount + 1),
+        ...(isExpired ? { expiresAt: newExpiresAt } : {}),
         updatedAt: new Date(),
       })
       .where(eq(invitations.id, invitationId));
@@ -281,7 +283,7 @@ export class InvitationsService {
       <p><a href="${inviteUrl}" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">Complete Registration</a></p>
       <p>Or copy and paste this link into your browser:</p>
       <p>${inviteUrl}</p>
-      <p>This invitation will expire in 7 days.</p>
+      <p>This invitation will expire in 30 days.</p>
       <p>If you did not expect this invitation, please ignore this email.</p>
     `;
 
@@ -293,7 +295,7 @@ export class InvitationsService {
       Complete your registration at:
       ${inviteUrl}
       
-      This invitation will expire in 7 days.
+      This invitation will expire in 30 days.
       
       If you did not expect this invitation, please ignore this email.
     `;

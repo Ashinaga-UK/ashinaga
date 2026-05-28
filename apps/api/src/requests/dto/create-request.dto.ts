@@ -1,4 +1,12 @@
-import { IsArray, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 
 export type RequestType =
   | 'extenuating_circumstances'
@@ -63,9 +71,10 @@ export class CreateRequestDto {
   @IsOptional()
   priority?: 'high' | 'medium' | 'low';
 
-  @IsString()
-  @IsNotEmpty({ message: 'Staff member assignment is required' })
-  assignedTo: string; // Staff member ID to handle the request
+  @IsArray()
+  @ArrayMinSize(1, { message: 'Assign this request to at least one staff member' })
+  @IsString({ each: true })
+  assigneeIds: string[]; // Staff member IDs to handle the request
 
   @IsArray()
   @IsUUID('4', { each: true })
@@ -81,6 +90,7 @@ export class CreateRequestResponseDto {
   priority: string;
   status: string;
   submittedDate: Date;
+  assigneeIds: string[];
   createdAt: Date;
   updatedAt: Date;
 }

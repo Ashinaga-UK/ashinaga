@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { and, count, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 import { database } from '../db/connection';
 import {
+  requestAssignees,
   requestAttachments,
   requestAuditLogs,
   requests,
@@ -35,9 +36,13 @@ export class RequestsService {
     // Check if user is a super admin
     const [staffRecord] = await database.select().from(staff).where(eq(staff.userId, userId));
 
-    // If not a super admin, only show requests assigned to this user
+    // If not a super admin, only show requests where this user is one of the assignees
     if (!staffRecord?.isSuperAdmin) {
-      whereConditions.push(eq(requests.assignedTo, userId));
+      const assignedRequestIds = database
+        .select({ requestId: requestAssignees.requestId })
+        .from(requestAssignees)
+        .where(eq(requestAssignees.userId, userId));
+      whereConditions.push(inArray(requests.id, assignedRequestIds));
     }
 
     if (search) {
@@ -105,6 +110,7 @@ export class RequestsService {
 
     const attachments = await this.getAttachments(requestIds);
     const auditLogs = await this.getAuditLogs(requestIds);
+    const assignees = await this.getAssignees(requestIds);
 
     const data: RequestResponseDto[] = requestsWithScholars.map((row) => ({
       id: row.request.id,
@@ -120,6 +126,7 @@ export class RequestsService {
       reviewedBy: row.request.reviewedBy,
       reviewComment: row.request.reviewComment,
       reviewDate: row.request.reviewDate,
+      assignees: assignees[row.request.id] || [],
       attachments: attachments[row.request.id] || [],
       auditLogs: auditLogs[row.request.id] || [],
       createdAt: row.request.createdAt,
@@ -273,10 +280,11 @@ export class RequestsService {
       .where(and(eq(requests.scholarId, scholarId), eq(requests.archived, false)))
       .orderBy(desc(requests.submittedDate));
 
-    // Get attachments and audit logs for all requests
+    // Get attachments, audit logs and assignees for all requests
     const requestIds = requestsWithScholars.map((row) => row.request.id);
     const attachments = await this.getAttachments(requestIds);
     const auditLogs = await this.getAuditLogs(requestIds);
+    const assignees = await this.getAssignees(requestIds);
 
     // Format the response
     const data: RequestResponseDto[] = requestsWithScholars.map((row) => ({
@@ -293,6 +301,7 @@ export class RequestsService {
       reviewedBy: row.request.reviewedBy,
       reviewComment: row.request.reviewComment,
       reviewDate: row.request.reviewDate,
+      assignees: assignees[row.request.id] || [],
       attachments: attachments[row.request.id] || [],
       auditLogs: auditLogs[row.request.id] || [],
       createdAt: row.request.createdAt,
@@ -300,6 +309,30 @@ export class RequestsService {
     }));
 
     return data;
+  }
+
+  private async getAssignees(
+    requestIds: string[]
+  ): Promise<Record<string, { id: string; name: string; email: string }[]>> {
+    if (requestIds.length === 0) return {};
+
+    const rows = await database
+      .select({
+        requestId: requestAssignees.requestId,
+        userId: users.id,
+        userName: users.name,
+        userEmail: users.email,
+      })
+      .from(requestAssignees)
+      .innerJoin(users, eq(users.id, requestAssignees.userId))
+      .where(inArray(requestAssignees.requestId, requestIds));
+
+    const out: Record<string, { id: string; name: string; email: string }[]> = {};
+    for (const row of rows) {
+      if (!out[row.requestId]) out[row.requestId] = [];
+      out[row.requestId].push({ id: row.userId, name: row.userName, email: row.userEmail });
+    }
+    return out;
   }
 
   async createRequest(
@@ -319,6 +352,12 @@ export class RequestsService {
 
     const scholarId = scholar[0].id;
 
+    // Dedupe assignees and keep the first as the primary (legacy assignedTo)
+    const assigneeIds = Array.from(new Set(createRequestDto.assigneeIds.filter(Boolean)));
+    if (assigneeIds.length === 0) {
+      throw new NotFoundException('At least one assignee is required');
+    }
+
     // Create the request
     const [newRequest] = await database
       .insert(requests)
@@ -329,9 +368,14 @@ export class RequestsService {
         formData: createRequestDto.formData ? JSON.stringify(createRequestDto.formData) : null,
         priority: createRequestDto.priority || 'medium',
         status: 'pending',
-        assignedTo: createRequestDto.assignedTo || null,
+        assignedTo: assigneeIds[0],
       })
       .returning();
+
+    // Insert all assignees into the join table
+    await database
+      .insert(requestAssignees)
+      .values(assigneeIds.map((id) => ({ requestId: newRequest.id, userId: id })));
 
     // Create audit log for request creation
     await database.insert(requestAuditLogs).values({
@@ -368,6 +412,7 @@ export class RequestsService {
       priority: newRequest.priority,
       status: newRequest.status,
       submittedDate: newRequest.submittedDate,
+      assigneeIds,
       createdAt: newRequest.createdAt,
       updatedAt: newRequest.updatedAt,
     };

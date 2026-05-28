@@ -1,11 +1,11 @@
 'use client';
 
 import { AlertCircle, FileText, Plus } from 'lucide-react';
+import { NewRequestDialog } from '../../../components/new-request-dialog';
+import { RequestCard } from '../../../components/request-card';
 import { Button } from '../../../components/ui/button';
 import { Card, CardContent } from '../../../components/ui/card';
 import { useMyRequests } from '../../../lib/hooks/use-queries';
-import { RequestCard } from '../../../components/request-card';
-import { NewRequestDialog } from '../../../components/new-request-dialog';
 
 export default function RequestsPage() {
   const { data: requests, isLoading, error, refetch } = useMyRequests();

@@ -53,9 +53,12 @@ const baseSchema = z
         'Description must be 2000 characters or fewer. Shorten the request before submitting.'
       ),
     priority: z.enum(['high', 'medium', 'low']).optional(),
-    assignedTo: z
-      .string()
-      .min(1, 'Assign this request to a staff member so the right person can review it.'),
+    assigneeIds: z
+      .array(z.string().min(1))
+      .min(
+        1,
+        'Assign this request to at least one staff member so the right person can review it.'
+      ),
   })
   .superRefine((values, context) => {
     if (values.type === 'extenuating_circumstances' && values.description.trim().length < 20) {
@@ -125,7 +128,7 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
       type: 'extenuating_circumstances',
       description: '',
       priority: 'medium',
-      assignedTo: '',
+      assigneeIds: [],
     },
   });
 
@@ -134,18 +137,19 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
   useEffect(() => {
     if (!staffList) return;
 
-    const currentAssignee = form.getValues('assignedTo');
-    const isCurrentAssigneeAvailable = staffList.some((staff) => staff.id === currentAssignee);
+    const current = form.getValues('assigneeIds') ?? [];
+    const validIds = new Set(staffList.map((s) => s.id));
+    const filtered = current.filter((id) => validIds.has(id));
 
     const onlyStaffMember = staffList[0];
 
-    if (staffList.length === 1 && onlyStaffMember && !currentAssignee) {
-      form.setValue('assignedTo', onlyStaffMember.id);
+    if (staffList.length === 1 && onlyStaffMember && filtered.length === 0) {
+      form.setValue('assigneeIds', [onlyStaffMember.id]);
       return;
     }
 
-    if (currentAssignee && !isCurrentAssigneeAvailable) {
-      form.setValue('assignedTo', '');
+    if (filtered.length !== current.length) {
+      form.setValue('assigneeIds', filtered);
     }
   }, [form, staffList]);
 
@@ -370,7 +374,7 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
         type: values.type,
         description: buildRequestDescription(values.type, values.description),
         priority: values.priority,
-        assignedTo: values.assignedTo,
+        assigneeIds: values.assigneeIds,
         formData,
       };
 
@@ -893,34 +897,59 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
 
             <FormField
               control={form.control}
-              name="assignedTo"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Assign to Staff Member {requiredLabel}</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value || ''}>
+              name="assigneeIds"
+              render={({ field }) => {
+                const selected = field.value ?? [];
+                const toggle = (id: string) => {
+                  if (selected.includes(id)) {
+                    field.onChange(selected.filter((x) => x !== id));
+                  } else {
+                    field.onChange([...selected, id]);
+                  }
+                };
+                return (
+                  <FormItem>
+                    <FormLabel>Assign to Staff Members {requiredLabel}</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue
-                          placeholder={
-                            isLoadingStaff ? 'Loading staff...' : 'Select a staff member'
-                          }
-                        />
-                      </SelectTrigger>
+                      <div className="rounded-md border p-3 max-h-56 overflow-y-auto space-y-2">
+                        {isLoadingStaff ? (
+                          <p className="text-sm text-muted-foreground">Loading staff...</p>
+                        ) : !staffList || staffList.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">No staff available.</p>
+                        ) : (
+                          staffList.map((staff) => {
+                            const checked = selected.includes(staff.id);
+                            return (
+                              <label
+                                key={staff.id}
+                                className="flex items-start gap-2 cursor-pointer text-sm"
+                              >
+                                <Checkbox
+                                  checked={checked}
+                                  onCheckedChange={() => toggle(staff.id)}
+                                  className="mt-0.5"
+                                />
+                                <span>
+                                  <span className="font-medium">{staff.name}</span>{' '}
+                                  <span className="text-muted-foreground">({staff.email})</span>
+                                </span>
+                              </label>
+                            );
+                          })
+                        )}
+                      </div>
                     </FormControl>
-                    <SelectContent>
-                      {staffList?.map((staff) => (
-                        <SelectItem key={staff.id} value={staff.id}>
-                          {staff.name} ({staff.email})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormDescription>
-                    Select the staff member who should review and respond to this request.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
+                    <FormDescription>
+                      Select one or more staff members who should review and respond to this
+                      request.
+                      {selected.length > 0 && (
+                        <span className="block text-xs mt-1">{selected.length} selected</span>
+                      )}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             {selectedType === 'extenuating_circumstances' && (

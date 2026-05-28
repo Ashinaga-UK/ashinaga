@@ -5,9 +5,9 @@
  * - Runs database migrations so the test DB has the correct schema
  */
 import path from 'node:path';
-import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
+import { Pool } from 'pg';
 
 export default async function globalSetup(): Promise<void> {
   // Defaults for CI (GitHub Actions postgres service)

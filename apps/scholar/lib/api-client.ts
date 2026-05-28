@@ -93,6 +93,12 @@ export interface RequestAuditLog {
   createdAt: string;
 }
 
+export interface RequestAssignee {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export interface Request {
   id: string;
   scholarId: string;
@@ -111,6 +117,7 @@ export interface Request {
   reviewedBy?: string | null;
   reviewComment?: string | null;
   reviewDate?: string | null;
+  assignees?: RequestAssignee[];
   attachments: RequestAttachment[];
   auditLogs: RequestAuditLog[];
   createdAt: string;
@@ -131,7 +138,7 @@ export interface CreateRequestData {
   formData?: Record<string, any>;
   priority?: 'high' | 'medium' | 'low';
   attachmentIds?: string[];
-  assignedTo?: string;
+  assigneeIds: string[];
 }
 
 export async function createRequest(data: CreateRequestData): Promise<Request> {
