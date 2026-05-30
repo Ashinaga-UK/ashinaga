@@ -230,18 +230,18 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
   );
 
   return (
-    <Card className="p-4 border border-border rounded-lg">
+    <Card className="rounded-lg border border-border p-4">
       <CardContent className="p-0">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <h4 className="font-medium text-foreground">{request.scholarName}</h4>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <h4 className="min-w-0 font-medium text-foreground">{request.scholarName}</h4>
               <Badge variant={getPriorityColor(request.priority)}>{request.priority}</Badge>
               <Badge className={getStatusBadgeColor(request.status)}>
                 {getStatusLabel(request.status)}
               </Badge>
             </div>
-            <p className="text-sm text-muted-foreground mb-2">{request.description}</p>
+            <p className="mb-3 text-sm text-muted-foreground">{request.description}</p>
 
             {/* Attachments */}
             {request.attachments && request.attachments.length > 0 && (
@@ -256,10 +256,14 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
                   {request.attachments.map((attachment) => (
                     <div
                       key={attachment.name}
-                      className="flex items-center gap-2 bg-muted rounded px-2 py-1"
+                      className="flex max-w-full items-center gap-2 rounded bg-muted px-2 py-1"
                     >
-                      <span className="text-xs text-foreground">{attachment.name}</span>
-                      <span className="text-xs text-muted-foreground">({attachment.size})</span>
+                      <span className="min-w-0 truncate text-xs text-foreground">
+                        {attachment.name}
+                      </span>
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        ({attachment.size})
+                      </span>
                       <Button
                         size="sm"
                         variant="ghost"
@@ -275,9 +279,14 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
               </div>
             )}
 
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <span>Type: {requestTypeLabel}</span>
-              <span>Submitted: {new Date(request.submittedDate).toLocaleDateString()}</span>
+            <div className="grid grid-cols-1 gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+              <span>
+                <span className="text-foreground">Type:</span> {requestTypeLabel}
+              </span>
+              <span>
+                <span className="text-foreground">Submitted:</span>{' '}
+                {new Date(request.submittedDate).toLocaleDateString()}
+              </span>
             </div>
 
             {/* Show review details if already reviewed */}
@@ -303,14 +312,14 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
               )}
           </div>
 
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end lg:shrink-0">
             {/* Show different buttons based on status */}
             {canMakeDecision && (
               <>
                 {/* Approval Dialog */}
                 <Dialog open={approvalOpen} onOpenChange={setApprovalOpen}>
                   <DialogTrigger asChild>
-                    <Button size="sm">
+                    <Button size="sm" className="w-full sm:w-auto">
                       <CheckCircle className="h-4 w-4 mr-1" />
                       Review
                     </Button>
@@ -375,9 +384,15 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
 
             {/* Print Button for approved and rejected requests */}
             {(request.status === 'approved' || request.status === 'rejected') && (
-              <Button size="sm" variant="outline" onClick={handlePrint}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full sm:w-auto"
+                onClick={handlePrint}
+              >
                 <Download className="h-4 w-4 mr-1" />
-                Download Application
+                <span className="sm:hidden">Download</span>
+                <span className="hidden sm:inline">Download Application</span>
               </Button>
             )}
 
@@ -388,7 +403,7 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
               request.status === 'commented') && (
               <Dialog open={viewReviewOpen} onOpenChange={setViewReviewOpen}>
                 <DialogTrigger asChild>
-                  <Button size="sm" variant="outline">
+                  <Button size="sm" variant="outline" className="w-full sm:w-auto">
                     <Eye className="h-4 w-4 mr-1" />
                     View Review
                   </Button>
@@ -439,11 +454,13 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
             {/* Delete Button */}
             <Button
               size="sm"
-              variant="ghost"
-              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+              variant="outline"
+              className="col-span-2 w-full border-red-900/40 text-red-500 hover:bg-red-950/30 hover:text-red-400 sm:col-span-1 sm:w-auto"
               onClick={handleDelete}
+              aria-label={`Delete request from ${request.scholarName}`}
             >
               <Trash2 className="h-4 w-4" />
+              <span className="ml-1">Delete</span>
             </Button>
           </div>
         </div>
