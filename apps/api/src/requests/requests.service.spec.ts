@@ -139,26 +139,111 @@ describe('RequestsService', () => {
   });
 
   describe('getRequestStats', () => {
-    it('should return aggregated statistics', async () => {
-      const mockStats = [
-        { status: 'pending', count: 10 },
-        { status: 'approved', count: 5 },
-        { status: 'rejected', count: 3 },
-      ];
+    const mockStats = [
+      { status: 'pending', count: 10 },
+      { status: 'approved', count: 5 },
+      { status: 'rejected', count: 3 },
+    ];
 
+    function mockRequestStatsQueries({
+      isSuperAdmin,
+    }: {
+      isSuperAdmin: boolean;
+    }) {
       const mockDatabase = require('../db/connection').database;
-      mockDatabase.select = jest.fn().mockReturnValue({
+      const statsWhereMock = jest.fn().mockReturnValue({
+        groupBy: jest.fn().mockResolvedValue(mockStats),
+      });
+      const assigneeWhereMock = jest.fn().mockReturnValue({ scopedToAssignee: true });
+
+      const staffQuery = {
         from: jest.fn().mockReturnValue({
-          groupBy: jest.fn().mockResolvedValue(mockStats),
+          where: jest.fn().mockResolvedValue([{ isSuperAdmin }]),
         }),
+      };
+
+      const assigneeSubquery = {
+        from: jest.fn().mockReturnValue({
+          where: assigneeWhereMock,
+        }),
+      };
+
+      const statsQuery = {
+        from: jest.fn().mockReturnValue({
+          where: statsWhereMock,
+        }),
+      };
+
+      mockDatabase.select = jest
+        .fn()
+        .mockReturnValueOnce(staffQuery)
+        .mockReturnValueOnce(isSuperAdmin ? statsQuery : assigneeSubquery);
+
+      if (!isSuperAdmin) {
+        mockDatabase.select.mockReturnValueOnce(statsQuery);
+      }
+
+      return { assigneeWhereMock, statsWhereMock };
+    }
+
+    it('should return assigned request statistics for regular staff', async () => {
+      const { assigneeWhereMock, statsWhereMock } = mockRequestStatsQueries({
+        isSuperAdmin: false,
       });
 
-      const result = await service.getRequestStats();
+      const result = await service.getRequestStats('user-123');
 
       expect(result.total).toBe(18);
       expect(result.pending).toBe(10);
       expect(result.approved).toBe(5);
       expect(result.rejected).toBe(3);
+      expect(assigneeWhereMock).toHaveBeenCalled();
+      expect(statsWhereMock).toHaveBeenCalled();
+    });
+
+    it('should return all active request statistics for super admins', async () => {
+      const { assigneeWhereMock, statsWhereMock } = mockRequestStatsQueries({
+        isSuperAdmin: true,
+      });
+
+      const result = await service.getRequestStats('super-admin-123');
+
+      expect(result.total).toBe(18);
+      expect(result.pending).toBe(10);
+      expect(result.approved).toBe(5);
+      expect(result.rejected).toBe(3);
+      expect(assigneeWhereMock).not.toHaveBeenCalled();
+      expect(statsWhereMock).toHaveBeenCalled();
+    });
+
+    it('should return zero counts when no visible requests match', async () => {
+      const mockDatabase = require('../db/connection').database;
+
+      mockDatabase.select = jest
+        .fn()
+        .mockReturnValueOnce({
+          from: jest.fn().mockReturnValue({
+            where: jest.fn().mockResolvedValue([{ isSuperAdmin: true }]),
+          }),
+        })
+        .mockReturnValueOnce({
+          from: jest.fn().mockReturnValue({
+            where: jest.fn().mockReturnValue({
+              groupBy: jest.fn().mockResolvedValue([]),
+            }),
+          }),
+        });
+
+      const result = await service.getRequestStats('super-admin-123');
+
+      expect(result).toEqual({
+        total: 0,
+        pending: 0,
+        approved: 0,
+        rejected: 0,
+        reviewed: 0,
+        commented: 0,
+      });
     });
   });
 });

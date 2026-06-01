@@ -209,7 +209,7 @@ export class RequestsService {
     return auditLogs;
   }
 
-  async getRequestStats(): Promise<{
+  async getRequestStats(userId: string): Promise<{
     total: number;
     pending: number;
     approved: number;
@@ -217,12 +217,27 @@ export class RequestsService {
     reviewed: number;
     commented: number;
   }> {
+    const whereConditions = [eq(requests.archived, false)];
+
+    // Match getRequests visibility: super admins see all active requests,
+    // regular staff only see requests assigned to them.
+    const [staffRecord] = await database.select().from(staff).where(eq(staff.userId, userId));
+
+    if (!staffRecord?.isSuperAdmin) {
+      const assignedRequestIds = database
+        .select({ requestId: requestAssignees.requestId })
+        .from(requestAssignees)
+        .where(eq(requestAssignees.userId, userId));
+      whereConditions.push(inArray(requests.id, assignedRequestIds));
+    }
+
     const statsResult = await database
       .select({
         status: requests.status,
         count: count(),
       })
       .from(requests)
+      .where(and(...whereConditions))
       .groupBy(requests.status);
 
     const stats = {
