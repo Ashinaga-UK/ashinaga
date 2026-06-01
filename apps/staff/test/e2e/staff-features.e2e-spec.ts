@@ -87,7 +87,7 @@ test.describe('Staff Portal – new features', () => {
     page,
   }) => {
     // Quick Actions launcher on the dashboard (label was shortened in the UI uplift)
-    await page.getByRole('button', { name: /^Assign Task$/i }).click();
+    await page.getByRole('button', { name: /^Assign Task/i }).click();
     await expect(page.getByRole('dialog')).toBeVisible();
 
     const titleInput = page.getByLabel(/Task Title/i);
