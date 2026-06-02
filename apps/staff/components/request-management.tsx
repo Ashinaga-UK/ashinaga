@@ -1,6 +1,15 @@
 'use client';
 
-import { CheckCircle, Clock, Download, Eye, Paperclip, Trash2, X } from 'lucide-react';
+import {
+  CheckCircle,
+  Clock,
+  Download,
+  Eye,
+  MessageSquare,
+  Paperclip,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { useState } from 'react';
 import {
   deleteRequest,
@@ -31,7 +40,7 @@ interface RequestManagementProps {
   onStatusUpdate: (requestId: string, status: string, comment?: string) => void;
 }
 
-type ReviewStatus = 'approved' | 'rejected' | 'reviewed';
+type ReviewStatus = 'approved' | 'rejected' | 'reviewed' | 'commented';
 
 export function RequestManagement({ request, onStatusUpdate }: RequestManagementProps) {
   const [approvalOpen, setApprovalOpen] = useState(false);
@@ -72,6 +81,18 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
 
   const handleApproval = async (approved: boolean) => {
     await handleStatusUpdate(approved ? 'approved' : 'rejected');
+  };
+
+  const handleRequestInfo = async () => {
+    if (!approvalComment.trim()) {
+      toast({
+        title: 'Comment required',
+        description: 'Please describe what additional information the scholar needs to provide.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    await handleStatusUpdate('commented');
   };
 
   const handleDownload = async (attachmentId: string, filename: string) => {
@@ -347,6 +368,15 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
                       >
                         <X className="h-4 w-4 mr-2" />
                         {isSubmitting ? 'Processing...' : 'Reject'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={handleRequestInfo}
+                        disabled={isSubmitting}
+                        className="text-blue-700 border-blue-200 hover:bg-blue-50"
+                      >
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        {isSubmitting ? 'Processing...' : 'Request More Information'}
                       </Button>
                       {request.status !== 'reviewed' && (
                         <Button
