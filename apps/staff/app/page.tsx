@@ -323,9 +323,8 @@ function StaffDashboardContent() {
 
   const handleRequestStatusUpdate = (requestId: string, status: string, comment?: string) => {
     console.log('Request updated:', { requestId, status, comment });
-    // In real app, update the request status in your state/API
-    // For now, just refetch the data
     fetchRequests();
+    fetchRequestStats();
   };
 
   const navigateToScholars = () => {

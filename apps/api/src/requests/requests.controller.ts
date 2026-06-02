@@ -7,6 +7,7 @@ import {
   Post,
   Query,
   Req,
+  UnauthorizedException,
   UseGuards,
   ValidationPipe,
 } from '@nestjs/common';
@@ -46,7 +47,8 @@ export class RequestsController {
   }
 
   @Get('stats')
-  async getRequestStats(): Promise<{
+  @UseGuards(AuthGuard)
+  async getRequestStats(@Req() req: AuthenticatedRequest): Promise<{
     total: number;
     pending: number;
     approved: number;
@@ -54,7 +56,11 @@ export class RequestsController {
     reviewed: number;
     commented: number;
   }> {
-    return this.requestsService.getRequestStats();
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new UnauthorizedException('User not authenticated');
+    }
+    return this.requestsService.getRequestStats(userId);
   }
 
   @Post(':id/status')
