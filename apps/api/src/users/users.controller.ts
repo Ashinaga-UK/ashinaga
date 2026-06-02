@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Patch, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Req, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/auth.guard';
+import { StaffGuard } from '../auth/staff.guard';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersService } from './users.service';
 
@@ -37,10 +38,36 @@ export class UsersController {
 
   @Get('staff')
   @UseGuards(AuthGuard)
-  @ApiOperation({ summary: 'Get list of active staff members' })
-  @ApiResponse({ status: 200, description: 'Returns list of active staff' })
+  @ApiOperation({ summary: 'Get list of active staff members (minimal)' })
+  @ApiResponse({ status: 200, description: 'Returns list of active staff (id, name, email)' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getStaffList() {
-    return this.usersService.getStaffList();
+    const list = await this.usersService.getStaffList();
+    return list.map(({ userId, name, email }) => ({ id: userId, name, email }));
+  }
+
+  @Get('staff/manage')
+  @UseGuards(StaffGuard)
+  @ApiOperation({ summary: 'Get detailed list of active staff for management' })
+  @ApiResponse({ status: 200, description: 'Returns detailed staff list and caller permissions' })
+  async getStaffForManagement(@Req() req: any) {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new Error('User not authenticated');
+    }
+    return this.usersService.getStaffManagementView(userId);
+  }
+
+  @Delete('staff/:userId')
+  @UseGuards(StaffGuard)
+  @ApiOperation({ summary: 'Remove (deactivate) a staff member. Super-admin only.' })
+  @ApiResponse({ status: 200, description: 'Staff member removed' })
+  @ApiResponse({ status: 403, description: 'Forbidden – super-admin required' })
+  async removeStaffMember(@Param('userId') targetUserId: string, @Req() req: any) {
+    const requesterUserId = req.user?.id;
+    if (!requesterUserId) {
+      throw new Error('User not authenticated');
+    }
+    return this.usersService.removeStaff(targetUserId, requesterUserId);
   }
 }

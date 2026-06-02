@@ -4,6 +4,7 @@ import {
   AlertCircle,
   FileText,
   Loader2,
+  LogOut,
   Mail,
   MessageSquare,
   Trash2,
@@ -58,20 +59,30 @@ type StaffDashboardView =
   | 'task-assignment'
   | 'my-profile';
 
+const STAFF_NAV_ITEMS = [
+  { value: 'overview', label: 'Overview' },
+  { value: 'scholars', label: 'Scholars' },
+  { value: 'requests', label: 'Requests' },
+  { value: 'announcements', label: 'Announcements' },
+  { value: 'invitations', label: 'Invitations' },
+];
+
 interface QuickActionButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   icon: React.ReactNode;
   label: string;
+  description?: string;
   primary?: boolean;
 }
 
 const QuickActionButton = forwardRef<HTMLButtonElement, QuickActionButtonProps>(
-  ({ icon, label, primary, className, ...props }, ref) => (
+  ({ icon, label, description, primary, className, ...props }, ref) => (
     <button
       ref={ref}
       type="button"
       className={cn(
-        'group relative flex items-center gap-3 bg-card px-5 py-4 text-sm transition-colors',
+        'group relative flex min-w-0 items-center gap-3 bg-card px-4 py-4 text-left text-sm transition-colors sm:px-5',
         'hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:z-10',
+        'lg:flex-col lg:items-start lg:justify-between lg:rounded-lg lg:border lg:border-border lg:p-4 lg:hover:border-foreground/20',
         className
       )}
       {...props}
@@ -84,7 +95,14 @@ const QuickActionButton = forwardRef<HTMLButtonElement, QuickActionButtonProps>(
       >
         {icon}
       </span>
-      <span className="font-medium text-foreground">{label}</span>
+      <span className="min-w-0">
+        <span className="block font-medium text-foreground">{label}</span>
+        {description && (
+          <span className="mt-1 hidden text-xs leading-5 text-muted-foreground lg:block">
+            {description}
+          </span>
+        )}
+      </span>
     </button>
   )
 );
@@ -323,9 +341,8 @@ function StaffDashboardContent() {
 
   const handleRequestStatusUpdate = (requestId: string, status: string, comment?: string) => {
     console.log('Request updated:', { requestId, status, comment });
-    // In real app, update the request status in your state/API
-    // For now, just refetch the data
     fetchRequests();
+    fetchRequestStats();
   };
 
   const navigateToScholars = () => {
@@ -334,6 +351,10 @@ function StaffDashboardContent() {
 
   const navigateToRequests = () => {
     router.push('?tab=requests');
+  };
+
+  const handleTabChange = (tab: string) => {
+    router.push(tab === 'overview' ? '/' : `?tab=${tab}`);
   };
 
   const handleSignOut = async () => {
@@ -365,20 +386,29 @@ function StaffDashboardContent() {
     <div className="min-h-screen bg-background">
       {/* Header — sticky, glassy, sleek */}
       <header className="sticky top-0 z-40 w-full border-b border-border bg-background/80 backdrop-blur-xl">
-        <div className="flex h-14 items-center justify-between max-w-7xl mx-auto px-6">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-md bg-brand flex items-center justify-center">
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:gap-3 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand">
               <span className="text-brand-foreground font-semibold text-sm">A</span>
             </div>
-            <div className="flex flex-col leading-tight">
-              <h1 className="text-sm font-medium text-foreground">Ashinaga Staff</h1>
-              <p className="text-[11px] text-muted-foreground">Supporting Scholar Success</p>
+            <div className="flex min-w-0 flex-col leading-tight">
+              <h1 className="truncate text-sm font-medium text-foreground">Ashinaga Staff</h1>
+              <p className="hidden truncate text-[11px] text-muted-foreground sm:block">
+                Supporting Scholar Success
+              </p>
             </div>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1">
             <ThemeToggle />
-            <Button variant="ghost" size="sm" onClick={handleSignOut}>
-              Logout
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 px-0 sm:w-auto sm:px-3"
+              onClick={handleSignOut}
+              aria-label="Logout"
+            >
+              <LogOut className="h-4 w-4 sm:hidden" />
+              <span className="hidden sm:inline">Logout</span>
             </Button>
             <button
               type="button"
@@ -386,7 +416,7 @@ function StaffDashboardContent() {
               onClick={() => router.push('?view=my-profile')}
               aria-label="Open my profile"
             >
-              <Avatar className="h-8 w-8 cursor-pointer">
+              <Avatar className="h-8 w-8 cursor-pointer max-[380px]:hidden">
                 {user?.image && <AvatarImage src={user.image} alt={user.name || 'User'} />}
                 <AvatarFallback className="text-xs">
                   {user?.name
@@ -401,19 +431,15 @@ function StaffDashboardContent() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-6 py-8 animate-fade-in">
+      <div className="mx-auto max-w-7xl px-3 py-5 animate-fade-in sm:px-6 sm:py-8">
         {currentView === 'onboarding' ? (
           <ScholarOnboarding onBack={() => router.push('/')} />
         ) : currentView === 'my-profile' ? (
           <MyProfile onBack={() => router.push('/')} />
         ) : (
-          <Tabs
-            value={activeTab}
-            onValueChange={(tab) => router.push(tab === 'overview' ? '/' : `?tab=${tab}`)}
-            className="space-y-6"
-          >
-            <div className="flex items-center justify-between">
-              <div>
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div className="min-w-0">
                 <h2 className="text-2xl font-semibold tracking-tight text-foreground">
                   {activeTab === 'overview' && 'Overview'}
                   {activeTab === 'scholars' && 'Scholars'}
@@ -429,8 +455,22 @@ function StaffDashboardContent() {
                   {activeTab === 'invitations' && 'Invite scholars and staff to the portal.'}
                 </p>
               </div>
+              <div className="sm:hidden">
+                <Select value={activeTab} onValueChange={handleTabChange}>
+                  <SelectTrigger aria-label="Section" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STAFF_NAV_ITEMS.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <TabsList className="inline-flex">
+            <TabsList className="hidden h-auto flex-wrap sm:inline-flex">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="scholars">Scholars</TabsTrigger>
               <TabsTrigger value="requests">Requests</TabsTrigger>
@@ -443,14 +483,14 @@ function StaffDashboardContent() {
 
             <TabsContent value="overview" className="space-y-6">
               {/* Stats Overview — flatter, tabular numerals, brand chip rather than gradient tile */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2">
                 <button
                   type="button"
                   onClick={navigateToScholars}
-                  className="group text-left rounded-lg border bg-card p-5 transition-colors hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  className="group text-left rounded-lg border bg-card p-4 transition-colors hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:p-5"
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 space-y-1">
                       <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                         Total Scholars
                       </p>
@@ -466,7 +506,7 @@ function StaffDashboardContent() {
                         {scholarStats?.active || 0} active
                       </p>
                     </div>
-                    <div className="h-9 w-9 rounded-md border border-border bg-muted/40 flex items-center justify-center transition-colors group-hover:bg-muted">
+                    <div className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40 transition-colors group-hover:bg-muted min-[430px]:flex sm:h-9 sm:w-9">
                       <Users className="h-4 w-4 text-muted-foreground" />
                     </div>
                   </div>
@@ -475,10 +515,10 @@ function StaffDashboardContent() {
                 <button
                   type="button"
                   onClick={navigateToRequests}
-                  className="group text-left rounded-lg border bg-card p-5 transition-colors hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  className="group text-left rounded-lg border bg-card p-4 transition-colors hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:p-5"
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 space-y-1">
                       <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                         Pending Requests
                       </p>
@@ -493,7 +533,7 @@ function StaffDashboardContent() {
                         of {requestStats?.total || 0} total
                       </p>
                     </div>
-                    <div className="h-9 w-9 rounded-md border border-border bg-muted/40 flex items-center justify-center transition-colors group-hover:bg-muted">
+                    <div className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40 transition-colors group-hover:bg-muted min-[430px]:flex sm:h-9 sm:w-9">
                       <AlertCircle className="h-4 w-4 text-muted-foreground" />
                     </div>
                   </div>
@@ -502,7 +542,7 @@ function StaffDashboardContent() {
 
               {/* Quick Actions */}
               <div className="rounded-lg border bg-card">
-                <div className="flex items-center justify-between p-5 pb-3">
+                <div className="flex items-center justify-between p-4 pb-3 sm:p-5 sm:pb-3">
                   <div className="space-y-0.5">
                     <h3 className="text-sm font-semibold leading-none tracking-tight">
                       Quick actions
@@ -512,10 +552,11 @@ function StaffDashboardContent() {
                     </p>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-px bg-border border-t">
+                <div className="grid grid-cols-1 gap-px border-t bg-border min-[520px]:grid-cols-2 lg:grid-cols-5 lg:gap-3 lg:border-t-0 lg:bg-transparent lg:p-5 lg:pt-2">
                   <QuickActionButton
                     icon={<Users className="h-4 w-4" />}
                     label="Onboard Scholar"
+                    description="Create a new scholar profile and invitation."
                     onClick={() => router.push('?view=onboarding')}
                     primary
                   />
@@ -524,6 +565,7 @@ function StaffDashboardContent() {
                       <QuickActionButton
                         icon={<FileText className="h-4 w-4" />}
                         label="Assign Task"
+                        description="Send a task to one or more scholars."
                       />
                     }
                     onSuccess={(scholarId) => {
@@ -535,11 +577,13 @@ function StaffDashboardContent() {
                   <QuickActionButton
                     icon={<MessageSquare className="h-4 w-4" />}
                     label="Create Announcement"
+                    description="Publish an update for filtered scholars."
                     onClick={() => router.push('?tab=announcements')}
                   />
                   <QuickActionButton
                     icon={<FileText className="h-4 w-4" />}
                     label="Review Requests"
+                    description="Triage funding and requirement submissions."
                     onClick={() => router.push('?tab=requests')}
                   />
                   <StaffInviteDialog
@@ -547,6 +591,7 @@ function StaffDashboardContent() {
                       <QuickActionButton
                         icon={<UserPlus className="h-4 w-4" />}
                         label="Invite Staff"
+                        description="Add another staff member to the portal."
                       />
                     }
                   />
@@ -565,7 +610,7 @@ function StaffDashboardContent() {
                 />
               ) : (
                 <Card>
-                  <CardContent className="p-5">
+                  <CardContent className="p-4 sm:p-5">
                     <ScholarManagementTable
                       onViewProfile={(scholarId) => {
                         router.push(`?tab=scholars&view=scholar-profile&scholarId=${scholarId}`);
@@ -609,11 +654,12 @@ function StaffDashboardContent() {
                         <SelectItem value="approved">Approved</SelectItem>
                         <SelectItem value="rejected">Rejected</SelectItem>
                         <SelectItem value="reviewed">Reviewed</SelectItem>
+                        <SelectItem value="commented">Commented</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
-                <CardContent className="p-5">
+                <CardContent className="p-4 sm:p-5">
                   {requestsLoading ? (
                     <div className="space-y-3">
                       <Skeleton className="h-24 w-full" />
@@ -662,7 +708,7 @@ function StaffDashboardContent() {
                 <AnnouncementCreator />
               </div>
               <Card>
-                <CardContent className="p-5">
+                <CardContent className="p-4 sm:p-5">
                   <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
                       <Select

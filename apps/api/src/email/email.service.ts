@@ -389,6 +389,236 @@ The Ashinaga Team
     }
   }
 
+  async sendTaskAssignmentNotification(
+    email: string,
+    scholarName: string,
+    taskTitle: string,
+    taskDescription: string | null,
+    taskType: string,
+    taskPriority: 'high' | 'medium' | 'low',
+    dueDate: Date,
+    assignerName: string | null
+  ): Promise<void> {
+    const fromEmail = process.env.EMAIL_FROM || 'noreply@ashinaga.org';
+    const scholarAppUrl = process.env.SCHOLAR_APP_URL || 'http://localhost:4002';
+    const tasksUrl = `${scholarAppUrl}/`;
+    const formattedType = taskType
+      .split('_')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+    const formattedDueDate = dueDate.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+    const priorityColor =
+      taskPriority === 'high' ? '#DC2626' : taskPriority === 'medium' ? '#F59E0B' : '#0D9488';
+
+    if (!this.resend) {
+      console.log('═══════════════════════════════════════════════════════════════');
+      console.log('TASK ASSIGNMENT EMAIL (Resend not configured)');
+      console.log('═══════════════════════════════════════════════════════════════');
+      console.log(`To: ${email}`);
+      console.log(`From: ${fromEmail}`);
+      console.log(`Scholar: ${scholarName}`);
+      console.log(`Task: ${taskTitle}`);
+      console.log(`Type: ${formattedType}`);
+      console.log(`Priority: ${taskPriority}`);
+      console.log(`Due: ${formattedDueDate}`);
+      console.log(`Assigned by: ${assignerName ?? 'Ashinaga staff'}`);
+      console.log('═══════════════════════════════════════════════════════════════');
+      return;
+    }
+
+    try {
+      const { data, error } = await this.resend.emails.send({
+        from: fromEmail,
+        to: email,
+        subject: `New task: ${taskTitle}`,
+        html: `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>New Task Assigned</title>
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <div style="background: linear-gradient(135deg, #0D9488 0%, #16A34A 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                <h1 style="color: white; margin: 0; font-size: 28px;">Ashinaga</h1>
+              </div>
+
+              <div style="background: white; padding: 30px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 10px 10px;">
+                <h2 style="color: #333; margin-top: 0;">A new task has been assigned to you</h2>
+
+                <p>Dear ${scholarName},</p>
+
+                <p>${assignerName ? `${assignerName} has assigned` : 'Ashinaga staff have assigned'} you a new task in the scholar portal:</p>
+
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #0D9488;">
+                  <h3 style="margin-top: 0; color: #0D9488;">${taskTitle}</h3>
+                  ${taskDescription ? `<p style="white-space: pre-wrap; margin: 0 0 12px 0;">${taskDescription}</p>` : ''}
+                  <p style="margin: 0; font-size: 14px;"><strong>Type:</strong> ${formattedType}</p>
+                  <p style="margin: 4px 0 0 0; font-size: 14px;"><strong>Priority:</strong> <span style="color: ${priorityColor}; font-weight: 600;">${taskPriority.charAt(0).toUpperCase() + taskPriority.slice(1)}</span></p>
+                  <p style="margin: 4px 0 0 0; font-size: 14px;"><strong>Due:</strong> ${formattedDueDate}</p>
+                </div>
+
+                <div style="text-align: center; margin: 30px 0;">
+                  <a href="${tasksUrl}" style="display: inline-block; background: linear-gradient(135deg, #0D9488 0%, #16A34A 100%); color: white; text-decoration: none; padding: 12px 30px; border-radius: 5px; font-weight: 600;">Open in Portal</a>
+                </div>
+
+                <p style="color: #666; font-size: 14px;">You can view and complete this task in your scholar portal.</p>
+
+                <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 30px 0;">
+
+                <p style="color: #666; font-size: 14px;">
+                  Best regards,<br>
+                  The Ashinaga Team
+                </p>
+              </div>
+
+              <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
+                <p>© ${new Date().getFullYear()} Ashinaga. All rights reserved.</p>
+              </div>
+            </body>
+          </html>
+        `,
+        text: `
+Dear ${scholarName},
+
+${assignerName ? `${assignerName} has assigned` : 'Ashinaga staff have assigned'} you a new task:
+
+${taskTitle}
+${taskDescription ? `\n${taskDescription}\n` : ''}
+Type: ${formattedType}
+Priority: ${taskPriority}
+Due: ${formattedDueDate}
+
+Open it in your scholar portal:
+${tasksUrl}
+
+Best regards,
+The Ashinaga Team
+        `.trim(),
+      });
+
+      if (error) {
+        console.error('Failed to send task assignment email:', error);
+        throw new Error('Failed to send task assignment email');
+      }
+
+      console.log('Task assignment email sent successfully:', data);
+    } catch (error) {
+      console.error('Error sending task assignment email:', error);
+      throw error;
+    }
+  }
+
+  async sendRequestResponseNotification(
+    email: string,
+    staffName: string,
+    scholarName: string,
+    requestType: string,
+    responseComment: string
+  ): Promise<void> {
+    const fromEmail = process.env.EMAIL_FROM || 'noreply@ashinaga.org';
+    const staffAppUrl = process.env.STAFF_APP_URL || 'http://localhost:4001';
+    const requestsUrl = `${staffAppUrl}/?tab=requests`;
+    const formattedType = requestType
+      .split('_')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+
+    if (!this.resend) {
+      console.log('═══════════════════════════════════════════════════════════════');
+      console.log('REQUEST RESPONSE EMAIL (Resend not configured)');
+      console.log('═══════════════════════════════════════════════════════════════');
+      console.log(`To: ${email}`);
+      console.log(`From: ${fromEmail}`);
+      console.log(`Staff: ${staffName}`);
+      console.log(`Scholar: ${scholarName}`);
+      console.log(`Request type: ${formattedType}`);
+      console.log(`Response: ${responseComment}`);
+      console.log('═══════════════════════════════════════════════════════════════');
+      return;
+    }
+
+    try {
+      const { data, error } = await this.resend.emails.send({
+        from: fromEmail,
+        to: email,
+        subject: `${scholarName} replied to a ${formattedType} request`,
+        html: `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Scholar Replied</title>
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <div style="background: linear-gradient(135deg, #0D9488 0%, #16A34A 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                <h1 style="color: white; margin: 0; font-size: 28px;">Ashinaga</h1>
+              </div>
+
+              <div style="background: white; padding: 30px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 10px 10px;">
+                <h2 style="color: #333; margin-top: 0;">Scholar replied with additional information</h2>
+
+                <p>Hi ${staffName},</p>
+
+                <p><strong>${scholarName}</strong> has responded to the comments on their <strong>${formattedType}</strong> request and re-submitted it for review.</p>
+
+                <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #0D9488;">
+                  <p style="margin: 0; font-weight: 600; color: #666; font-size: 14px;">${scholarName} said:</p>
+                  <p style="white-space: pre-wrap; margin: 10px 0 0 0; font-style: italic;">"${responseComment}"</p>
+                </div>
+
+                <div style="text-align: center; margin: 30px 0;">
+                  <a href="${requestsUrl}" style="display: inline-block; background: linear-gradient(135deg, #0D9488 0%, #16A34A 100%); color: white; text-decoration: none; padding: 12px 30px; border-radius: 5px; font-weight: 600;">Open Requests</a>
+                </div>
+
+                <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 30px 0;">
+
+                <p style="color: #666; font-size: 14px;">
+                  Best regards,<br>
+                  The Ashinaga Team
+                </p>
+              </div>
+
+              <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
+                <p>© ${new Date().getFullYear()} Ashinaga. All rights reserved.</p>
+              </div>
+            </body>
+          </html>
+        `,
+        text: `
+Hi ${staffName},
+
+${scholarName} has responded to the comments on their ${formattedType} request and re-submitted it for review.
+
+${scholarName} said:
+"${responseComment}"
+
+Open requests in the staff portal:
+${requestsUrl}
+
+Best regards,
+The Ashinaga Team
+        `.trim(),
+      });
+
+      if (error) {
+        console.error('Failed to send request response notification email:', error);
+        throw new Error('Failed to send request response notification email');
+      }
+
+      console.log('Request response email sent successfully:', data);
+    } catch (error) {
+      console.error('Error sending request response notification email:', error);
+      throw error;
+    }
+  }
+
   async sendRequestStatusNotification(
     email: string,
     scholarName: string,

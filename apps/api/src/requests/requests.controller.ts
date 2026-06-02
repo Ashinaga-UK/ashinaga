@@ -7,6 +7,7 @@ import {
   Post,
   Query,
   Req,
+  UnauthorizedException,
   UseGuards,
   ValidationPipe,
 } from '@nestjs/common';
@@ -15,6 +16,7 @@ import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
 import { CreateRequestDto, CreateRequestResponseDto } from './dto/create-request.dto';
 import { GetRequestsQueryDto, GetRequestsResponseDto } from './dto/get-requests.dto';
+import { RespondToRequestDto } from './dto/respond-to-request.dto';
 import { RequestsService } from './requests.service';
 
 interface AuthenticatedRequest extends Request {
@@ -45,7 +47,8 @@ export class RequestsController {
   }
 
   @Get('stats')
-  async getRequestStats(): Promise<{
+  @UseGuards(AuthGuard)
+  async getRequestStats(@Req() req: AuthenticatedRequest): Promise<{
     total: number;
     pending: number;
     approved: number;
@@ -53,7 +56,11 @@ export class RequestsController {
     reviewed: number;
     commented: number;
   }> {
-    return this.requestsService.getRequestStats();
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new UnauthorizedException('User not authenticated');
+    }
+    return this.requestsService.getRequestStats(userId);
   }
 
   @Post(':id/status')
@@ -94,6 +101,25 @@ export class RequestsController {
       throw new Error('User not authenticated');
     }
     return this.requestsService.createRequest(createRequestDto, userId);
+  }
+
+  @Post(':id/respond')
+  @UseGuards(AuthGuard)
+  async respondToRequest(
+    @Param('id') requestId: string,
+    @Body(new ValidationPipe({ transform: true, whitelist: true })) body: RespondToRequestDto,
+    @Req() req: AuthenticatedRequest
+  ) {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new Error('User not authenticated');
+    }
+    return this.requestsService.respondToCommentedRequest(
+      requestId,
+      userId,
+      body.comment,
+      body.attachmentIds ?? []
+    );
   }
 
   @Delete(':id')

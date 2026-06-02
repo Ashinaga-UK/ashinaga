@@ -148,6 +148,21 @@ export async function createRequest(data: CreateRequestData): Promise<Request> {
   });
 }
 
+export interface RespondToRequestData {
+  comment: string;
+  attachmentIds?: string[];
+}
+
+export async function respondToRequest(
+  requestId: string,
+  data: RespondToRequestData
+): Promise<{ id: string; status: string; updatedAt: string }> {
+  return fetchAPI(`/api/requests/${requestId}/respond`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
 // Staff types and functions
 export interface StaffMember {
   id: string;

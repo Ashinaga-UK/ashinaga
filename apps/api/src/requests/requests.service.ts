@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { and, count, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 import { database } from '../db/connection';
 import {
@@ -204,7 +209,7 @@ export class RequestsService {
     return auditLogs;
   }
 
-  async getRequestStats(): Promise<{
+  async getRequestStats(userId: string): Promise<{
     total: number;
     pending: number;
     approved: number;
@@ -212,12 +217,27 @@ export class RequestsService {
     reviewed: number;
     commented: number;
   }> {
+    const whereConditions = [eq(requests.archived, false)];
+
+    // Match getRequests visibility: super admins see all active requests,
+    // regular staff only see requests assigned to them.
+    const [staffRecord] = await database.select().from(staff).where(eq(staff.userId, userId));
+
+    if (!staffRecord?.isSuperAdmin) {
+      const assignedRequestIds = database
+        .select({ requestId: requestAssignees.requestId })
+        .from(requestAssignees)
+        .where(eq(requestAssignees.userId, userId));
+      whereConditions.push(inArray(requests.id, assignedRequestIds));
+    }
+
     const statsResult = await database
       .select({
         status: requests.status,
         count: count(),
       })
       .from(requests)
+      .where(and(...whereConditions))
       .groupBy(requests.status);
 
     const stats = {
@@ -485,6 +505,119 @@ export class RequestsService {
         console.error('Failed to send email notification:', error);
         // Don't throw error here - we don't want email failures to break the request update
       }
+    }
+
+    return updatedRequest;
+  }
+
+  async respondToCommentedRequest(
+    requestId: string,
+    userId: string,
+    comment: string,
+    attachmentIds: string[] = []
+  ) {
+    // Find the scholar profile for this user
+    const [scholar] = await database
+      .select()
+      .from(scholars)
+      .where(eq(scholars.userId, userId))
+      .limit(1);
+
+    if (!scholar) {
+      throw new NotFoundException('Scholar not found for this user');
+    }
+
+    // Load the request together with the scholar's user record (for emails)
+    const [requestRow] = await database
+      .select({
+        request: requests,
+        user: users,
+      })
+      .from(requests)
+      .innerJoin(scholars, eq(requests.scholarId, scholars.id))
+      .innerJoin(users, eq(scholars.userId, users.id))
+      .where(eq(requests.id, requestId))
+      .limit(1);
+
+    if (!requestRow) {
+      throw new NotFoundException(`Request with ID ${requestId} not found`);
+    }
+
+    if (requestRow.request.scholarId !== scholar.id) {
+      throw new ForbiddenException('You can only respond to your own requests');
+    }
+
+    if (requestRow.request.archived) {
+      throw new BadRequestException('Cannot respond to an archived request');
+    }
+
+    if (requestRow.request.status !== 'commented') {
+      throw new BadRequestException(
+        'You can only respond when staff have requested additional information'
+      );
+    }
+
+    const previousStatus = requestRow.request.status;
+
+    // Re-open the request so it returns to the staff queue
+    const [updatedRequest] = await database
+      .update(requests)
+      .set({
+        status: 'pending',
+        updatedAt: new Date(),
+      })
+      .where(eq(requests.id, requestId))
+      .returning();
+
+    // Link new attachments to this request (if any)
+    if (attachmentIds.length > 0) {
+      await database
+        .update(requestAttachments)
+        .set({ requestId })
+        .where(inArray(requestAttachments.id, attachmentIds));
+
+      await database.insert(requestAuditLogs).values({
+        requestId,
+        action: 'attachment_added',
+        performedBy: userId,
+        comment: `${attachmentIds.length} file(s) attached with response`,
+        metadata: JSON.stringify({ attachmentIds }),
+      });
+    }
+
+    // Audit log for the response itself
+    await database.insert(requestAuditLogs).values({
+      requestId,
+      action: 'scholar_responded',
+      performedBy: userId,
+      previousStatus,
+      newStatus: 'pending',
+      comment,
+    });
+
+    // Notify the staff members assigned to this request
+    try {
+      const assigneeRows = await database
+        .select({ name: users.name, email: users.email })
+        .from(requestAssignees)
+        .innerJoin(users, eq(users.id, requestAssignees.userId))
+        .where(eq(requestAssignees.requestId, requestId));
+
+      const formattedType = requestRow.request.type.replace(/_/g, ' ');
+      await Promise.allSettled(
+        assigneeRows.map((assignee) =>
+          this.emailService.sendRequestResponseNotification(
+            assignee.email,
+            assignee.name,
+            requestRow.user.name,
+            formattedType,
+            comment
+          )
+        )
+      );
+    } catch (error) {
+      console.error('Failed to notify staff about scholar response:', error);
+      // Don't break the response flow on email failures
     }
 
     return updatedRequest;

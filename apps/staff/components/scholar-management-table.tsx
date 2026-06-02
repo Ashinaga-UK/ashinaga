@@ -224,8 +224,8 @@ export function ScholarManagementTable({
   return (
     <div className="space-y-4">
       {/* Search Bar */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="relative w-full lg:max-w-sm">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
             placeholder="Search students..."
@@ -234,12 +234,12 @@ export function ScholarManagementTable({
             className="pl-10"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
           {selectedScholars.length > 0 && (
             <BulkTaskAssignment
               selectedScholarIds={selectedScholars}
               trigger={
-                <Button variant="outline">
+                <Button variant="outline" className="w-full sm:w-auto">
                   <Plus className="h-4 w-4 mr-2" />
                   Assign Task to Selected ({selectedScholars.length})
                 </Button>
@@ -257,7 +257,12 @@ export function ScholarManagementTable({
             }
           />
           */}
-          <Button variant="outline" onClick={handleExportCsv} disabled={exportingCsv}>
+          <Button
+            variant="outline"
+            className="w-full sm:w-auto"
+            onClick={handleExportCsv}
+            disabled={exportingCsv}
+          >
             {exportingCsv ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
@@ -266,7 +271,7 @@ export function ScholarManagementTable({
             Export all (CSV)
           </Button>
           <Button
-            className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
+            className="w-full bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700 sm:w-auto"
             onClick={onOnboardScholar}
           >
             <Plus className="h-4 w-4 mr-2" />
@@ -275,12 +280,12 @@ export function ScholarManagementTable({
         </div>
       </div>
 
-      <div className="flex items-center gap-4 flex-wrap">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <Select
           value={statusFilter}
           onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}
         >
-          <SelectTrigger className="w-[140px]">
+          <SelectTrigger>
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -292,7 +297,7 @@ export function ScholarManagementTable({
           </SelectContent>
         </Select>
         <Select value={programFilter} onValueChange={setProgramFilter}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger>
             <SelectValue placeholder="All Programs" />
           </SelectTrigger>
           <SelectContent>
@@ -306,7 +311,7 @@ export function ScholarManagementTable({
         </Select>
 
         <Select value={yearFilter} onValueChange={setYearFilter}>
-          <SelectTrigger className="w-[140px]">
+          <SelectTrigger>
             <SelectValue placeholder="All Years" />
           </SelectTrigger>
           <SelectContent>
@@ -320,7 +325,7 @@ export function ScholarManagementTable({
         </Select>
 
         <Select value={universityFilter} onValueChange={setUniversityFilter}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger>
             <SelectValue placeholder="All Universities" />
           </SelectTrigger>
           <SelectContent>
@@ -340,6 +345,7 @@ export function ScholarManagementTable({
           <Button
             variant="outline"
             size="sm"
+            className="sm:col-span-2 lg:col-span-4 lg:w-fit"
             onClick={() => {
               setProgramFilter('all');
               setYearFilter('all');
@@ -352,8 +358,148 @@ export function ScholarManagementTable({
         )}
       </div>
 
+      <div className="space-y-3 lg:hidden">
+        {isLoading ? (
+          <div className="rounded-lg border border-border bg-card p-6 text-center">
+            <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin" />
+            <div className="text-sm text-muted-foreground">Loading scholars...</div>
+          </div>
+        ) : error ? (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        ) : scholars.length === 0 ? (
+          <div className="rounded-lg border border-border bg-card p-6 text-center text-sm text-muted-foreground">
+            No scholars found
+          </div>
+        ) : (
+          scholars.map((scholar) => (
+            <article key={scholar.id} className="rounded-lg border border-border bg-card p-4">
+              <div className="flex items-start gap-3">
+                <div>
+                  <Checkbox
+                    checked={selectedScholars.includes(scholar.id)}
+                    onCheckedChange={(checked) =>
+                      handleSelectScholar(scholar.id, checked as boolean)
+                    }
+                    aria-label={`Select ${scholar.name}`}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="flex min-w-0 flex-1 items-start gap-3 text-left"
+                  onClick={() => onViewProfile(scholar.id)}
+                >
+                  <Avatar className="h-9 w-9 shrink-0">
+                    <AvatarImage src={scholar.image || '/placeholder.svg'} />
+                    <AvatarFallback>
+                      {scholar.name
+                        .split(' ')
+                        .map((n: string) => n[0])
+                        .join('')}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium">{scholar.name}</span>
+                    <span className="block truncate text-sm text-muted-foreground">
+                      {scholar.email}
+                    </span>
+                  </span>
+                </button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" aria-label={`Actions for ${scholar.name}`}>
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => onViewProfile(scholar.id)}>
+                      <Eye className="h-4 w-4 mr-2" />
+                      View Profile
+                    </DropdownMenuItem>
+                    {scholar.status !== 'archived' && (
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleArchive(scholar.id, scholar.name);
+                        }}
+                      >
+                        <Archive className="h-4 w-4 mr-2" />
+                        Archive
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem
+                      className="text-red-600 focus:text-red-600"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleDelete(scholar.id, scholar.name);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                <div className="min-w-0">
+                  <dt className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Program
+                  </dt>
+                  <dd className="truncate font-medium">{scholar.program}</dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="text-xs uppercase tracking-wider text-muted-foreground">Year</dt>
+                  <dd>
+                    <Badge variant="outline">{scholar.year}</Badge>
+                  </dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="text-xs uppercase tracking-wider text-muted-foreground">
+                    University
+                  </dt>
+                  <dd className="truncate font-medium">{scholar.university}</dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="text-xs uppercase tracking-wider text-muted-foreground">Status</dt>
+                  <dd>
+                    <Badge className={getStatusColor(scholar.status)}>{scholar.status}</Badge>
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs uppercase tracking-wider text-muted-foreground">Goals</dt>
+                  <dd className="font-medium">
+                    {scholar.goals.completed}/{scholar.goals.total}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Last Activity
+                  </dt>
+                  <dd className="font-medium">{formatDate(scholar.lastActivity)}</dd>
+                </div>
+              </dl>
+
+              <div className="mt-4">
+                <TaskAssignment
+                  trigger={
+                    <Button size="sm" variant="outline" className="w-full">
+                      <Plus className="h-4 w-4 mr-1" />
+                      Assign Task
+                    </Button>
+                  }
+                  preselectedScholarId={scholar.id}
+                />
+              </div>
+            </article>
+          ))
+        )}
+      </div>
+
       {/* Students Table */}
-      <div className="border border-border rounded-lg">
+      <div className="hidden rounded-lg border border-border lg:block">
         <Table>
           <TableHeader>
             <TableRow>

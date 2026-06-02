@@ -217,12 +217,12 @@ export function ScholarProfilePage({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" onClick={onBack}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Button variant="ghost" className="w-fit" onClick={onBack}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Students
         </Button>
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
           <Dialog
             open={editOpen}
             onOpenChange={(open) => {
@@ -500,69 +500,82 @@ export function ScholarProfilePage({
             className="bg-ashinaga-teal-600 hover:bg-ashinaga-teal-700"
           >
             <Download className="h-4 w-4 mr-2" />
-            Download LDF Report
+            <span className="sm:hidden">Download LDF</span>
+            <span className="hidden sm:inline">Download LDF Report</span>
           </Button>
         </div>
       </div>
 
       {/* Student Info Card */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-start gap-6">
-            <Avatar className="h-20 w-20">
-              <AvatarImage src={scholar.image || '/placeholder.svg'} />
-              <AvatarFallback className="text-lg">
-                {scholar.name
-                  .split(' ')
-                  .map((n) => n[0])
-                  .join('')}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-2xl font-bold">{scholar.name}</h1>
-                <Badge
-                  className={
-                    scholar.status === 'archived'
-                      ? 'bg-muted text-foreground'
-                      : scholar.status === 'active'
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-                        : 'bg-amber-100 text-amber-800'
-                  }
-                >
-                  {scholar.status}
-                </Badge>
-              </div>
-              <p className="text-muted-foreground mb-4">{scholar.bio || 'No bio available'}</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-muted-foreground" />
-                  <span>{scholar.email}</span>
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start lg:flex-1">
+              <Avatar className="h-16 w-16 shrink-0 sm:h-20 sm:w-20">
+                <AvatarImage src={scholar.image || '/placeholder.svg'} />
+                <AvatarFallback className="text-lg">
+                  {scholar.name
+                    .split(' ')
+                    .map((n) => n[0])
+                    .join('')}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <h1 className="min-w-0 text-2xl font-bold leading-tight">{scholar.name}</h1>
+                  <Badge
+                    className={
+                      scholar.status === 'archived'
+                        ? 'bg-muted text-foreground'
+                        : scholar.status === 'active'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                          : 'bg-amber-100 text-amber-800'
+                    }
+                  >
+                    {scholar.status}
+                  </Badge>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-muted-foreground" />
-                  <span>{scholar.phone || 'No phone number'}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <MapPin
-                    className="h-4 w-4 text-muted-foreground shrink-0"
-                    aria-label="Country of study"
-                  />
-                  <span>{normalizeLocation(scholar.location ?? '') || 'No location'}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span>Started {new Date(scholar.startDate).toLocaleDateString()}</span>
+                <p className="mb-4 text-muted-foreground">{scholar.bio || 'No bio available'}</p>
+                <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 truncate">{scholar.email}</span>
+                  </div>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Phone className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 truncate">{scholar.phone || 'No phone number'}</span>
+                  </div>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <MapPin
+                      className="h-4 w-4 shrink-0 text-muted-foreground"
+                      aria-label="Country of study"
+                    />
+                    <span className="min-w-0 truncate">
+                      {normalizeLocation(scholar.location ?? '') || 'No location'}
+                    </span>
+                  </div>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Calendar className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 truncate">
+                      Started {new Date(scholar.startDate).toLocaleDateString()}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-muted-foreground">Program</p>
-              <p className="font-medium">{scholar.program}</p>
-              <p className="text-sm text-muted-foreground mt-2">Year</p>
-              <Badge variant="outline">{scholar.year}</Badge>
-              <p className="text-sm text-muted-foreground mt-2">University</p>
-              <p className="font-medium text-sm">{scholar.university}</p>
+            <div className="grid grid-cols-1 gap-3 border-t pt-4 text-sm sm:grid-cols-3 lg:w-56 lg:shrink-0 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
+              <div className="min-w-0">
+                <p className="text-muted-foreground">Program</p>
+                <p className="font-medium">{scholar.program}</p>
+              </div>
+              <div className="min-w-0">
+                <p className="text-muted-foreground">Year</p>
+                <Badge variant="outline">{scholar.year}</Badge>
+              </div>
+              <div className="min-w-0 sm:col-span-3 lg:col-span-1">
+                <p className="text-muted-foreground">University</p>
+                <p className="font-medium">{scholar.university}</p>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -570,12 +583,14 @@ export function ScholarProfilePage({
 
       {/* Tabs */}
       <Tabs defaultValue={initialTab} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="goals">LDF Goals</TabsTrigger>
-          <TabsTrigger value="tasks">Tasks</TabsTrigger>
-          <TabsTrigger value="documents">Documents</TabsTrigger>
-        </TabsList>
+        <div className="-mx-3 overflow-x-auto px-3 sm:mx-0 sm:px-0">
+          <TabsList className="w-max sm:w-auto">
+            <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="goals">LDF Goals</TabsTrigger>
+            <TabsTrigger value="tasks">Tasks</TabsTrigger>
+            <TabsTrigger value="documents">Documents</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="profile" className="space-y-4">
           <Card>
