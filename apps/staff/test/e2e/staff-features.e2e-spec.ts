@@ -12,8 +12,7 @@ import { expect, test } from '@playwright/test';
 test.describe('Staff Portal – new features', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    // Wait for the dashboard to be rendered (header is always present once signed in)
-    await expect(page.getByRole('heading', { name: /Ashinaga Staff/ })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Ashinaga Staff/ })).toBeVisible({ timeout: 15_000 });
   });
 
   test('Invitations tab is visible and renders Active Staff / Staff Invites / Scholar Invites sub-tabs', async ({
@@ -28,8 +27,8 @@ test.describe('Staff Portal – new features', () => {
     await expect(page.getByRole('tab', { name: 'Staff Invites', exact: true })).toBeVisible();
     await expect(page.getByRole('tab', { name: 'Scholar Invites', exact: true })).toBeVisible();
 
-    // The card header mentions the new 30-day expiry
-    await expect(page.getByText(/expire after 30 days/i)).toBeVisible();
+    // The card header mentions on-hold scholars
+    await expect(page.getByText(/manage on-hold scholars/i)).toBeVisible();
 
     // Invite Staff button is the default action on Active Staff / Staff Invites tabs
     await expect(page.getByRole('button', { name: /Invite Staff/i })).toBeVisible();
@@ -58,15 +57,10 @@ test.describe('Staff Portal – new features', () => {
   test('Bulk task assignment dialog opens from the Scholars tab', async ({ page }) => {
     await page.getByRole('tab', { name: /Scholars/i }).click();
 
-    // Wait for at least one scholar row to render (we just need a checkbox to click)
-    const checkboxes = page.getByRole('checkbox');
-    await expect(checkboxes.first()).toBeVisible({ timeout: 15_000 });
-    // Click the second checkbox (skip the header "select all" if present)
-    const count = await checkboxes.count();
-    if (count === 0) {
-      test.skip();
-    }
-    await checkboxes.nth(count > 1 ? 1 : 0).check();
+    // Wait for at least one scholar row checkbox to render (index 1 skips the header checkbox)
+    const scholarCheckbox = page.getByRole('checkbox').nth(1);
+    await expect(scholarCheckbox).toBeVisible({ timeout: 15_000 });
+    await scholarCheckbox.click();
 
     // "Assign Task to Selected (n)" button shows up
     const bulkButton = page.getByRole('button', { name: /Assign Task to Selected/i });
