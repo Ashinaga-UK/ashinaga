@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { Cell, Legend, Pie, PieChart } from 'recharts';
-import type { RequestStats, Scholar, ScholarStats } from '../lib/api-client';
+import type { RequestStats, ScholarStats } from '../lib/api-client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from './ui/chart';
 
 interface DashboardChartsProps {
   scholarStats: ScholarStats | null;
   requestStats: RequestStats | null;
-  scholars: Scholar[];
+  scholarYearStats: { year: string; count: number }[];
   scholarLoading: boolean;
   requestLoading: boolean;
   scholarsLoading: boolean;
@@ -41,7 +41,7 @@ const YEAR_COLORS = [
 export function DashboardCharts({
   scholarStats,
   requestStats,
-  scholars,
+  scholarYearStats,
   scholarLoading,
   requestLoading,
   scholarsLoading,
@@ -91,9 +91,9 @@ export function DashboardCharts({
   // Calculate year distribution
   const YEAR_ORDER = ['Pre-University', 'Year 1', 'Year 2', 'Year 3', 'Year 4', 'Masters', 'PhD'];
   const yearCounts: Record<string, number> = {};
-  for (const scholar of (scholars || [])) {
-    if (!scholar) continue;
-    const rawYear = scholar.year || 'Unknown';
+  for (const stat of (scholarYearStats || [])) {
+    if (!stat) continue;
+    const rawYear = stat.year || 'Unknown';
     const rawYearTrim = rawYear.trim();
     const matched = YEAR_ORDER.find((y) => y.toLowerCase() === rawYearTrim.toLowerCase());
 
@@ -106,7 +106,7 @@ export function DashboardCharts({
       }
     }
 
-    yearCounts[yearLabel] = (yearCounts[yearLabel] || 0) + 1;
+    yearCounts[yearLabel] = (yearCounts[yearLabel] || 0) + stat.count;
   }
 
   const sortedYears = Object.keys(yearCounts).sort((a, b) => {

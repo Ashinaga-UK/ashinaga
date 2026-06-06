@@ -29,6 +29,7 @@ import { ScholarOnboarding } from '../components/scholar-onboarding';
 import { ScholarProfilePage } from '../components/scholar-profile';
 import { StaffInviteDialog } from '../components/staff-invite-dialog';
 import { TaskAssignment } from '../components/task-assignment';
+import { TaskMonitor } from '../components/task-monitor';
 import { ThemeToggle } from '../components/theme-toggle';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Badge } from '../components/ui/badge';
@@ -51,7 +52,7 @@ import {
   getRequestStats,
   getRequests,
   getScholarStats,
-  getScholars,
+  getScholarYearStats,
   type Request,
   type RequestStats,
   type Scholar,
@@ -177,8 +178,8 @@ function StaffDashboardContent() {
   const [pendingInvitesCount, setPendingInvitesCount] = useState(0);
   const [pendingInvitesLoading, setPendingInvitesLoading] = useState(true);
   const [dashboardRefreshTrigger, setDashboardRefreshTrigger] = useState(0);
-  const [scholarsForCharts, setScholarsForCharts] = useState<Scholar[]>([]);
-  const [scholarsForChartsLoading, setScholarsForChartsLoading] = useState(true);
+  const [scholarYearStats, setScholarYearStats] = useState<{year: string, count: number}[]>([]);
+  const [scholarYearStatsLoading, setScholarYearStatsLoading] = useState(true);
 
   // Get user data from session
   const user = session.data?.user;
@@ -354,15 +355,15 @@ function StaffDashboardContent() {
     }
   }, []);
 
-  const fetchScholarsForCharts = useCallback(async () => {
-    setScholarsForChartsLoading(true);
+  const fetchScholarYearStats = useCallback(async () => {
+    setScholarYearStatsLoading(true);
     try {
-      const response = await getScholars({ limit: 1000 });
-      setScholarsForCharts(response?.data || []);
+      const response = await getScholarYearStats();
+      setScholarYearStats(response || []);
     } catch (err) {
-      console.error('Error fetching scholars for charts:', err);
+      console.error('Error fetching scholars year stats:', err);
     } finally {
-      setScholarsForChartsLoading(false);
+      setScholarYearStatsLoading(false);
     }
   }, []);
 
@@ -370,9 +371,9 @@ function StaffDashboardContent() {
     fetchScholarStats();
     fetchRequestStats();
     fetchPendingInvitesCount();
-    fetchScholarsForCharts();
+    fetchScholarYearStats();
     setDashboardRefreshTrigger((prev) => prev + 1);
-  }, [fetchScholarStats, fetchRequestStats, fetchPendingInvitesCount, fetchScholarsForCharts]);
+  }, [fetchScholarStats, fetchRequestStats, fetchPendingInvitesCount, fetchScholarYearStats]);
 
   useEffect(() => {
     // Only fetch data if user is authenticated
@@ -381,7 +382,7 @@ function StaffDashboardContent() {
       fetchScholarStats();
       fetchRequestStats();
       fetchPendingInvitesCount();
-      fetchScholarsForCharts();
+      fetchScholarYearStats();
       fetchAnnouncementFilterOptions();
       // Announcements are now auto-fetched by React Query
     }
@@ -391,7 +392,7 @@ function StaffDashboardContent() {
     fetchScholarStats,
     fetchRequestStats,
     fetchPendingInvitesCount,
-    fetchScholarsForCharts,
+    fetchScholarYearStats,
     fetchAnnouncementFilterOptions,
   ]);
 
@@ -636,25 +637,34 @@ function StaffDashboardContent() {
               <DashboardCharts
                 scholarStats={scholarStats}
                 requestStats={requestStats}
-                scholars={scholarsForCharts}
+                scholarYearStats={scholarYearStats}
                 scholarLoading={scholarStatsLoading}
                 requestLoading={requestStatsLoading}
-                scholarsLoading={scholarsForChartsLoading}
+                scholarsLoading={scholarYearStatsLoading}
               />
 
-              {/* Grid Layout for Actionable Inbox, Onboarding Tracker, Quick Actions, and Recent Activity */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Row 1 Left: Actionable Inbox (Span 2) */}
-                <div className="lg:col-span-2">
+              {/* Two-Column Stack Layout for Dashboard Elements */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                
+                {/* Left Column Stack (Span 2) */}
+                <div className="lg:col-span-2 flex flex-col gap-6">
                   <ActionableInbox
                     onNavigateToRequests={() => handleTabChange('requests')}
                     onRequestReviewed={handleDashboardDataRefresh}
                     height={quickActionsHeight}
+                    refreshTrigger={dashboardRefreshTrigger}
+                  />
+                  
+                  <TaskMonitor refreshTrigger={dashboardRefreshTrigger} />
+                  
+                  <OnboardingTracker
+                    onNavigateToInvitations={() => handleTabChange('invitations')}
+                    onInviteUpdate={handleDashboardDataRefresh}
                   />
                 </div>
 
-                {/* Row 1 Right: Quick Actions (Span 1) */}
-                <div className="lg:col-span-1">
+                {/* Right Column Stack (Span 1) */}
+                <div className="lg:col-span-1 flex flex-col gap-6">
                   {/* Quick Actions Card */}
                   <Card className="border border-border bg-card shadow-sm flex flex-col" ref={quickActionsRef}>
                     <CardHeader className="pb-2">
@@ -718,18 +728,6 @@ function StaffDashboardContent() {
                       />
                     </CardContent>
                   </Card>
-                </div>
-
-                {/* Row 2 Left: Onboarding Tracker (Span 2) */}
-                <div className="lg:col-span-2">
-                  <OnboardingTracker
-                    onNavigateToInvitations={() => handleTabChange('invitations')}
-                    onInviteUpdate={handleDashboardDataRefresh}
-                  />
-                </div>
-
-                {/* Row 2 Right: Recent Activity (Span 1) */}
-                <div className="lg:col-span-1">
                   <RecentActivity
                     onNavigateToRequests={() => handleTabChange('requests')}
                     refreshTrigger={dashboardRefreshTrigger}

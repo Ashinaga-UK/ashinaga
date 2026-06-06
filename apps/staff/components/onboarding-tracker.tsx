@@ -166,7 +166,9 @@ export function OnboardingTracker({
                     </div>
                     <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                       <Clock className="h-3 w-3 shrink-0" />
-                      <span>Expires: {new Date(invite.expiresAt).toLocaleDateString()}</span>
+                      <span className={new Date(invite.expiresAt) < new Date() ? 'text-destructive' : ''}>
+                        {new Date(invite.expiresAt) < new Date() ? 'Expired' : 'Expires'}: {new Date(invite.expiresAt).toLocaleDateString()}
+                      </span>
                       {invite.resentCount !== '0' && (
                         <>
                           <span className="mx-0.5">•</span>

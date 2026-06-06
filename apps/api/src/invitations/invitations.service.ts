@@ -123,12 +123,7 @@ export class InvitationsService {
       throw new NotFoundException('Invitation not found');
     }
 
-    if (
-      invitation.status !== 'pending' &&
-      invitation.status !== 'expired' &&
-      invitation.status !== 'cancelled' &&
-      invitation.status !== 'accepted'
-    ) {
+    if (invitation.status !== 'pending' && invitation.status !== 'expired') {
       throw new BadRequestException(`Cannot resend invitation with status: ${invitation.status}`);
     }
 

@@ -196,6 +196,7 @@ function InvitationList({ userType }: InvitationListProps) {
             {filtered.map((inv) => {
               const expires = new Date(inv.expiresAt);
               const isPending = inv.status === 'pending';
+              const canResend = inv.status === 'pending' || inv.status === 'expired';
               return (
                 <li key={inv.id} className="rounded-lg border p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -229,15 +230,26 @@ function InvitationList({ userType }: InvitationListProps) {
                     </div>
                   </dl>
                   <div className="mt-4 grid grid-cols-2 gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={!isPending || busyId !== null}
-                      onClick={() => handleResend(inv.id)}
-                    >
-                      {busyId === inv.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Resend'}
-                    </Button>
+                    {inv.status === 'accepted' ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => toast({ title: 'Follow-up flow', description: 'Reactivation flow will be available in a future update.' })}
+                      >
+                        Follow-up
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={!canResend || busyId !== null}
+                        onClick={() => handleResend(inv.id)}
+                      >
+                        {busyId === inv.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Resend'}
+                      </Button>
+                    )}
                     <Button
                       type="button"
                       variant="outline"
@@ -265,6 +277,7 @@ function InvitationList({ userType }: InvitationListProps) {
               {filtered.map((inv) => {
                 const expires = new Date(inv.expiresAt);
                 const isPending = inv.status === 'pending';
+                const canResend = inv.status === 'pending' || inv.status === 'expired';
                 return (
                   <li
                     key={inv.id}
@@ -286,19 +299,30 @@ function InvitationList({ userType }: InvitationListProps) {
                       {expires.toLocaleDateString()}
                     </div>
                     <div className="col-span-2 flex justify-end gap-1">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={!isPending || busyId !== null}
-                        onClick={() => handleResend(inv.id)}
-                      >
-                        {busyId === inv.id ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          'Resend'
-                        )}
-                      </Button>
+                      {inv.status === 'accepted' ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => toast({ title: 'Follow-up flow', description: 'Reactivation flow will be available in a future update.' })}
+                        >
+                          Follow-up
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={!canResend || busyId !== null}
+                          onClick={() => handleResend(inv.id)}
+                        >
+                          {busyId === inv.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            'Resend'
+                          )}
+                        </Button>
+                      )}
                       <Button
                         type="button"
                         variant="ghost"

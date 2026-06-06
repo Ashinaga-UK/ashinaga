@@ -84,6 +84,14 @@ export class TasksController {
     return this.tasksService.getTasksByUser(userId);
   }
 
+  @Get('monitor')
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get all tasks across scholars for monitoring' })
+  async getTaskMonitorData() {
+    return this.tasksService.getTaskMonitorData();
+  }
+
   @Get('scholar/:scholarId')
   @ApiOperation({ summary: 'Get all tasks for a specific scholar' })
   async getTasksByScholar(@Param('scholarId') scholarId: string) {

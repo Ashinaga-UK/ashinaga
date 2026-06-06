@@ -333,7 +333,7 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
               )}
           </div>
 
-          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end lg:shrink-0">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end lg:shrink-0 mt-2 sm:mt-0">
             {/* Show different buttons based on status */}
             {canMakeDecision && (
               <>

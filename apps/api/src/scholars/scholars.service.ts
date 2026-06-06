@@ -587,6 +587,22 @@ export class ScholarsService {
     };
   }
 
+  async getScholarYearStats(): Promise<{ year: string; count: number }[]> {
+    const statsResult = await database
+      .select({
+        year: scholars.year,
+        count: count(),
+      })
+      .from(scholars)
+      .where(not(eq(scholars.status, 'archived')))
+      .groupBy(scholars.year);
+
+    return statsResult.map(row => ({
+      year: row.year || 'Unknown',
+      count: row.count,
+    }));
+  }
+
   async getScholarStats(): Promise<{
     total: number;
     active: number;

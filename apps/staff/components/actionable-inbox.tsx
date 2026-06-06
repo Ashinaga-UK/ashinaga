@@ -12,12 +12,14 @@ interface ActionableInboxProps {
   onNavigateToRequests: () => void;
   onRequestReviewed: () => void;
   height?: number | null;
+  refreshTrigger?: number;
 }
 
 export function ActionableInbox({
   onNavigateToRequests,
   onRequestReviewed,
   height,
+  refreshTrigger = 0,
 }: ActionableInboxProps) {
   const [requests, setRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +46,11 @@ export function ActionableInbox({
 
   useEffect(() => {
     fetchPendingRequests();
-  }, [fetchPendingRequests]);
+    const interval = setInterval(() => {
+      fetchPendingRequests();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [fetchPendingRequests, refreshTrigger]);
 
   const handleStatusUpdate = (requestId: string, status: string, comment?: string) => {
     // Refresh local list
