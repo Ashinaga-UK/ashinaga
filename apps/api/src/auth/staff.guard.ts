@@ -2,7 +2,7 @@ import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { getDatabase } from '../db/connection';
-import { staff } from '../db/schema';
+import { staff, users } from '../db/schema';
 import { auth } from './auth.config';
 
 @Injectable()
@@ -21,13 +21,27 @@ export class StaffGuard implements CanActivate {
       }
 
       // Check if user is staff
-      const userType = (session.user as any).userType;
+      let userType = (session.user as any).userType || (session.user as any).user_type;
+      
+      const db = getDatabase();
+
+      // Fallback: check database directly if not set to 'staff' in session
+      if (userType !== 'staff') {
+        const userRec = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, session.user.id))
+          .limit(1);
+        if (userRec[0]) {
+          userType = userRec[0].userType;
+        }
+      }
+
       if (userType !== 'staff') {
         throw new ForbiddenException('Access restricted to staff members only');
       }
 
       // Verify staff status in database
-      const db = getDatabase();
       const staffMember = await db
         .select()
         .from(staff)
@@ -55,3 +69,4 @@ export class StaffGuard implements CanActivate {
     }
   }
 }
+

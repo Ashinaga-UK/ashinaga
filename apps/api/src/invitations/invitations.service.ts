@@ -123,7 +123,7 @@ export class InvitationsService {
       throw new NotFoundException('Invitation not found');
     }
 
-    if (invitation.status !== 'pending') {
+    if (invitation.status !== 'pending' && invitation.status !== 'expired') {
       throw new BadRequestException(`Cannot resend invitation with status: ${invitation.status}`);
     }
 
@@ -133,8 +133,7 @@ export class InvitationsService {
       throw new BadRequestException('Maximum resend limit reached for this invitation');
     }
 
-    // If the invitation has passed its expiry, extend it so the resent link is usable.
-    const isExpired = new Date() > new Date(invitation.expiresAt);
+    // Extend expiry so the link is usable.
     const newExpiresAt = new Date();
     newExpiresAt.setDate(newExpiresAt.getDate() + 30);
 
@@ -142,13 +141,14 @@ export class InvitationsService {
     const inviteUrl = this.buildInviteUrl(invitation.token, invitation.userType);
     await this.sendInvitationEmail(invitation.email, inviteUrl, invitation.userType);
 
-    // Update resend information (and refresh expiry if it had lapsed)
+    // Update resend information, reset status to pending, and refresh expiry
     await db
       .update(invitations)
       .set({
+        status: 'pending',
         lastResentAt: new Date(),
         resentCount: String(resentCount + 1),
-        ...(isExpired ? { expiresAt: newExpiresAt } : {}),
+        expiresAt: newExpiresAt,
         updatedAt: new Date(),
       })
       .where(eq(invitations.id, invitationId));

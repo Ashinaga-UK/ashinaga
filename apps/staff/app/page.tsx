@@ -12,22 +12,29 @@ import {
   Users,
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { forwardRef, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { forwardRef, Suspense, useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { ActionableInbox } from '../components/actionable-inbox';
 import { AnnouncementCreator } from '../components/announcement-creator';
+import { DashboardCharts } from '../components/dashboard-charts';
 import { InvitationsManagement } from '../components/invitations-management';
 import { LoginPage } from '../components/login-page';
 import { MyProfile } from '../components/my-profile';
+import { OnboardScholarDialog } from '../components/onboard-scholar-dialog';
+import { OnboardingTracker } from '../components/onboarding-tracker';
+import { RecentActivity } from '../components/recent-activity';
 import { RequestManagement } from '../components/request-management';
+import { ReviewRequestsDialog } from '../components/review-requests-dialog';
 import { ScholarManagementTable } from '../components/scholar-management-table';
 import { ScholarOnboarding } from '../components/scholar-onboarding';
 import { ScholarProfilePage } from '../components/scholar-profile';
 import { StaffInviteDialog } from '../components/staff-invite-dialog';
 import { TaskAssignment } from '../components/task-assignment';
+import { TaskMonitor } from '../components/task-monitor';
 import { ThemeToggle } from '../components/theme-toggle';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
-import { Card, CardContent } from '../components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import {
   Select,
   SelectContent,
@@ -41,11 +48,14 @@ import {
   type AnnouncementFilterOptions,
   deleteAnnouncement,
   getAnnouncementFilterOptions,
+  getInvitations,
   getRequestStats,
   getRequests,
   getScholarStats,
+  getScholarYearStats,
   type Request,
   type RequestStats,
+  type Scholar,
   type ScholarStats,
 } from '../lib/api-client';
 import { signOut, useSession } from '../lib/auth-client';
@@ -113,6 +123,20 @@ function StaffDashboardContent() {
   const searchParams = useSearchParams();
   const session = useSession();
 
+  const quickActionsRef = useRef<HTMLDivElement>(null);
+  const [quickActionsHeight, setQuickActionsHeight] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!quickActionsRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setQuickActionsHeight(entry.target.getBoundingClientRect().height);
+      }
+    });
+    observer.observe(quickActionsRef.current);
+    return () => observer.disconnect();
+  }, []);
+
   // Get values from URL or use defaults
   const tabFromUrl = searchParams.get('tab') || 'overview';
   const viewFromUrl = searchParams.get('view') || 'dashboard';
@@ -151,6 +175,11 @@ function StaffDashboardContent() {
   const [scholarStatsLoading, setScholarStatsLoading] = useState(true);
   const [requestStats, setRequestStats] = useState<RequestStats | null>(null);
   const [requestStatsLoading, setRequestStatsLoading] = useState(true);
+  const [pendingInvitesCount, setPendingInvitesCount] = useState(0);
+  const [pendingInvitesLoading, setPendingInvitesLoading] = useState(true);
+  const [dashboardRefreshTrigger, setDashboardRefreshTrigger] = useState(0);
+  const [scholarYearStats, setScholarYearStats] = useState<{year: string, count: number}[]>([]);
+  const [scholarYearStatsLoading, setScholarYearStatsLoading] = useState(true);
 
   // Get user data from session
   const user = session.data?.user;
@@ -270,7 +299,7 @@ function StaffDashboardContent() {
         sortBy: 'submittedDate',
         sortOrder: 'desc',
       });
-      setRequests(response.data);
+      setRequests(response?.data || []);
     } catch (err) {
       setRequestsError(err instanceof Error ? err.message : 'Failed to load requests');
       console.error('Error fetching requests:', err);
@@ -314,12 +343,46 @@ function StaffDashboardContent() {
 
   // Announcements are now fetched via React Query
 
+  const fetchPendingInvitesCount = useCallback(async () => {
+    setPendingInvitesLoading(true);
+    try {
+      const list = await getInvitations('pending');
+      setPendingInvitesCount(Array.isArray(list) ? list.length : 0);
+    } catch (err) {
+      console.error('Error fetching pending invitations:', err);
+    } finally {
+      setPendingInvitesLoading(false);
+    }
+  }, []);
+
+  const fetchScholarYearStats = useCallback(async () => {
+    setScholarYearStatsLoading(true);
+    try {
+      const response = await getScholarYearStats();
+      setScholarYearStats(response || []);
+    } catch (err) {
+      console.error('Error fetching scholars year stats:', err);
+    } finally {
+      setScholarYearStatsLoading(false);
+    }
+  }, []);
+
+  const handleDashboardDataRefresh = useCallback(() => {
+    fetchScholarStats();
+    fetchRequestStats();
+    fetchPendingInvitesCount();
+    fetchScholarYearStats();
+    setDashboardRefreshTrigger((prev) => prev + 1);
+  }, [fetchScholarStats, fetchRequestStats, fetchPendingInvitesCount, fetchScholarYearStats]);
+
   useEffect(() => {
     // Only fetch data if user is authenticated
     if (isAuthenticated) {
       fetchRequests();
       fetchScholarStats();
       fetchRequestStats();
+      fetchPendingInvitesCount();
+      fetchScholarYearStats();
       fetchAnnouncementFilterOptions();
       // Announcements are now auto-fetched by React Query
     }
@@ -328,6 +391,8 @@ function StaffDashboardContent() {
     fetchRequests,
     fetchScholarStats,
     fetchRequestStats,
+    fetchPendingInvitesCount,
+    fetchScholarYearStats,
     fetchAnnouncementFilterOptions,
   ]);
 
@@ -346,14 +411,20 @@ function StaffDashboardContent() {
   };
 
   const navigateToScholars = () => {
+    setActiveTab('scholars');
+    setCurrentView('dashboard');
     router.push('?tab=scholars');
   };
 
   const navigateToRequests = () => {
+    setActiveTab('requests');
+    setCurrentView('dashboard');
     router.push('?tab=requests');
   };
 
   const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setCurrentView('dashboard');
     router.push(tab === 'overview' ? '/' : `?tab=${tab}`);
   };
 
@@ -475,15 +546,12 @@ function StaffDashboardContent() {
               <TabsTrigger value="scholars">Scholars</TabsTrigger>
               <TabsTrigger value="requests">Requests</TabsTrigger>
               <TabsTrigger value="announcements">Announcements</TabsTrigger>
-              <TabsTrigger value="invitations" className="gap-1.5">
-                <Mail className="h-3.5 w-3.5" />
-                Invitations
-              </TabsTrigger>
+              <TabsTrigger value="invitations">Invitations</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
               {/* Stats Overview — flatter, tabular numerals, brand chip rather than gradient tile */}
-              <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-3">
                 <button
                   type="button"
                   onClick={navigateToScholars}
@@ -538,62 +606,131 @@ function StaffDashboardContent() {
                     </div>
                   </div>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleTabChange('invitations')}
+                  className="group text-left rounded-lg border bg-card p-4 transition-colors hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:p-5"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 space-y-1">
+                      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        Pending Invitations
+                      </p>
+                      {pendingInvitesLoading ? (
+                        <Skeleton className="h-9 w-20" />
+                      ) : (
+                        <p className="text-3xl font-semibold tracking-tight tabular-nums text-foreground">
+                          {pendingInvitesCount}
+                        </p>
+                      )}
+                      <p className="text-xs text-muted-foreground">Awaiting registration</p>
+                    </div>
+                    <div className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40 transition-colors group-hover:bg-muted min-[430px]:flex sm:h-9 sm:w-9">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  </div>
+                </button>
               </div>
 
-              {/* Quick Actions */}
-              <div className="rounded-lg border bg-card">
-                <div className="flex items-center justify-between p-4 pb-3 sm:p-5 sm:pb-3">
-                  <div className="space-y-0.5">
-                    <h3 className="text-sm font-semibold leading-none tracking-tight">
-                      Quick actions
-                    </h3>
-                    <p className="text-xs text-muted-foreground">
-                      Common tasks to keep scholars moving forward.
-                    </p>
-                  </div>
+              {/* Charts Section */}
+              <DashboardCharts
+                scholarStats={scholarStats}
+                requestStats={requestStats}
+                scholarYearStats={scholarYearStats}
+                scholarLoading={scholarStatsLoading}
+                requestLoading={requestStatsLoading}
+                scholarsLoading={scholarYearStatsLoading}
+              />
+
+              {/* Two-Column Stack Layout for Dashboard Elements */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                
+                {/* Left Column Stack (Span 2) */}
+                <div className="lg:col-span-2 flex flex-col gap-6">
+                  <ActionableInbox
+                    onNavigateToRequests={() => handleTabChange('requests')}
+                    onRequestReviewed={handleDashboardDataRefresh}
+                    height={quickActionsHeight}
+                    refreshTrigger={dashboardRefreshTrigger}
+                  />
+                  
+                  <TaskMonitor refreshTrigger={dashboardRefreshTrigger} />
+                  
+                  <OnboardingTracker
+                    onNavigateToInvitations={() => handleTabChange('invitations')}
+                    onInviteUpdate={handleDashboardDataRefresh}
+                  />
                 </div>
-                <div className="grid grid-cols-1 gap-px border-t bg-border min-[520px]:grid-cols-2 lg:grid-cols-5 lg:gap-3 lg:border-t-0 lg:bg-transparent lg:p-5 lg:pt-2">
-                  <QuickActionButton
-                    icon={<Users className="h-4 w-4" />}
-                    label="Onboard Scholar"
-                    description="Create a new scholar profile and invitation."
-                    onClick={() => router.push('?view=onboarding')}
-                    primary
-                  />
-                  <TaskAssignment
-                    trigger={
-                      <QuickActionButton
-                        icon={<FileText className="h-4 w-4" />}
-                        label="Assign Task"
-                        description="Send a task to one or more scholars."
+
+                {/* Right Column Stack (Span 1) */}
+                <div className="lg:col-span-1 flex flex-col gap-6">
+                  {/* Quick Actions Card */}
+                  <Card className="border border-border bg-card shadow-sm flex flex-col" ref={quickActionsRef}>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-semibold">Quick Actions</CardTitle>
+                      <CardDescription className="text-xs">
+                        Common portal management tasks.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-1 gap-2 flex-1 justify-center">
+                      <OnboardScholarDialog
+                        trigger={
+                          <QuickActionButton
+                            icon={<Users className="h-4 w-4" />}
+                            label="Onboard Scholar"
+                            primary
+                            className="rounded-lg border border-border w-full py-3"
+                          />
+                        }
                       />
-                    }
-                    onSuccess={(scholarId) => {
-                      router.push(
-                        `?tab=scholars&view=scholar-profile&scholarId=${scholarId}&scholarTab=tasks`
-                      );
-                    }}
-                  />
-                  <QuickActionButton
-                    icon={<MessageSquare className="h-4 w-4" />}
-                    label="Create Announcement"
-                    description="Publish an update for filtered scholars."
-                    onClick={() => router.push('?tab=announcements')}
-                  />
-                  <QuickActionButton
-                    icon={<FileText className="h-4 w-4" />}
-                    label="Review Requests"
-                    description="Triage funding and requirement submissions."
-                    onClick={() => router.push('?tab=requests')}
-                  />
-                  <StaffInviteDialog
-                    trigger={
-                      <QuickActionButton
-                        icon={<UserPlus className="h-4 w-4" />}
-                        label="Invite Staff"
-                        description="Add another staff member to the portal."
+                      <TaskAssignment
+                        trigger={
+                          <QuickActionButton
+                            icon={<FileText className="h-4 w-4" />}
+                            label="Assign Task"
+                            className="rounded-lg border border-border w-full py-3"
+                          />
+                        }
+                        onSuccess={(scholarId) => {
+                          router.push(
+                            `?tab=scholars&view=scholar-profile&scholarId=${scholarId}&scholarTab=tasks`
+                          );
+                        }}
                       />
-                    }
+                      <AnnouncementCreator
+                        trigger={
+                          <QuickActionButton
+                            icon={<MessageSquare className="h-4 w-4" />}
+                            label="Create Announcement"
+                            className="rounded-lg border border-border w-full py-3"
+                          />
+                        }
+                      />
+                      <ReviewRequestsDialog
+                        trigger={
+                          <QuickActionButton
+                            icon={<FileText className="h-4 w-4" />}
+                            label="Review Requests"
+                            className="rounded-lg border border-border w-full py-3"
+                          />
+                        }
+                        onUpdate={handleDashboardDataRefresh}
+                      />
+                      <StaffInviteDialog
+                        trigger={
+                          <QuickActionButton
+                            icon={<UserPlus className="h-4 w-4" />}
+                            label="Invite Staff"
+                            className="rounded-lg border border-border w-full py-3"
+                          />
+                        }
+                      />
+                    </CardContent>
+                  </Card>
+                  <RecentActivity
+                    onNavigateToRequests={() => handleTabChange('requests')}
+                    refreshTrigger={dashboardRefreshTrigger}
                   />
                 </div>
               </div>
@@ -700,7 +837,7 @@ function StaffDashboardContent() {
             </TabsContent>
 
             <TabsContent value="invitations" className="space-y-6">
-              <InvitationsManagement onOnboardScholar={() => router.push('?view=onboarding')} />
+              <InvitationsManagement />
             </TabsContent>
 
             <TabsContent value="announcements" className="space-y-6">

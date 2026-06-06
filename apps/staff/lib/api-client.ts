@@ -566,6 +566,15 @@ export async function getScholarStats(): Promise<ScholarStats> {
   return fetchAPI<ScholarStats>('/api/scholars/stats');
 }
 
+export interface ScholarYearStat {
+  year: string;
+  count: number;
+}
+
+export async function getScholarYearStats(): Promise<ScholarYearStat[]> {
+  return fetchAPI<ScholarYearStat[]>('/api/scholars/stats/years');
+}
+
 // Scholar filter options (for scholar management table)
 export interface ScholarFilterOptions {
   programs: string[];
@@ -663,6 +672,22 @@ export async function createBulkTasks(
 
 export async function getTasksByScholar(scholarId: string): Promise<Task[]> {
   return fetchAPI<Task[]>(`/api/tasks/scholar/${scholarId}`);
+}
+
+export interface TaskMonitorItem {
+  id: string;
+  title: string;
+  type: string;
+  dueDate: string;
+  status: 'pending' | 'in_progress' | 'completed';
+  scholarId: string;
+  scholarName: string;
+  program: string;
+  cohort: string;
+}
+
+export async function getTaskMonitorData(): Promise<TaskMonitorItem[]> {
+  return fetchAPI<TaskMonitorItem[]>('/api/tasks/monitor');
 }
 
 export interface UpdateTaskData {

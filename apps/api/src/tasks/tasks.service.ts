@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { and, desc, eq, ilike, inArray, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, ilike, inArray, isNull, ne, sql } from 'drizzle-orm';
 import { getDatabase } from '../db/connection';
 import { scholars } from '../db/schema/scholars';
 import { taskAttachments, taskResponses } from '../db/schema/task-responses';
@@ -150,6 +150,36 @@ export class TasksService {
       .from(tasks)
       .leftJoin(users, eq(tasks.assignedBy, users.id))
       .where(and(eq(tasks.scholarId, scholarId), isNull(tasks.deletedAt)))
+      .orderBy(tasks.dueDate);
+
+    return results;
+  }
+
+  async getTaskMonitorData() {
+    const results = await this.db
+      .select({
+        id: tasks.id,
+        title: tasks.title,
+        type: tasks.type,
+        dueDate: tasks.dueDate,
+        status: tasks.status,
+        scholarId: tasks.scholarId,
+        scholarName: users.name,
+        program: scholars.program,
+        cohort: scholars.year,
+      })
+      .from(tasks)
+      .innerJoin(scholars, eq(tasks.scholarId, scholars.id))
+      .innerJoin(users, eq(scholars.userId, users.id))
+      .where(
+        and(
+          isNull(tasks.deletedAt),
+          inArray(
+            tasks.assignedBy,
+            this.db.select({ id: users.id }).from(users).where(eq(users.userType, 'staff'))
+          )
+        )
+      )
       .orderBy(tasks.dueDate);
 
     return results;
