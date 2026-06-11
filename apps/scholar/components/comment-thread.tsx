@@ -1,13 +1,13 @@
 'use client';
 
-import { MessageSquare, Send, Edit2, Trash2, X } from 'lucide-react';
+import { Edit2, MessageSquare, Send, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
   createGoalComment,
   deleteGoalComment,
+  type GoalComment,
   getGoalComments,
   updateGoalComment,
-  type GoalComment,
 } from '../lib/api/comments';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';

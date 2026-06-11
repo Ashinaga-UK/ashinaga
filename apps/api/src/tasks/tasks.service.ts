@@ -1,17 +1,21 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq, ilike, inArray, isNull, sql } from 'drizzle-orm';
 import { getDatabase } from '../db/connection';
 import { scholars } from '../db/schema/scholars';
 import { taskAttachments, taskResponses } from '../db/schema/task-responses';
 import { tasks } from '../db/schema/tasks';
 import { users } from '../db/schema/users';
+import { EmailService } from '../email/email.service';
 import { AttachmentDto, CompleteTaskDto } from './dto/complete-task.dto';
+import { CreateBulkTasksDto } from './dto/create-bulk-tasks.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 
 @Injectable()
 export class TasksService {
   private db = getDatabase();
+
+  constructor(private readonly emailService: EmailService) {}
 
   private getArchiveWhereCondition(scholarId: string, includeArchived = false) {
     if (includeArchived) {
@@ -33,6 +37,57 @@ export class TasksService {
     }
   }
 
+  private async notifyScholarsOfAssignment(
+    scholarIds: string[],
+    assignedBy: string,
+    taskInfo: {
+      title: string;
+      description: string | null;
+      type: string;
+      priority: 'high' | 'medium' | 'low';
+      dueDate: Date;
+    }
+  ): Promise<void> {
+    if (scholarIds.length === 0) return;
+
+    const recipients = await this.db
+      .select({
+        scholarId: scholars.id,
+        email: users.email,
+        name: users.name,
+      })
+      .from(scholars)
+      .innerJoin(users, eq(scholars.userId, users.id))
+      .where(inArray(scholars.id, scholarIds));
+
+    const [assigner] = await this.db
+      .select({ name: users.name })
+      .from(users)
+      .where(eq(users.id, assignedBy))
+      .limit(1);
+
+    const assignerName = assigner?.name ?? null;
+
+    await Promise.allSettled(
+      recipients.map((recipient) =>
+        this.emailService
+          .sendTaskAssignmentNotification(
+            recipient.email,
+            recipient.name,
+            taskInfo.title,
+            taskInfo.description,
+            taskInfo.type,
+            taskInfo.priority,
+            taskInfo.dueDate,
+            assignerName
+          )
+          .catch((error) => {
+            console.error(`Failed to send task assignment email to ${recipient.email}:`, error);
+          })
+      )
+    );
+  }
+
   async createTask(createTaskDto: CreateTaskDto, assignedBy: string) {
     const [task] = await this.db
       .insert(tasks)
@@ -48,7 +103,42 @@ export class TasksService {
       })
       .returning();
 
+    void this.notifyScholarsOfAssignment([task.scholarId], assignedBy, {
+      title: task.title,
+      description: task.description,
+      type: task.type,
+      priority: task.priority,
+      dueDate: task.dueDate,
+    });
+
     return task;
+  }
+
+  async createBulkTasks(dto: CreateBulkTasksDto, assignedBy: string) {
+    const uniqueScholarIds = Array.from(new Set(dto.scholarIds));
+    const dueDate = new Date(dto.dueDate);
+    const rows = uniqueScholarIds.map((scholarId) => ({
+      title: dto.title,
+      description: dto.description,
+      type: dto.type,
+      priority: dto.priority || 'medium',
+      dueDate,
+      scholarId,
+      assignedBy,
+      status: 'pending' as const,
+    }));
+
+    const inserted = await this.db.insert(tasks).values(rows).returning();
+
+    void this.notifyScholarsOfAssignment(uniqueScholarIds, assignedBy, {
+      title: dto.title,
+      description: dto.description ?? null,
+      type: dto.type,
+      priority: dto.priority || 'medium',
+      dueDate,
+    });
+
+    return { created: inserted.length, tasks: inserted };
   }
 
   async getTasksByUser(userId: string, includeArchived = false) {
@@ -84,10 +174,58 @@ export class TasksService {
       })
       .from(tasks)
       .leftJoin(users, eq(tasks.assignedBy, users.id))
-      .where(this.getArchiveWhereCondition(scholarId, includeArchived))
+      .where(and(this.getArchiveWhereCondition(scholarId, includeArchived), isNull(tasks.deletedAt)))
       .orderBy(tasks.dueDate);
 
     return results;
+  }
+
+  async getTitleSuggestions(query: string, assignedBy: string, limit = 8) {
+    const trimmed = (query || '').trim();
+    const baseConditions = [eq(tasks.archived, false), isNull(tasks.deletedAt), eq(tasks.assignedBy, assignedBy)];
+    if (trimmed.length > 0) {
+      baseConditions.push(ilike(tasks.title, `${trimmed}%`));
+    }
+
+    const rows = await this.db
+      .select({
+        title: tasks.title,
+        description: sql<string | null>`max(${tasks.description})`.as('description'),
+        type: sql<string>`(array_agg(${tasks.type} ORDER BY ${tasks.createdAt} DESC))[1]`.as(
+          'type'
+        ),
+        priority:
+          sql<string>`(array_agg(${tasks.priority} ORDER BY ${tasks.createdAt} DESC))[1]`.as(
+            'priority'
+          ),
+        lastUsedAt: sql<Date>`max(${tasks.createdAt})`.as('last_used_at'),
+        useCount: sql<number>`count(*)::int`.as('use_count'),
+      })
+      .from(tasks)
+      .where(and(...baseConditions))
+      .groupBy(tasks.title)
+      .orderBy(desc(sql`max(${tasks.createdAt})`))
+      .limit(Math.max(1, Math.min(limit, 25)));
+
+    return rows;
+  }
+
+  async softDeleteTask(taskId: string, deletedBy: string) {
+    const [task] = await this.db.select().from(tasks).where(eq(tasks.id, taskId));
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+    if (task.deletedAt) {
+      return { id: taskId, alreadyDeleted: true };
+    }
+
+    const [deleted] = await this.db
+      .update(tasks)
+      .set({ deletedAt: new Date(), deletedBy, updatedAt: new Date() })
+      .where(eq(tasks.id, taskId))
+      .returning();
+
+    return { id: deleted.id, alreadyDeleted: false };
   }
 
   async updateTaskStatus(taskId: string, status: 'pending' | 'in_progress' | 'completed') {
@@ -135,8 +273,8 @@ export class TasksService {
       throw new NotFoundException('Task not found');
     }
 
-    if (task.archived) {
-      throw new Error('Task is already archived');
+    if (task.archived || task.deletedAt) {
+      return { ...task, alreadyDeleted: true };
     }
 
     const [archivedTask] = await this.db
@@ -145,12 +283,14 @@ export class TasksService {
         archived: true,
         archivedAt: new Date(),
         archivedBy,
+        deletedAt: new Date(),
+        deletedBy: archivedBy,
         updatedAt: new Date(),
       })
       .where(eq(tasks.id, taskId))
       .returning();
 
-    return archivedTask;
+    return { ...archivedTask, alreadyDeleted: false };
   }
 
   async restoreTask(taskId: string, restoredBy: string) {
@@ -162,16 +302,14 @@ export class TasksService {
       throw new NotFoundException('Task not found');
     }
 
-    if (!task.archived) {
-      throw new Error('Task is not archived');
-    }
-
     const [restoredTask] = await this.db
       .update(tasks)
       .set({
         archived: false,
         archivedAt: null,
         archivedBy: null,
+        deletedAt: null,
+        deletedBy: null,
         updatedAt: new Date(),
       })
       .where(eq(tasks.id, taskId))

@@ -3,7 +3,9 @@
  * Kept in sync with scholar app where applicable.
  */
 
-export const GENDER_OPTIONS = [
+export type Gender = 'male' | 'female' | 'other' | 'prefer_not_to_say';
+
+export const GENDER_OPTIONS: readonly { value: Gender; label: string }[] = [
   { value: 'male', label: 'Male' },
   { value: 'female', label: 'Female' },
   { value: 'other', label: 'Other' },

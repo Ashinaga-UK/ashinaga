@@ -74,6 +74,12 @@ export class RequestAuditLogDto {
   createdAt: Date;
 }
 
+export class RequestAssigneeDto {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export class RequestResponseDto {
   id: string;
   scholarId: string;
@@ -95,6 +101,7 @@ export class RequestResponseDto {
   reviewedBy?: string | null;
   reviewComment?: string | null;
   reviewDate?: Date | null;
+  assignees: RequestAssigneeDto[];
   attachments: RequestAttachmentDto[];
   auditLogs: RequestAuditLogDto[];
   createdAt: Date;

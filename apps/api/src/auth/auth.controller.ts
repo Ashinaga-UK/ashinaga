@@ -13,7 +13,7 @@ export class AuthController {
   private async forwardToAuth(req: FastifyRequest, res: FastifyReply, path: string) {
     const url = new URL(
       `/api/auth${path}`,
-      `${req.protocol}://${req.hostname}:${process.env.PORT || 3000}`
+      process.env.BETTER_AUTH_URL || `${req.protocol}://${req.hostname.split(':')[0]}:${process.env.PORT || 4000}`
     );
 
     const headers = new Headers();

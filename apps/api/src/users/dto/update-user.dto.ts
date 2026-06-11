@@ -6,4 +6,9 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   name?: string;
+
+  @ApiProperty({ required: false, description: 'User profile image as a data URL' })
+  @IsOptional()
+  @IsString()
+  image?: string | null;
 }

@@ -2,7 +2,7 @@
 
 import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
-import { createGoal, type CreateGoalData } from '../lib/api/goals';
+import { type CreateGoalData, createGoal } from '../lib/api/goals';
 import { Button } from './ui/button';
 import {
   Dialog,

@@ -32,6 +32,8 @@ export const tasks = pgTable('tasks', {
   archived: boolean('archived').notNull().default(false),
   archivedAt: timestamp('archived_at', { withTimezone: true }),
   archivedBy: text('archived_by').references(() => users.id),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  deletedBy: text('deleted_by').references(() => users.id),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });

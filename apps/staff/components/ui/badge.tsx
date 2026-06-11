@@ -4,16 +4,21 @@ import type * as React from 'react';
 import { cn } from '../../lib/utils';
 
 const badgeVariants = cva(
-  'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+  'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium transition-colors',
   {
     variants: {
       variant: {
-        default: 'border-transparent bg-primary text-primary-foreground hover:bg-primary/80',
-        secondary:
-          'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80',
+        default: 'border-transparent bg-primary text-primary-foreground',
+        secondary: 'border-transparent bg-secondary text-secondary-foreground',
+        outline: 'border-border text-foreground',
         destructive:
-          'border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80',
-        outline: 'text-foreground',
+          'border-destructive/20 bg-destructive/10 text-destructive dark:bg-destructive/15 dark:text-destructive-foreground/90',
+        success:
+          'border-[hsl(var(--success))]/20 bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]',
+        warning:
+          'border-[hsl(var(--warning))]/25 bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))]',
+        info: 'border-[hsl(var(--info))]/20 bg-[hsl(var(--info))]/10 text-[hsl(var(--info))]',
+        muted: 'border-border bg-muted text-muted-foreground',
       },
     },
     defaultVariants: {

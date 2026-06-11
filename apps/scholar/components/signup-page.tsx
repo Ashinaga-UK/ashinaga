@@ -4,13 +4,13 @@ import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail, User } from 'lucide-reac
 import { useRouter, useSearchParams } from 'next/navigation';
 import type React from 'react';
 import { useEffect, useState } from 'react';
-import { signIn } from '../lib/auth-client';
 import { fetchAPI } from '../lib/api-client';
+import { signIn } from '../lib/auth-client';
+import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Alert, AlertDescription } from './ui/alert';
 
 interface ScholarData {
   name?: string;

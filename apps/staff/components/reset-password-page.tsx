@@ -87,7 +87,7 @@ export function ResetPasswordPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:from-background dark:to-background flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -112,7 +112,7 @@ export function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:from-background dark:to-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="w-16 h-16 bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 rounded-lg flex items-center justify-center mx-auto mb-4">
@@ -135,7 +135,7 @@ export function ResetPasswordPage() {
             <div className="space-y-2">
               <Label htmlFor="password">New Password</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
@@ -155,9 +155,9 @@ export function ResetPasswordPage() {
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? (
-                    <EyeOff className="h-4 w-4 text-gray-400" />
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
                   ) : (
-                    <Eye className="h-4 w-4 text-gray-400" />
+                    <Eye className="h-4 w-4 text-muted-foreground" />
                   )}
                 </Button>
               </div>
@@ -166,7 +166,7 @@ export function ResetPasswordPage() {
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirm New Password</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
                   id="confirmPassword"
                   type={showConfirmPassword ? 'text' : 'password'}
@@ -186,25 +186,29 @@ export function ResetPasswordPage() {
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 >
                   {showConfirmPassword ? (
-                    <EyeOff className="h-4 w-4 text-gray-400" />
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
                   ) : (
-                    <Eye className="h-4 w-4 text-gray-400" />
+                    <Eye className="h-4 w-4 text-muted-foreground" />
                   )}
                 </Button>
               </div>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <p className="text-xs text-blue-800">
+            <div className="bg-muted border border-border rounded-lg p-3">
+              <p className="text-xs text-muted-foreground">
                 <strong>Password Requirements:</strong>
               </p>
-              <ul className="text-xs text-blue-700 mt-1 space-y-1">
-                <li className={password.length >= 8 ? 'text-green-700' : ''}>
+              <ul className="text-xs text-muted-foreground mt-1 space-y-1">
+                <li
+                  className={password.length >= 8 ? 'text-emerald-600 dark:text-emerald-400' : ''}
+                >
                   • At least 8 characters long
                 </li>
                 <li
                   className={
-                    password === confirmPassword && password.length > 0 ? 'text-green-700' : ''
+                    password === confirmPassword && password.length > 0
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : ''
                   }
                 >
                   • Passwords must match

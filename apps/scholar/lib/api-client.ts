@@ -43,10 +43,33 @@ export interface Announcement {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  filters?: Array<{ type: string; value: string }>;
 }
 
-export async function getMyAnnouncements(): Promise<Announcement[]> {
-  return fetchAPI<Announcement[]>('/api/announcements/my-announcements');
+export interface GetMyAnnouncementsParams {
+  year?: string;
+  program?: string;
+  university?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+export async function getMyAnnouncements(
+  params?: GetMyAnnouncementsParams
+): Promise<Announcement[]> {
+  const queryParams = new URLSearchParams();
+
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '' && value !== 'all') {
+        queryParams.append(key, String(value));
+      }
+    });
+  }
+
+  const queryString = queryParams.toString();
+  return fetchAPI<Announcement[]>(
+    `/api/announcements/my-announcements${queryString ? `?${queryString}` : ''}`
+  );
 }
 
 // Request types and functions
@@ -70,6 +93,12 @@ export interface RequestAuditLog {
   createdAt: string;
 }
 
+export interface RequestAssignee {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export interface Request {
   id: string;
   scholarId: string;
@@ -91,6 +120,7 @@ export interface Request {
   reviewedBy?: string | null;
   reviewComment?: string | null;
   reviewDate?: string | null;
+  assignees?: RequestAssignee[];
   attachments: RequestAttachment[];
   auditLogs: RequestAuditLog[];
   createdAt: string;
@@ -112,7 +142,7 @@ export interface CreateRequestData {
   formData?: Record<string, any>;
   priority?: 'high' | 'medium' | 'low';
   attachmentIds?: string[];
-  assignedTo?: string;
+  assigneeIds: string[];
 }
 
 export async function createRequest(data: CreateRequestData): Promise<Request> {
@@ -131,6 +161,21 @@ export async function archiveRequest(requestId: string): Promise<Request> {
 export async function restoreRequest(requestId: string): Promise<Request> {
   return fetchAPI<Request>(`/api/requests/${requestId}/restore`, {
     method: 'PATCH',
+  });
+}
+
+export interface RespondToRequestData {
+  comment: string;
+  attachmentIds?: string[];
+}
+
+export async function respondToRequest(
+  requestId: string,
+  data: RespondToRequestData
+): Promise<{ id: string; status: string; updatedAt: string }> {
+  return fetchAPI(`/api/requests/${requestId}/respond`, {
+    method: 'POST',
+    body: JSON.stringify(data),
   });
 }
 

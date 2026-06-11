@@ -3,6 +3,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -15,6 +17,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
 import { CompleteTaskDto } from './dto/complete-task.dto';
+import { CreateBulkTasksDto } from './dto/create-bulk-tasks.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { TasksService } from './tasks.service';
@@ -43,6 +46,39 @@ export class TasksController {
       throw new Error('User not authenticated');
     }
     return this.tasksService.createTask(createTaskDto, assignedBy);
+  }
+
+  @Post('bulk')
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create the same task for multiple scholars at once' })
+  async createBulkTasks(@Body() dto: CreateBulkTasksDto, @Req() req: any) {
+    const assignedBy = req.user?.id;
+    if (!assignedBy) {
+      throw new Error('User not authenticated');
+    }
+    return this.tasksService.createBulkTasks(dto, assignedBy);
+  }
+
+  @Get('suggestions')
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get title suggestions from previously assigned tasks' })
+  async getTitleSuggestions(
+    @Query('q') q: string | undefined,
+    @Query('limit') limit: string | undefined,
+    @Req() req: any
+  ) {
+    const assignedBy = req.user?.id;
+    if (!assignedBy) {
+      throw new Error('User not authenticated');
+    }
+    const parsedLimit = Number.parseInt(limit ?? '', 10);
+    return this.tasksService.getTitleSuggestions(
+      q ?? '',
+      assignedBy,
+      Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 8
+    );
   }
 
   @Get('my-tasks')

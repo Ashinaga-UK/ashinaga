@@ -13,6 +13,8 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:coverage:open": "jest --coverage && open coverage/lcov-report/index.html",
+    "test:e2e": "playwright test",
+    "test:e2e:install": "playwright install --with-deps chromium chrome",
     "format": "biome format --write ."
   },
   "dependencies": {
@@ -73,6 +75,8 @@
   "devDependencies": {
     "@playwright/test": "^1.54.1",
     "@testing-library/jest-dom": "^6.4.2",
+    "@types/pg": "^8.11.0",
+    "pg": "^8.16.3",
     "@testing-library/react": "^15.0.2",
     "@testing-library/user-event": "^14.5.2",
     "@types/jest": "^29.5.12",

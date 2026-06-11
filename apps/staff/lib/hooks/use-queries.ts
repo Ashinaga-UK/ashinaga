@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  type CreateTaskData,
   archiveTask,
   archiveScholar,
+  type CreateTaskData,
   createAnnouncement,
   createTask,
   deleteScholar,
+  deleteTask,
+  type GetAnnouncementsParams,
   getAnnouncements,
   getScholarProfile,
   getTasksByScholar,
@@ -23,7 +25,7 @@ export const queryKeys = {
   scholarProfile: (id: string) => ['scholar', id, 'profile'] as const,
   scholarTasks: (id: string) => ['scholar', id, 'tasks'] as const,
   user: ['user'] as const,
-  announcements: ['announcements'] as const,
+  announcements: (params?: GetAnnouncementsParams) => ['announcements', params] as const,
 };
 
 // Scholar profile query
@@ -85,10 +87,10 @@ export function useUpdateUser() {
 }
 
 // Announcements query
-export function useAnnouncements(enabled = true) {
+export function useAnnouncements(params?: GetAnnouncementsParams, enabled = true) {
   return useQuery({
-    queryKey: queryKeys.announcements,
-    queryFn: getAnnouncements,
+    queryKey: queryKeys.announcements(params),
+    queryFn: () => getAnnouncements(params),
     enabled,
   });
 }
@@ -102,7 +104,7 @@ export function useCreateAnnouncement() {
     onSuccess: () => {
       // Invalidate and refetch announcements
       queryClient.invalidateQueries({
-        queryKey: queryKeys.announcements,
+        queryKey: ['announcements'],
       });
     },
   });
@@ -147,6 +149,23 @@ export function useRestoreTask() {
       const scholarId = updatedTask.scholarId;
       queryClient.invalidateQueries({ queryKey: queryKeys.scholarTasks(scholarId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.scholarProfile(scholarId) });
+    },
+  });
+}
+
+// Delete task mutation (soft delete)
+export function useDeleteTask(scholarId?: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (taskId: string) => deleteTask(taskId),
+    onSuccess: () => {
+      if (scholarId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.scholarTasks(scholarId) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.scholarProfile(scholarId) });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['scholar'] });
+      }
     },
   });
 }

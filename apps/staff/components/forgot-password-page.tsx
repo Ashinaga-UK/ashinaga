@@ -48,7 +48,7 @@ export function ForgotPasswordPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:from-background dark:to-background flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -60,8 +60,8 @@ export function ForgotPasswordPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-800">
+            <div className="bg-muted border border-border rounded-lg p-4">
+              <p className="text-sm text-muted-foreground">
                 The reset link will expire in 1 hour. If you don't see the email, check your spam
                 folder.
               </p>
@@ -91,7 +91,7 @@ export function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:from-background dark:to-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="w-16 h-16 bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 rounded-lg flex items-center justify-center mx-auto mb-4">
@@ -114,7 +114,7 @@ export function ForgotPasswordPage() {
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
                   id="email"
                   type="email"
@@ -140,7 +140,7 @@ export function ForgotPasswordPage() {
           <div className="text-center">
             <Link
               href="/login"
-              className="text-sm text-gray-600 hover:text-gray-800 inline-flex items-center"
+              className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center"
             >
               <ArrowLeft className="h-3 w-3 mr-1" />
               Back to Sign In

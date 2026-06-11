@@ -2,8 +2,8 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { signOut, useSession } from '../../lib/auth-client';
 import { ScholarLayout } from '../../components/scholar-layout';
+import { signOut, useSession } from '../../lib/auth-client';
 
 export default function ScholarRootLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();

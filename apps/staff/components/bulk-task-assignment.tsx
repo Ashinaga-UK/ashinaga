@@ -3,6 +3,7 @@
 import { Plus, Send } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
+import { type CreateTaskData, createBulkTasks } from '../lib/api-client';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -19,6 +20,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Textarea } from './ui/textarea';
+import { useToast } from './ui/use-toast';
 
 interface Scholar {
   id: string;
@@ -33,63 +35,85 @@ interface BulkTaskAssignmentProps {
   trigger?: React.ReactNode;
   selectedScholarIds?: string[];
   filteredScholars?: Scholar[];
+  onSuccess?: () => void;
 }
+
+type TaskType = CreateTaskData['type'];
+type Priority = 'high' | 'medium' | 'low';
 
 export function BulkTaskAssignment({
   trigger,
   selectedScholarIds,
   filteredScholars,
+  onSuccess,
 }: BulkTaskAssignmentProps) {
+  const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDescription, setTaskDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
-  const [priority, setPriority] = useState('');
-  const [taskType, setTaskType] = useState('');
-  const [targetGroup, setTargetGroup] = useState('');
+  const [priority, setPriority] = useState<Priority>('medium');
+  const [taskType, setTaskType] = useState<TaskType>('other');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async () => {
-    setIsSubmitting(true);
-    // Mock API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+  const resolvedScholarIds: string[] =
+    selectedScholarIds && selectedScholarIds.length > 0
+      ? selectedScholarIds
+      : (filteredScholars?.map((s) => s.id) ?? []);
+  const targetCount = resolvedScholarIds.length;
 
-    const targetCount = selectedScholarIds
-      ? selectedScholarIds.length
-      : filteredScholars?.length || 0;
-    console.log('Bulk task assigned:', {
-      selectedScholarIds,
-      filteredScholars: filteredScholars?.map((s) => s.id),
-      title: taskTitle,
-      description: taskDescription,
-      dueDate,
-      priority,
-      type: taskType,
-      targetGroup,
-      targetCount,
-    });
-
-    setOpen(false);
-    setIsSubmitting(false);
-    // Reset form
+  const resetForm = () => {
     setTaskTitle('');
     setTaskDescription('');
     setDueDate('');
-    setPriority('');
-    setTaskType('');
-    setTargetGroup('');
+    setPriority('medium');
+    setTaskType('other');
   };
 
-  const getTargetCount = () => {
-    if (selectedScholarIds) return selectedScholarIds.length;
-    if (filteredScholars) return filteredScholars.length;
-    return 0;
-  };
-
-  const getTargetDescription = () => {
-    if (selectedScholarIds) return 'selected scholars';
-    if (filteredScholars) return 'filtered scholars';
-    return 'scholars';
+  const handleSubmit = async () => {
+    if (targetCount === 0) {
+      toast({
+        title: 'No scholars selected',
+        description: 'Select at least one scholar before assigning a task.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!taskTitle.trim() || !taskDescription.trim() || !dueDate) {
+      toast({
+        title: 'Missing information',
+        description: 'Title, description, and due date are required.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const result = await createBulkTasks({
+        title: taskTitle.trim(),
+        description: taskDescription.trim() || undefined,
+        type: taskType,
+        priority,
+        dueDate,
+        scholarIds: resolvedScholarIds,
+      });
+      toast({
+        title: 'Tasks assigned',
+        description: `${result.created} task${result.created === 1 ? '' : 's'} created.`,
+      });
+      setOpen(false);
+      resetForm();
+      onSuccess?.();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      toast({
+        title: 'Failed to assign tasks',
+        description: msg.replace(/^API Error:\s*\d+\s*-\s*/, ''),
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -106,7 +130,11 @@ export function BulkTaskAssignment({
         <DialogHeader>
           <DialogTitle>Assign Task to Multiple Scholars</DialogTitle>
           <DialogDescription>
-            Create and assign a task to {getTargetCount()} {getTargetDescription()}
+            Create and assign the same task to {targetCount}{' '}
+            {selectedScholarIds && selectedScholarIds.length > 0
+              ? 'selected scholars'
+              : 'filtered scholars'}
+            .
           </DialogDescription>
         </DialogHeader>
 
@@ -116,16 +144,18 @@ export function BulkTaskAssignment({
             <CardHeader>
               <CardTitle className="text-lg">Assignment Target</CardTitle>
               <CardDescription>
-                This task will be assigned to {getTargetCount()} scholars
+                This task will be assigned to {targetCount} scholar{targetCount === 1 ? '' : 's'}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2">
                 <Badge variant="secondary" className="text-lg px-3 py-1">
-                  {getTargetCount()} Scholars
+                  {targetCount} Scholar{targetCount === 1 ? '' : 's'}
                 </Badge>
-                <span className="text-sm text-gray-600">
-                  {selectedScholarIds ? 'Selected from table' : 'All currently filtered scholars'}
+                <span className="text-sm text-muted-foreground">
+                  {selectedScholarIds && selectedScholarIds.length > 0
+                    ? 'Selected from table'
+                    : 'All currently filtered scholars'}
                 </span>
               </div>
             </CardContent>
@@ -145,23 +175,23 @@ export function BulkTaskAssignment({
               </div>
               <div>
                 <Label htmlFor="taskType">Task Type</Label>
-                <Select value={taskType} onValueChange={setTaskType}>
+                <Select value={taskType} onValueChange={(v) => setTaskType(v as TaskType)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select task type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="document-upload">Document Upload</SelectItem>
-                    <SelectItem value="form-completion">Form Completion</SelectItem>
-                    <SelectItem value="meeting-attendance">Meeting Attendance</SelectItem>
-                    <SelectItem value="goal-update">Goal Update</SelectItem>
-                    <SelectItem value="feedback-submission">Feedback Submission</SelectItem>
+                    <SelectItem value="document_upload">Document Upload</SelectItem>
+                    <SelectItem value="form_completion">Form Completion</SelectItem>
+                    <SelectItem value="meeting_attendance">Meeting Attendance</SelectItem>
+                    <SelectItem value="goal_update">Goal Update</SelectItem>
+                    <SelectItem value="feedback_submission">Feedback Submission</SelectItem>
                     <SelectItem value="other">Other</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
                 <Label htmlFor="priority">Priority</Label>
-                <Select value={priority} onValueChange={setPriority}>
+                <Select value={priority} onValueChange={(v) => setPriority(v as Priority)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select priority" />
                   </SelectTrigger>
@@ -176,7 +206,7 @@ export function BulkTaskAssignment({
 
             <div className="space-y-4">
               <div>
-                <Label htmlFor="dueDate">Due Date</Label>
+                <Label htmlFor="dueDate">Due Date *</Label>
                 <Input
                   id="dueDate"
                   type="date"
@@ -199,16 +229,20 @@ export function BulkTaskAssignment({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!taskTitle || !taskDescription || isSubmitting}
+            disabled={
+              targetCount === 0 || !taskTitle || !taskDescription || !dueDate || isSubmitting
+            }
             className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
           >
             <Send className="h-4 w-4 mr-2" />
-            {isSubmitting ? 'Assigning...' : `Assign to ${getTargetCount()} Scholars`}
+            {isSubmitting
+              ? 'Assigning...'
+              : `Assign to ${targetCount} Scholar${targetCount === 1 ? '' : 's'}`}
           </Button>
         </DialogFooter>
       </DialogContent>

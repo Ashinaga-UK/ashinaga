@@ -1,5 +1,10 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { and, count, desc, eq, ilike, inArray, not, or, sql } from 'drizzle-orm';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { and, count, desc, eq, ilike, inArray, isNull, not, or, sql } from 'drizzle-orm';
 import { database } from '../db/connection';
 import {
   announcementRecipients,
@@ -33,6 +38,19 @@ import { UpdateScholarProfileDto } from './dto/update-scholar-profile.dto';
 @Injectable()
 export class ScholarsService {
   constructor(private readonly invitationsService: InvitationsService) {}
+
+  private validateProfileImage(image: string | null | undefined) {
+    if (!image) return;
+
+    const isSupportedDataUrl = /^data:image\/(jpeg|png|webp|gif);base64,/i.test(image);
+    if (!isSupportedDataUrl) {
+      throw new BadRequestException('Profile image must be a JPEG, PNG, WebP, or GIF data URL');
+    }
+
+    if (image.length > 3_000_000) {
+      throw new BadRequestException('Profile image must be smaller than 2MB');
+    }
+  }
 
   async createScholar(
     createScholarDto: CreateScholarDto,
@@ -91,6 +109,8 @@ export class ScholarsService {
         postGraduationPlan: createScholarDto.postGraduationPlan,
         startDate: createScholarDto.startDate,
         graduationDate: createScholarDto.graduationDate,
+        majorCategory: createScholarDto.majorCategory,
+        fieldOfStudy: createScholarDto.fieldOfStudy,
       },
     };
 
@@ -331,7 +351,7 @@ export class ScholarsService {
         count: count(),
       })
       .from(tasks)
-      .where(inArray(tasks.scholarId, scholarIds))
+      .where(and(inArray(tasks.scholarId, scholarIds), eq(tasks.archived, false), isNull(tasks.deletedAt)))
       .groupBy(tasks.scholarId, tasks.status, tasks.dueDate);
 
     const stats: Record<string, ScholarTasksStatsDto> = {};
@@ -398,7 +418,7 @@ export class ScholarsService {
     const tasksData = await database
       .select()
       .from(tasks)
-      .where(eq(tasks.scholarId, id))
+      .where(and(eq(tasks.scholarId, id), eq(tasks.archived, false), isNull(tasks.deletedAt)))
       .orderBy(desc(tasks.createdAt));
 
     // Get task responses and attachments
@@ -658,7 +678,7 @@ export class ScholarsService {
     const tasksResult = await database
       .select()
       .from(tasks)
-      .where(eq(tasks.scholarId, row.scholar.id))
+      .where(and(eq(tasks.scholarId, row.scholar.id), eq(tasks.archived, false), isNull(tasks.deletedAt)))
       .orderBy(desc(tasks.createdAt));
 
     const tasksList = tasksResult.map(
@@ -781,6 +801,7 @@ export class ScholarsService {
       bio,
       majorCategory,
       fieldOfStudy,
+      image,
     } = profileUpdateData;
 
     // Update scholar record - handle empty strings and date conversions properly
@@ -832,6 +853,14 @@ export class ScholarsService {
     if (fieldOfStudy !== undefined) dbUpdateData.fieldOfStudy = fieldOfStudy || null;
 
     await database.update(scholars).set(dbUpdateData).where(eq(scholars.id, scholarId));
+
+    if (image !== undefined) {
+      this.validateProfileImage(image);
+      await database
+        .update(users)
+        .set({ image: image || null, updatedAt: new Date() })
+        .where(eq(users.id, userId));
+    }
 
     // Return updated profile
     return this.getScholarProfileByUserId(userId);

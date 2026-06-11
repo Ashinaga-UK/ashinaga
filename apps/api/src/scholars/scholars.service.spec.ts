@@ -31,21 +31,26 @@ jest.mock('../auth/auth.config', () => ({
 }));
 
 import { InvitationsService } from '../invitations/invitations.service';
+import type { CreateScholarDto } from './dto/create-scholar.dto';
+import { Gender } from './dto/update-scholar-profile.dto';
 import { ScholarsService } from './scholars.service';
 
 describe('ScholarsService', () => {
   let service: ScholarsService;
   let mockDatabase: { select: jest.Mock };
+  let mockInvitationsService: { createInvitation: jest.Mock };
 
   beforeEach(async () => {
+    mockInvitationsService = {
+      createInvitation: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ScholarsService,
         {
           provide: InvitationsService,
-          useValue: {
-            createInvitation: jest.fn(),
-          },
+          useValue: mockInvitationsService,
         },
       ],
     }).compile();
@@ -56,6 +61,44 @@ describe('ScholarsService', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+  });
+
+  describe('createScholar', () => {
+    it('should preserve onboarding-only fields in the invitation scholar data', async () => {
+      const mockLimit = jest.fn().mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+      const mockWhere = jest.fn().mockReturnValue({ limit: mockLimit });
+      const mockFrom = jest.fn().mockReturnValue({ where: mockWhere });
+
+      mockDatabase.select = jest.fn().mockReturnValue({ from: mockFrom });
+      mockInvitationsService.createInvitation.mockResolvedValue({ id: 'invitation-1' });
+
+      const createScholarDto: CreateScholarDto = {
+        name: 'Test Scholar',
+        email: 'Scholar@Example.com',
+        program: 'Undergraduate',
+        year: 'Year 1',
+        university: 'University of Test',
+        startDate: '2026-09-01',
+        gender: Gender.MALE,
+        majorCategory: 'Engineering',
+        fieldOfStudy: 'CS',
+      };
+
+      await service.createScholar(createScholarDto, 'staff-1');
+
+      expect(mockInvitationsService.createInvitation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'scholar@example.com',
+          userType: 'scholar',
+          scholarData: expect.objectContaining({
+            gender: 'male',
+            majorCategory: 'Engineering',
+            fieldOfStudy: 'CS',
+          }),
+        }),
+        'staff-1'
+      );
+    });
   });
 
   describe('getScholars', () => {
@@ -548,7 +591,7 @@ describe('ScholarsService', () => {
         documents: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      } as any);
+      } as Awaited<ReturnType<ScholarsService['updateScholarProfile']>>);
 
       const updateData = { phone: '+15551234567', program: 'CS' };
       const result = await service.updateScholarProfileByScholarId('scholar-1', updateData);
@@ -697,7 +740,7 @@ describe('ScholarsService', () => {
         tasks: { total: 0, completed: 0, overdue: 0 },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      } as any);
+      } as Awaited<ReturnType<ScholarsService['getScholar']>>);
 
       const result = await service.archiveScholar('s1');
 

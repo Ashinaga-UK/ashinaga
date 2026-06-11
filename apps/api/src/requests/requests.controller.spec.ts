@@ -1,5 +1,6 @@
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
+import { UnauthorizedException } from '@nestjs/common';
 import { RequestsController } from './requests.controller';
 import { RequestsService } from './requests.service';
 
@@ -109,12 +110,27 @@ describe('RequestsController', () => {
         commented: 1,
       };
 
+      const mockRequest = {
+        user: {
+          id: 'user-123',
+          email: 'test@example.com',
+        },
+      };
+
       mockRequestsService.getRequestStats.mockResolvedValue(mockStats);
 
-      const result = await controller.getRequestStats();
+      const result = await controller.getRequestStats(mockRequest as any);
 
-      expect(service.getRequestStats).toHaveBeenCalled();
+      expect(service.getRequestStats).toHaveBeenCalledWith('user-123');
       expect(result).toEqual(mockStats);
+    });
+
+    it('should reject request statistics without an authenticated user', async () => {
+      await expect(controller.getRequestStats({} as any)).rejects.toBeInstanceOf(
+        UnauthorizedException
+      );
+
+      expect(service.getRequestStats).not.toHaveBeenCalled();
     });
   });
 });

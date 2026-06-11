@@ -31,6 +31,7 @@ import {
   COUNTRY_OPTIONS,
   DEFAULT_UNIVERSITY_OPTIONS,
   GENDER_OPTIONS,
+  type Gender,
   normalizeLocation,
   normalizeNationality,
 } from '../lib/constants';
@@ -96,13 +97,13 @@ export function ScholarProfilePage({
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'text-green-600';
+        return 'text-green-600 dark:text-green-400';
       case 'in-progress':
-        return 'text-blue-600';
+        return 'text-blue-600 dark:text-blue-400';
       case 'pending':
         return 'text-orange-600';
       default:
-        return 'text-gray-600';
+        return 'text-muted-foreground';
     }
   };
 
@@ -220,12 +221,12 @@ export function ScholarProfilePage({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" onClick={onBack}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Button variant="ghost" className="w-fit" onClick={onBack}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Students
         </Button>
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
           <Dialog
             open={editOpen}
             onOpenChange={(open) => {
@@ -301,10 +302,7 @@ export function ScholarProfilePage({
                       onValueChange={(value) =>
                         setEditForm((f) => ({
                           ...f,
-                          gender:
-                            value === '_none'
-                              ? undefined
-                              : (value as 'male' | 'female' | 'other' | 'prefer_not_to_say'),
+                          gender: value === '_none' ? undefined : (value as Gender),
                         }))
                       }
                     >
@@ -506,69 +504,82 @@ export function ScholarProfilePage({
             className="bg-ashinaga-teal-600 hover:bg-ashinaga-teal-700"
           >
             <Download className="h-4 w-4 mr-2" />
-            Download LDF Report
+            <span className="sm:hidden">Download LDF</span>
+            <span className="hidden sm:inline">Download LDF Report</span>
           </Button>
         </div>
       </div>
 
       {/* Student Info Card */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-start gap-6">
-            <Avatar className="h-20 w-20">
-              <AvatarImage src={scholar.image || '/placeholder.svg'} />
-              <AvatarFallback className="text-lg">
-                {scholar.name
-                  .split(' ')
-                  .map((n) => n[0])
-                  .join('')}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-2xl font-bold">{scholar.name}</h1>
-                <Badge
-                  className={
-                    scholar.status === 'archived'
-                      ? 'bg-gray-200 text-gray-800'
-                      : scholar.status === 'active'
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-amber-100 text-amber-800'
-                  }
-                >
-                  {scholar.status}
-                </Badge>
-              </div>
-              <p className="text-gray-600 mb-4">{scholar.bio || 'No bio available'}</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-gray-400" />
-                  <span>{scholar.email}</span>
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start lg:flex-1">
+              <Avatar className="h-16 w-16 shrink-0 sm:h-20 sm:w-20">
+                <AvatarImage src={scholar.image || '/placeholder.svg'} />
+                <AvatarFallback className="text-lg">
+                  {scholar.name
+                    .split(' ')
+                    .map((n) => n[0])
+                    .join('')}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <h1 className="min-w-0 text-2xl font-bold leading-tight">{scholar.name}</h1>
+                  <Badge
+                    className={
+                      scholar.status === 'archived'
+                        ? 'bg-muted text-foreground'
+                        : scholar.status === 'active'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                          : 'bg-amber-100 text-amber-800'
+                    }
+                  >
+                    {scholar.status}
+                  </Badge>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-gray-400" />
-                  <span>{scholar.phone || 'No phone number'}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <MapPin
-                    className="h-4 w-4 text-gray-400 shrink-0"
-                    aria-label="Country of study"
-                  />
-                  <span>{normalizeLocation(scholar.location ?? '') || 'No location'}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-gray-400" />
-                  <span>Started {new Date(scholar.startDate).toLocaleDateString()}</span>
+                <p className="mb-4 text-muted-foreground">{scholar.bio || 'No bio available'}</p>
+                <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 truncate">{scholar.email}</span>
+                  </div>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Phone className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 truncate">{scholar.phone || 'No phone number'}</span>
+                  </div>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <MapPin
+                      className="h-4 w-4 shrink-0 text-muted-foreground"
+                      aria-label="Country of study"
+                    />
+                    <span className="min-w-0 truncate">
+                      {normalizeLocation(scholar.location ?? '') || 'No location'}
+                    </span>
+                  </div>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Calendar className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 truncate">
+                      Started {new Date(scholar.startDate).toLocaleDateString()}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-500">Program</p>
-              <p className="font-medium">{scholar.program}</p>
-              <p className="text-sm text-gray-500 mt-2">Year</p>
-              <Badge variant="outline">{scholar.year}</Badge>
-              <p className="text-sm text-gray-500 mt-2">University</p>
-              <p className="font-medium text-sm">{scholar.university}</p>
+            <div className="grid grid-cols-1 gap-3 border-t pt-4 text-sm sm:grid-cols-3 lg:w-56 lg:shrink-0 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
+              <div className="min-w-0">
+                <p className="text-muted-foreground">Program</p>
+                <p className="font-medium">{scholar.program}</p>
+              </div>
+              <div className="min-w-0">
+                <p className="text-muted-foreground">Year</p>
+                <Badge variant="outline">{scholar.year}</Badge>
+              </div>
+              <div className="min-w-0 sm:col-span-3 lg:col-span-1">
+                <p className="text-muted-foreground">University</p>
+                <p className="font-medium">{scholar.university}</p>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -576,12 +587,14 @@ export function ScholarProfilePage({
 
       {/* Tabs */}
       <Tabs defaultValue={initialTab} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="goals">LDF Goals</TabsTrigger>
-          <TabsTrigger value="tasks">Tasks</TabsTrigger>
-          <TabsTrigger value="documents">Documents</TabsTrigger>
-        </TabsList>
+        <div className="-mx-3 overflow-x-auto px-3 sm:mx-0 sm:px-0">
+          <TabsList className="w-max sm:w-auto">
+            <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="goals">LDF Goals</TabsTrigger>
+            <TabsTrigger value="tasks">Tasks</TabsTrigger>
+            <TabsTrigger value="documents">Documents</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="profile" className="space-y-4">
           <Card>
@@ -746,7 +759,7 @@ export function ScholarProfilePage({
             {scholar.goals.length === 0 ? (
               <Card>
                 <CardContent className="pt-4">
-                  <p className="text-gray-500 text-center py-4">No LDF goals set yet</p>
+                  <p className="text-muted-foreground text-center py-4">No LDF goals set yet</p>
                 </CardContent>
               </Card>
             ) : (
@@ -759,7 +772,7 @@ export function ScholarProfilePage({
                           <span className="text-2xl">{getCategoryIcon(goal.category)}</span>
                           <div>
                             <h4 className="font-semibold text-lg">{goal.title}</h4>
-                            <div className="flex items-center gap-4 text-sm text-gray-600">
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
                               <span>{getCategoryLabel(goal.category)}</span>
                               <span>•</span>
                               <span className="flex items-center gap-1">
@@ -772,36 +785,38 @@ export function ScholarProfilePage({
 
                         {/* Related Skills */}
                         {goal.relatedSkills && (
-                          <div className="mt-3 p-3 bg-blue-50 rounded-lg">
-                            <p className="text-xs font-semibold text-blue-900 mb-1">
+                          <div className="mt-3 p-3 bg-muted rounded-lg">
+                            <p className="text-xs font-semibold text-foreground mb-1">
                               Related LDF Skills & Qualities
                             </p>
-                            <p className="text-sm text-blue-800">{goal.relatedSkills}</p>
+                            <p className="text-sm text-muted-foreground">{goal.relatedSkills}</p>
                           </div>
                         )}
 
                         {/* Action Plan */}
                         {goal.actionPlan && (
-                          <div className="mt-3 p-3 bg-green-50 rounded-lg">
-                            <p className="text-xs font-semibold text-green-900 mb-1">Action Plan</p>
-                            <p className="text-sm text-green-800">{goal.actionPlan}</p>
+                          <div className="mt-3 p-3 bg-muted rounded-lg">
+                            <p className="text-xs font-semibold text-foreground mb-1">
+                              Action Plan
+                            </p>
+                            <p className="text-sm text-muted-foreground">{goal.actionPlan}</p>
                           </div>
                         )}
 
                         {/* Review Notes */}
                         {goal.reviewNotes && (
-                          <div className="mt-3 p-3 bg-purple-50 rounded-lg">
-                            <p className="text-xs font-semibold text-purple-900 mb-1">
+                          <div className="mt-3 p-3 bg-muted rounded-lg">
+                            <p className="text-xs font-semibold text-foreground mb-1">
                               Goal Review & Self-Reflection
                             </p>
-                            <p className="text-sm text-purple-800">{goal.reviewNotes}</p>
+                            <p className="text-sm text-muted-foreground">{goal.reviewNotes}</p>
                           </div>
                         )}
 
                         {/* Completion Scale */}
                         <div className="mt-4">
                           <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm text-gray-600">Completion Scale</span>
+                            <span className="text-sm text-muted-foreground">Completion Scale</span>
                             <span className="text-sm font-medium">{goal.completionScale}/10</span>
                           </div>
                           <Progress value={(goal.completionScale / 10) * 100} className="h-2" />
@@ -857,7 +872,7 @@ export function ScholarProfilePage({
             {scholar.tasks.length === 0 ? (
               <Card>
                 <CardContent className="pt-4">
-                  <p className="text-gray-500 text-center py-4">No tasks assigned yet</p>
+                  <p className="text-muted-foreground text-center py-4">No tasks assigned yet</p>
                 </CardContent>
               </Card>
             ) : (
@@ -870,10 +885,10 @@ export function ScholarProfilePage({
                           <h4 className="font-medium">{task.title}</h4>
                           <Badge variant={getPriorityColor(task.priority)}>{task.priority}</Badge>
                         </div>
-                        <p className="text-sm text-gray-600 mb-2">
+                        <p className="text-sm text-muted-foreground mb-2">
                           {task.description || 'No description'}
                         </p>
-                        <div className="flex items-center gap-4 text-sm text-gray-500">
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
                           <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
                           <span className={getStatusColor(task.status)}>
                             Status: {task.status.replace('_', ' ')}
@@ -885,7 +900,7 @@ export function ScholarProfilePage({
                             {task.response.responseText && (
                               <div className="mb-2">
                                 <span className="text-sm font-medium">Response: </span>
-                                <span className="text-sm text-gray-600">
+                                <span className="text-sm text-muted-foreground">
                                   {task.response.responseText}
                                 </span>
                               </div>
@@ -898,7 +913,7 @@ export function ScholarProfilePage({
                                     <Badge
                                       key={attachment.id}
                                       variant="secondary"
-                                      className="cursor-pointer hover:bg-gray-200"
+                                      className="cursor-pointer hover:bg-muted"
                                       onClick={async () => {
                                         try {
                                           // Use the attachment ID to get the download URL
@@ -979,7 +994,9 @@ export function ScholarProfilePage({
             {scholar.documents.length === 0 ? (
               <Card>
                 <CardContent className="pt-4">
-                  <p className="text-gray-500 text-center py-4">No documents uploaded yet</p>
+                  <p className="text-muted-foreground text-center py-4">
+                    No documents uploaded yet
+                  </p>
                 </CardContent>
               </Card>
             ) : (
@@ -988,10 +1005,10 @@ export function ScholarProfilePage({
                   <CardContent className="pt-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <FileText className="h-8 w-8 text-gray-400" />
+                        <FileText className="h-8 w-8 text-muted-foreground" />
                         <div>
                           <h4 className="font-medium">{doc.name}</h4>
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-muted-foreground">
                             Uploaded {new Date(doc.uploadDate).toLocaleDateString()} • {doc.type}
                           </p>
                         </div>
@@ -1008,5 +1025,55 @@ export function ScholarProfilePage({
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+function DeleteTaskButton({ scholarId, taskId }: { scholarId: string; taskId: string }) {
+  const [open, setOpen] = useState(false);
+  const deleteMutation = useDeleteTask(scholarId);
+
+  const handleDelete = async () => {
+    try {
+      await deleteMutation.mutateAsync(taskId);
+      setOpen(false);
+    } catch (err) {
+      console.error('Failed to delete task:', err);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40"
+          aria-label="Delete task"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Delete task?</DialogTitle>
+          <DialogDescription>
+            The task will be archived and hidden from both staff and scholar views. This can be
+            undone by a developer if needed.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button
+            variant="outline"
+            onClick={() => setOpen(false)}
+            disabled={deleteMutation.isPending}
+          >
+            Cancel
+          </Button>
+          <Button variant="destructive" onClick={handleDelete} disabled={deleteMutation.isPending}>
+            {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

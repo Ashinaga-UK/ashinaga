@@ -1,6 +1,8 @@
 import { GeistMono } from 'geist/font/mono';
 import { GeistSans } from 'geist/font/sans';
 import type { Metadata } from 'next';
+import { ThemeProvider } from '../components/theme-provider';
+import { Toaster } from '../components/ui/toaster';
 import { QueryProvider } from '../lib/query-client';
 import './globals.css';
 
@@ -15,7 +17,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <style>{`
 html {
@@ -26,7 +28,15 @@ html {
         `}</style>
       </head>
       <body suppressHydrationWarning>
-        <QueryProvider>{children}</QueryProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <QueryProvider>{children}</QueryProvider>
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );

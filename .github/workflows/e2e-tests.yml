@@ -1,0 +1,146 @@
+name: E2E Tests
+
+on:
+  pull_request:
+    branches: [test, main]
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: Playwright E2E (staff + scholar)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ashinaga_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      CI: true
+      NODE_ENV: test
+      BETTER_AUTH_SECRET: e2e-test-secret-key-minimum-32-characters-long-aaaa
+      BETTER_AUTH_URL: http://localhost:4000
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: ashinaga_e2e
+      DB_SSL: "false"
+      PORT: "4000"
+      API_URL: http://localhost:4000
+      STAFF_APP_URL: http://localhost:4001
+      SCHOLAR_APP_URL: http://localhost:4002
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+      NEXT_PUBLIC_STAFF_APP_URL: http://localhost:4001
+      NEXT_PUBLIC_SCHOLAR_APP_URL: http://localhost:4002
+      STAFF_APP_URL_API: http://localhost:4001
+      SCHOLAR_APP_URL_API: http://localhost:4002
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('**/pnpm-lock.yaml') }}
+
+      - name: Install Playwright browsers
+        run: pnpm --filter staff exec playwright install --with-deps chromium chrome
+
+      - name: Build API + UI packages (apps run via next dev)
+        run: pnpm build --filter=ashinaga-api --filter=@workspace/ui
+
+      - name: Run database migrations
+        working-directory: apps/api
+        run: pnpm db:migrate
+
+      - name: Start API server
+        working-directory: apps/api
+        run: |
+          pnpm start:prod > "$GITHUB_WORKSPACE/api.log" 2>&1 &
+          echo "API_PID=$!" >> $GITHUB_ENV
+
+      - name: Wait for API to be ready
+        run: |
+          for i in {1..60}; do
+            if curl -sf http://localhost:4000/health > /dev/null; then
+              echo "API is up after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "API failed to start" >&2
+          tail -n 200 "$GITHUB_WORKSPACE/api.log" || true
+          exit 1
+
+      - name: Run staff Playwright tests
+        working-directory: apps/staff
+        run: pnpm test:e2e
+
+      - name: Run scholar Playwright tests
+        working-directory: apps/scholar
+        run: pnpm test:e2e
+
+      - name: Upload API log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-log
+          path: api.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Upload Playwright reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-reports
+          path: |
+            apps/staff/test/e2e/test-results/
+            apps/scholar/test/e2e/test-results/
+            apps/staff/playwright-report/
+            apps/scholar/playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore
