@@ -695,7 +695,7 @@ function StaffDashboardContent() {
                       </Select>
                     </div>
                   </div>
-                </div>
+                </CardHeader>
                 <CardContent className="p-4 sm:p-5">
                   {requestsLoading ? (
                     <div className="space-y-3">
