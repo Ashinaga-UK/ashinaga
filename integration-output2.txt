@@ -1,0 +1,595 @@
+
+> ashinaga@1.0.0 test:integration /Users/rgnpx/ashinaga
+> cd apps/api && pnpm test:integration
+
+
+> ashinaga-api@1.0.0 test:integration /Users/rgnpx/ashinaga/apps/api
+> jest --config ./jest.integration.config.ts
+
+[31m[Nest] 39353  - [39m11/06/2026, 22:31:38 [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39mDrizzleQueryError: Failed query: select "scholars"."id", "scholars"."user_id", "scholars"."phone", "scholars"."program", "scholars"."year", "scholars"."university", "scholars"."location", "scholars"."start_date", "scholars"."status", "scholars"."last_activity", "scholars"."bio", "scholars"."aai_scholar_id", "scholars"."date_of_birth", "scholars"."gender", "scholars"."nationality", "scholars"."address_home_country", "scholars"."passport_expiration_date", "scholars"."visa_expiration_date", "scholars"."emergency_contact_country_of_study", "scholars"."emergency_contact_home_country", "scholars"."graduation_date", "scholars"."university_id", "scholars"."dietary_information", "scholars"."kokorozashi", "scholars"."long_term_career_plan", "scholars"."post_graduation_plan", "scholars"."major_category", "scholars"."field_of_study", "scholars"."created_at", "scholars"."updated_at", "user"."id", "user"."name", "user"."email", "user"."email_verified", "user"."image", "user"."user_type", "user"."created_at", "user"."updated_at" from "scholars" inner join "user" on "scholars"."user_id" = "user"."id" where not "scholars"."status" = $1 order by "scholars"."created_at" desc limit $2
+params: archived,10
+    at NodePgPreparedQuery.queryWithCache (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/pg-core/session.ts:74:11)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+    at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/node-postgres/session.ts:154:19
+[90m    ... 2 lines matching cause stack trace ...[39m
+    at async Object.<anonymous> (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.3_@nestjs+common@11.1.3_class-transformer@0.5.1_class-validator@0.14._f00a9328469ae70f8dd89f51e4455422/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17) {
+  query: [32m'select "scholars"."id", "scholars"."user_id", "scholars"."phone", "scholars"."program", "scholars"."year", "scholars"."university", "scholars"."location", "scholars"."start_date", "scholars"."status", "scholars"."last_activity", "scholars"."bio", "scholars"."aai_scholar_id", "scholars"."date_of_birth", "scholars"."gender", "scholars"."nationality", "scholars"."address_home_country", "scholars"."passport_expiration_date", "scholars"."visa_expiration_date", "scholars"."emergency_contact_country_of_study", "scholars"."emergency_contact_home_country", "scholars"."graduation_date", "scholars"."university_id", "scholars"."dietary_information", "scholars"."kokorozashi", "scholars"."long_term_career_plan", "scholars"."post_graduation_plan", "scholars"."major_category", "scholars"."field_of_study", "scholars"."created_at", "scholars"."updated_at", "user"."id", "user"."name", "user"."email", "user"."email_verified", "user"."image", "user"."user_type", "user"."created_at", "user"."updated_at" from "scholars" inner join "user" on "scholars"."user_id" = "user"."id" where not "scholars"."status" = $1 order by "scholars"."created_at" desc limit $2'[39m,
+  params: [
+    [32m'archived'[39m,
+    [33m10[39m
+  ],
+  cause: Error: The server does not support SSL connections
+      at /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/pg-pool@3.10.1_pg@8.16.3/node_modules/[4mpg-pool[24m/index.js:45:11
+  [90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+      at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/node-postgres/session.ts:161:13
+      at async NodePgPreparedQuery.queryWithCache (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/pg-core/session.ts:72:12)
+      at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/node-postgres/session.ts:154:19
+      at async ScholarsService.getScholars [90m(/Users/rgnpx/ashinaga/apps/api/[39msrc/scholars/scholars.service.ts:165:31[90m)[39m
+      at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.3_@nestjs+common@11.1.3_class-transformer@0.5.1_class-validator@0.14._f00a9328469ae70f8dd89f51e4455422/node_modules/[4m@nestjs/core[24m/router/router-execution-context.js:46:28
+      at async Object.<anonymous> (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.3_@nestjs+common@11.1.3_class-transformer@0.5.1_class-validator@0.14._f00a9328469ae70f8dd89f51e4455422/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17)
+}
+[31m[Nest] 39353  - [39m11/06/2026, 22:31:38 [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39mDrizzleQueryError: Failed query: select "scholars"."id", "scholars"."user_id", "scholars"."phone", "scholars"."program", "scholars"."year", "scholars"."university", "scholars"."location", "scholars"."start_date", "scholars"."status", "scholars"."last_activity", "scholars"."bio", "scholars"."aai_scholar_id", "scholars"."date_of_birth", "scholars"."gender", "scholars"."nationality", "scholars"."address_home_country", "scholars"."passport_expiration_date", "scholars"."visa_expiration_date", "scholars"."emergency_contact_country_of_study", "scholars"."emergency_contact_home_country", "scholars"."graduation_date", "scholars"."university_id", "scholars"."dietary_information", "scholars"."kokorozashi", "scholars"."long_term_career_plan", "scholars"."post_graduation_plan", "scholars"."major_category", "scholars"."field_of_study", "scholars"."created_at", "scholars"."updated_at", "user"."id", "user"."name", "user"."email", "user"."email_verified", "user"."image", "user"."user_type", "user"."created_at", "user"."updated_at" from "scholars" inner join "user" on "scholars"."user_id" = "user"."id" where not "scholars"."status" = $1 order by "scholars"."created_at" desc limit $2
+params: archived,100
+    at NodePgPreparedQuery.queryWithCache (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/pg-core/session.ts:74:11)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+    at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/node-postgres/session.ts:154:19
+[90m    ... 2 lines matching cause stack trace ...[39m
+    at async Object.<anonymous> (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.3_@nestjs+common@11.1.3_class-transformer@0.5.1_class-validator@0.14._f00a9328469ae70f8dd89f51e4455422/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17) {
+  query: [32m'select "scholars"."id", "scholars"."user_id", "scholars"."phone", "scholars"."program", "scholars"."year", "scholars"."university", "scholars"."location", "scholars"."start_date", "scholars"."status", "scholars"."last_activity", "scholars"."bio", "scholars"."aai_scholar_id", "scholars"."date_of_birth", "scholars"."gender", "scholars"."nationality", "scholars"."address_home_country", "scholars"."passport_expiration_date", "scholars"."visa_expiration_date", "scholars"."emergency_contact_country_of_study", "scholars"."emergency_contact_home_country", "scholars"."graduation_date", "scholars"."university_id", "scholars"."dietary_information", "scholars"."kokorozashi", "scholars"."long_term_career_plan", "scholars"."post_graduation_plan", "scholars"."major_category", "scholars"."field_of_study", "scholars"."created_at", "scholars"."updated_at", "user"."id", "user"."name", "user"."email", "user"."email_verified", "user"."image", "user"."user_type", "user"."created_at", "user"."updated_at" from "scholars" inner join "user" on "scholars"."user_id" = "user"."id" where not "scholars"."status" = $1 order by "scholars"."created_at" desc limit $2'[39m,
+  params: [
+    [32m'archived'[39m,
+    [33m100[39m
+  ],
+  cause: Error: The server does not support SSL connections
+      at /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/pg-pool@3.10.1_pg@8.16.3/node_modules/[4mpg-pool[24m/index.js:45:11
+  [90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+      at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/node-postgres/session.ts:161:13
+      at async NodePgPreparedQuery.queryWithCache (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/pg-core/session.ts:72:12)
+      at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/node-postgres/session.ts:154:19
+      at async ScholarsService.getScholars [90m(/Users/rgnpx/ashinaga/apps/api/[39msrc/scholars/scholars.service.ts:165:31[90m)[39m
+      at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.3_@nestjs+common@11.1.3_class-transformer@0.5.1_class-validator@0.14._f00a9328469ae70f8dd89f51e4455422/node_modules/[4m@nestjs/core[24m/router/router-execution-context.js:46:28
+      at async Object.<anonymous> (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.3_@nestjs+common@11.1.3_class-transformer@0.5.1_class-validator@0.14._f00a9328469ae70f8dd89f51e4455422/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17)
+}
+[31m[Nest] 39353  - [39m11/06/2026, 22:31:38 [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39mDrizzleQueryError: Failed query: select "scholars"."id", "scholars"."user_id", "scholars"."phone", "scholars"."program", "scholars"."year", "scholars"."university", "scholars"."location", "scholars"."start_date", "scholars"."status", "scholars"."last_activity", "scholars"."bio", "scholars"."aai_scholar_id", "scholars"."date_of_birth", "scholars"."gender", "scholars"."nationality", "scholars"."address_home_country", "scholars"."passport_expiration_date", "scholars"."visa_expiration_date", "scholars"."emergency_contact_country_of_study", "scholars"."emergency_contact_home_country", "scholars"."graduation_date", "scholars"."university_id", "scholars"."dietary_information", "scholars"."kokorozashi", "scholars"."long_term_career_plan", "scholars"."post_graduation_plan", "scholars"."major_category", "scholars"."field_of_study", "scholars"."created_at", "scholars"."updated_at", "user"."id", "user"."name", "user"."email", "user"."email_verified", "user"."image", "user"."user_type", "user"."created_at", "user"."updated_at" from "scholars" inner join "user" on "scholars"."user_id" = "user"."id" where "scholars"."status" = $1 order by "scholars"."created_at" desc limit $2
+params: archived,100
+    at NodePgPreparedQuery.queryWithCache (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/pg-core/session.ts:74:11)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+    at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/node-postgres/session.ts:154:19
+[90m    ... 2 lines matching cause stack trace ...[39m
+    at async Object.<anonymous> (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.3_@nestjs+common@11.1.3_class-transformer@0.5.1_class-validator@0.14._f00a9328469ae70f8dd89f51e4455422/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17) {
+  query: [32m'select "scholars"."id", "scholars"."user_id", "scholars"."phone", "scholars"."program", "scholars"."year", "scholars"."university", "scholars"."location", "scholars"."start_date", "scholars"."status", "scholars"."last_activity", "scholars"."bio", "scholars"."aai_scholar_id", "scholars"."date_of_birth", "scholars"."gender", "scholars"."nationality", "scholars"."address_home_country", "scholars"."passport_expiration_date", "scholars"."visa_expiration_date", "scholars"."emergency_contact_country_of_study", "scholars"."emergency_contact_home_country", "scholars"."graduation_date", "scholars"."university_id", "scholars"."dietary_information", "scholars"."kokorozashi", "scholars"."long_term_career_plan", "scholars"."post_graduation_plan", "scholars"."major_category", "scholars"."field_of_study", "scholars"."created_at", "scholars"."updated_at", "user"."id", "user"."name", "user"."email", "user"."email_verified", "user"."image", "user"."user_type", "user"."created_at", "user"."updated_at" from "scholars" inner join "user" on "scholars"."user_id" = "user"."id" where "scholars"."status" = $1 order by "scholars"."created_at" desc limit $2'[39m,
+  params: [
+    [32m'archived'[39m,
+    [33m100[39m
+  ],
+  cause: Error: The server does not support SSL connections
+      at /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/pg-pool@3.10.1_pg@8.16.3/node_modules/[4mpg-pool[24m/index.js:45:11
+  [90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+      at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/node-postgres/session.ts:161:13
+      at async NodePgPreparedQuery.queryWithCache (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/pg-core/session.ts:72:12)
+      at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/node-postgres/session.ts:154:19
+      at async ScholarsService.getScholars [90m(/Users/rgnpx/ashinaga/apps/api/[39msrc/scholars/scholars.service.ts:165:31[90m)[39m
+      at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.3_@nestjs+common@11.1.3_class-transformer@0.5.1_class-validator@0.14._f00a9328469ae70f8dd89f51e4455422/node_modules/[4m@nestjs/core[24m/router/router-execution-context.js:46:28
+      at async Object.<anonymous> (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.3_@nestjs+common@11.1.3_class-transformer@0.5.1_class-validator@0.14._f00a9328469ae70f8dd89f51e4455422/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17)
+}
+[31m[Nest] 39353  - [39m11/06/2026, 22:31:38 [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39mDrizzleQueryError: Failed query: select distinct "program" from "scholars" order by "scholars"."program"
+params: 
+    at NodePgPreparedQuery.queryWithCache (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/pg-core/session.ts:74:11)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+    at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/node-postgres/session.ts:154:19
+[90m    ... 2 lines matching cause stack trace ...[39m
+    at async Object.<anonymous> (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.3_@nestjs+common@11.1.3_class-transformer@0.5.1_class-validator@0.14._f00a9328469ae70f8dd89f51e4455422/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17) {
+  query: [32m'select distinct "program" from "scholars" order by "scholars"."program"'[39m,
+  params: [],
+  cause: Error: The server does not support SSL connections
+      at /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/pg-pool@3.10.1_pg@8.16.3/node_modules/[4mpg-pool[24m/index.js:45:11
+  [90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+      at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/node-postgres/session.ts:161:13
+      at async NodePgPreparedQuery.queryWithCache (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/pg-core/session.ts:72:12)
+      at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/node-postgres/session.ts:154:19
+      at async ScholarsService.getFilterOptions [90m(/Users/rgnpx/ashinaga/apps/api/[39msrc/scholars/scholars.service.ts:546:28[90m)[39m
+      at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.3_@nestjs+common@11.1.3_class-transformer@0.5.1_class-validator@0.14._f00a9328469ae70f8dd89f51e4455422/node_modules/[4m@nestjs/core[24m/router/router-execution-context.js:46:28
+      at async Object.<anonymous> (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.3_@nestjs+common@11.1.3_class-transformer@0.5.1_class-validator@0.14._f00a9328469ae70f8dd89f51e4455422/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17)
+}
+[31m[Nest] 39353  - [39m11/06/2026, 22:31:38 [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39mDrizzleQueryError: Failed query: select "status", count(*) from "scholars" group by "scholars"."status"
+params: 
+    at NodePgPreparedQuery.queryWithCache (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/pg-core/session.ts:74:11)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+    at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/node-postgres/session.ts:154:19
+[90m    ... 2 lines matching cause stack trace ...[39m
+    at async Object.<anonymous> (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.3_@nestjs+common@11.1.3_class-transformer@0.5.1_class-validator@0.14._f00a9328469ae70f8dd89f51e4455422/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17) {
+  query: [32m'select "status", count(*) from "scholars" group by "scholars"."status"'[39m,
+  params: [],
+  cause: Error: The server does not support SSL connections
+      at /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/pg-pool@3.10.1_pg@8.16.3/node_modules/[4mpg-pool[24m/index.js:45:11
+  [90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+      at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/node-postgres/session.ts:161:13
+      at async NodePgPreparedQuery.queryWithCache (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/pg-core/session.ts:72:12)
+      at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/node-postgres/session.ts:154:19
+      at async ScholarsService.getScholarStats [90m(/Users/rgnpx/ashinaga/apps/api/[39msrc/scholars/scholars.service.ts:577:25[90m)[39m
+      at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.3_@nestjs+common@11.1.3_class-transformer@0.5.1_class-validator@0.14._f00a9328469ae70f8dd89f51e4455422/node_modules/[4m@nestjs/core[24m/router/router-execution-context.js:46:28
+      at async Object.<anonymous> (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.3_@nestjs+common@11.1.3_class-transformer@0.5.1_class-validator@0.14._f00a9328469ae70f8dd89f51e4455422/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17)
+}
+[31m[Nest] 39353  - [39m11/06/2026, 22:31:38 [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39mDrizzleQueryError: Failed query: select "scholars"."id", "scholars"."user_id", "scholars"."phone", "scholars"."program", "scholars"."year", "scholars"."university", "scholars"."location", "scholars"."start_date", "scholars"."status", "scholars"."last_activity", "scholars"."bio", "scholars"."aai_scholar_id", "scholars"."date_of_birth", "scholars"."gender", "scholars"."nationality", "scholars"."address_home_country", "scholars"."passport_expiration_date", "scholars"."visa_expiration_date", "scholars"."emergency_contact_country_of_study", "scholars"."emergency_contact_home_country", "scholars"."graduation_date", "scholars"."university_id", "scholars"."dietary_information", "scholars"."kokorozashi", "scholars"."long_term_career_plan", "scholars"."post_graduation_plan", "scholars"."major_category", "scholars"."field_of_study", "scholars"."created_at", "scholars"."updated_at", "user"."id", "user"."name", "user"."email", "user"."email_verified", "user"."image", "user"."user_type", "user"."created_at", "user"."updated_at" from "scholars" inner join "user" on "scholars"."user_id" = "user"."id" where "scholars"."id" = $1 limit $2
+params: 14c42438-8935-4c8c-95a5-75c9a0d5fa25,1
+    at NodePgPreparedQuery.queryWithCache (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/pg-core/session.ts:74:11)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+    at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/node-postgres/session.ts:154:19
+[90m    ... 2 lines matching cause stack trace ...[39m
+    at async Object.<anonymous> (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.3_@nestjs+common@11.1.3_class-transformer@0.5.1_class-validator@0.14._f00a9328469ae70f8dd89f51e4455422/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17) {
+  query: [32m'select "scholars"."id", "scholars"."user_id", "scholars"."phone", "scholars"."program", "scholars"."year", "scholars"."university", "scholars"."location", "scholars"."start_date", "scholars"."status", "scholars"."last_activity", "scholars"."bio", "scholars"."aai_scholar_id", "scholars"."date_of_birth", "scholars"."gender", "scholars"."nationality", "scholars"."address_home_country", "scholars"."passport_expiration_date", "scholars"."visa_expiration_date", "scholars"."emergency_contact_country_of_study", "scholars"."emergency_contact_home_country", "scholars"."graduation_date", "scholars"."university_id", "scholars"."dietary_information", "scholars"."kokorozashi", "scholars"."long_term_career_plan", "scholars"."post_graduation_plan", "scholars"."major_category", "scholars"."field_of_study", "scholars"."created_at", "scholars"."updated_at", "user"."id", "user"."name", "user"."email", "user"."email_verified", "user"."image", "user"."user_type", "user"."created_at", "user"."updated_at" from "scholars" inner join "user" on "scholars"."user_id" = "user"."id" where "scholars"."id" = $1 limit $2'[39m,
+  params: [
+    [32m'14c42438-8935-4c8c-95a5-75c9a0d5fa25'[39m,
+    [33m1[39m
+  ],
+  cause: Error: The server does not support SSL connections
+      at /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/pg-pool@3.10.1_pg@8.16.3/node_modules/[4mpg-pool[24m/index.js:45:11
+  [90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+      at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/node-postgres/session.ts:161:13
+      at async NodePgPreparedQuery.queryWithCache (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/pg-core/session.ts:72:12)
+      at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/node-postgres/session.ts:154:19
+      at async ScholarsService.getScholar [90m(/Users/rgnpx/ashinaga/apps/api/[39msrc/scholars/scholars.service.ts:228:20[90m)[39m
+      at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.3_@nestjs+common@11.1.3_class-transformer@0.5.1_class-validator@0.14._f00a9328469ae70f8dd89f51e4455422/node_modules/[4m@nestjs/core[24m/router/router-execution-context.js:46:28
+      at async Object.<anonymous> (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.3_@nestjs+common@11.1.3_class-transformer@0.5.1_class-validator@0.14._f00a9328469ae70f8dd89f51e4455422/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17)
+}
+[31m[Nest] 39353  - [39m11/06/2026, 22:31:38 [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39mDrizzleQueryError: Failed query: select "scholars"."id", "scholars"."user_id", "scholars"."phone", "scholars"."program", "scholars"."year", "scholars"."university", "scholars"."location", "scholars"."start_date", "scholars"."status", "scholars"."last_activity", "scholars"."bio", "scholars"."aai_scholar_id", "scholars"."date_of_birth", "scholars"."gender", "scholars"."nationality", "scholars"."address_home_country", "scholars"."passport_expiration_date", "scholars"."visa_expiration_date", "scholars"."emergency_contact_country_of_study", "scholars"."emergency_contact_home_country", "scholars"."graduation_date", "scholars"."university_id", "scholars"."dietary_information", "scholars"."kokorozashi", "scholars"."long_term_career_plan", "scholars"."post_graduation_plan", "scholars"."major_category", "scholars"."field_of_study", "scholars"."created_at", "scholars"."updated_at", "user"."id", "user"."name", "user"."email", "user"."email_verified", "user"."image", "user"."user_type", "user"."created_at", "user"."updated_at" from "scholars" inner join "user" on "scholars"."user_id" = "user"."id" where "scholars"."id" = $1 limit $2
+params: 00000000-0000-0000-0000-000000000000,1
+    at NodePgPreparedQuery.queryWithCache (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/pg-core/session.ts:74:11)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+    at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/node-postgres/session.ts:154:19
+[90m    ... 2 lines matching cause stack trace ...[39m
+    at async Object.<anonymous> (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.3_@nestjs+common@11.1.3_class-transformer@0.5.1_class-validator@0.14._f00a9328469ae70f8dd89f51e4455422/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17) {
+  query: [32m'select "scholars"."id", "scholars"."user_id", "scholars"."phone", "scholars"."program", "scholars"."year", "scholars"."university", "scholars"."location", "scholars"."start_date", "scholars"."status", "scholars"."last_activity", "scholars"."bio", "scholars"."aai_scholar_id", "scholars"."date_of_birth", "scholars"."gender", "scholars"."nationality", "scholars"."address_home_country", "scholars"."passport_expiration_date", "scholars"."visa_expiration_date", "scholars"."emergency_contact_country_of_study", "scholars"."emergency_contact_home_country", "scholars"."graduation_date", "scholars"."university_id", "scholars"."dietary_information", "scholars"."kokorozashi", "scholars"."long_term_career_plan", "scholars"."post_graduation_plan", "scholars"."major_category", "scholars"."field_of_study", "scholars"."created_at", "scholars"."updated_at", "user"."id", "user"."name", "user"."email", "user"."email_verified", "user"."image", "user"."user_type", "user"."created_at", "user"."updated_at" from "scholars" inner join "user" on "scholars"."user_id" = "user"."id" where "scholars"."id" = $1 limit $2'[39m,
+  params: [
+    [32m'00000000-0000-0000-0000-000000000000'[39m,
+    [33m1[39m
+  ],
+  cause: Error: The server does not support SSL connections
+      at /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/pg-pool@3.10.1_pg@8.16.3/node_modules/[4mpg-pool[24m/index.js:45:11
+  [90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+      at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/node-postgres/session.ts:161:13
+      at async NodePgPreparedQuery.queryWithCache (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/pg-core/session.ts:72:12)
+      at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/node-postgres/session.ts:154:19
+      at async ScholarsService.getScholar [90m(/Users/rgnpx/ashinaga/apps/api/[39msrc/scholars/scholars.service.ts:228:20[90m)[39m
+      at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.3_@nestjs+common@11.1.3_class-transformer@0.5.1_class-validator@0.14._f00a9328469ae70f8dd89f51e4455422/node_modules/[4m@nestjs/core[24m/router/router-execution-context.js:46:28
+      at async Object.<anonymous> (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.3_@nestjs+common@11.1.3_class-transformer@0.5.1_class-validator@0.14._f00a9328469ae70f8dd89f51e4455422/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17)
+}
+[31m[Nest] 39353  - [39m11/06/2026, 22:31:38 [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39mDrizzleQueryError: Failed query: select "scholars"."id", "scholars"."user_id", "scholars"."phone", "scholars"."program", "scholars"."year", "scholars"."university", "scholars"."location", "scholars"."start_date", "scholars"."status", "scholars"."last_activity", "scholars"."bio", "scholars"."aai_scholar_id", "scholars"."date_of_birth", "scholars"."gender", "scholars"."nationality", "scholars"."address_home_country", "scholars"."passport_expiration_date", "scholars"."visa_expiration_date", "scholars"."emergency_contact_country_of_study", "scholars"."emergency_contact_home_country", "scholars"."graduation_date", "scholars"."university_id", "scholars"."dietary_information", "scholars"."kokorozashi", "scholars"."long_term_career_plan", "scholars"."post_graduation_plan", "scholars"."major_category", "scholars"."field_of_study", "scholars"."created_at", "scholars"."updated_at", "user"."id", "user"."name", "user"."email", "user"."email_verified", "user"."image", "user"."user_type", "user"."created_at", "user"."updated_at" from "scholars" inner join "user" on "scholars"."user_id" = "user"."id" where "scholars"."id" = $1 limit $2
+params: 14c42438-8935-4c8c-95a5-75c9a0d5fa25,1
+    at NodePgPreparedQuery.queryWithCache (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/pg-core/session.ts:74:11)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+    at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/node-postgres/session.ts:154:19
+[90m    ... 2 lines matching cause stack trace ...[39m
+    at async Object.<anonymous> (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.3_@nestjs+common@11.1.3_class-transformer@0.5.1_class-validator@0.14._f00a9328469ae70f8dd89f51e4455422/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17) {
+  query: [32m'select "scholars"."id", "scholars"."user_id", "scholars"."phone", "scholars"."program", "scholars"."year", "scholars"."university", "scholars"."location", "scholars"."start_date", "scholars"."status", "scholars"."last_activity", "scholars"."bio", "scholars"."aai_scholar_id", "scholars"."date_of_birth", "scholars"."gender", "scholars"."nationality", "scholars"."address_home_country", "scholars"."passport_expiration_date", "scholars"."visa_expiration_date", "scholars"."emergency_contact_country_of_study", "scholars"."emergency_contact_home_country", "scholars"."graduation_date", "scholars"."university_id", "scholars"."dietary_information", "scholars"."kokorozashi", "scholars"."long_term_career_plan", "scholars"."post_graduation_plan", "scholars"."major_category", "scholars"."field_of_study", "scholars"."created_at", "scholars"."updated_at", "user"."id", "user"."name", "user"."email", "user"."email_verified", "user"."image", "user"."user_type", "user"."created_at", "user"."updated_at" from "scholars" inner join "user" on "scholars"."user_id" = "user"."id" where "scholars"."id" = $1 limit $2'[39m,
+  params: [
+    [32m'14c42438-8935-4c8c-95a5-75c9a0d5fa25'[39m,
+    [33m1[39m
+  ],
+  cause: Error: The server does not support SSL connections
+      at /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/pg-pool@3.10.1_pg@8.16.3/node_modules/[4mpg-pool[24m/index.js:45:11
+  [90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+      at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/node-postgres/session.ts:161:13
+      at async NodePgPreparedQuery.queryWithCache (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/pg-core/session.ts:72:12)
+      at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/node-postgres/session.ts:154:19
+      at async ScholarsService.getScholarProfile [90m(/Users/rgnpx/ashinaga/apps/api/[39msrc/scholars/scholars.service.ts:371:20[90m)[39m
+      at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.3_@nestjs+common@11.1.3_class-transformer@0.5.1_class-validator@0.14._f00a9328469ae70f8dd89f51e4455422/node_modules/[4m@nestjs/core[24m/router/router-execution-context.js:46:28
+      at async Object.<anonymous> (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.3_@nestjs+common@11.1.3_class-transformer@0.5.1_class-validator@0.14._f00a9328469ae70f8dd89f51e4455422/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17)
+}
+[31m[Nest] 39353  - [39m11/06/2026, 22:31:38 [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39mDrizzleQueryError: Failed query: select "scholars"."id", "scholars"."user_id", "scholars"."phone", "scholars"."program", "scholars"."year", "scholars"."university", "scholars"."location", "scholars"."start_date", "scholars"."status", "scholars"."last_activity", "scholars"."bio", "scholars"."aai_scholar_id", "scholars"."date_of_birth", "scholars"."gender", "scholars"."nationality", "scholars"."address_home_country", "scholars"."passport_expiration_date", "scholars"."visa_expiration_date", "scholars"."emergency_contact_country_of_study", "scholars"."emergency_contact_home_country", "scholars"."graduation_date", "scholars"."university_id", "scholars"."dietary_information", "scholars"."kokorozashi", "scholars"."long_term_career_plan", "scholars"."post_graduation_plan", "scholars"."major_category", "scholars"."field_of_study", "scholars"."created_at", "scholars"."updated_at", "user"."id", "user"."name", "user"."email", "user"."email_verified", "user"."image", "user"."user_type", "user"."created_at", "user"."updated_at" from "scholars" inner join "user" on "scholars"."user_id" = "user"."id" where "scholars"."id" = $1 limit $2
+params: 00000000-0000-0000-0000-000000000000,1
+    at NodePgPreparedQuery.queryWithCache (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/pg-core/session.ts:74:11)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+    at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/node-postgres/session.ts:154:19
+[90m    ... 2 lines matching cause stack trace ...[39m
+    at async Object.<anonymous> (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.3_@nestjs+common@11.1.3_class-transformer@0.5.1_class-validator@0.14._f00a9328469ae70f8dd89f51e4455422/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17) {
+  query: [32m'select "scholars"."id", "scholars"."user_id", "scholars"."phone", "scholars"."program", "scholars"."year", "scholars"."university", "scholars"."location", "scholars"."start_date", "scholars"."status", "scholars"."last_activity", "scholars"."bio", "scholars"."aai_scholar_id", "scholars"."date_of_birth", "scholars"."gender", "scholars"."nationality", "scholars"."address_home_country", "scholars"."passport_expiration_date", "scholars"."visa_expiration_date", "scholars"."emergency_contact_country_of_study", "scholars"."emergency_contact_home_country", "scholars"."graduation_date", "scholars"."university_id", "scholars"."dietary_information", "scholars"."kokorozashi", "scholars"."long_term_career_plan", "scholars"."post_graduation_plan", "scholars"."major_category", "scholars"."field_of_study", "scholars"."created_at", "scholars"."updated_at", "user"."id", "user"."name", "user"."email", "user"."email_verified", "user"."image", "user"."user_type", "user"."created_at", "user"."updated_at" from "scholars" inner join "user" on "scholars"."user_id" = "user"."id" where "scholars"."id" = $1 limit $2'[39m,
+  params: [
+    [32m'00000000-0000-0000-0000-000000000000'[39m,
+    [33m1[39m
+  ],
+  cause: Error: The server does not support SSL connections
+      at /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/pg-pool@3.10.1_pg@8.16.3/node_modules/[4mpg-pool[24m/index.js:45:11
+  [90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+      at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/node-postgres/session.ts:161:13
+      at async NodePgPreparedQuery.queryWithCache (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/pg-core/session.ts:72:12)
+      at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/drizzle-orm@0.44.2_@types+pg@8.15.4_kysely@0.28.3_pg@8.16.3/node_modules/[4msrc[24m/node-postgres/session.ts:154:19
+      at async ScholarsService.getScholarProfile [90m(/Users/rgnpx/ashinaga/apps/api/[39msrc/scholars/scholars.service.ts:371:20[90m)[39m
+      at async /Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.3_@nestjs+common@11.1.3_class-transformer@0.5.1_class-validator@0.14._f00a9328469ae70f8dd89f51e4455422/node_modules/[4m@nestjs/core[24m/router/router-execution-context.js:46:28
+      at async Object.<anonymous> (/Users/rgnpx/ashinaga/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.3_@nestjs+common@11.1.3_class-transformer@0.5.1_class-validator@0.14._f00a9328469ae70f8dd89f51e4455422/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17)
+}
+FAIL Ashinaga API Integration test/integration/scholars.integration.spec.ts
+  ● Scholars API (integration) › GET /api/scholars › returns 200 with data and pagination
+
+    expected 200 "OK", got 500 "Internal Server Error"
+
+      92 |         .get('/api/scholars')
+      93 |         .query({ page: 1, limit: 10 })
+    > 94 |         .expect(200);
+         |          ^
+      95 |
+      96 |       expect(res.body).toHaveProperty('data');
+      97 |       expect(res.body).toHaveProperty('pagination');
+
+      at Object.<anonymous> (test/integration/scholars.integration.spec.ts:94:10)
+      ----
+      at Test._assertStatus (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:252:14)
+      at ../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:308:13
+      at Test._assertFunction (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:285:13)
+      at Test.assert (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:164:23)
+      at Server.localAssert (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:120:14)
+
+  ● Scholars API (integration) › GET /api/scholars › returns at least the seeded scholar
+
+    expected 200 "OK", got 500 "Internal Server Error"
+
+      111 |         .get('/api/scholars')
+      112 |         .query({ limit: 100 })
+    > 113 |         .expect(200);
+          |          ^
+      114 |
+      115 |       const found = res.body.data.find((s: { id: string }) => s.id === seededScholarId);
+      116 |       expect(found).toBeDefined();
+
+      at Object.<anonymous> (test/integration/scholars.integration.spec.ts:113:10)
+      ----
+      at Test._assertStatus (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:252:14)
+      at ../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:308:13
+      at Test._assertFunction (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:285:13)
+      at Test.assert (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:164:23)
+      at Server.localAssert (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:120:14)
+
+  ● Scholars API (integration) › GET /api/scholars › excludes archived scholars by default
+
+    expected 200 "OK", got 500 "Internal Server Error"
+
+      126 |         .get('/api/scholars')
+      127 |         .query({ status: 'archived', limit: 100 })
+    > 128 |         .expect(200);
+          |          ^
+      129 |
+      130 |       const activeScholarInArchivedList = res.body.data.find(
+      131 |         (s: { id: string; status: string }) => s.id === seededScholarId && s.status === 'archived'
+
+      at Object.<anonymous> (test/integration/scholars.integration.spec.ts:128:10)
+      ----
+      at Test._assertStatus (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:252:14)
+      at ../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:308:13
+      at Test._assertFunction (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:285:13)
+      at Test.assert (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:164:23)
+      at Server.localAssert (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:120:14)
+
+  ● Scholars API (integration) › GET /api/scholars/filters › returns 200 with programs, years, universities arrays
+
+    expected 200 "OK", got 500 "Internal Server Error"
+
+      137 |   describe('GET /api/scholars/filters', () => {
+      138 |     it('returns 200 with programs, years, universities arrays', async () => {
+    > 139 |       const res = await request(app.getHttpServer()).get('/api/scholars/filters').expect(200);
+          |                                                                                   ^
+      140 |
+      141 |       expect(res.body).toHaveProperty('programs');
+      142 |       expect(res.body).toHaveProperty('years');
+
+      at Object.<anonymous> (test/integration/scholars.integration.spec.ts:139:83)
+      ----
+      at Test._assertStatus (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:252:14)
+      at ../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:308:13
+      at Test._assertFunction (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:285:13)
+      at Test.assert (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:164:23)
+      at Server.localAssert (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:120:14)
+
+  ● Scholars API (integration) › GET /api/scholars/stats › returns 200 with total, active, inactive, onHold, archived
+
+    expected 200 "OK", got 500 "Internal Server Error"
+
+      150 |   describe('GET /api/scholars/stats', () => {
+      151 |     it('returns 200 with total, active, inactive, onHold, archived', async () => {
+    > 152 |       const res = await request(app.getHttpServer()).get('/api/scholars/stats').expect(200);
+          |                                                                                 ^
+      153 |
+      154 |       expect(res.body).toMatchObject({
+      155 |         total: expect.any(Number),
+
+      at Object.<anonymous> (test/integration/scholars.integration.spec.ts:152:81)
+      ----
+      at Test._assertStatus (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:252:14)
+      at ../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:308:13
+      at Test._assertFunction (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:285:13)
+      at Test.assert (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:164:23)
+      at Server.localAssert (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:120:14)
+
+  ● Scholars API (integration) › GET /api/scholars/:id › returns 200 and scholar when id exists
+
+    expected 200 "OK", got 500 "Internal Server Error"
+
+      166 |       const res = await request(app.getHttpServer())
+      167 |         .get(`/api/scholars/${seededScholarId}`)
+    > 168 |         .expect(200);
+          |          ^
+      169 |
+      170 |       expect(res.body.id).toBe(seededScholarId);
+      171 |       expect(res.body.name).toBe('Integration Test Scholar');
+
+      at Object.<anonymous> (test/integration/scholars.integration.spec.ts:168:10)
+      ----
+      at Test._assertStatus (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:252:14)
+      at ../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:308:13
+      at Test._assertFunction (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:285:13)
+      at Test.assert (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:164:23)
+      at Server.localAssert (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:120:14)
+
+  ● Scholars API (integration) › GET /api/scholars/:id › returns 404 for non-existent scholar id
+
+    expected 404 "Not Found", got 500 "Internal Server Error"
+
+      179 |       await request(app.getHttpServer())
+      180 |         .get('/api/scholars/00000000-0000-0000-0000-000000000000')
+    > 181 |         .expect(404);
+          |          ^
+      182 |     });
+      183 |   });
+      184 |
+
+      at Object.<anonymous> (test/integration/scholars.integration.spec.ts:181:10)
+      ----
+      at Test._assertStatus (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:252:14)
+      at ../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:308:13
+      at Test._assertFunction (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:285:13)
+      at Test.assert (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:164:23)
+      at Server.localAssert (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:120:14)
+
+  ● Scholars API (integration) › GET /api/scholars/:id/profile › returns 200 and full profile when id exists
+
+    expected 200 "OK", got 500 "Internal Server Error"
+
+      187 |       const res = await request(app.getHttpServer())
+      188 |         .get(`/api/scholars/${seededScholarId}/profile`)
+    > 189 |         .expect(200);
+          |          ^
+      190 |
+      191 |       expect(res.body.id).toBe(seededScholarId);
+      192 |       expect(res.body.userId).toBe(seededUserId);
+
+      at Object.<anonymous> (test/integration/scholars.integration.spec.ts:189:10)
+      ----
+      at Test._assertStatus (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:252:14)
+      at ../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:308:13
+      at Test._assertFunction (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:285:13)
+      at Test.assert (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:164:23)
+      at Server.localAssert (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:120:14)
+
+  ● Scholars API (integration) › GET /api/scholars/:id/profile › returns 404 for non-existent scholar id
+
+    expected 404 "Not Found", got 500 "Internal Server Error"
+
+      217 |       await request(app.getHttpServer())
+      218 |         .get('/api/scholars/00000000-0000-0000-0000-000000000000/profile')
+    > 219 |         .expect(404);
+          |          ^
+      220 |     });
+      221 |   });
+      222 | });
+
+      at Object.<anonymous> (test/integration/scholars.integration.spec.ts:219:10)
+      ----
+      at Test._assertStatus (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:252:14)
+      at ../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:308:13
+      at Test._assertFunction (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:285:13)
+      at Test.assert (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:164:23)
+      at Server.localAssert (../../node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:120:14)
+
+FAIL Ashinaga API Integration test/integration/requests.integration.spec.ts
+  ● Requests API – multi-assignee (integration) › POST /api/requests (scholar) › creates a request and inserts a row per assignee in request_assignees
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 400
+
+      80 |       });
+      81 |
+    > 82 |       expect(res.status).toBe(201);
+         |                          ^
+      83 |       expect(res.body).toMatchObject({
+      84 |         scholarId: scholar.scholarId,
+      85 |         type: 'extenuating_circumstances',
+
+      at Object.<anonymous> (test/integration/requests.integration.spec.ts:82:26)
+
+  ● Requests API – multi-assignee (integration) › POST /api/requests (scholar) › dedupes duplicate assigneeIds before inserting
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 400
+
+      117 |         assigneeIds: [staffA.userId, staffA.userId, staffB.userId],
+      118 |       });
+    > 119 |       expect(res.status).toBe(201);
+          |                          ^
+      120 |       createdRequestIds.push(res.body.id);
+      121 |
+      122 |       const joinRows = await db
+
+      at Object.<anonymous> (test/integration/requests.integration.spec.ts:119:26)
+
+  ● Requests API – multi-assignee (integration) › GET /api/requests › returns only requests where the staff user is an assignee (non-super-admin)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 400
+
+      140 |         assigneeIds: [staffA.userId, staffB.userId],
+      141 |       });
+    > 142 |       expect(r1.status).toBe(201);
+          |                         ^
+      143 |       requestForAB = r1.body.id;
+      144 |       createdRequestIds.push(requestForAB);
+      145 |
+
+      at Object.<anonymous> (test/integration/requests.integration.spec.ts:142:25)
+
+  ● Requests API – multi-assignee (integration) › GET /api/requests › super admins see all requests regardless of assignment
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 400
+
+      140 |         assigneeIds: [staffA.userId, staffB.userId],
+      141 |       });
+    > 142 |       expect(r1.status).toBe(201);
+          |                         ^
+      143 |       requestForAB = r1.body.id;
+      144 |       createdRequestIds.push(requestForAB);
+      145 |
+
+      at Object.<anonymous> (test/integration/requests.integration.spec.ts:142:25)
+
+  ● Requests API – multi-assignee (integration) › GET /api/requests › includes the assignees array on each request row
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 400
+
+      140 |         assigneeIds: [staffA.userId, staffB.userId],
+      141 |       });
+    > 142 |       expect(r1.status).toBe(201);
+          |                         ^
+      143 |       requestForAB = r1.body.id;
+      144 |       createdRequestIds.push(requestForAB);
+      145 |
+
+      at Object.<anonymous> (test/integration/requests.integration.spec.ts:142:25)
+
+  ● Requests API – multi-assignee (integration) › Backfill › cascade delete: deleting a request removes its request_assignees rows
+
+    expected a seeded request to exist
+
+      229 |       // Use the last seeded request
+      230 |       const targetReqId = createdRequestIds[createdRequestIds.length - 1];
+    > 231 |       if (!targetReqId) throw new Error('expected a seeded request to exist');
+          |                               ^
+      232 |
+      233 |       // Manually delete the join + request to verify cascade works in either direction
+      234 |       await db.delete(requestAssignees).where(eq(requestAssignees.requestId, targetReqId));
+
+      at Object.<anonymous> (test/integration/requests.integration.spec.ts:231:31)
+
+--------------------------------|---------|----------|---------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+File                            | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s                                                                                                                                                                   
+--------------------------------|---------|----------|---------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+All files                       |   28.36 |    31.47 |   19.27 |   28.36 |                                                                                                                                                                                     
+ api                            |       0 |        0 |       0 |       0 |                                                                                                                                                                                     
+  auth.ts                       |       0 |        0 |       0 |       0 | 1                                                                                                                                                                                   
+  drizzle.config.ts             |       0 |        0 |       0 |       0 | 1-20                                                                                                                                                                                
+  jest.config.ts                |       0 |        0 |       0 |       0 | 1-17                                                                                                                                                                                
+  jest.integration.config.ts    |       0 |        0 |       0 |       0 | 1-24                                                                                                                                                                                
+ api/src                        |   20.28 |       50 |      40 |   20.28 |                                                                                                                                                                                     
+  app.controller.ts             |    87.5 |    66.66 |   66.66 |    87.5 | 14-15                                                                                                                                                                               
+  app.module.ts                 |     100 |      100 |     100 |     100 |                                                                                                                                                                                     
+  app.service.ts                |    5.35 |      100 |       0 |    5.35 | 6-111                                                                                                                                                                               
+  main.ts                       |       0 |        0 |       0 |       0 | 1-116                                                                                                                                                                               
+ api/src/announcements          |   21.02 |       50 |   22.22 |   21.02 |                                                                                                                                                                                     
+  announcements.controller.ts   |   59.09 |       40 |      25 |   59.09 | 24-25,29-37,41-42,46-47,51-56,60-65                                                                                                                                                 
+  announcements.module.ts       |     100 |      100 |     100 |     100 |                                                                                                                                                                                     
+  announcements.service.ts      |   10.22 |    66.66 |      20 |   10.22 | 18-48,51-89,92-133,136-163,166-181,184-211,214-268,271-312                                                                                                                          
+ api/src/announcements/dto      |   53.33 |        0 |       0 |   53.33 |                                                                                                                                                                                     
+  create-announcement.dto.ts    |   53.33 |        0 |       0 |   53.33 | 7-13,22-28                                                                                                                                                                          
+ api/src/auth                   |   33.36 |       20 |       0 |   33.36 |                                                                                                                                                                                     
+  auth.config.ts                |   21.86 |       20 |       0 |   21.86 | 11-16,21-37,53-67,92-190,197-200,220-268,273-351,356-380,383-423,432-439                                                                                                            
+  auth.controller.ts            |   45.98 |      100 |       0 |   45.98 | 14-79,86-87,93-94,111-112,130-268,275-276,283-284,290-291,307-308,325-326,342-343,359-360,377-378,394-395,402-403,410-411,427-428,435-436,443-447                                   
+  auth.guard.ts                 |      25 |      100 |       0 |      25 | 8-31                                                                                                                                                                                
+  auth.module.ts                |     100 |      100 |     100 |     100 |                                                                                                                                                                                     
+  staff.guard.ts                |   19.29 |      100 |       0 |   19.29 | 11-56                                                                                                                                                                               
+ api/src/common/interceptors    |       0 |        0 |       0 |       0 |                                                                                                                                                                                     
+  logging.interceptor.ts        |       0 |        0 |       0 |       0 | 1-87                                                                                                                                                                                
+ api/src/db                     |    2.56 |       25 |   16.66 |    2.56 |                                                                                                                                                                                     
+  bootstrap-prod.ts             |       0 |        0 |       0 |       0 | 1-165                                                                                                                                                                               
+  connection.ts                 |   86.36 |       50 |      50 |   86.36 | 36-41                                                                                                                                                                               
+  dev-data.ts                   |       0 |        0 |       0 |       0 | 1-1256                                                                                                                                                                              
+  index.ts                      |       0 |        0 |       0 |       0 | 1-2                                                                                                                                                                                 
+  reset.ts                      |       0 |        0 |       0 |       0 | 1-89                                                                                                                                                                                
+  schema.ts                     |     100 |      100 |     100 |     100 |                                                                                                                                                                                     
+ api/src/db/schema              |     100 |      100 |       0 |     100 |                                                                                                                                                                                     
+  announcements.ts              |     100 |      100 |       0 |     100 |                                                                                                                                                                                     
+  documents.ts                  |     100 |      100 |     100 |     100 |                                                                                                                                                                                     
+  goals.ts                      |     100 |      100 |       0 |     100 |                                                                                                                                                                                     
+  index.ts                      |     100 |      100 |     100 |     100 |                                                                                                                                                                                     
+  invitations.ts                |     100 |      100 |     100 |     100 |                                                                                                                                                                                     
+  requests.ts                   |     100 |      100 |       0 |     100 |                                                                                                                                                                                     
+  scholars.ts                   |     100 |      100 |       0 |     100 |                                                                                                                                                                                     
+  task-responses.ts             |     100 |      100 |     100 |     100 |                                                                                                                                                                                     
+  tasks.ts                      |     100 |      100 |     100 |     100 |                                                                                                                                                                                     
+  users.ts                      |     100 |      100 |       0 |     100 |                                                                                                                                                                                     
+ api/src/email                  |    6.57 |    66.66 |      25 |    6.57 |                                                                                                                                                                                     
+  email.module.ts               |     100 |      100 |     100 |     100 |                                                                                                                                                                                     
+  email.service.ts              |    4.86 |    66.66 |      25 |    4.86 | 11-12,16-120,123-164,167-169,172-275,278-390,393-492                                                                                                                                
+ api/src/files                  |   20.04 |       60 |   27.27 |   20.04 |                                                                                                                                                                                     
+  files.controller.ts           |   36.36 |    66.66 |   33.33 |   36.36 | 23-37,41-66,70-76,80-87                                                                                                                                                             
+  files.module.ts               |     100 |      100 |     100 |     100 |                                                                                                                                                                                     
+  files.service.ts              |   13.85 |       50 |      20 |   13.85 | 35-105,111-188,194-313,319-360                                                                                                                                                      
+ api/src/goals                  |    21.9 |    42.85 |   13.63 |    21.9 |                                                                                                                                                                                     
+  goals.controller.ts           |   66.23 |       40 |   18.18 |   66.23 | 26-27,31-32,36-37,41-42,46-47,52-53,57-62,66-71,75-76                                                                                                                               
+  goals.module.ts               |     100 |      100 |     100 |     100 |                                                                                                                                                                                     
+  goals.service.ts              |   10.45 |       50 |    9.09 |   10.45 | 20-35,38-58,61-99,102-120,123-138,142-162,165-228,231-305,308-351,354-372                                                                                                           
+ api/src/goals/dto              |   25.66 |        0 |       0 |   25.66 |                                                                                                                                                                                     
+  create-comment.dto.ts         |     100 |        0 |       0 |     100 | 6                                                                                                                                                                                   
+  create-goal.dto.ts            |   14.58 |        0 |       0 |   14.58 | 6-46                                                                                                                                                                                
+  update-comment.dto.ts         |     100 |        0 |       0 |     100 | 6                                                                                                                                                                                   
+  update-goal.dto.ts            |   15.68 |        0 |       0 |   15.68 | 7-49                                                                                                                                                                                
+ api/src/health                 |     100 |    66.66 |     100 |     100 |                                                                                                                                                                                     
+  health.controller.ts          |     100 |    66.66 |     100 |     100 | 16                                                                                                                                                                                  
+  health.module.ts              |     100 |      100 |     100 |     100 |                                                                                                                                                                                     
+ api/src/invitations            |   29.12 |    42.85 |      20 |   29.12 |                                                                                                                                                                                     
+  invitations.controller.ts     |   83.14 |       40 |   28.57 |   83.14 | 31-32,43-45,56-58,72-75,86-88                                                                                                                                                       
+  invitations.module.ts         |     100 |      100 |     100 |     100 |                                                                                                                                                                                     
+  invitations.service.ts        |    11.5 |       50 |    12.5 |    11.5 | 24-110,113-158,161-183,186-213,216-257,260-272,275-312                                                                                                                              
+ api/src/invitations/dto        |   53.19 |        0 |       0 |   53.19 |                                                                                                                                                                                     
+  create-invitation.dto.ts      |   53.19 |        0 |       0 |   53.19 | 9-30                                                                                                                                                                                
+ api/src/requests               |    27.7 |    36.36 |   16.66 |    27.7 |                                                                                                                                                                                     
+  requests.controller.ts        |   49.16 |       25 |   22.22 |   49.16 | 37-46,50-58,62-75,80-85,90-98,103-108,113-119                                                                                                                                       
+  requests.module.ts            |     100 |      100 |     100 |     100 |                                                                                                                                                                                     
+  requests.service.ts           |   23.69 |    66.66 |   13.33 |   23.69 | 26-57,60-74,77-83,86-107,194-334,337-361,364-390,393-440,443-525,528-596,599-668,671-700,703-761                                                                                    
+ api/src/requests/dto           |   47.52 |        0 |       0 |   47.52 |                                                                                                                                                                                     
+  create-request.dto.ts         |   69.76 |        0 |       0 |   69.76 | 54-72,78-84                                                                                                                                                                         
+  get-requests.dto.ts           |   31.03 |        0 |       0 |   31.03 | 10-53,59-62,68-73,79-100,106-109                                                                                                                                                    
+ api/src/scholars               |   25.21 |       32 |   43.75 |   25.21 |                                                                                                                                                                                     
+  scholars.controller.ts        |   80.74 |    31.81 |   46.66 |   80.74 | 37-41,76-77,83-84,89-93,104-108,115-116,121-122,127-129                                                                                                                             
+  scholars.module.ts            |     100 |      100 |     100 |     100 |                                                                                                                                                                                     
+  scholars.service.ts           |    17.7 |    32.14 |   41.17 |    17.7 | 38-105,125-133,136-137,140-141,144-145,176-182,189-225,237-260,269-319,322-367,380-408,415-417,426-529,550-568,584-612,615-740,743-838,841-853,856-960,964-1053,1056-1065,1068-1106 
+ api/src/scholars/dto           |   34.14 |    26.31 |       5 |   34.14 |                                                                                                                                                                                     
+  create-scholar.dto.ts         |   25.71 |        0 |       0 |   25.71 | 19-22,25-26,33-38,41-42,49-54,57-58,66-173                                                                                                                                          
+  get-scholars.dto.ts           |   49.75 |    26.66 |    8.33 |   49.75 | 50-51,57,64-75,81-83,89,95-113,119-126,132-147,154-191,197-200                                                                                                                      
+  update-scholar-profile.dto.ts |   18.58 |       50 |       0 |   18.58 | 20-111                                                                                                                                                                              
+ api/src/tasks                  |   27.93 |    42.85 |   13.63 |   27.93 |                                                                                                                                                                                     
+  tasks.controller.ts           |    62.9 |    33.33 |      20 |    62.9 | 40-46,53-58,63-64,69-73,80-89,96-97,104-110,117-123                                                                                                                                 
+  tasks.module.ts               |     100 |      100 |     100 |     100 |                                                                                                                                                                                     
+  tasks.service.ts              |    11.7 |      100 |    8.33 |    11.7 | 17-22,25-34,37-52,55-63,66-91,94-106,109-127,130-154,157-181,184-294,297-315                                                                                                        
+ api/src/tasks/dto              |   27.19 |        0 |       0 |   27.19 |                                                                                                                                                                                     
+  complete-task.dto.ts          |   68.42 |        0 |       0 |   68.42 | 5-7,15-17                                                                                                                                                                           
+  create-task.dto.ts            |      20 |        0 |       0 |      20 | 7-38                                                                                                                                                                                
+  update-task.dto.ts            |   18.18 |        0 |       0 |   18.18 | 9-53                                                                                                                                                                                
+ api/src/users                  |   49.55 |       50 |      25 |   49.55 |                                                                                                                                                                                     
+  users.controller.ts           |   69.56 |       50 |      40 |   69.56 | 18-23,31-36,44-45                                                                                                                                                                   
+  users.module.ts               |     100 |      100 |     100 |     100 |                                                                                                                                                                                     
+  users.service.ts              |   24.56 |      100 |       0 |   24.56 | 10-18,21-41,44-56                                                                                                                                                                   
+ api/src/users/dto              |     100 |        0 |       0 |     100 |                                                                                                                                                                                     
+  update-user.dto.ts            |     100 |        0 |       0 |     100 | 8                                                                                                                                                                                   
+ api/test                       |       0 |        0 |       0 |       0 |                                                                                                                                                                                     
+  app.e2e-spec.ts               |       0 |        0 |       0 |       0 | 1-22                                                                                                                                                                                
+ api/test/integration/helpers   |   83.77 |    35.71 |   64.28 |   83.77 |                                                                                                                                                                                     
+  create-app.ts                 |   93.51 |       80 |   66.66 |   93.51 | 83-89                                                                                                                                                                               
+  seed.ts                       |   79.22 |    26.08 |    62.5 |   79.22 | 144-148,151-167,182-199,223-227,229-231                                                                                                                                             
+--------------------------------|---------|----------|---------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Test Suites: 2 failed, 2 total
+Tests:       15 failed, 3 passed, 18 total
+Snapshots:   0 total
+Time:        1.463 s, estimated 2 s
+Ran all test suites.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
+ ELIFECYCLE  Command failed with exit code 1.
+ ELIFECYCLE  Command failed with exit code 1.

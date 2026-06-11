@@ -106,89 +106,7 @@ export class RequestsService {
     return request;
   }
 
-  // private buildArchivedWhereCondition(
-  //   mode: 'active' | 'archived' | 'all' = 'active',
-  //   staffArchivedUserIds?: string[]
-  // ) {
-  //   if (!staffArchivedUserIds) {
-  //     if (mode === 'all') {
-  //       return undefined;
-  //     }
 
-  //     return eq(requests.archived, mode === 'archived');
-  //   }
-
-  //   if (mode === 'active') {
-  //     return eq(requests.archived, false);
-  //   }
-
-  //   if (mode === 'archived') {
-  //     if (staffArchivedUserIds.length === 0) {
-  //       return sql`1 = 0`;
-  //     }
-
-  //     return and(eq(requests.archived, true), inArray(requests.archivedBy, staffArchivedUserIds));
-  //   }
-
-  //   if (staffArchivedUserIds.length === 0) {
-  //     return eq(requests.archived, false);
-  //   }
-
-  //   return or(
-  //     eq(requests.archived, false),
-  //     and(eq(requests.archived, true), inArray(requests.archivedBy, staffArchivedUserIds))
-  //   );
-  // }
-
-  // private async getActorContext(userId: string) {
-  //   const [staffRecord] = await database.select().from(staff).where(eq(staff.userId, userId));
-  //   if (staffRecord) {
-  //     return { role: 'staff' as const };
-  //   }
-
-  //   const [scholarRecord] = await database.select().from(scholars).where(eq(scholars.userId, userId));
-  //   if (scholarRecord) {
-  //     return {
-  //       role: 'scholar' as const,
-  //       scholarId: scholarRecord.id,
-  //     };
-  //   }
-
-  //   throw new ForbiddenException('User is not authorized for this request');
-  // }
-
-  // private async getUserTypeById(userId: string | null) {
-  //   if (!userId) {
-  //     return null;
-  //   }
-
-  //   const [user] = await database.select().from(users).where(eq(users.id, userId));
-  //   return user?.userType || null;
-  // }
-
-  // private async assertCanMutateRequest(requestId: string, userId: string) {
-  //   const [request] = await database.select().from(requests).where(eq(requests.id, requestId));
-
-  //   if (!request) {
-  //     throw new NotFoundException('Request not found');
-  //   }
-
-  //   const [staffRecord] = await database.select().from(staff).where(eq(staff.userId, userId));
-  //   if (staffRecord) {
-  //     return request;
-  //   }
-
-  //   const [scholarRecord] = await database.select().from(scholars).where(eq(scholars.userId, userId));
-  //   if (!scholarRecord) {
-  //     throw new ForbiddenException('User is not authorized for this request');
-  //   }
-
-  //   if (request.scholarId !== scholarRecord.id) {
-  //     throw new ForbiddenException('You can only manage your own requests');
-  //   }
-
-  //   return request;
-  // }
 
   async getRequests(query: GetRequestsQueryDto, userId: string): Promise<GetRequestsResponseDto> {
     const { page = 1, limit = 20, search, type, status, priority, archivedFilter = 'active' } =
@@ -199,10 +117,6 @@ export class RequestsService {
     const whereConditions = [];
 
     let staffArchivedUserIds: string[] | undefined;
-
-    // let staffArchivedUserIds: string[] | undefined;
-
-    // let staffArchivedUserIds: string[] | undefined;
 
     const [staffRecord] = await database.select().from(staff).where(eq(staff.userId, userId));
 
@@ -454,22 +368,9 @@ export class RequestsService {
     const scholarId = scholar[0].id;
     const restoreWindowStart = new Date();
     restoreWindowStart.setDate(restoreWindowStart.getDate() - 7);
-    // const restoreWindowStart = new Date();
-    restoreWindowStart.setDate(restoreWindowStart.getDate() - 7);
 
     // Get requests for this scholar with user info (excluding archived)
     const whereConditions = [eq(requests.scholarId, scholarId)];
-    if (!includeArchived) {
-      whereConditions.push(eq(requests.archived, false));
-    } else {
-      whereConditions.push(
-        eq(requests.archived, true),
-        eq(requests.archivedBy, userId),
-        sql`${requests.archivedAt} >= ${restoreWindowStart}`
-      );
-    }
-
-    // const whereConditions = [eq(requests.scholarId, scholarId)];
     if (!includeArchived) {
       whereConditions.push(eq(requests.archived, false));
     } else {
@@ -760,64 +661,5 @@ export class RequestsService {
     return restoredRequest;
   }
 
-  // async restoreRequest(requestId: string, restoredBy: string) {
-  //   const request = await this.assertCanMutateRequest(requestId, restoredBy);
-  //   const actor = await this.getActorContext(restoredBy);
 
-  //   if (!request.archived) {
-  //     throw new Error('Request is not archived');
-  //   }
-
-  //   const archivedByUserType = await this.getUserTypeById(request.archivedBy);
-
-  //   if (actor.role === 'staff') {
-  //     if (archivedByUserType !== 'staff') {
-  //       throw new ForbiddenException('Staff can only restore staff-archived requests');
-  //     }
-  //   } else {
-  //     if (request.archivedBy !== restoredBy) {
-  //       throw new ForbiddenException('You can only restore requests you withdrew');
-  //     }
-
-  //     if (archivedByUserType !== 'scholar') {
-  //       throw new ForbiddenException('Only scholar-withdrawn requests can be restored by scholars');
-  //     }
-
-  //     if (!request.archivedAt) {
-  //       throw new ForbiddenException('Withdrawn request cannot be restored');
-  //     }
-
-  //     const restoreDeadline = new Date(request.archivedAt);
-  //     restoreDeadline.setDate(restoreDeadline.getDate() + 7);
-  //     if (new Date() > restoreDeadline) {
-  //       throw new ForbiddenException(
-  //         'Restore window expired. Requests can only be restored within 7 days of withdrawal.'
-  //       );
-  //     }
-  //   }
-
-  //   const [restoredRequest] = await database
-  //     .update(requests)
-  //     .set({
-  //       archived: false,
-  //       archivedAt: null,
-  //       archivedBy: null,
-  //       updatedAt: new Date(),
-  //     })
-  //     .where(eq(requests.id, requestId))
-  //     .returning();
-
-  //   await database.insert(requestAuditLogs).values({
-  //     requestId,
-  //     action: 'restored',
-  //     performedBy: restoredBy,
-  //     comment:
-  //       actor.role === 'scholar'
-  //         ? 'Request restored by scholar within withdrawal window'
-  //         : 'Request restored by staff',
-  //     metadata: JSON.stringify({ restoredBy, restoredAt: new Date(), actor: actor.role }),
-  //   });
-
-  //   return restoredRequest;
-  // }
 }

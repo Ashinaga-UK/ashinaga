@@ -1,0 +1,303 @@
+
+> ashinaga@1.0.0 test /Users/rgnpx/ashinaga
+> turbo run test
+
+turbo 2.5.4
+
+• Packages in scope: @ashinaga/agent-skills, @workspace/jest-config, @workspace/typescript-config, @workspace/ui, ashinaga-api, scholar, staff
+• Running test in 7 packages
+• Remote caching disabled
+ashinaga-api:test: cache miss, executing 8e3a989503be00c1
+scholar:test: cache hit, replaying logs d5e6d94855de5121
+staff:test: cache hit, replaying logs cde31def2eb733ef
+scholar:test: 
+scholar:test: > scholar@0.0.1 test /Users/rgnpx/ashinaga/apps/scholar
+scholar:test: > jest
+scholar:test: 
+scholar:test: PASS app/__tests__/page.test.tsx
+scholar:test:   ScholarHome
+scholar:test:     ✓ should be defined (1 ms)
+scholar:test: 
+scholar:test: Test Suites: 1 passed, 1 total
+scholar:test: Tests:       1 passed, 1 total
+scholar:test: Snapshots:   0 total
+scholar:test: Time:        0.845 s
+scholar:test: Ran all test suites.
+staff:test: 
+staff:test: > staff@0.0.1 test /Users/rgnpx/ashinaga/apps/staff
+staff:test: > jest
+staff:test: 
+staff:test: PASS components/__tests__/logo.test.tsx
+staff:test:   Logo
+staff:test:     ✓ renders the Ashinaga logo text (40 ms)
+staff:test:     ✓ applies custom className (1 ms)
+staff:test:     ✓ has correct default styling classes (2 ms)
+staff:test: 
+staff:test: Test Suites: 1 passed, 1 total
+staff:test: Tests:       3 passed, 3 total
+staff:test: Snapshots:   0 total
+staff:test: Time:        0.976 s
+staff:test: Ran all test suites.
+ashinaga-api:test: 
+ashinaga-api:test: > ashinaga-api@1.0.0 test /Users/rgnpx/ashinaga/apps/api
+ashinaga-api:test: > jest
+ashinaga-api:test: 
+ashinaga-api:test: PASS Ashinaga API App src/scholars/scholars.controller.spec.ts
+ashinaga-api:test: PASS Ashinaga API App src/goals/goals.controller.spec.ts
+ashinaga-api:test: PASS Ashinaga API App src/invitations/invitations.service.spec.ts
+ashinaga-api:test: PASS Ashinaga API App src/auth/auth.controller.spec.ts
+ashinaga-api:test:   ● Console
+ashinaga-api:test: 
+ashinaga-api:test:     console.log
+ashinaga-api:test:       === AUTH CONTROLLER ===
+ashinaga-api:test: 
+ashinaga-api:test:       at AuthController.forwardToAuth (auth/auth.controller.ts:43:15)
+ashinaga-api:test: 
+ashinaga-api:test:     console.log
+ashinaga-api:test:       URL: http://localhost:3000/api/auth/sign-in/email
+ashinaga-api:test: 
+ashinaga-api:test:       at AuthController.forwardToAuth (auth/auth.controller.ts:44:15)
+ashinaga-api:test: 
+ashinaga-api:test:     console.log
+ashinaga-api:test:       Method: POST
+ashinaga-api:test: 
+ashinaga-api:test:       at AuthController.forwardToAuth (auth/auth.controller.ts:45:15)
+ashinaga-api:test: 
+ashinaga-api:test:     console.log
+ashinaga-api:test:       Body: {"email":"test@example.com","password":"password"}
+ashinaga-api:test: 
+ashinaga-api:test:       at AuthController.forwardToAuth (auth/auth.controller.ts:46:15)
+ashinaga-api:test: 
+ashinaga-api:test:     console.log
+ashinaga-api:test:       Better Auth Response Status: 200
+ashinaga-api:test: 
+ashinaga-api:test:       at AuthController.forwardToAuth (auth/auth.controller.ts:50:15)
+ashinaga-api:test: 
+ashinaga-api:test:     console.log
+ashinaga-api:test:       Better Auth Response Body: {"success":true}
+ashinaga-api:test: 
+ashinaga-api:test:       at AuthController.forwardToAuth (auth/auth.controller.ts:67:17)
+ashinaga-api:test: 
+ashinaga-api:test: PASS Ashinaga API App src/files/files.service.spec.ts
+ashinaga-api:test: PASS Ashinaga API App src/invitations/invitations.controller.spec.ts
+ashinaga-api:test: PASS Ashinaga API App src/announcements/announcements.controller.spec.ts
+ashinaga-api:test: PASS Ashinaga API App src/announcements/announcements.service.spec.ts
+ashinaga-api:test:   ● Console
+ashinaga-api:test: 
+ashinaga-api:test:     console.log
+ashinaga-api:test:       No recipients for announcement, skipping email sending
+ashinaga-api:test: 
+ashinaga-api:test:       at AnnouncementsService.sendAnnouncementEmails (announcements/announcements.service.ts:277:15)
+ashinaga-api:test: 
+ashinaga-api:test: PASS Ashinaga API App src/goals/goals.service.spec.ts
+ashinaga-api:test: PASS Ashinaga API App src/users/users.controller.spec.ts
+ashinaga-api:test: PASS Ashinaga API App src/auth/auth.config.spec.ts
+ashinaga-api:test: PASS Ashinaga API App src/app.service.spec.ts
+ashinaga-api:test: PASS Ashinaga API App src/app.controller.spec.ts
+ashinaga-api:test: PASS Ashinaga API App src/scholars/scholars.service.spec.ts
+ashinaga-api:test: PASS Ashinaga API App src/users/users.service.spec.ts
+ashinaga-api:test: PASS Ashinaga API App src/email/email.service.spec.ts
+ashinaga-api:test:   ● Console
+ashinaga-api:test: 
+ashinaga-api:test:     console.log
+ashinaga-api:test:       Email sent successfully: { id: 'email-123' }
+ashinaga-api:test: 
+ashinaga-api:test:       at EmailService.sendEmail (email/email.service.ts:159:15)
+ashinaga-api:test: 
+ashinaga-api:test: FAIL Ashinaga API App src/requests/requests.service.spec.ts
+ashinaga-api:test:   ● Test suite failed to run
+ashinaga-api:test: 
+ashinaga-api:test:     Jest encountered an unexpected token
+ashinaga-api:test: 
+ashinaga-api:test:     Jest failed to parse a file. This happens e.g. when your code or its dependencies use non-standard JavaScript syntax, or when Jest is not configured to support such syntax.
+ashinaga-api:test: 
+ashinaga-api:test:     Out of the box Jest supports Babel, which will be used to transform your files into valid JS based on your Babel configuration.
+ashinaga-api:test: 
+ashinaga-api:test:     By default "node_modules" folder is ignored by transformers.
+ashinaga-api:test: 
+ashinaga-api:test:     Here's what you can do:
+ashinaga-api:test:      • If you are trying to use ECMAScript Modules, see https://jestjs.io/docs/ecmascript-modules for how to enable it.
+ashinaga-api:test:      • If you are trying to use TypeScript, see https://jestjs.io/docs/getting-started#using-typescript
+ashinaga-api:test:      • To have some of your "node_modules" files transformed, you can specify a custom "transformIgnorePatterns" in your config.
+ashinaga-api:test:      • If you need a custom transformation specify a "transform" option in your config.
+ashinaga-api:test:      • If you simply want to mock your non-JS modules (e.g. binary assets) you can stub them out with the "moduleNameMapper" config option.
+ashinaga-api:test: 
+ashinaga-api:test:     You'll find more details and examples of these config options in the docs:
+ashinaga-api:test:     https://jestjs.io/docs/configuration
+ashinaga-api:test:     For information about custom transformations, see:
+ashinaga-api:test:     https://jestjs.io/docs/code-transformation
+ashinaga-api:test: 
+ashinaga-api:test:     Details:
+ashinaga-api:test: 
+ashinaga-api:test:     /Users/rgnpx/ashinaga/apps/api/src/requests/requests.service.ts:149
+ashinaga-api:test:             let staffArchivedUserIds;
+ashinaga-api:test:                 ^
+ashinaga-api:test: 
+ashinaga-api:test:     SyntaxError: Identifier 'staffArchivedUserIds' has already been declared
+ashinaga-api:test: 
+ashinaga-api:test:       2 | import { Test } from '@nestjs/testing';
+ashinaga-api:test:       3 | import { EmailService } from '../email/email.service';
+ashinaga-api:test:     > 4 | import { RequestsService } from './requests.service';
+ashinaga-api:test:         | ^
+ashinaga-api:test:       5 |
+ashinaga-api:test:       6 | // Mock the database module
+ashinaga-api:test:       7 | jest.mock('../db/connection');
+ashinaga-api:test: 
+ashinaga-api:test:       at Runtime.createScriptFromCode (../../../node_modules/.pnpm/jest-runtime@29.7.0/node_modules/jest-runtime/build/index.js:1505:14)
+ashinaga-api:test:       at Object.<anonymous> (requests/requests.service.spec.ts:4:1)
+ashinaga-api:test: 
+ashinaga-api:test: FAIL Ashinaga API App src/requests/requests.controller.spec.ts
+ashinaga-api:test:   ● Test suite failed to run
+ashinaga-api:test: 
+ashinaga-api:test:     Jest encountered an unexpected token
+ashinaga-api:test: 
+ashinaga-api:test:     Jest failed to parse a file. This happens e.g. when your code or its dependencies use non-standard JavaScript syntax, or when Jest is not configured to support such syntax.
+ashinaga-api:test: 
+ashinaga-api:test:     Out of the box Jest supports Babel, which will be used to transform your files into valid JS based on your Babel configuration.
+ashinaga-api:test: 
+ashinaga-api:test:     By default "node_modules" folder is ignored by transformers.
+ashinaga-api:test: 
+ashinaga-api:test:     Here's what you can do:
+ashinaga-api:test:      • If you are trying to use ECMAScript Modules, see https://jestjs.io/docs/ecmascript-modules for how to enable it.
+ashinaga-api:test:      • If you are trying to use TypeScript, see https://jestjs.io/docs/getting-started#using-typescript
+ashinaga-api:test:      • To have some of your "node_modules" files transformed, you can specify a custom "transformIgnorePatterns" in your config.
+ashinaga-api:test:      • If you need a custom transformation specify a "transform" option in your config.
+ashinaga-api:test:      • If you simply want to mock your non-JS modules (e.g. binary assets) you can stub them out with the "moduleNameMapper" config option.
+ashinaga-api:test: 
+ashinaga-api:test:     You'll find more details and examples of these config options in the docs:
+ashinaga-api:test:     https://jestjs.io/docs/configuration
+ashinaga-api:test:     For information about custom transformations, see:
+ashinaga-api:test:     https://jestjs.io/docs/code-transformation
+ashinaga-api:test: 
+ashinaga-api:test:     Details:
+ashinaga-api:test: 
+ashinaga-api:test:     /Users/rgnpx/ashinaga/apps/api/src/requests/requests.service.ts:149
+ashinaga-api:test:             let staffArchivedUserIds;
+ashinaga-api:test:                 ^
+ashinaga-api:test: 
+ashinaga-api:test:     SyntaxError: Identifier 'staffArchivedUserIds' has already been declared
+ashinaga-api:test: 
+ashinaga-api:test:       17 | import { CreateRequestDto, CreateRequestResponseDto } from './dto/create-request.dto';
+ashinaga-api:test:       18 | import { GetRequestsQueryDto, GetRequestsResponseDto } from './dto/get-requests.dto';
+ashinaga-api:test:     > 19 | import { RequestsService } from './requests.service';
+ashinaga-api:test:          | ^
+ashinaga-api:test:       20 |
+ashinaga-api:test:       21 | interface AuthenticatedRequest extends Request {
+ashinaga-api:test:       22 |   user?: {
+ashinaga-api:test: 
+ashinaga-api:test:       at Runtime.createScriptFromCode (../../../node_modules/.pnpm/jest-runtime@29.7.0/node_modules/jest-runtime/build/index.js:1505:14)
+ashinaga-api:test:       at Object.<anonymous> (requests/requests.controller.ts:19:1)
+ashinaga-api:test:       at Object.<anonymous> (requests/requests.controller.spec.ts:3:1)
+ashinaga-api:test: 
+ashinaga-api:test: --------------------------------|---------|----------|---------|---------|----------------------------------------------------------------------------------------------------------------------------------------------------------------
+ashinaga-api:test: File                            | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s                                                                                                                                              
+ashinaga-api:test: --------------------------------|---------|----------|---------|---------|----------------------------------------------------------------------------------------------------------------------------------------------------------------
+ashinaga-api:test: All files                       |   28.77 |    45.81 |   25.82 |   28.77 |                                                                                                                                                                
+ashinaga-api:test:  src                            |   45.55 |    57.14 |   66.66 |   45.55 |                                                                                                                                                                
+ashinaga-api:test:   app.controller.ts             |     100 |       75 |     100 |     100 | 8                                                                                                                                                              
+ashinaga-api:test:   app.module.ts                 |       0 |        0 |       0 |       0 | 1-37                                                                                                                                                           
+ashinaga-api:test:   app.service.ts                |     100 |      100 |     100 |     100 |                                                                                                                                                                
+ashinaga-api:test:   main.ts                       |       0 |        0 |       0 |       0 | 1-116                                                                                                                                                          
+ashinaga-api:test:  src/announcements              |   57.17 |     64.7 |   68.42 |   57.17 |                                                                                                                                                                
+ashinaga-api:test:   announcements.controller.ts   |   81.81 |    72.72 |      75 |   81.81 | 51-56,60-65                                                                                                                                                    
+ashinaga-api:test:   announcements.module.ts       |       0 |        0 |       0 |       0 | 1-11                                                                                                                                                           
+ashinaga-api:test:   announcements.service.ts      |   53.99 |    63.63 |      70 |   53.99 | 32-39,92-133,184-211,221-246,259-265,280-312                                                                                                                   
+ashinaga-api:test:  src/announcements/dto          |   53.33 |        0 |       0 |   53.33 |                                                                                                                                                                
+ashinaga-api:test:   create-announcement.dto.ts    |   53.33 |        0 |       0 |   53.33 | 7-13,22-28                                                                                                                                                     
+ashinaga-api:test:  src/auth                       |   38.65 |    35.29 |    9.67 |   38.65 |                                                                                                                                                                
+ashinaga-api:test:   auth.config.ts                |   23.69 |    42.85 |   11.11 |   23.69 | 11-16,21-37,53-67,92-190,197-200,220-268,273-351,356-380,383-423                                                                                               
+ashinaga-api:test:   auth.controller.ts            |   57.36 |    33.33 |   10.52 |   57.36 | 24-25,32-33,55,59-64,73-78,86-87,93-94,130-268,275-276,283-284,290-291,307-308,325-326,342-343,359-360,377-378,394-395,402-403,410-411,427-428,435-436,443-447 
+ashinaga-api:test:   auth.guard.ts                 |      25 |      100 |       0 |      25 | 8-31                                                                                                                                                           
+ashinaga-api:test:   auth.module.ts                |       0 |        0 |       0 |       0 | 1-7                                                                                                                                                            
+ashinaga-api:test:   staff.guard.ts                |   19.29 |      100 |       0 |   19.29 | 11-56                                                                                                                                                          
+ashinaga-api:test:  src/common/interceptors        |       0 |        0 |       0 |       0 |                                                                                                                                                                
+ashinaga-api:test:   logging.interceptor.ts        |       0 |        0 |       0 |       0 | 1-87                                                                                                                                                           
+ashinaga-api:test:  src/db                         |    2.56 |       25 |   16.66 |    2.56 |                                                                                                                                                                
+ashinaga-api:test:   bootstrap-prod.ts             |       0 |        0 |       0 |       0 | 1-165                                                                                                                                                          
+ashinaga-api:test:   connection.ts                 |   86.36 |       50 |      50 |   86.36 | 36-41                                                                                                                                                          
+ashinaga-api:test:   dev-data.ts                   |       0 |        0 |       0 |       0 | 1-1256                                                                                                                                                         
+ashinaga-api:test:   index.ts                      |       0 |        0 |       0 |       0 | 1-2                                                                                                                                                            
+ashinaga-api:test:   reset.ts                      |       0 |        0 |       0 |       0 | 1-89                                                                                                                                                           
+ashinaga-api:test:   schema.ts                     |     100 |      100 |     100 |     100 |                                                                                                                                                                
+ashinaga-api:test:  src/db/schema                  |     100 |      100 |       0 |     100 |                                                                                                                                                                
+ashinaga-api:test:   announcements.ts              |     100 |      100 |       0 |     100 |                                                                                                                                                                
+ashinaga-api:test:   documents.ts                  |     100 |      100 |     100 |     100 |                                                                                                                                                                
+ashinaga-api:test:   goals.ts                      |     100 |      100 |       0 |     100 |                                                                                                                                                                
+ashinaga-api:test:   index.ts                      |     100 |      100 |     100 |     100 |                                                                                                                                                                
+ashinaga-api:test:   invitations.ts                |     100 |      100 |     100 |     100 |                                                                                                                                                                
+ashinaga-api:test:   requests.ts                   |     100 |      100 |       0 |     100 |                                                                                                                                                                
+ashinaga-api:test:   scholars.ts                   |     100 |      100 |       0 |     100 |                                                                                                                                                                
+ashinaga-api:test:   task-responses.ts             |     100 |      100 |     100 |     100 |                                                                                                                                                                
+ashinaga-api:test:   tasks.ts                      |     100 |      100 |     100 |     100 |                                                                                                                                                                
+ashinaga-api:test:   users.ts                      |     100 |      100 |       0 |     100 |                                                                                                                                                                
+ashinaga-api:test:  src/email                      |   28.48 |    43.75 |   55.55 |   28.48 |                                                                                                                                                                
+ashinaga-api:test:   email.module.ts               |       0 |        0 |       0 |       0 | 1-9                                                                                                                                                            
+ashinaga-api:test:   email.service.ts              |      29 |    46.66 |    62.5 |      29 | 11-12,44-57,132-142,155-157,161-163,172-275,278-390,393-492                                                                                                    
+ashinaga-api:test:  src/files                      |   10.89 |       25 |   14.28 |   10.89 |                                                                                                                                                                
+ashinaga-api:test:   files.controller.ts           |       0 |        0 |       0 |       0 | 1-88                                                                                                                                                           
+ashinaga-api:test:   files.module.ts               |       0 |        0 |       0 |       0 | 1-10                                                                                                                                                           
+ashinaga-api:test:   files.service.ts              |   13.85 |       50 |      20 |   13.85 | 35-105,111-188,194-313,319-360                                                                                                                                 
+ashinaga-api:test:  src/goals                      |   19.52 |     37.5 |   13.04 |   19.52 |                                                                                                                                                                
+ashinaga-api:test:   goals.controller.ts           |   66.23 |       40 |   18.18 |   66.23 | 26-27,31-32,36-37,41-42,46-47,52-53,57-62,66-71,75-76                                                                                                          
+ashinaga-api:test:   goals.module.ts               |       0 |        0 |       0 |       0 | 1-11                                                                                                                                                           
+ashinaga-api:test:   goals.service.ts              |   10.45 |       50 |    9.09 |   10.45 | 20-35,38-58,61-99,102-120,123-138,142-162,165-228,231-305,308-351,354-372                                                                                      
+ashinaga-api:test:  src/goals/dto                  |   25.66 |        0 |       0 |   25.66 |                                                                                                                                                                
+ashinaga-api:test:   create-comment.dto.ts         |     100 |        0 |       0 |     100 | 6                                                                                                                                                              
+ashinaga-api:test:   create-goal.dto.ts            |   14.58 |        0 |       0 |   14.58 | 6-46                                                                                                                                                           
+ashinaga-api:test:   update-comment.dto.ts         |     100 |        0 |       0 |     100 | 6                                                                                                                                                              
+ashinaga-api:test:   update-goal.dto.ts            |   15.68 |        0 |       0 |   15.68 | 7-49                                                                                                                                                           
+ashinaga-api:test:  src/health                     |       0 |        0 |       0 |       0 |                                                                                                                                                                
+ashinaga-api:test:   health.controller.ts          |       0 |        0 |       0 |       0 | 1-20                                                                                                                                                           
+ashinaga-api:test:   health.module.ts              |       0 |        0 |       0 |       0 | 1-7                                                                                                                                                            
+ashinaga-api:test:  src/invitations                |   26.69 |     37.5 |   18.75 |   26.69 |                                                                                                                                                                
+ashinaga-api:test:   invitations.controller.ts     |   83.14 |       40 |   28.57 |   83.14 | 31-32,43-45,56-58,72-75,86-88                                                                                                                                  
+ashinaga-api:test:   invitations.module.ts         |       0 |        0 |       0 |       0 | 1-10                                                                                                                                                           
+ashinaga-api:test:   invitations.service.ts        |    11.5 |       50 |    12.5 |    11.5 | 24-110,113-158,161-183,186-213,216-257,260-272,275-312                                                                                                         
+ashinaga-api:test:  src/invitations/dto            |   53.19 |        0 |       0 |   53.19 |                                                                                                                                                                
+ashinaga-api:test:   create-invitation.dto.ts      |   53.19 |        0 |       0 |   53.19 | 9-30                                                                                                                                                           
+ashinaga-api:test:  src/requests                   |       0 |        0 |       0 |       0 |                                                                                                                                                                
+ashinaga-api:test:   requests.controller.ts        |       0 |        0 |       0 |       0 | 1-120                                                                                                                                                          
+ashinaga-api:test:   requests.module.ts            |       0 |        0 |       0 |       0 | 1-10                                                                                                                                                           
+ashinaga-api:test:   requests.service.ts           |       0 |        0 |       0 |       0 | 1-823                                                                                                                                                          
+ashinaga-api:test:  src/requests/dto               |       0 |        0 |       0 |       0 |                                                                                                                                                                
+ashinaga-api:test:   create-request.dto.ts         |       0 |        0 |       0 |       0 | 1-86                                                                                                                                                           
+ashinaga-api:test:   get-requests.dto.ts           |       0 |        0 |       0 |       0 | 1-116                                                                                                                                                          
+ashinaga-api:test:  src/scholars                   |    55.3 |     59.4 |   48.57 |    55.3 |                                                                                                                                                                
+ashinaga-api:test:   scholars.controller.ts        |   68.88 |    21.05 |   26.66 |   68.88 | 37-41,53-58,62-69,76-77,83-84,89-93,98-99,104-108,115-116,121-122,127-129                                                                                      
+ashinaga-api:test:   scholars.module.ts            |       0 |        0 |       0 |       0 | 1-11                                                                                                                                                           
+ashinaga-api:test:   scholars.service.ts           |    54.2 |    69.13 |   68.42 |    54.2 | 38-105,310-311,313-314,350-355,362-363,415-417,429-442,449-450,455-483,488-497,541-568,615-740,743-838,856-960,1078-1079,1087-1098                             
+ashinaga-api:test:  src/scholars/dto               |   48.08 |    26.31 |   16.66 |   48.08 |                                                                                                                                                                
+ashinaga-api:test:   create-scholar.dto.ts         |   25.71 |        0 |       0 |   25.71 | 19-22,25-26,33-38,41-42,49-54,57-58,66-173                                                                                                                     
+ashinaga-api:test:   get-scholars.dto.ts           |   83.09 |    26.66 |      30 |   83.09 | 5-7,20-30,33-34,67-69,178-181,185-186,192-194,199-205                                                                                                          
+ashinaga-api:test:   update-scholar-profile.dto.ts |   18.58 |       50 |       0 |   18.58 | 20-111                                                                                                                                                         
+ashinaga-api:test:  src/tasks                      |       0 |        0 |       0 |       0 |                                                                                                                                                                
+ashinaga-api:test:   tasks.controller.ts           |       0 |        0 |       0 |       0 | 1-124                                                                                                                                                          
+ashinaga-api:test:   tasks.module.ts               |       0 |        0 |       0 |       0 | 1-11                                                                                                                                                           
+ashinaga-api:test:   tasks.service.ts              |       0 |        0 |       0 |       0 | 1-316                                                                                                                                                          
+ashinaga-api:test:  src/tasks/dto                  |       0 |        0 |       0 |       0 |                                                                                                                                                                
+ashinaga-api:test:   complete-task.dto.ts          |       0 |        0 |       0 |       0 | 1-19                                                                                                                                                           
+ashinaga-api:test:   create-task.dto.ts            |       0 |        0 |       0 |       0 | 1-40                                                                                                                                                           
+ashinaga-api:test:   update-task.dto.ts            |       0 |        0 |       0 |       0 | 1-55                                                                                                                                                           
+ashinaga-api:test:  src/users                      |    40.7 |       40 |   22.22 |    40.7 |                                                                                                                                                                
+ashinaga-api:test:   users.controller.ts           |   69.56 |       50 |      40 |   69.56 | 18-23,31-36,44-45                                                                                                                                              
+ashinaga-api:test:   users.module.ts               |       0 |        0 |       0 |       0 | 1-10                                                                                                                                                           
+ashinaga-api:test:   users.service.ts              |   24.56 |      100 |       0 |   24.56 | 10-18,21-41,44-56                                                                                                                                              
+ashinaga-api:test:  src/users/dto                  |     100 |        0 |       0 |     100 |                                                                                                                                                                
+ashinaga-api:test:   update-user.dto.ts            |     100 |        0 |       0 |     100 | 8                                                                                                                                                              
+ashinaga-api:test: --------------------------------|---------|----------|---------|---------|----------------------------------------------------------------------------------------------------------------------------------------------------------------
+ashinaga-api:test: Test Suites: 2 failed, 16 passed, 18 total
+ashinaga-api:test: Tests:       65 passed, 65 total
+ashinaga-api:test: Snapshots:   0 total
+ashinaga-api:test: Time:        4.242 s
+ashinaga-api:test: Ran all test suites.
+ashinaga-api:test:  ELIFECYCLE  Test failed. See above for more details.
+ashinaga-api:test: ERROR: command finished with error: command (/Users/rgnpx/ashinaga/apps/api) /Users/rgnpx/Library/pnpm/.tools/pnpm/10.15.1/bin/pnpm run test exited (1)
+ashinaga-api#test: command (/Users/rgnpx/ashinaga/apps/api) /Users/rgnpx/Library/pnpm/.tools/pnpm/10.15.1/bin/pnpm run test exited (1)
+
+ Tasks:    2 successful, 3 total
+Cached:    2 cached, 3 total
+  Time:    5.257s 
+Failed:    ashinaga-api#test
+
+ ERROR  run failed: command  exited (1)
+ ELIFECYCLE  Test failed. See above for more details.
