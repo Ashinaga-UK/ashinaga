@@ -37,6 +37,7 @@ import {
 } from '../lib/constants';
 import {
   useArchiveTask,
+  useDeleteTask,
   useRestoreTask,
   useScholarProfile,
   useUpdateScholarProfile,

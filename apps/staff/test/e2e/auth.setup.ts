@@ -13,14 +13,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test as setup } from '@playwright/test';
 import { hashPassword } from 'better-auth/crypto';
-import pg from 'pg';
-
-const { Pool } = pg;
+import { Pool } from 'pg';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const API_URL = process.env.API_URL || 'http://localhost:4000';
+const API_URL = process.env.API_URL || 'http://127.0.0.1:4000';
 const STAFF_EMAIL = (process.env.E2E_STAFF_EMAIL || 'e2e-staff@ashinaga.org').toLowerCase();
 const STAFF_PASSWORD = process.env.E2E_STAFF_PASSWORD || 'E2eStaffPassw0rd!';
 const AUTH_FILE = path.join(__dirname, '.auth', 'staff.json');

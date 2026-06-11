@@ -711,6 +711,12 @@ export async function archiveTask(taskId: string): Promise<Task> {
   });
 }
 
+export async function deleteTask(taskId: string): Promise<Task> {
+  return fetchAPI<Task>(`/api/tasks/${taskId}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function restoreTask(taskId: string): Promise<Task> {
   return fetchAPI<Task>(`/api/tasks/${taskId}/restore`, {
     method: 'PATCH',

@@ -17,6 +17,11 @@ describe('AppController (e2e)', () => {
   });
 
   it('/ (GET)', () => {
-    return request(app.getHttpServer()).get('/').expect(200).expect('Hello World!');
+    return request(app.getHttpServer())
+      .get('/')
+      .expect(200)
+      .then((res) => {
+        expect(res.text).toContain('Ashinaga API');
+      });
   });
 });

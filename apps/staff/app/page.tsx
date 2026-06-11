@@ -27,7 +27,7 @@ import { ThemeToggle } from '../components/theme-toggle';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
-import { Card, CardContent } from '../components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import {
   Select,
   SelectContent,
@@ -107,13 +107,6 @@ const QuickActionButton = forwardRef<HTMLButtonElement, QuickActionButtonProps>(
   )
 );
 QuickActionButton.displayName = 'QuickActionButton';
-
-type StaffDashboardView =
-  | 'dashboard'
-  | 'scholar-profile'
-  | 'onboarding'
-  | 'task-assignment'
-  | 'my-profile';
 
 function StaffDashboardContent() {
   const router = useRouter();

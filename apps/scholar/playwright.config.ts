@@ -8,7 +8,7 @@ export default defineConfig({
   reporter: 'list',
 
   use: {
-    baseURL: process.env.SCHOLAR_APP_URL || 'http://localhost:4002',
+    baseURL: process.env.SCHOLAR_APP_URL || 'http://127.0.0.1:4002',
     trace: 'on-first-retry',
   },
 
@@ -30,8 +30,11 @@ export default defineConfig({
 
   webServer: {
     command: 'pnpm run dev',
-    url: process.env.SCHOLAR_APP_URL || 'http://localhost:4002',
+    url: process.env.SCHOLAR_APP_URL || 'http://127.0.0.1:4002',
     reuseExistingServer: true,
     timeout: 120_000,
+    env: {
+      NEXT_PUBLIC_API_URL: 'http://127.0.0.1:4000',
+    },
   },
 });

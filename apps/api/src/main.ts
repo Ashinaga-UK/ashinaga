@@ -35,8 +35,8 @@ async function bootstrap() {
         callback(null, true);
         return;
       }
-      // Allow all localhost origins regardless of port
-      if (origin.startsWith('http://localhost:')) {
+      // Allow all localhost and 127.0.0.1 origins regardless of port
+      if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
         callback(null, true);
         return;
       }
