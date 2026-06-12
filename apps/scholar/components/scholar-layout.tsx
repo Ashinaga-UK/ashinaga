@@ -1,22 +1,21 @@
 'use client';
 
-import {
-  CheckSquare,
-  FileText,
-  Home,
-  LogOut,
-  Menu,
-  MessageSquare,
-  Target,
-  User,
-  X,
-} from 'lucide-react';
+import { CheckSquare, FileText, Home, LogOut, MessageSquare, Target, User } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
-import { cn } from '../lib/utils';
 import { ThemeToggle } from './theme-toggle';
-import { Button } from './ui/button';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+} from './ui/sidebar';
 
 interface ScholarLayoutProps {
   children: React.ReactNode;
@@ -24,7 +23,6 @@ interface ScholarLayoutProps {
 }
 
 export function ScholarLayout({ children, onLogout }: ScholarLayoutProps) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pathname = usePathname();
 
   const navItems = [
@@ -37,95 +35,72 @@ export function ScholarLayout({ children, onLogout }: ScholarLayoutProps) {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:from-background dark:to-background dark:bg-background">
-      {/* Mobile header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white dark:bg-sidebar border-b border-ashinaga-teal-100 dark:border-sidebar-border z-50 px-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-            {isSidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </Button>
-          <h1 className="text-lg font-semibold text-foreground">Ashinaga Scholar Portal</h1>
-        </div>
-      </div>
-
-      {/* Sidebar */}
-      <div
-        className={cn(
-          'fixed left-0 top-0 bottom-0 w-64 bg-white dark:bg-sidebar border-r border-ashinaga-teal-100 dark:border-sidebar-border transform transition-transform duration-200 ease-in-out z-40',
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        )}
-      >
-        <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="p-6 border-b border-ashinaga-teal-100 dark:border-sidebar-border">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">A</span>
-              </div>
-              <div>
-                <h1 className="font-semibold text-foreground">Ashinaga</h1>
-                <p className="text-xs text-muted-foreground">Scholar Portal</p>
-              </div>
+    <SidebarProvider>
+      <Sidebar collapsible="icon">
+        <SidebarHeader className="border-b border-ashinaga-teal-100 dark:border-sidebar-border py-4">
+          <div className="flex items-center gap-3 px-2">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600">
+              <span className="text-white font-semibold text-sm">A</span>
+            </div>
+            <div className="flex min-w-0 flex-col leading-tight group-data-[collapsible=icon]:hidden">
+              <h1 className="truncate text-sm font-medium text-foreground">Ashinaga</h1>
+              <p className="truncate text-[11px] text-muted-foreground">Scholar Portal</p>
             </div>
           </div>
-
-          {/* Navigation */}
-          <nav className="flex-1 p-4">
-            <ul className="space-y-2">
+        </SidebarHeader>
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarMenu>
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = pathname === item.href;
                 return (
-                  <li key={item.id}>
-                    <Link href={item.href} onClick={() => setIsSidebarOpen(false)}>
-                      <Button
-                        variant="ghost"
-                        className={cn(
-                          'w-full justify-start',
-                          isActive &&
-                            'bg-ashinaga-teal-50 dark:bg-accent text-ashinaga-teal-700 dark:text-accent-foreground hover:bg-ashinaga-teal-100 dark:hover:bg-accent/80'
-                        )}
-                        asChild
-                      >
-                        <span>
-                          <Icon className="mr-3 h-4 w-4" />
-                          {item.label}
-                        </span>
-                      </Button>
-                    </Link>
-                  </li>
+                  <SidebarMenuItem key={item.id}>
+                    <SidebarMenuButton asChild isActive={isActive} tooltip={item.label}>
+                      <Link href={item.href}>
+                        <Icon />
+                        <span>{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
                 );
               })}
-            </ul>
-          </nav>
+            </SidebarMenu>
+          </SidebarGroup>
+        </SidebarContent>
+        <SidebarFooter className="border-t border-ashinaga-teal-100 dark:border-sidebar-border p-2">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton onClick={onLogout} tooltip="Logout">
+                <LogOut />
+                <span>Logout</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+      </Sidebar>
 
-          {/* Bottom section */}
-          <div className="p-4 border-t border-ashinaga-teal-100 dark:border-sidebar-border space-y-1">
-            <ThemeToggle />
-            <Button
-              variant="ghost"
-              className="w-full justify-start text-muted-foreground hover:text-foreground"
-              onClick={onLogout}
-            >
-              <LogOut className="mr-3 h-4 w-4" />
-              Logout
-            </Button>
+      <div className="flex-1 flex flex-col min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:from-background dark:to-background dark:bg-background w-full min-w-0">
+        {/* Mobile header / Desktop trigger */}
+        <header className="sticky top-0 z-40 w-full border-b border-ashinaga-teal-100 dark:border-sidebar-border bg-white/80 dark:bg-sidebar/80 backdrop-blur-xl">
+          <div className="flex h-14 items-center justify-between gap-2 px-3 sm:gap-3 sm:px-6">
+            <div className="flex min-w-0 items-center gap-3">
+              <SidebarTrigger />
+              <div className="flex min-w-0 flex-col leading-tight md:hidden">
+                <h1 className="truncate text-sm font-medium text-foreground">
+                  Ashinaga Scholar Portal
+                </h1>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              <ThemeToggle />
+            </div>
           </div>
-        </div>
-      </div>
+        </header>
 
-      {/* Main content */}
-      <div className="lg:ml-64 min-h-screen">
-        <div className="pt-16 lg:pt-0">{children}</div>
+        {/* Main content */}
+        <div className="flex-1">{children}</div>
       </div>
-
-      {/* Mobile overlay */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-    </div>
+    </SidebarProvider>
   );
 }

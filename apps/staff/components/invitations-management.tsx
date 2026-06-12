@@ -235,7 +235,12 @@ function InvitationList({ userType }: InvitationListProps) {
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() => toast({ title: 'Follow-up flow', description: 'Reactivation flow will be available in a future update.' })}
+                        onClick={() =>
+                          toast({
+                            title: 'Follow-up flow',
+                            description: 'Reactivation flow will be available in a future update.',
+                          })
+                        }
                       >
                         Follow-up
                       </Button>
@@ -247,7 +252,11 @@ function InvitationList({ userType }: InvitationListProps) {
                         disabled={!canResend || busyId !== null}
                         onClick={() => handleResend(inv.id)}
                       >
-                        {busyId === inv.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Resend'}
+                        {busyId === inv.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          'Resend'
+                        )}
                       </Button>
                     )}
                     <Button
@@ -304,7 +313,13 @@ function InvitationList({ userType }: InvitationListProps) {
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => toast({ title: 'Follow-up flow', description: 'Reactivation flow will be available in a future update.' })}
+                          onClick={() =>
+                            toast({
+                              title: 'Follow-up flow',
+                              description:
+                                'Reactivation flow will be available in a future update.',
+                            })
+                          }
                         >
                           Follow-up
                         </Button>
@@ -459,9 +474,7 @@ function ActiveStaffList() {
     const q = search.trim().toLowerCase();
     if (!q) return members;
     return members.filter(
-      (m) =>
-        (m.email || '').toLowerCase().includes(q) ||
-        (m.name || '').toLowerCase().includes(q)
+      (m) => (m.email || '').toLowerCase().includes(q) || (m.name || '').toLowerCase().includes(q)
     );
   }, [members, search]);
 
@@ -712,9 +725,7 @@ function OnHoldScholarsList() {
     const q = search.trim().toLowerCase();
     if (!q) return scholars;
     return scholars.filter(
-      (s) =>
-        (s.email || '').toLowerCase().includes(q) ||
-        (s.name || '').toLowerCase().includes(q)
+      (s) => (s.email || '').toLowerCase().includes(q) || (s.name || '').toLowerCase().includes(q)
     );
   }, [scholars, search]);
 

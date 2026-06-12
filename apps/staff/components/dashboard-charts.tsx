@@ -33,7 +33,7 @@ const YEAR_COLORS = [
   'hsl(175, 84%, 32%)', // Teal (Brand Accent)
   'hsl(271, 76%, 53%)', // Violet Purple
   'hsl(199, 89%, 48%)', // Sky Blue
-  'hsl(38, 92%, 50%)',  // Amber Orange
+  'hsl(38, 92%, 50%)', // Amber Orange
   'hsl(346, 84%, 61%)', // Pink/Red
   'hsl(142, 76%, 36%)', // Emerald Green
 ];
@@ -91,7 +91,7 @@ export function DashboardCharts({
   // Calculate year distribution
   const YEAR_ORDER = ['Pre-University', 'Year 1', 'Year 2', 'Year 3', 'Year 4', 'Masters', 'PhD'];
   const yearCounts: Record<string, number> = {};
-  for (const stat of (scholarYearStats || [])) {
+  for (const stat of scholarYearStats || []) {
     if (!stat) continue;
     const rawYear = stat.year || 'Unknown';
     const rawYearTrim = rawYear.trim();
@@ -222,7 +222,9 @@ export function DashboardCharts({
                     height={36}
                     iconType="circle"
                     iconSize={8}
-                    formatter={(value) => <span className="text-xs text-foreground/80">{value}</span>}
+                    formatter={(value) => (
+                      <span className="text-xs text-foreground/80">{value}</span>
+                    )}
                   />
                 </PieChart>
               </ChartContainer>
@@ -269,7 +271,9 @@ export function DashboardCharts({
                     height={36}
                     iconType="circle"
                     iconSize={8}
-                    formatter={(value) => <span className="text-xs text-foreground/80">{value}</span>}
+                    formatter={(value) => (
+                      <span className="text-xs text-foreground/80">{value}</span>
+                    )}
                   />
                 </PieChart>
               </ChartContainer>
@@ -316,7 +320,9 @@ export function DashboardCharts({
                     height={36}
                     iconType="circle"
                     iconSize={8}
-                    formatter={(value) => <span className="text-xs text-foreground/80">{value}</span>}
+                    formatter={(value) => (
+                      <span className="text-xs text-foreground/80">{value}</span>
+                    )}
                   />
                 </PieChart>
               </ChartContainer>

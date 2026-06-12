@@ -12,7 +12,9 @@ import { expect, test } from '@playwright/test';
 test.describe('Staff Portal – new features', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: /Ashinaga Staff/ })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: /Ashinaga Staff/ })).toBeVisible({
+      timeout: 15_000,
+    });
   });
 
   test('Invitations tab is visible and renders Active Staff / Staff Invites / Scholar Invites sub-tabs', async ({

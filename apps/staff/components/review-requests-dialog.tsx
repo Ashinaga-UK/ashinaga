@@ -1,11 +1,18 @@
 'use client';
 
-import * as React from 'react';
-import { useCallback, useEffect, useState } from 'react';
 import { AlertCircle, FileText, Loader2 } from 'lucide-react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
-import { RequestManagement } from './request-management';
+import type * as React from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getRequests, type Request } from '../lib/api-client';
+import { RequestManagement } from './request-management';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from './ui/dialog';
 
 interface ReviewRequestsDialogProps {
   trigger: React.ReactNode;
@@ -52,9 +59,7 @@ export function ReviewRequestsDialog({ trigger, onUpdate }: ReviewRequestsDialog
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger}
-      </DialogTrigger>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-6">
         <DialogHeader>
           <DialogTitle>Review Pending Requests</DialogTitle>
