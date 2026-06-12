@@ -12,14 +12,15 @@ import { expect, test } from '@playwright/test';
 test.describe('Staff Portal – new features', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    // Wait for the dashboard to be rendered (header is always present once signed in)
-    await expect(page.getByRole('heading', { name: /Ashinaga Staff/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Overview', exact: true })).toBeVisible({
+      timeout: 15_000,
+    });
   });
 
   test('Invitations tab is visible and renders Active Staff / Staff Invites / Scholar Invites sub-tabs', async ({
     page,
   }) => {
-    const invitationsTab = page.getByRole('tab', { name: /Invitations/i });
+    const invitationsTab = page.getByRole('button', { name: 'Invitations', exact: true });
     await expect(invitationsTab).toBeVisible();
     await invitationsTab.click();
 
@@ -28,8 +29,8 @@ test.describe('Staff Portal – new features', () => {
     await expect(page.getByRole('tab', { name: 'Staff Invites', exact: true })).toBeVisible();
     await expect(page.getByRole('tab', { name: 'Scholar Invites', exact: true })).toBeVisible();
 
-    // The card header mentions the new 30-day expiry
-    await expect(page.getByText(/expire after 30 days/i)).toBeVisible();
+    // The card header mentions on-hold scholars
+    await expect(page.getByText(/manage on-hold scholars/i)).toBeVisible();
 
     // Invite Staff button is the default action on Active Staff / Staff Invites tabs
     await expect(page.getByRole('button', { name: /Invite Staff/i })).toBeVisible();
@@ -40,7 +41,7 @@ test.describe('Staff Portal – new features', () => {
   });
 
   test('Invite Staff dialog opens with the 30-day expiry copy', async ({ page }) => {
-    await page.getByRole('tab', { name: /Invitations/i }).click();
+    await page.getByRole('button', { name: 'Invitations', exact: true }).click();
     await page
       .getByRole('button', { name: /Invite Staff/i })
       .first()
@@ -56,17 +57,12 @@ test.describe('Staff Portal – new features', () => {
   });
 
   test('Bulk task assignment dialog opens from the Scholars tab', async ({ page }) => {
-    await page.getByRole('tab', { name: /Scholars/i }).click();
+    await page.getByRole('button', { name: 'Scholars', exact: true }).click();
 
-    // Wait for at least one scholar row to render (we just need a checkbox to click)
-    const checkboxes = page.getByRole('checkbox');
-    await expect(checkboxes.first()).toBeVisible({ timeout: 15_000 });
-    // Click the second checkbox (skip the header "select all" if present)
-    const count = await checkboxes.count();
-    if (count === 0) {
-      test.skip();
-    }
-    await checkboxes.nth(count > 1 ? 1 : 0).check();
+    // Wait for at least one scholar row checkbox to render (index 1 skips the header checkbox)
+    const scholarCheckbox = page.getByRole('checkbox').nth(1);
+    await expect(scholarCheckbox).toBeVisible({ timeout: 15_000 });
+    await scholarCheckbox.click();
 
     // "Assign Task to Selected (n)" button shows up
     const bulkButton = page.getByRole('button', { name: /Assign Task to Selected/i });
@@ -108,7 +104,7 @@ test.describe('Staff Portal – new features', () => {
   test('Soft-delete trash button + confirm dialog appear on a scholar profile with tasks', async ({
     page,
   }) => {
-    await page.getByRole('tab', { name: /Scholars/i }).click();
+    await page.getByRole('button', { name: 'Scholars', exact: true }).click();
 
     // Open the first scholar profile via "View" button (or row click)
     const viewButton = page.getByRole('button', { name: /View Profile/i }).first();
@@ -123,13 +119,29 @@ test.describe('Staff Portal – new features', () => {
     }
 
     // Switch to tasks tab on the profile
-    await page.getByRole('tab', { name: /Tasks/i }).click();
+    // The Tasks view can be a button (future UI) or a tab trigger (current UI)
+    const tasksToggle = page
+      .getByRole('button', { name: 'Tasks', exact: true })
+      .or(page.getByRole('tab', { name: 'Tasks', exact: true }));
+    await expect(tasksToggle).toBeVisible({ timeout: 10_000 });
+    await tasksToggle.click();
+
+    // ---------------------------------------------------
+    // Create a task via the UI (Assign Task dialog) so it exists for deletion.
+    await page.getByRole('button', { name: /^Assign Task/i }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    const titleInput = page.getByLabel(/Task Title/i);
+    await expect(titleInput).toBeVisible();
+    const taskTitle = 'E2E soft-delete task';
+    await titleInput.fill(taskTitle);
+    // Submit the task (assume the dialog has an Assign button matching the pattern)
+    await page.getByRole('button', { name: /Assign to \d+ Scholar/i }).click();
+    // Wait for the newly created task row to appear in the profile's Tasks tab.
+    await expect(page.getByRole('row', { name: new RegExp(taskTitle, 'i') })).toBeVisible({ timeout: 10_000 });
+    // ---------------------------------------------------
 
     const trashButton = page.getByRole('button', { name: /Delete task/i }).first();
-    if (!(await trashButton.isVisible().catch(() => false))) {
-      // No tasks on the first scholar — skip rather than fail flakily
-      test.skip();
-    }
+    await expect(trashButton).toBeVisible({ timeout: 10_000 });
     await trashButton.click();
 
     // Confirm dialog opens with the soft-delete copy

@@ -57,6 +57,11 @@ export class ScholarsController {
     return this.scholarsService.getFilterOptions();
   }
 
+  @Get('stats/years')
+  async getScholarYearStats(): Promise<{ year: string; count: number }[]> {
+    return this.scholarsService.getScholarYearStats();
+  }
+
   @Get('stats')
   async getScholarStats(): Promise<{
     total: number;
