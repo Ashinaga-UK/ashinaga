@@ -1,20 +1,44 @@
 'use client';
 
-import { Calendar, ChevronDown, ChevronUp, Download, Paperclip, RotateCcw, Trash2 } from 'lucide-react';
+import {
+  Calendar,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  Paperclip,
+  RotateCcw,
+  Trash2,
+} from 'lucide-react';
 import { useState } from 'react';
 import type { Request } from '../lib/api-client';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from './ui/alert-dialog';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
 interface RequestCardProps {
   request: Request;
-  onArchive?: (requestId: string) => void;
+  onWithdraw?: (requestId: string) => void;
   onRestore?: (requestId: string) => void;
   isMutating?: boolean;
 }
 
-export function RequestCard({ request, onArchive, onRestore, isMutating = false }: RequestCardProps) {
+export function RequestCard({
+  request,
+  onWithdraw,
+  onRestore,
+  isMutating = false,
+}: RequestCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const isRestoreExpired = Boolean(
     request.archived &&
@@ -215,7 +239,7 @@ export function RequestCard({ request, onArchive, onRestore, isMutating = false 
           </div>
         )}
 
-        {(onArchive || onRestore) && (
+        {(onWithdraw || onRestore) && (
           <div className="pt-2 border-t flex flex-col items-end gap-2">
             {request.archived ? (
               <>
@@ -234,17 +258,48 @@ export function RequestCard({ request, onArchive, onRestore, isMutating = false 
                     : 'You can restore this request within 7 days of withdrawal.'}
                 </p>
               </>
+            ) : request.status === 'pending' ? (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    disabled={isMutating}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Withdraw
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Withdraw this request?</AlertDialogTitle>
+                    <AlertDialogDescription className="space-y-2">
+                      <span className="block">
+                        This removes the request from the active queue and marks it as withdrawn.
+                      </span>
+                      <span className="block">
+                        You can restore it within 7 days. After 7 days, restore is blocked and you
+                        will need to create a new request if you want to submit again.
+                      </span>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isMutating}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      disabled={isMutating}
+                      className="bg-red-600 text-white hover:bg-red-700"
+                      onClick={() => onWithdraw?.(request.id)}
+                    >
+                      Withdraw
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             ) : (
-              <Button
-                size="sm"
-                variant="ghost"
-                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                onClick={() => onArchive?.(request.id)}
-                disabled={isMutating}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Withdraw
-              </Button>
+              <p className="text-xs text-muted-foreground">
+                Withdraw is only available before staff respond.
+              </p>
             )}
           </div>
         )}

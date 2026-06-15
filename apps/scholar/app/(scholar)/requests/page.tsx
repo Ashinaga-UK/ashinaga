@@ -2,16 +2,16 @@
 
 import { AlertCircle, FileText, Plus } from 'lucide-react';
 import { useState } from 'react';
+import { NewRequestDialog } from '../../../components/new-request-dialog';
+import { RequestCard } from '../../../components/request-card';
 import { Button } from '../../../components/ui/button';
 import { Card, CardContent } from '../../../components/ui/card';
+import { useToast } from '../../../components/ui/use-toast';
 import {
   useArchiveRequest,
   useMyRequests,
   useRestoreRequest,
 } from '../../../lib/hooks/use-queries';
-import { RequestCard } from '../../../components/request-card';
-import { NewRequestDialog } from '../../../components/new-request-dialog';
-import { useToast } from '../../../components/ui/use-toast';
 
 export default function RequestsPage() {
   const [showArchived, setShowArchived] = useState(false);
@@ -20,15 +20,7 @@ export default function RequestsPage() {
   const archiveRequest = useArchiveRequest();
   const restoreRequest = useRestoreRequest();
 
-  const handleArchive = (requestId: string) => {
-    const confirmed = window.confirm(
-      'Withdraw this request?\n\nYou can restore it within 7 days. After 7 days, restoration is no longer possible and you will need to create a new request.'
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
+  const handleWithdraw = (requestId: string) => {
     archiveRequest.mutate(requestId, {
       onSuccess: () => {
         toast({
@@ -131,7 +123,7 @@ export default function RequestsPage() {
             <RequestCard
               key={request.id}
               request={request}
-              onArchive={handleArchive}
+              onWithdraw={handleWithdraw}
               onRestore={handleRestore}
               isMutating={archiveRequest.isPending || restoreRequest.isPending}
             />

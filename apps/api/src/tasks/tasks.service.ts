@@ -106,15 +106,14 @@ export class TasksService {
   }
 
   async updateTask(taskId: string, updateTaskDto: UpdateTaskDto) {
-    const { dueDate, ...rest } = updateTaskDto;
     const updateData: Partial<typeof tasks.$inferInsert> = {
-      ...rest,
+      ...updateTaskDto,
       updatedAt: new Date(),
     };
 
     // Convert dueDate string to Date object if provided
-    if (dueDate) {
-      updateData.dueDate = new Date(dueDate);
+    if (updateTaskDto.dueDate) {
+      updateData.dueDate = new Date(updateTaskDto.dueDate);
     }
 
     const [task] = await this.db
