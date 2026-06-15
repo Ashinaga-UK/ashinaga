@@ -1,12 +1,31 @@
 'use client';
 
 import { useQueryClient } from '@tanstack/react-query';
-import { Calendar, ChevronDown, ChevronUp, Download, Loader2, Paperclip, RotateCcw, Trash2, X } from 'lucide-react';
+import {
+  Calendar,
+  ChevronDown,
+  ChevronUp,
+  Download, Loader2,
+  Paperclip,
+  RotateCcw,
+  Trash2, X,
+} from 'lucide-react';
 import { useRef, useState } from 'react';
 import type { Request } from '../lib/api-client';
 import { respondToRequest } from '../lib/api-client';
 import { useFileUpload } from '../lib/hooks/use-file-upload';
 import { queryKeys } from '../lib/hooks/use-queries';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from './ui/alert-dialog';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -16,12 +35,17 @@ import { useToast } from './ui/use-toast';
 
 interface RequestCardProps {
   request: Request;
-  onArchive?: (requestId: string) => void;
+  onWithdraw?: (requestId: string) => void;
   onRestore?: (requestId: string) => void;
   isMutating?: boolean;
 }
 
-export function RequestCard({ request, onArchive, onRestore, isMutating = false }: RequestCardProps) {
+export function RequestCard({
+  request,
+  onWithdraw,
+  onRestore,
+  isMutating = false,
+}: RequestCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const isRestoreExpired = Boolean(
     request.archived &&
@@ -284,7 +308,7 @@ export function RequestCard({ request, onArchive, onRestore, isMutating = false 
           </div>
         )}
 
-        {(onArchive || onRestore) && (
+        {(onWithdraw || onRestore) && (
           <div className="pt-2 border-t flex flex-col items-end gap-2">
             {request.archived ? (
               <>
@@ -303,17 +327,178 @@ export function RequestCard({ request, onArchive, onRestore, isMutating = false 
                     : 'You can restore this request within 7 days of withdrawal.'}
                 </p>
               </>
+            ) : request.status === 'pending' ? (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    disabled={isMutating}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Withdraw
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Withdraw this request?</AlertDialogTitle>
+                    <AlertDialogDescription className="space-y-2">
+                      <span className="block">
+                        This removes the request from the active queue and marks it as withdrawn.
+                      </span>
+                      <span className="block">
+                        You can restore it within 7 days. After 7 days, restore is blocked and you
+                        will need to create a new request if you want to submit again.
+                      </span>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isMutating}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      disabled={isMutating}
+                      className="bg-red-600 text-white hover:bg-red-700"
+                      onClick={() => onWithdraw?.(request.id)}
+                    >
+                      Withdraw
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             ) : (
-              <Button
-                size="sm"
-                variant="ghost"
-                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                onClick={() => onArchive?.(request.id)}
-                disabled={isMutating}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Withdraw
-              </Button>
+              <p className="text-xs text-muted-foreground">
+                Withdraw is only available before staff respond.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Respond to commented request */}
+        {request.status === 'commented' && (
+          <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-4 space-y-3">
+            {!showRespondForm ? (
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <p className="text-sm text-foreground">
+                  Staff have asked for more information. Reply on this same request — no need to
+                  submit a new one.
+                </p>
+                <Button
+                  type="button"
+                  onClick={() => setShowRespondForm(true)}
+                  className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700 shrink-0"
+                >
+                  Respond with more info
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <label
+                    htmlFor={`respond-${request.id}`}
+                    className="text-sm font-medium text-foreground"
+                  >
+                    Your response
+                  </label>
+                  <Textarea
+                    id={`respond-${request.id}`}
+                    value={responseComment}
+                    onChange={(e) => setResponseComment(e.target.value)}
+                    placeholder="Provide the additional information staff asked for…"
+                    rows={4}
+                    disabled={submitting || isUploading}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-foreground">
+                      Add files (optional)
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={submitting || isUploading}
+                    >
+                      <Paperclip className="h-4 w-4 mr-2" />
+                      Choose files
+                    </Button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      multiple
+                      className="hidden"
+                      onChange={handleFileSelect}
+                    />
+                  </div>
+                  {selectedFiles.length > 0 && (
+                    <ul className="space-y-1">
+                      {selectedFiles.map((file, idx) => {
+                        const progress = uploadProgress[idx];
+                        return (
+                          <li
+                            key={`${file.name}-${idx}`}
+                            className="flex items-center justify-between bg-muted rounded-md px-3 py-2 text-sm"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="truncate text-foreground">{file.name}</p>
+                              {progress?.status === 'uploading' && (
+                                <Progress value={progress.progress} className="h-1 mt-1" />
+                              )}
+                              {progress?.status === 'error' && (
+                                <p className="text-xs text-destructive mt-0.5">
+                                  {progress.error || 'Upload failed'}
+                                </p>
+                              )}
+                            </div>
+                            {!submitting && !isUploading && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleRemoveFile(idx)}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => {
+                      setShowRespondForm(false);
+                      setResponseComment('');
+                      setSelectedFiles([]);
+                    }}
+                    disabled={submitting || isUploading}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleSubmitResponse}
+                    disabled={submitting || isUploading}
+                    className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
+                  >
+                    {submitting || isUploading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        {isUploading ? 'Uploading…' : 'Submitting…'}
+                      </>
+                    ) : (
+                      'Send response'
+                    )}
+                  </Button>
+                </div>
+              </div>
             )}
           </div>
         )}

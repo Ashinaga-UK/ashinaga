@@ -24,6 +24,9 @@ import {
   RequestResponseDto,
 } from './dto/get-requests.dto';
 
+type RequestAttachmentRecord = typeof requestAttachments.$inferSelect;
+type RequestAuditLogRecord = typeof requestAuditLogs.$inferSelect;
+
 @Injectable()
 export class RequestsService {
   constructor(private readonly emailService: EmailService) {}
@@ -68,7 +71,10 @@ export class RequestsService {
       return { role: 'staff' as const };
     }
 
-    const [scholarRecord] = await database.select().from(scholars).where(eq(scholars.userId, userId));
+    const [scholarRecord] = await database
+      .select()
+      .from(scholars)
+      .where(eq(scholars.userId, userId));
     if (scholarRecord) {
       return {
         role: 'scholar' as const,
@@ -100,7 +106,10 @@ export class RequestsService {
       return request;
     }
 
-    const [scholarRecord] = await database.select().from(scholars).where(eq(scholars.userId, userId));
+    const [scholarRecord] = await database
+      .select()
+      .from(scholars)
+      .where(eq(scholars.userId, userId));
     if (!scholarRecord) {
       throw new ForbiddenException('User is not authorized for this request');
     }
@@ -112,11 +121,16 @@ export class RequestsService {
     return request;
   }
 
-
-
   async getRequests(query: GetRequestsQueryDto, userId: string): Promise<GetRequestsResponseDto> {
-    const { page = 1, limit = 20, search, type, status, priority, archivedFilter = 'active' } =
-      query;
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      type,
+      status,
+      priority,
+      archivedFilter = 'active',
+    } = query;
 
     const offset = (page - 1) * limit;
 
@@ -139,7 +153,10 @@ export class RequestsService {
       staffArchivedUserIds = staffUsers.map((u) => u.id);
     }
 
-    const archivedCondition = this.buildArchivedWhereCondition(archivedFilter, staffArchivedUserIds);
+    const archivedCondition = this.buildArchivedWhereCondition(
+      archivedFilter,
+      staffArchivedUserIds
+    );
     if (archivedCondition) {
       whereConditions.push(archivedCondition);
     }
@@ -259,7 +276,9 @@ export class RequestsService {
     };
   }
 
-  private async getAttachments(requestIds: string[]): Promise<Record<string, any[]>> {
+  private async getAttachments(
+    requestIds: string[]
+  ): Promise<Record<string, RequestAttachmentRecord[]>> {
     if (requestIds.length === 0) return {};
 
     const attachmentsData = await database
@@ -268,7 +287,7 @@ export class RequestsService {
       .where(inArray(requestAttachments.requestId, requestIds))
       .orderBy(desc(requestAttachments.uploadedAt));
 
-    const attachments: Record<string, any[]> = {};
+    const attachments: Record<string, RequestAttachmentRecord[]> = {};
     for (const attachment of attachmentsData) {
       if (!attachments[attachment.requestId]) {
         attachments[attachment.requestId] = [];
@@ -286,7 +305,9 @@ export class RequestsService {
     return attachments;
   }
 
-  private async getAuditLogs(requestIds: string[]): Promise<Record<string, any[]>> {
+  private async getAuditLogs(
+    requestIds: string[]
+  ): Promise<Record<string, RequestAuditLogRecord[]>> {
     if (requestIds.length === 0) return {};
 
     const auditLogsData = await database
@@ -295,7 +316,7 @@ export class RequestsService {
       .where(inArray(requestAuditLogs.requestId, requestIds))
       .orderBy(desc(requestAuditLogs.createdAt));
 
-    const auditLogs: Record<string, any[]> = {};
+    const auditLogs: Record<string, RequestAuditLogRecord[]> = {};
     for (const log of auditLogsData) {
       if (!auditLogs[log.requestId]) {
         auditLogs[log.requestId] = [];
@@ -753,6 +774,10 @@ export class RequestsService {
       throw new Error('Request is already archived');
     }
 
+    if (actor.role === 'scholar' && request.status !== 'pending') {
+      throw new ForbiddenException('You can only withdraw requests before staff respond');
+    }
+
     // Archive the request
     const [archivedRequest] = await database
       .update(requests)
@@ -837,6 +862,4 @@ export class RequestsService {
 
     return restoredRequest;
   }
-
-
 }
