@@ -95,6 +95,8 @@ setup('authenticate as staff', async () => {
     );
     const scholarUserId = scholarUserRes.rows[0]?.id;
     if (scholarUserId) {
+      await mkdir(path.dirname(FIXTURE_FILE), { recursive: true });
+
       const scholarRow = await pool.query<{ id: string }>(
         `SELECT id FROM scholars WHERE user_id = $1 LIMIT 1`,
         [scholarUserId]
