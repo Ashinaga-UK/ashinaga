@@ -7,7 +7,20 @@
  *
  * Auth is handled by ./auth.setup.ts via the 'setup' Playwright project.
  */
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+let fixtureScholarId = '';
+
+test.beforeAll(() => {
+  ({ scholarId: fixtureScholarId } = JSON.parse(
+    readFileSync(path.join(__dirname, '.auth', 'staff-fixture.json'), 'utf8')
+  ) as { scholarId: string });
+});
 
 test.describe('Staff Portal – new features', () => {
   test.beforeEach(async ({ page }) => {
@@ -115,28 +128,13 @@ test.describe('Staff Portal – new features', () => {
   test('Soft-delete trash button + confirm dialog appear on a scholar profile with tasks', async ({
     page,
   }) => {
-    await page.getByRole('tab', { name: /Scholars/i }).click();
-
-    // Target the fixture scholar that has a seeded task
-    const fixtureRow = page.getByRole('row').filter({ hasText: 'E2E Fixture Scholar' });
-    if (!(await fixtureRow.isVisible().catch(() => false))) {
-      test.skip();
-    }
-    const viewButton = fixtureRow.getByRole('button', { name: /View Profile/i });
-    if (await viewButton.isVisible().catch(() => false)) {
-      await viewButton.click();
-    } else {
-      await fixtureRow.click();
-    }
+    await page.goto(`/?tab=scholars&view=scholar-profile&scholarId=${fixtureScholarId}&scholarTab=tasks`);
 
     // Switch to tasks tab on the profile
-    await page.getByRole('tab', { name: /Tasks/i }).click();
+    await expect(page.getByRole('heading', { name: /Assigned Tasks/i })).toBeVisible();
 
     const trashButton = page.getByRole('button', { name: /Delete task/i }).first();
-    if (!(await trashButton.isVisible().catch(() => false))) {
-      // No tasks on the first scholar — skip rather than fail flakily
-      test.skip();
-    }
+    await expect(trashButton).toBeVisible();
     await trashButton.click();
 
     // Confirm dialog opens with the soft-delete copy

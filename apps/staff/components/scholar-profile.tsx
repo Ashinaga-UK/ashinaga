@@ -36,7 +36,6 @@ import {
   normalizeNationality,
 } from '../lib/constants';
 import {
-  useArchiveTask,
   useDeleteTask,
   useRestoreTask,
   useScholarProfile,
@@ -79,7 +78,6 @@ export function ScholarProfilePage({
   const { data: session } = useSession();
   const { data: scholar, isLoading, error } = useScholarProfile(scholarId);
   const updateProfile = useUpdateScholarProfile(scholarId);
-  const archiveTask = useArchiveTask();
   const restoreTask = useRestoreTask();
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState<UpdateScholarProfileData>({});
@@ -968,16 +966,7 @@ export function ScholarProfilePage({
                           Restore
                         </Button>
                       ) : (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => archiveTask.mutate(task.id)}
-                          disabled={archiveTask.isPending}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Archive
-                        </Button>
+                        <DeleteTaskButton scholarId={scholar.id} taskId={task.id} />
                       )}
                     </div>
                   </CardContent>
