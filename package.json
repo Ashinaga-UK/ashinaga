@@ -9,7 +9,7 @@
     "build": "turbo run build",
     "test": "turbo run test",
     "test:integration": "cd apps/api && pnpm test:integration",
-    "test:e2e": "turbo run test:e2e",
+    "test:e2e": "pnpm --filter ashinaga-api run dev > /tmp/ashinaga-api.log 2>&1 & pnpm --filter staff run dev > /tmp/ashinaga-staff.log 2>&1 & sleep 12 && curl -s http://127.0.0.1:4001 > /dev/null && sleep 3 && turbo run test:e2e; kill $(lsof -ti :4000 -ti :4001) 2>/dev/null",
     "test:coverage": "turbo run test:coverage",
     "test:coverage:open": "turbo run test:coverage:open",
     "lint": "pnpm check:skills && turbo run check",

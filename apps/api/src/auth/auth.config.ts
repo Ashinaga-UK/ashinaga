@@ -52,7 +52,7 @@ const authConfig = betterAuth({
   trustedOrigins: (request) => {
     const origin = request.headers.get('origin') || '';
     // Allow all localhost origins
-    if (origin.startsWith('http://localhost:')) {
+    if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')){
       return [origin];
     }
     // Allow Vercel preview deployments

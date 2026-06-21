@@ -293,6 +293,7 @@ export class RequestsService {
         attachments[attachment.requestId] = [];
       }
       attachments[attachment.requestId].push({
+        requestId: attachment.requestId,
         id: attachment.id,
         name: attachment.name,
         size: attachment.size,
@@ -322,6 +323,7 @@ export class RequestsService {
         auditLogs[log.requestId] = [];
       }
       auditLogs[log.requestId].push({
+        requestId: log.requestId,
         id: log.id,
         action: log.action,
         performedBy: log.performedBy,

@@ -5,7 +5,7 @@
  *
  * Requires:
  *  - Postgres running with the API schema migrated
- *  - API running on API_URL (default http://localhost:4000)
+ *  - API running on API_URL (default http://127.0.0.1:4000)
  *  - Staff dev server on STAFF_APP_URL (auto-managed by Playwright webServer)
  */
 import { mkdir } from 'node:fs/promises';
@@ -142,4 +142,15 @@ setup('authenticate as staff', async ({ request }) => {
 
   await mkdir(path.dirname(AUTH_FILE), { recursive: true });
   await request.storageState({ path: AUTH_FILE });
+
+  // Warm up the staff app so Next.js compiles the page and Better Auth
+  // caches the session before test workers start their parallel runs.
+  const { chromium } = await import('@playwright/test');
+  const browser = await chromium.launch({ channel: 'chrome' });
+  const context = await browser.newContext({ storageState: AUTH_FILE });
+  const page = await context.newPage();
+  const baseURL = process.env.STAFF_APP_URL || 'http://127.0.0.1:4001';
+  await page.goto(baseURL);
+  await page.waitForSelector('h1', { timeout: 30_000 });
+  await browser.close();
 });

@@ -12,11 +12,15 @@ test.describe('Scholar Requests', () => {
     );
 
     await page.getByRole('button', { name: 'New Request' }).click();
-    await expect(page.getByRole('dialog', { name: 'Submit New Request' })).toBeVisible();
+    const dialog = page.getByRole('dialog', { name: 'Submit New Request' });
+    await expect(dialog).toBeVisible();
 
-    await page.getByRole('combobox').nth(2).click();
-    await page.getByRole('option').first().click();
-    await page.getByLabel('Description').fill(description);
+    // The dialog renders two Select comboboxes (request type and priority),
+    // both pre-populated with defaults. The staff assignee field uses
+    // checkboxes, so select the first staff member that way to satisfy the
+    // "at least one assignee" requirement.
+    await dialog.getByRole('checkbox').first().click();
+    await dialog.getByLabel('Description').fill(description);
     await page.getByRole('button', { name: 'Submit Request' }).click();
 
     const createResponse = await createResponsePromise;
@@ -62,7 +66,7 @@ test.describe('Scholar Requests', () => {
     const requestId = await createRequestThroughUi(page, description);
 
     const api = await apiRequest.newContext({
-      baseURL: 'http://localhost:4000',
+      baseURL: 'http://127.0.0.1:4000',
       storageState: './test/e2e/.auth/scholar.json',
     });
 
@@ -84,9 +88,10 @@ test.describe('Scholar Requests', () => {
     await api.dispose();
 
     await page.reload();
+    await expect(page.getByRole('heading', { name: 'My Requests' })).toBeVisible();
 
     const requestCard = page.locator('div.rounded-lg.border.bg-card', { hasText: description });
-    await expect(requestCard).toContainText('approved');
+    await expect(requestCard).toContainText('approved', { timeout: 10_000 });
     await expect(requestCard.getByRole('button', { name: /^Withdraw$/ })).toHaveCount(0);
     await expect(requestCard).toContainText('Withdraw is only available before staff respond.');
   });

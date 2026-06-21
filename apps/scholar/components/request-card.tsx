@@ -186,7 +186,7 @@ export function RequestCard({
       setResponseComment('');
       setSelectedFiles([]);
       setShowRespondForm(false);
-      await queryClient.invalidateQueries({ queryKey: queryKeys.myRequests });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.myRequests() });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       toast({

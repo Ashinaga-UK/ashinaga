@@ -6,12 +6,10 @@ export default defineConfig({
   testMatch: '*.e2e-spec.ts',
   fullyParallel: true,
   reporter: 'list',
-
   use: {
     baseURL: process.env.SCHOLAR_APP_URL || 'http://127.0.0.1:4002',
     trace: 'on-first-retry',
   },
-
   projects: [
     {
       name: 'setup',
@@ -27,7 +25,6 @@ export default defineConfig({
       dependencies: ['setup'],
     },
   ],
-
   webServer: {
     command: 'pnpm run dev',
     url: process.env.SCHOLAR_APP_URL || 'http://127.0.0.1:4002',
