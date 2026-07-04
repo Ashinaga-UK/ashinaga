@@ -1,14 +1,14 @@
 /**
  * Playwright global setup: seed a deterministic staff user via raw SQL
- * (using Better Auth's password hashing), then sign in through the UI and
- * persist the browser storage state for the staff suite.
+ * (using Better Auth's password hashing), then sign in through the API
+ * and persist the session cookie as storageState.
  *
  * Requires:
  *  - Postgres running with the API schema migrated
  *  - API running on API_URL (default http://127.0.0.1:4000)
  *  - Staff dev server on STAFF_APP_URL (auto-managed by Playwright webServer)
  */
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test as setup } from '@playwright/test';
@@ -18,12 +18,12 @@ import { Pool } from 'pg';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const API_URL = process.env.API_URL || 'http://127.0.0.1:4000';
 const STAFF_EMAIL = (process.env.E2E_STAFF_EMAIL || 'e2e-staff@ashinaga.org').toLowerCase();
 const STAFF_PASSWORD = process.env.E2E_STAFF_PASSWORD || 'E2eStaffPassw0rd!';
 const AUTH_FILE = path.join(__dirname, '.auth', 'staff.json');
-const FIXTURE_FILE = path.join(__dirname, '.auth', 'staff-fixture.json');
 
-setup('authenticate as staff', async () => {
+setup('authenticate as staff', async ({ request }) => {
   const pool = new Pool({
     host: process.env.DB_HOST || 'localhost',
     port: Number(process.env.DB_PORT) || 5433,
@@ -114,24 +114,11 @@ setup('authenticate as staff', async () => {
       if (scholarId) {
         const existingTask = await pool.query<{ id: string }>(
           `SELECT id FROM tasks
-           WHERE scholar_id = $1 AND assigned_by = $2 AND title = $3
+           WHERE scholar_id = $1 AND assigned_by = $2 AND deleted_at IS NULL
            LIMIT 1`,
-          [scholarId, userId, 'E2E fixture task']
+          [scholarId, userId]
         );
-        if (existingTask.rows[0]) {
-          await pool.query(
-            `UPDATE tasks
-             SET archived = false,
-                 archived_at = NULL,
-                 archived_by = NULL,
-                 deleted_at = NULL,
-                 deleted_by = NULL,
-                 status = 'pending',
-                 updated_at = NOW()
-             WHERE id = $1`,
-            [existingTask.rows[0].id]
-          );
-        } else {
+        if (!existingTask.rows[0]) {
           await pool.query(
             `INSERT INTO tasks (title, description, type, priority, due_date, scholar_id, assigned_by, status)
              VALUES ($1, $2, 'other', 'medium', NOW() + interval '30 days', $3, $4, 'pending')`,
@@ -139,25 +126,31 @@ setup('authenticate as staff', async () => {
           );
         }
       }
-
-      await writeFile(FIXTURE_FILE, JSON.stringify({ scholarId }, null, 2));
     }
   } finally {
     await pool.end();
   }
 
-  const { chromium } = await import('@playwright/test');
-  const browser = await chromium.launch({ channel: 'chrome' });
-  const context = await browser.newContext();
-  const page = await context.newPage();
-  const baseURL = process.env.STAFF_APP_URL || 'http://127.0.0.1:4001';
-  await page.goto(`${baseURL}/login`);
-  await page.getByLabel('Email').fill(STAFF_EMAIL);
-  await page.getByLabel('Password').fill(STAFF_PASSWORD);
-  await page.getByRole('button', { name: 'Sign In' }).click();
-  await page.getByRole('heading', { name: /Ashinaga Staff/ }).waitFor({ timeout: 30_000 });
+  // 4) Sign in through Better Auth
+  const signInRes = await request.post(`${API_URL}/api/auth/sign-in/email`, {
+    data: { email: STAFF_EMAIL, password: STAFF_PASSWORD },
+  });
+  if (!signInRes.ok()) {
+    const body = await signInRes.text();
+    throw new Error(`Sign-in failed: ${signInRes.status()} ${body}`);
+  }
 
   await mkdir(path.dirname(AUTH_FILE), { recursive: true });
-  await context.storageState({ path: AUTH_FILE });
+  await request.storageState({ path: AUTH_FILE });
+
+  // Warm up the staff app so Next.js compiles the page and Better Auth
+  // caches the session before test workers start their parallel runs.
+  const { chromium } = await import('@playwright/test');
+  const browser = await chromium.launch({ channel: 'chrome' });
+  const context = await browser.newContext({ storageState: AUTH_FILE });
+  const page = await context.newPage();
+  const baseURL = process.env.STAFF_APP_URL || 'http://127.0.0.1:4001';
+  await page.goto(baseURL);
+  await page.waitForSelector('h1', { timeout: 15_000 });
   await browser.close();
 });
