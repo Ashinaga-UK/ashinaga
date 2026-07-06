@@ -128,6 +128,7 @@ setup('authenticate as staff', async ({ request }) => {
         }
 
         // Write fixture scholar ID for use by staff-features tests
+        await mkdir(path.dirname(FIXTURE_FILE), { recursive: true });
         await writeFile(FIXTURE_FILE, JSON.stringify({ scholarId }, null, 2));
       }
     }
