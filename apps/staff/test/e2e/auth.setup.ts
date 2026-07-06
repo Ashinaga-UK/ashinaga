@@ -8,7 +8,7 @@
  *  - API running on API_URL (default http://127.0.0.1:4000)
  *  - Staff dev server on STAFF_APP_URL (auto-managed by Playwright webServer)
  */
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test as setup } from '@playwright/test';
@@ -22,6 +22,7 @@ const API_URL = process.env.API_URL || 'http://127.0.0.1:4000';
 const STAFF_EMAIL = (process.env.E2E_STAFF_EMAIL || 'e2e-staff@ashinaga.org').toLowerCase();
 const STAFF_PASSWORD = process.env.E2E_STAFF_PASSWORD || 'E2eStaffPassw0rd!';
 const AUTH_FILE = path.join(__dirname, '.auth', 'staff.json');
+const FIXTURE_FILE = path.join(__dirname, '.auth', 'staff-fixture.json');
 
 setup('authenticate as staff', async ({ request }) => {
   const pool = new Pool({
@@ -125,6 +126,9 @@ setup('authenticate as staff', async ({ request }) => {
             ['E2E fixture task', 'Auto-seeded for Playwright tests', scholarId, userId]
           );
         }
+
+        // Write fixture scholar ID for use by staff-features tests
+        await writeFile(FIXTURE_FILE, JSON.stringify({ scholarId }, null, 2));
       }
     }
   } finally {
