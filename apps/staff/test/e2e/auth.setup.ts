@@ -148,14 +148,15 @@ setup('authenticate as staff', async ({ request }) => {
   await mkdir(path.dirname(AUTH_FILE), { recursive: true });
   await request.storageState({ path: AUTH_FILE });
 
-  // Warm up the staff app so Next.js pre-compiles the login page before
-  // test workers start their parallel runs. Navigate to /login and wait
-  // for the page to fully load, then close.
+  // Warm up the staff app so Next.js pre-compiles the dashboard before
+  // test workers start their parallel runs. The session cookie is loaded
+  // from storageState so the authenticated page renders.
   const { chromium } = await import('@playwright/test');
   const browser = await chromium.launch({ channel: 'chrome' });
-  const page = await browser.newPage();
+  const context = await browser.newContext({ storageState: AUTH_FILE });
+  const page = await context.newPage();
   const baseURL = process.env.STAFF_APP_URL || 'http://127.0.0.1:4001';
-  await page.goto(`${baseURL}/login`, { waitUntil: 'networkidle', timeout: 15_000 }).catch(() => {
+  await page.goto(baseURL, { waitUntil: 'networkidle', timeout: 15_000 }).catch(() => {
     // Warmup is best-effort — if it times out the compiled app still benefits workers.
   });
   await browser.close();
