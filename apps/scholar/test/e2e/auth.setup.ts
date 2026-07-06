@@ -118,15 +118,16 @@ setup('authenticate as scholar', async ({ request }) => {
   await mkdir(path.dirname(AUTH_FILE), { recursive: true });
   await request.storageState({ path: AUTH_FILE });
 
-  // Warm up the scholar app so Next.js pre-compiles the dashboard and
-  // validates the session cookie before test workers start.
+  // Warm up the scholar app so Next.js pre-compiles the page tests actually hit,
+  // then drop any auth redirects back to storageState.
   const { chromium } = await import('@playwright/test');
   const browser = await chromium.launch({ channel: 'chrome' });
   const context = await browser.newContext({ storageState: AUTH_FILE });
   const page = await context.newPage();
   const baseURL = process.env.SCHOLAR_APP_URL || 'http://127.0.0.1:4002';
-  await page.goto(`${baseURL}/dashboard`, { waitUntil: 'networkidle', timeout: 15_000 }).catch(() => {
+  await page.goto(`${baseURL}/requests`, { waitUntil: 'networkidle', timeout: 15_000 }).catch(() => {
     // Warmup is best-effort — compilation still benefits workers.
   });
+  await context.storageState({ path: AUTH_FILE });
   await browser.close();
 });
