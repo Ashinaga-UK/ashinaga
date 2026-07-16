@@ -12,6 +12,17 @@ import { ScholarOnboarding } from '../components/scholar-onboarding';
 import { ScholarProfilePage } from '../components/scholar-profile';
 import { StaffInviteDialog } from '../components/staff-invite-dialog';
 import { TaskAssignment } from '../components/task-assignment';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '../components/ui/alert-dialog';
 import { Avatar, AvatarFallback } from '../components/ui/avatar';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -34,7 +45,7 @@ import {
   type ScholarStats,
 } from '../lib/api-client';
 import { signOut, useSession } from '../lib/auth-client';
-import { useAnnouncements } from '../lib/hooks/use-queries';
+import { useAnnouncements, useRestoreAnnouncement } from '../lib/hooks/use-queries';
 
 type StaffDashboardView =
   | 'dashboard'
@@ -67,6 +78,10 @@ function StaffDashboardContent() {
   const [requestArchiveFilter, setRequestArchiveFilter] = useState<'active' | 'archived' | 'all'>(
     'active'
   );
+  const [announcementArchiveFilter, setAnnouncementArchiveFilter] = useState<
+    'active' | 'archived' | 'all'
+  >('active');
+  const [announcementActionId, setAnnouncementActionId] = useState<string | null>(null);
   const [requests, setRequests] = useState<Request[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(true);
   const [requestsError, setRequestsError] = useState<string | null>(null);
@@ -96,7 +111,8 @@ function StaffDashboardContent() {
     isLoading: announcementsLoading,
     error: announcementsError,
     refetch: refetchAnnouncements,
-  } = useAnnouncements(isAuthenticated);
+  } = useAnnouncements(isAuthenticated, announcementArchiveFilter);
+  const restoreAnnouncement = useRestoreAnnouncement();
 
   // Update state when URL changes
   useEffect(() => {
@@ -185,7 +201,7 @@ function StaffDashboardContent() {
     } finally {
       setRequestsLoading(false);
     }
-  }, [requestCategoryFilter, requestStatusFilter]);
+  }, [requestCategoryFilter, requestStatusFilter, requestArchiveFilter]);
 
   const fetchScholarStats = useCallback(async () => {
     setScholarStatsLoading(true);
@@ -507,6 +523,21 @@ function StaffDashboardContent() {
                           <SelectItem value="reviewed">Reviewed</SelectItem>
                         </SelectContent>
                       </Select>
+                      <Select
+                        value={requestArchiveFilter}
+                        onValueChange={(value: string) =>
+                          setRequestArchiveFilter(value as 'active' | 'archived' | 'all')
+                        }
+                      >
+                        <SelectTrigger className="w-full sm:w-[160px]">
+                          <SelectValue placeholder="Archive status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active">Active Only</SelectItem>
+                          <SelectItem value="archived">Archived Only</SelectItem>
+                          <SelectItem value="all">All Items</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </CardHeader>
@@ -551,7 +582,24 @@ function StaffDashboardContent() {
                         Create and manage announcements for scholars
                       </CardDescription>
                     </div>
-                    <AnnouncementCreator />
+                    <div className="flex items-center gap-2">
+                      <Select
+                        value={announcementArchiveFilter}
+                        onValueChange={(value: string) =>
+                          setAnnouncementArchiveFilter(value as 'active' | 'archived' | 'all')
+                        }
+                      >
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="Filter announcements" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="archived">Archived</SelectItem>
+                          <SelectItem value="all">All</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <AnnouncementCreator />
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -570,7 +618,20 @@ function StaffDashboardContent() {
                   ) : announcements.length === 0 ? (
                     <div className="text-center py-12 text-gray-500">
                       <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>No announcements yet. Create your first announcement to get started.</p>
+                      <p>
+                        {announcementArchiveFilter === 'active'
+                          ? 'No active announcements'
+                          : announcementArchiveFilter === 'archived'
+                            ? 'No archived announcements'
+                            : 'No announcements yet'}
+                      </p>
+                      <p className="text-sm text-gray-400 mt-2">
+                        {announcementArchiveFilter === 'active'
+                          ? 'Create your first announcement to get started.'
+                          : announcementArchiveFilter === 'archived'
+                            ? 'Archived announcements will appear here.'
+                            : 'Create your first announcement to get started.'}
+                      </p>
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -610,28 +671,69 @@ function StaffDashboardContent() {
                                 )}
                               </div>
                             </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                              onClick={async () => {
-                                if (
-                                  window.confirm(
-                                    'Are you sure you want to delete this announcement? This action cannot be undone.'
-                                  )
-                                ) {
-                                  try {
-                                    await deleteAnnouncement(announcement.id);
-                                    refetchAnnouncements();
-                                  } catch (error) {
-                                    console.error('Failed to delete announcement:', error);
-                                    alert('Failed to delete announcement. Please try again.');
-                                  }
-                                }
-                              }}
+                            <AlertDialog
+                              open={announcementActionId === announcement.id}
+                              onOpenChange={(open) => !open && setAnnouncementActionId(null)}
                             >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className={
+                                    announcement.archived
+                                      ? 'text-ashinaga-teal-600 hover:text-ashinaga-teal-700 hover:bg-ashinaga-teal-50'
+                                      : 'text-red-500 hover:text-red-700 hover:bg-red-50'
+                                  }
+                                >
+                                  {announcement.archived ? (
+                                    <span className="text-xs font-medium">Restore</span>
+                                  ) : (
+                                    <Trash2 className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>
+                                    {announcement.archived
+                                      ? 'Restore this announcement?'
+                                      : 'Archive this announcement?'}
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    {announcement.archived
+                                      ? 'This will move the announcement back to the active list.'
+                                      : 'This will hide the announcement from the active list and mark it as archived. You can restore it later.'}
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={async () => {
+                                      try {
+                                        if (announcement.archived) {
+                                          await restoreAnnouncement.mutateAsync(announcement.id);
+                                        } else {
+                                          await deleteAnnouncement(announcement.id);
+                                        }
+                                        refetchAnnouncements();
+                                      } catch (error) {
+                                        console.error(
+                                          `Failed to ${announcement.archived ? 'restore' : 'archive'} announcement:`,
+                                          error
+                                        );
+                                        alert(
+                                          `Failed to ${announcement.archived ? 'restore' : 'archive'} announcement. Please try again.`
+                                        );
+                                      } finally {
+                                        setAnnouncementActionId(null);
+                                      }
+                                    }}
+                                  >
+                                    {announcement.archived ? 'Restore' : 'Archive'}
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
                         </div>
                       ))}

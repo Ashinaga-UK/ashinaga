@@ -110,12 +110,8 @@ export class TasksService {
     const updateData: Partial<typeof tasks.$inferInsert> = {
       ...rest,
       updatedAt: new Date(),
+      ...(dueDate ? { dueDate: new Date(dueDate) } : {}),
     };
-
-    // Convert dueDate string to Date object if provided
-    if (dueDate) {
-      updateData.dueDate = new Date(dueDate);
-    }
 
     const [task] = await this.db
       .update(tasks)

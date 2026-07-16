@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle, Download, Eye, Paperclip, Trash2, X } from 'lucide-react';
+import { CheckCircle, Download, Eye, Paperclip, RotateCcw, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import {
   archiveRequest,
@@ -10,6 +10,17 @@ import {
   updateRequestStatus,
 } from '../lib/api-client';
 import { useSession } from '../lib/auth-client';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from './ui/alert-dialog';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
@@ -37,6 +48,7 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
   const [approvalComment, setApprovalComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDownloading, setIsDownloading] = useState<string | null>(null);
+  const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
 
   const session = useSession();
   const user = session.data?.user;
@@ -95,12 +107,6 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
   };
 
   const handleDelete = async () => {
-    const action = request.archived ? 'restore' : 'archive';
-
-    if (!window.confirm(`Are you sure you want to ${action} this request?`)) {
-      return;
-    }
-
     try {
       if (request.archived) {
         await restoreRequest(request.id);
@@ -123,6 +129,8 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
         description: `Failed to ${request.archived ? 'restore' : 'archive'} the request. Please try again.`,
         variant: 'destructive',
       });
+    } finally {
+      setArchiveConfirmOpen(false);
     }
   };
 
@@ -420,18 +428,45 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
             )}
 
             {/* Archive / Restore Button */}
-            <Button
-              size="sm"
-              variant="ghost"
-              className={
-                request.archived
-                  ? 'text-ashinaga-teal-600 hover:text-ashinaga-teal-700 hover:bg-ashinaga-teal-50'
-                  : 'text-red-500 hover:text-red-700 hover:bg-red-50'
-              }
-              onClick={handleDelete}
-            >
-              {request.archived ? 'Restore' : <Trash2 className="h-4 w-4" />}
-            </Button>
+            <AlertDialog open={archiveConfirmOpen} onOpenChange={setArchiveConfirmOpen}>
+              <AlertDialogTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className={
+                    request.archived
+                      ? 'text-ashinaga-teal-600 hover:text-ashinaga-teal-700 hover:bg-ashinaga-teal-50'
+                      : 'text-red-500 hover:text-red-700 hover:bg-red-50'
+                  }
+                >
+                  {request.archived ? (
+                    <>
+                      <RotateCcw className="h-4 w-4 mr-1" /> Restore
+                    </>
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    {request.archived ? 'Restore this request?' : 'Archive this request?'}
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {request.archived
+                      ? 'This will move the request back to the active queue.'
+                      : 'This will hide the request from the active list and mark it as archived. You can restore it later.'}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDelete}>
+                    {request.archived ? 'Restore' : 'Archive'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       </CardContent>

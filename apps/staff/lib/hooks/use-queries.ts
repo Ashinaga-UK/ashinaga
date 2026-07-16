@@ -1,18 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  type CreateTaskData,
-  archiveTask,
   archiveScholar,
+  archiveTask,
+  type CreateTaskData,
   createAnnouncement,
   createTask,
   deleteScholar,
   getAnnouncements,
   getScholarProfile,
   getTasksByScholar,
+  restoreAnnouncement,
+  restoreTask,
   type Task,
   type UpdateScholarProfileData,
   type UpdateTaskData,
-  restoreTask,
   updateScholarProfile,
   updateTask,
   updateUser,
@@ -85,10 +86,11 @@ export function useUpdateUser() {
 }
 
 // Announcements query
-export function useAnnouncements(enabled = true) {
+export function useAnnouncements(enabled = true, filter: 'active' | 'archived' | 'all' = 'active') {
+  const includeArchived = filter === 'all' ? ('all' as const) : filter === 'archived';
   return useQuery({
-    queryKey: queryKeys.announcements,
-    queryFn: getAnnouncements,
+    queryKey: [...queryKeys.announcements, includeArchived],
+    queryFn: () => getAnnouncements(includeArchived),
     enabled,
   });
 }
@@ -101,6 +103,20 @@ export function useCreateAnnouncement() {
     mutationFn: createAnnouncement,
     onSuccess: () => {
       // Invalidate and refetch announcements
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.announcements,
+      });
+    },
+  });
+}
+
+// Restore announcement mutation
+export function useRestoreAnnouncement() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: restoreAnnouncement,
+    onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: queryKeys.announcements,
       });

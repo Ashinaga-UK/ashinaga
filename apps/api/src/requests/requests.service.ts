@@ -18,6 +18,9 @@ import {
   RequestResponseDto,
 } from './dto/get-requests.dto';
 
+type RequestAttachmentRecord = typeof requestAttachments.$inferSelect;
+type RequestAuditLogRecord = typeof requestAuditLogs.$inferSelect;
+
 @Injectable()
 export class RequestsService {
   constructor(private readonly emailService: EmailService) {}
@@ -62,7 +65,10 @@ export class RequestsService {
       return { role: 'staff' as const };
     }
 
-    const [scholarRecord] = await database.select().from(scholars).where(eq(scholars.userId, userId));
+    const [scholarRecord] = await database
+      .select()
+      .from(scholars)
+      .where(eq(scholars.userId, userId));
     if (scholarRecord) {
       return {
         role: 'scholar' as const,
@@ -94,7 +100,10 @@ export class RequestsService {
       return request;
     }
 
-    const [scholarRecord] = await database.select().from(scholars).where(eq(scholars.userId, userId));
+    const [scholarRecord] = await database
+      .select()
+      .from(scholars)
+      .where(eq(scholars.userId, userId));
     if (!scholarRecord) {
       throw new ForbiddenException('User is not authorized for this request');
     }
@@ -106,103 +115,22 @@ export class RequestsService {
     return request;
   }
 
-  // private buildArchivedWhereCondition(
-  //   mode: 'active' | 'archived' | 'all' = 'active',
-  //   staffArchivedUserIds?: string[]
-  // ) {
-  //   if (!staffArchivedUserIds) {
-  //     if (mode === 'all') {
-  //       return undefined;
-  //     }
-
-  //     return eq(requests.archived, mode === 'archived');
-  //   }
-
-  //   if (mode === 'active') {
-  //     return eq(requests.archived, false);
-  //   }
-
-  //   if (mode === 'archived') {
-  //     if (staffArchivedUserIds.length === 0) {
-  //       return sql`1 = 0`;
-  //     }
-
-  //     return and(eq(requests.archived, true), inArray(requests.archivedBy, staffArchivedUserIds));
-  //   }
-
-  //   if (staffArchivedUserIds.length === 0) {
-  //     return eq(requests.archived, false);
-  //   }
-
-  //   return or(
-  //     eq(requests.archived, false),
-  //     and(eq(requests.archived, true), inArray(requests.archivedBy, staffArchivedUserIds))
-  //   );
-  // }
-
-  // private async getActorContext(userId: string) {
-  //   const [staffRecord] = await database.select().from(staff).where(eq(staff.userId, userId));
-  //   if (staffRecord) {
-  //     return { role: 'staff' as const };
-  //   }
-
-  //   const [scholarRecord] = await database.select().from(scholars).where(eq(scholars.userId, userId));
-  //   if (scholarRecord) {
-  //     return {
-  //       role: 'scholar' as const,
-  //       scholarId: scholarRecord.id,
-  //     };
-  //   }
-
-  //   throw new ForbiddenException('User is not authorized for this request');
-  // }
-
-  // private async getUserTypeById(userId: string | null) {
-  //   if (!userId) {
-  //     return null;
-  //   }
-
-  //   const [user] = await database.select().from(users).where(eq(users.id, userId));
-  //   return user?.userType || null;
-  // }
-
-  // private async assertCanMutateRequest(requestId: string, userId: string) {
-  //   const [request] = await database.select().from(requests).where(eq(requests.id, requestId));
-
-  //   if (!request) {
-  //     throw new NotFoundException('Request not found');
-  //   }
-
-  //   const [staffRecord] = await database.select().from(staff).where(eq(staff.userId, userId));
-  //   if (staffRecord) {
-  //     return request;
-  //   }
-
-  //   const [scholarRecord] = await database.select().from(scholars).where(eq(scholars.userId, userId));
-  //   if (!scholarRecord) {
-  //     throw new ForbiddenException('User is not authorized for this request');
-  //   }
-
-  //   if (request.scholarId !== scholarRecord.id) {
-  //     throw new ForbiddenException('You can only manage your own requests');
-  //   }
-
-  //   return request;
-  // }
-
   async getRequests(query: GetRequestsQueryDto, userId: string): Promise<GetRequestsResponseDto> {
-    const { page = 1, limit = 20, search, type, status, priority, archivedFilter = 'active' } =
-      query;
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      type,
+      status,
+      priority,
+      archivedFilter = 'active',
+    } = query;
 
     const offset = (page - 1) * limit;
 
     const whereConditions = [];
 
     let staffArchivedUserIds: string[] | undefined;
-
-    // let staffArchivedUserIds: string[] | undefined;
-
-    // let staffArchivedUserIds: string[] | undefined;
 
     const [staffRecord] = await database.select().from(staff).where(eq(staff.userId, userId));
 
@@ -219,14 +147,19 @@ export class RequestsService {
       staffArchivedUserIds = staffUsers.map((u) => u.id);
     }
 
-    const archivedCondition = this.buildArchivedWhereCondition(archivedFilter, staffArchivedUserIds);
+    const archivedCondition = this.buildArchivedWhereCondition(
+      archivedFilter,
+      staffArchivedUserIds
+    );
     if (archivedCondition) {
       whereConditions.push(archivedCondition);
     }
 
-    // If not a super admin, only show requests assigned to this user
+    // If not a super admin, show requests assigned to this user or unassigned
     if (!staffRecord?.isSuperAdmin) {
-      whereConditions.push(eq(requests.assignedTo, userId));
+      whereConditions.push(
+        or(eq(requests.assignedTo, userId), eq(requests.assignedTo, '')),
+      );
     }
 
     if (search) {
@@ -333,7 +266,9 @@ export class RequestsService {
     };
   }
 
-  private async getAttachments(requestIds: string[]): Promise<Record<string, any[]>> {
+  private async getAttachments(
+    requestIds: string[]
+  ): Promise<Record<string, RequestAttachmentRecord[]>> {
     if (requestIds.length === 0) return {};
 
     const attachmentsData = await database
@@ -342,13 +277,14 @@ export class RequestsService {
       .where(inArray(requestAttachments.requestId, requestIds))
       .orderBy(desc(requestAttachments.uploadedAt));
 
-    const attachments: Record<string, any[]> = {};
+    const attachments: Record<string, RequestAttachmentRecord[]> = {};
     for (const attachment of attachmentsData) {
       if (!attachments[attachment.requestId]) {
         attachments[attachment.requestId] = [];
       }
       attachments[attachment.requestId].push({
         id: attachment.id,
+        requestId: attachment.requestId,
         name: attachment.name,
         size: attachment.size,
         url: attachment.url,
@@ -360,7 +296,9 @@ export class RequestsService {
     return attachments;
   }
 
-  private async getAuditLogs(requestIds: string[]): Promise<Record<string, any[]>> {
+  private async getAuditLogs(
+    requestIds: string[]
+  ): Promise<Record<string, RequestAuditLogRecord[]>> {
     if (requestIds.length === 0) return {};
 
     const auditLogsData = await database
@@ -369,13 +307,14 @@ export class RequestsService {
       .where(inArray(requestAuditLogs.requestId, requestIds))
       .orderBy(desc(requestAuditLogs.createdAt));
 
-    const auditLogs: Record<string, any[]> = {};
+    const auditLogs: Record<string, RequestAuditLogRecord[]> = {};
     for (const log of auditLogsData) {
       if (!auditLogs[log.requestId]) {
         auditLogs[log.requestId] = [];
       }
       auditLogs[log.requestId].push({
         id: log.id,
+        requestId: log.requestId,
         action: log.action,
         performedBy: log.performedBy,
         previousStatus: log.previousStatus,
@@ -389,7 +328,7 @@ export class RequestsService {
     return auditLogs;
   }
 
-  async getRequestStats(): Promise<{
+  async getRequestStats(userId?: string): Promise<{
     total: number;
     pending: number;
     approved: number;
@@ -397,13 +336,46 @@ export class RequestsService {
     reviewed: number;
     commented: number;
   }> {
+    if (!userId) {
+      return {
+        total: 0,
+        pending: 0,
+        approved: 0,
+        rejected: 0,
+        reviewed: 0,
+        commented: 0,
+      };
+    }
+
+    const [staffRecord] = await database.select().from(staff).where(eq(staff.userId, userId));
+    if (!staffRecord) {
+      // Return zeros for non-staff users
+      return {
+        total: 0,
+        pending: 0,
+        approved: 0,
+        rejected: 0,
+        reviewed: 0,
+        commented: 0,
+      };
+    }
+
+    const whereConditions = [eq(requests.archived, false)];
+
+    // If not a super admin, only count requests assigned to this user
+    if (!staffRecord?.isSuperAdmin) {
+      whereConditions.push(eq(requests.assignedTo, userId));
+    }
+
+    const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
+
     const statsResult = await database
       .select({
         status: requests.status,
         count: count(),
       })
       .from(requests)
-      .where(eq(requests.archived, false))
+      .where(whereClause)
       .groupBy(requests.status);
 
     const stats = {
@@ -452,32 +424,13 @@ export class RequestsService {
     }
 
     const scholarId = scholar[0].id;
-    const restoreWindowStart = new Date();
-    restoreWindowStart.setDate(restoreWindowStart.getDate() - 7);
-    // const restoreWindowStart = new Date();
-    restoreWindowStart.setDate(restoreWindowStart.getDate() - 7);
 
-    // Get requests for this scholar with user info (excluding archived)
+    // Get requests for this scholar with user info
     const whereConditions = [eq(requests.scholarId, scholarId)];
-    if (!includeArchived) {
-      whereConditions.push(eq(requests.archived, false));
+    if (includeArchived) {
+      whereConditions.push(eq(requests.archived, true));
     } else {
-      whereConditions.push(
-        eq(requests.archived, true),
-        eq(requests.archivedBy, userId),
-        sql`${requests.archivedAt} >= ${restoreWindowStart}`
-      );
-    }
-
-    // const whereConditions = [eq(requests.scholarId, scholarId)];
-    if (!includeArchived) {
       whereConditions.push(eq(requests.archived, false));
-    } else {
-      whereConditions.push(
-        eq(requests.archived, true),
-        eq(requests.archivedBy, userId),
-        sql`${requests.archivedAt} >= ${restoreWindowStart}`
-      );
     }
 
     const requestsWithScholars = await database
@@ -664,6 +617,32 @@ export class RequestsService {
       }
     }
 
+    // Auto-archive requests that have been acted upon by staff
+    // This keeps the active pane clean by folding acted-upon items into archives
+    if (currentRequest.status === 'pending' && !currentRequest.archived) {
+      await database
+        .update(requests)
+        .set({
+          archived: true,
+          archivedAt: new Date(),
+          archivedBy: reviewedBy,
+          updatedAt: new Date(),
+        })
+        .where(eq(requests.id, requestId));
+
+      await database.insert(requestAuditLogs).values({
+        requestId,
+        action: 'auto_archived',
+        performedBy: reviewedBy,
+        comment: `Request auto-archived after being ${status}`,
+        metadata: JSON.stringify({
+          archivedBy: reviewedBy,
+          archivedAt: new Date(),
+          reason: `status_changed_to_${status}`,
+        }),
+      });
+    }
+
     return updatedRequest;
   }
 
@@ -673,6 +652,10 @@ export class RequestsService {
 
     if (request.archived) {
       throw new Error('Request is already archived');
+    }
+
+    if (actor.role === 'scholar' && request.status !== 'pending') {
+      throw new ForbiddenException('You can only withdraw requests before staff respond');
     }
 
     // Archive the request
@@ -725,14 +708,6 @@ export class RequestsService {
       if (!request.archivedAt) {
         throw new ForbiddenException('Withdrawn request cannot be restored');
       }
-
-      const restoreDeadline = new Date(request.archivedAt);
-      restoreDeadline.setDate(restoreDeadline.getDate() + 7);
-      if (new Date() > restoreDeadline) {
-        throw new ForbiddenException(
-          'Restore window expired. Requests can only be restored within 7 days of withdrawal.'
-        );
-      }
     }
 
     const [restoredRequest] = await database
@@ -751,73 +726,10 @@ export class RequestsService {
       action: 'restored',
       performedBy: restoredBy,
       comment:
-        actor.role === 'scholar'
-          ? 'Request restored by scholar within withdrawal window'
-          : 'Request restored by staff',
+        actor.role === 'scholar' ? 'Request restored by scholar' : 'Request restored by staff',
       metadata: JSON.stringify({ restoredBy, restoredAt: new Date(), actor: actor.role }),
     });
 
     return restoredRequest;
   }
-
-  // async restoreRequest(requestId: string, restoredBy: string) {
-  //   const request = await this.assertCanMutateRequest(requestId, restoredBy);
-  //   const actor = await this.getActorContext(restoredBy);
-
-  //   if (!request.archived) {
-  //     throw new Error('Request is not archived');
-  //   }
-
-  //   const archivedByUserType = await this.getUserTypeById(request.archivedBy);
-
-  //   if (actor.role === 'staff') {
-  //     if (archivedByUserType !== 'staff') {
-  //       throw new ForbiddenException('Staff can only restore staff-archived requests');
-  //     }
-  //   } else {
-  //     if (request.archivedBy !== restoredBy) {
-  //       throw new ForbiddenException('You can only restore requests you withdrew');
-  //     }
-
-  //     if (archivedByUserType !== 'scholar') {
-  //       throw new ForbiddenException('Only scholar-withdrawn requests can be restored by scholars');
-  //     }
-
-  //     if (!request.archivedAt) {
-  //       throw new ForbiddenException('Withdrawn request cannot be restored');
-  //     }
-
-  //     const restoreDeadline = new Date(request.archivedAt);
-  //     restoreDeadline.setDate(restoreDeadline.getDate() + 7);
-  //     if (new Date() > restoreDeadline) {
-  //       throw new ForbiddenException(
-  //         'Restore window expired. Requests can only be restored within 7 days of withdrawal.'
-  //       );
-  //     }
-  //   }
-
-  //   const [restoredRequest] = await database
-  //     .update(requests)
-  //     .set({
-  //       archived: false,
-  //       archivedAt: null,
-  //       archivedBy: null,
-  //       updatedAt: new Date(),
-  //     })
-  //     .where(eq(requests.id, requestId))
-  //     .returning();
-
-  //   await database.insert(requestAuditLogs).values({
-  //     requestId,
-  //     action: 'restored',
-  //     performedBy: restoredBy,
-  //     comment:
-  //       actor.role === 'scholar'
-  //         ? 'Request restored by scholar within withdrawal window'
-  //         : 'Request restored by staff',
-  //     metadata: JSON.stringify({ restoredBy, restoredAt: new Date(), actor: actor.role }),
-  //   });
-
-  //   return restoredRequest;
-  // }
 }

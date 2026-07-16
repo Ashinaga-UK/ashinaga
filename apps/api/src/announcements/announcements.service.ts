@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { and, asc, count, desc, eq, inArray } from 'drizzle-orm';
+import { and, count, desc, eq, inArray } from 'drizzle-orm';
 import { database } from '../db/connection';
 import {
   announcementFilters,
@@ -10,12 +10,6 @@ import {
 } from '../db/schema';
 import { EmailService } from '../email/email.service';
 import { CreateAnnouncementDto, ScholarFilterDto } from './dto/create-announcement.dto';
-import { GetAnnouncementsQueryDto } from './dto/get-announcements.dto';
-
-type AnnouncementFilter = {
-  type: string;
-  value: string;
-};
 
 @Injectable()
 export class AnnouncementsService {
@@ -53,16 +47,12 @@ export class AnnouncementsService {
     return announcement;
   }
 
-  async getAnnouncements(query: GetAnnouncementsQueryDto = {}) {
-    const status = query.status ?? 'active';
-    const whereConditions = [];
-
-    if (status === 'active') {
-      whereConditions.push(eq(announcements.archived, false));
-    }
-
-    if (status === 'archived') {
-      whereConditions.push(eq(announcements.archived, true));
+  async getAnnouncements(includeArchived: boolean | 'all' = false) {
+    let whereCondition: ReturnType<typeof eq> | undefined;
+    if (includeArchived === 'all') {
+      whereCondition = undefined;
+    } else {
+      whereCondition = eq(announcements.archived, includeArchived === true);
     }
 
     const result = await database
@@ -72,10 +62,8 @@ export class AnnouncementsService {
       })
       .from(announcements)
       .innerJoin(users, eq(announcements.createdBy, users.id))
-      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
-      .orderBy(
-        query.sortOrder === 'asc' ? asc(announcements.createdAt) : desc(announcements.createdAt)
-      );
+      .where(whereCondition)
+      .orderBy(desc(announcements.createdAt));
 
     const announcementsWithDetails = await Promise.all(
       result.map(async (row) => {
@@ -96,22 +84,20 @@ export class AnnouncementsService {
           title: row.announcement.title,
           content: row.announcement.content,
           createdBy: row.creator.name,
-          createdAt: row.announcement.createdAt,
-          updatedAt: row.announcement.updatedAt,
           archived: row.announcement.archived,
           archivedAt: row.announcement.archivedAt,
+          createdAt: row.announcement.createdAt,
+          updatedAt: row.announcement.updatedAt,
           filters: filters.map((f) => ({ type: f.filterType, value: f.filterValue })),
           recipientCount: recipientCount[0]?.count || 0,
         };
       })
     );
 
-    return announcementsWithDetails.filter((announcement) =>
-      this.matchesAnnouncementFilters(announcement.filters, query)
-    );
+    return announcementsWithDetails;
   }
 
-  async getAnnouncementsForScholar(userId: string, query: GetAnnouncementsQueryDto = {}) {
+  async getAnnouncementsForScholar(userId: string) {
     // First, get the scholar ID from the user ID
     const scholar = await database
       .select()
@@ -140,33 +126,19 @@ export class AnnouncementsService {
       .where(
         and(eq(announcementRecipients.scholarId, scholarId), eq(announcements.archived, false))
       )
-      .orderBy(
-        query.sortOrder === 'asc' ? asc(announcements.createdAt) : desc(announcements.createdAt)
-      );
+      .orderBy(desc(announcements.createdAt));
 
     // Format the announcements
-    const announcementsForScholar = await Promise.all(
-      result.map(async (row) => {
-        const filters = await database
-          .select()
-          .from(announcementFilters)
-          .where(eq(announcementFilters.announcementId, row.announcement.id));
+    const announcementsForScholar = result.map((row) => ({
+      id: row.announcement.id,
+      title: row.announcement.title,
+      content: row.announcement.content,
+      createdBy: row.creator.name,
+      createdAt: row.announcement.createdAt,
+      updatedAt: row.announcement.updatedAt,
+    }));
 
-        return {
-          id: row.announcement.id,
-          title: row.announcement.title,
-          content: row.announcement.content,
-          createdBy: row.creator.name,
-          createdAt: row.announcement.createdAt,
-          updatedAt: row.announcement.updatedAt,
-          filters: filters.map((f) => ({ type: f.filterType, value: f.filterValue })),
-        };
-      })
-    );
-
-    return announcementsForScholar.filter((announcement) =>
-      this.matchesAnnouncementFilters(announcement.filters, query)
-    );
+    return announcementsForScholar;
   }
 
   async getScholarsForFiltering(): Promise<ScholarFilterDto[]> {
@@ -245,6 +217,34 @@ export class AnnouncementsService {
       .returning();
 
     return archivedAnnouncement;
+  }
+
+  async restoreAnnouncement(announcementId: string, _restoredBy: string) {
+    const [announcement] = await database
+      .select()
+      .from(announcements)
+      .where(eq(announcements.id, announcementId));
+
+    if (!announcement) {
+      throw new Error('Announcement not found');
+    }
+
+    if (!announcement.archived) {
+      throw new Error('Announcement is not archived');
+    }
+
+    const [restoredAnnouncement] = await database
+      .update(announcements)
+      .set({
+        archived: false,
+        archivedAt: null,
+        archivedBy: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(announcements.id, announcementId))
+      .returning();
+
+    return restoredAnnouncement;
   }
 
   private async createRecipientRecords(
@@ -346,24 +346,5 @@ export class AnnouncementsService {
 
     // Wait for all emails to be sent
     await Promise.allSettled(emailPromises);
-  }
-
-  private matchesAnnouncementFilters(
-    filters: AnnouncementFilter[],
-    query: Pick<GetAnnouncementsQueryDto, 'year' | 'program' | 'university'>
-  ): boolean {
-    const activeFilters = [
-      ['year', query.year],
-      ['program', query.program],
-      ['university', query.university],
-    ].filter((filter): filter is [string, string] => Boolean(filter[1]));
-
-    if (activeFilters.length === 0) {
-      return true;
-    }
-
-    return activeFilters.every(([type, value]) =>
-      filters.some((filter) => filter.type === type && filter.value === value)
-    );
   }
 }

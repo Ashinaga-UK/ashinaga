@@ -2,38 +2,34 @@
 
 import { AlertCircle, FileText, Plus } from 'lucide-react';
 import { useState } from 'react';
+import { NewRequestDialog } from '../../../components/new-request-dialog';
+import { RequestCard } from '../../../components/request-card';
 import { Button } from '../../../components/ui/button';
 import { Card, CardContent } from '../../../components/ui/card';
 import {
-  useArchiveRequest,
-  useMyRequests,
-  useRestoreRequest,
-} from '../../../lib/hooks/use-queries';
-import { RequestCard } from '../../../components/request-card';
-import { NewRequestDialog } from '../../../components/new-request-dialog';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../../components/ui/select';
 import { useToast } from '../../../components/ui/use-toast';
+import { useArchiveRequest, useMyRequests } from '../../../lib/hooks/use-queries';
+
+type RequestFilter = 'awaiting' | 'past';
 
 export default function RequestsPage() {
-  const [showArchived, setShowArchived] = useState(false);
   const { toast } = useToast();
-  const { data: requests, isLoading, error, refetch } = useMyRequests(true, showArchived);
+  const [filter, setFilter] = useState<RequestFilter>('awaiting');
+  const { data: requests, isLoading, error, refetch } = useMyRequests(true, filter === 'past');
   const archiveRequest = useArchiveRequest();
-  const restoreRequest = useRestoreRequest();
 
-  const handleArchive = (requestId: string) => {
-    const confirmed = window.confirm(
-      'Withdraw this request?\n\nYou can restore it within 7 days. After 7 days, restoration is no longer possible and you will need to create a new request.'
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
+  const handleWithdraw = (requestId: string) => {
     archiveRequest.mutate(requestId, {
       onSuccess: () => {
         toast({
           title: 'Request withdrawn',
-          description: 'Your request was withdrawn. You can restore it within 7 days.',
+          description: 'Your request was withdrawn.',
         });
       },
       onError: (error) => {
@@ -49,32 +45,23 @@ export default function RequestsPage() {
     });
   };
 
-  const handleRestore = (requestId: string) => {
-    restoreRequest.mutate(requestId, {
-      onSuccess: () => {
-        toast({ title: 'Request restored', description: 'The request was restored successfully.' });
-      },
-      onError: (error) => {
-        toast({
-          title: 'Restore failed',
-          description:
-            error instanceof Error
-              ? error.message
-              : 'Could not restore the request. Please try again.',
-          variant: 'destructive',
-        });
-      },
-    });
-  };
-
   return (
     <div className="p-6 space-y-4">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold text-foreground">My Requests</h2>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setShowArchived((prev) => !prev)}>
-            {showArchived ? 'Show Active' : 'Show Withdrawn'}
-          </Button>
+          <Select
+            value={filter}
+            onValueChange={(value: string) => setFilter(value as RequestFilter)}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filter requests" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="awaiting">Awaiting Action</SelectItem>
+              <SelectItem value="past">Past Requests</SelectItem>
+            </SelectContent>
+          </Select>
           <NewRequestDialog
             trigger={
               <Button className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700">
@@ -116,11 +103,13 @@ export default function RequestsPage() {
           <CardContent className="pt-6">
             <div className="text-center py-8">
               <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground">No requests yet</p>
+              <p className="text-muted-foreground">
+                {filter === 'awaiting' ? 'No pending requests' : 'No past requests'}
+              </p>
               <p className="text-sm text-muted-foreground mt-2">
-                {showArchived
-                  ? 'No withdrawn requests found'
-                  : 'Click "New Request" to submit your first request'}
+                {filter === 'awaiting'
+                  ? 'Click "New Request" to submit a request'
+                  : 'Completed or withdrawn requests will appear here'}
               </p>
             </div>
           </CardContent>
@@ -131,9 +120,8 @@ export default function RequestsPage() {
             <RequestCard
               key={request.id}
               request={request}
-              onArchive={handleArchive}
-              onRestore={handleRestore}
-              isMutating={archiveRequest.isPending || restoreRequest.isPending}
+              onWithdraw={handleWithdraw}
+              isMutating={archiveRequest.isPending}
             />
           ))}
         </div>

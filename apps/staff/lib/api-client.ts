@@ -524,15 +524,27 @@ export interface Announcement {
   updatedAt: string;
   filters: Array<{ type: string; value: string }>;
   recipientCount: number;
+  archived: boolean;
+  archivedAt: string | null;
 }
 
-export async function getAnnouncements(): Promise<Announcement[]> {
-  return fetchAPI<Announcement[]>('/api/announcements');
+export async function getAnnouncements(
+  filter: boolean | 'all' = false
+): Promise<Announcement[]> {
+  const qs =
+    filter === 'all' ? '?includeArchived=all' : filter ? '?includeArchived=true' : '';
+  return fetchAPI<Announcement[]>(`/api/announcements${qs}`);
 }
 
 export async function deleteAnnouncement(announcementId: string): Promise<void> {
   return fetchAPI(`/api/announcements/${announcementId}`, {
     method: 'DELETE',
+  });
+}
+
+export async function restoreAnnouncement(announcementId: string): Promise<void> {
+  return fetchAPI(`/api/announcements/${announcementId}/restore`, {
+    method: 'PATCH',
   });
 }
 

@@ -1,26 +1,31 @@
 'use client';
 
-import { Calendar, ChevronDown, ChevronUp, Download, Paperclip, RotateCcw, Trash2 } from 'lucide-react';
+import { Calendar, ChevronDown, ChevronUp, Download, Paperclip, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import type { Request } from '../lib/api-client';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from './ui/alert-dialog';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
 interface RequestCardProps {
   request: Request;
-  onArchive?: (requestId: string) => void;
-  onRestore?: (requestId: string) => void;
+  onWithdraw?: (requestId: string) => void;
   isMutating?: boolean;
 }
 
-export function RequestCard({ request, onArchive, onRestore, isMutating = false }: RequestCardProps) {
+export function RequestCard({ request, onWithdraw, isMutating = false }: RequestCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const isRestoreExpired = Boolean(
-    request.archived &&
-      request.archivedAt &&
-      new Date(request.archivedAt).getTime() + 7 * 24 * 60 * 60 * 1000 < Date.now()
-  );
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -215,36 +220,54 @@ export function RequestCard({ request, onArchive, onRestore, isMutating = false 
           </div>
         )}
 
-        {(onArchive || onRestore) && (
+        {onWithdraw && (
           <div className="pt-2 border-t flex flex-col items-end gap-2">
             {request.archived ? (
-              <>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => onRestore?.(request.id)}
-                  disabled={isMutating || isRestoreExpired}
-                >
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  Restore
-                </Button>
-                <p className="text-xs text-muted-foreground">
-                  {isRestoreExpired
-                    ? 'Restore window expired after 7 days.'
-                    : 'You can restore this request within 7 days of withdrawal.'}
-                </p>
-              </>
+              <p className="text-xs text-muted-foreground text-right">
+                This request was withdrawn. You can submit a new request if needed.
+              </p>
+            ) : request.status === 'pending' ? (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    disabled={isMutating}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Withdraw
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Withdraw this request?</AlertDialogTitle>
+                    <AlertDialogDescription className="space-y-2">
+                      <span className="block">
+                        This removes the request from the active queue and marks it as withdrawn.
+                      </span>
+                      <span className="block">
+                        You will not be able to restore it later. You can submit a new request if
+                        you change your mind.
+                      </span>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isMutating}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      disabled={isMutating}
+                      className="bg-red-600 text-white hover:bg-red-700"
+                      onClick={() => onWithdraw?.(request.id)}
+                    >
+                      Withdraw
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             ) : (
-              <Button
-                size="sm"
-                variant="ghost"
-                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                onClick={() => onArchive?.(request.id)}
-                disabled={isMutating}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Withdraw
-              </Button>
+              <p className="text-xs text-muted-foreground">
+                Withdraw is only available before staff respond.
+              </p>
             )}
           </div>
         )}
