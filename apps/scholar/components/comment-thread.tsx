@@ -40,7 +40,7 @@ export function CommentThread({ goalId, currentUserId }: CommentThreadProps) {
 
   useEffect(() => {
     loadComments();
-  }, [goalId]);
+  }, [loadComments]);
 
   const handleSubmit = async () => {
     if (!newComment.trim()) return;

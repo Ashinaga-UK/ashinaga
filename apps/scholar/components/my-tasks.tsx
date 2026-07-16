@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertCircle, Calendar, CheckCircle, Circle, Clock, FileText } from 'lucide-react';
+import { AlertCircle, Calendar, CheckCircle, Circle, Clock } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { Task } from '../lib/api/tasks';
 import { completeTask, getMyTasks, updateTaskStatus } from '../lib/api/tasks';
@@ -18,10 +18,6 @@ export function MyTasks() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
 
-  useEffect(() => {
-    loadTasks();
-  }, []);
-
   const loadTasks = async () => {
     try {
       setIsLoading(true);
@@ -35,6 +31,10 @@ export function MyTasks() {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadTasks();
+  }, [loadTasks]);
 
   const handleStatusChange = async (
     taskId: string,

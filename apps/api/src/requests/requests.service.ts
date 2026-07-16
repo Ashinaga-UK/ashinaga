@@ -157,9 +157,7 @@ export class RequestsService {
 
     // If not a super admin, show requests assigned to this user or unassigned
     if (!staffRecord?.isSuperAdmin) {
-      whereConditions.push(
-        or(eq(requests.assignedTo, userId), eq(requests.assignedTo, '')),
-      );
+      whereConditions.push(or(eq(requests.assignedTo, userId), eq(requests.assignedTo, '')));
     }
 
     if (search) {

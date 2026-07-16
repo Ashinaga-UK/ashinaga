@@ -16,7 +16,7 @@ import { useSession } from '../lib/auth-client';
 import { CommentThread } from './comment-thread';
 import { CreateGoalDialog } from './create-goal-dialog';
 import { Button } from './ui/button';
-import { Card, CardContent, CardHeader } from './ui/card';
+import { Card, CardContent } from './ui/card';
 import { Progress } from './ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Slider } from './ui/slider';
@@ -50,7 +50,7 @@ export function MyGoals() {
 
   useEffect(() => {
     loadGoals();
-  }, []);
+  }, [loadGoals]);
 
   useEffect(() => {
     let filtered = [...goals];
@@ -413,8 +413,10 @@ export function MyGoals() {
                         </div>
                       </div>
                     ) : (
-                      <div
-                        className="cursor-pointer"
+                      <button
+                        type="button"
+                        aria-label="Update completion"
+                        className="block w-full text-left cursor-pointer bg-transparent p-0 border-0"
                         onClick={() => {
                           setEditingCompletion(goal.id);
                           setTempCompletion(goal.completionScale);
@@ -424,7 +426,7 @@ export function MyGoals() {
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                           Click to update completion (1-10 scale)
                         </p>
-                      </div>
+                      </button>
                     )}
                   </div>
 

@@ -1,4 +1,4 @@
-import { All, Body, Controller, Get, Post, Req, Res } from '@nestjs/common';
+import { All, Controller, Get, Post, Req, Res } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { eq } from 'drizzle-orm';
 import type { FastifyReply, FastifyRequest } from 'fastify';

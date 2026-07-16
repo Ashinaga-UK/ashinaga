@@ -528,11 +528,8 @@ export interface Announcement {
   archivedAt: string | null;
 }
 
-export async function getAnnouncements(
-  filter: boolean | 'all' = false
-): Promise<Announcement[]> {
-  const qs =
-    filter === 'all' ? '?includeArchived=all' : filter ? '?includeArchived=true' : '';
+export async function getAnnouncements(filter: boolean | 'all' = false): Promise<Announcement[]> {
+  const qs = filter === 'all' ? '?includeArchived=all' : filter ? '?includeArchived=true' : '';
   return fetchAPI<Announcement[]>(`/api/announcements${qs}`);
 }
 

@@ -47,9 +47,7 @@ export class RequestsController {
 
   @Get('stats')
   @UseGuards(AuthGuard)
-  async getRequestStats(
-    @Req() req: AuthenticatedRequest,
-  ): Promise<{
+  async getRequestStats(@Req() req: AuthenticatedRequest): Promise<{
     total: number;
     pending: number;
     approved: number;
@@ -80,7 +78,10 @@ export class RequestsController {
 
   @Get('my-requests')
   @UseGuards(AuthGuard)
-  async getMyRequests(@Req() req: AuthenticatedRequest, @Query('includeArchived') includeArchived?: string) {
+  async getMyRequests(
+    @Req() req: AuthenticatedRequest,
+    @Query('includeArchived') includeArchived?: string
+  ) {
     const userId = req.user?.id;
     if (!userId) {
       throw new Error('User not authenticated');

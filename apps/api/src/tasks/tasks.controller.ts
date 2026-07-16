@@ -49,7 +49,10 @@ export class TasksController {
   @UseGuards(AuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get tasks for the authenticated scholar' })
-  async getMyTasks(@Req() req: AuthenticatedRequest, @Query('includeArchived') includeArchived?: string) {
+  async getMyTasks(
+    @Req() req: AuthenticatedRequest,
+    @Query('includeArchived') includeArchived?: string
+  ) {
     const userId = req.user?.id;
     if (!userId) {
       throw new Error('User not authenticated');
@@ -59,7 +62,10 @@ export class TasksController {
 
   @Get('scholar/:scholarId')
   @ApiOperation({ summary: 'Get all tasks for a specific scholar' })
-  async getTasksByScholar(@Param('scholarId') scholarId: string, @Query('includeArchived') includeArchived?: string) {
+  async getTasksByScholar(
+    @Param('scholarId') scholarId: string,
+    @Query('includeArchived') includeArchived?: string
+  ) {
     return this.tasksService.getTasksByScholar(scholarId, includeArchived === 'true');
   }
 

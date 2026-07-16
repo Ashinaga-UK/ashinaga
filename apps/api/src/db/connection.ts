@@ -18,10 +18,13 @@ export function getDatabase() {
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 2000,
         ssl:
-          process.env.DB_SSL === 'true' ||
-          (process.env.NODE_ENV === 'production' && process.env.DB_SSL !== 'false')
-            ? { rejectUnauthorized: false }
-            : false,
+          process.env.DB_SSL === 'false'
+            ? false
+            : process.env.DB_SSL === 'true' ||
+                process.env.NODE_ENV === 'production' ||
+                process.env.NODE_ENV === 'test'
+              ? { rejectUnauthorized: false }
+              : false,
       });
     }
 

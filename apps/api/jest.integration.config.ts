@@ -10,6 +10,7 @@ const config: Config = {
   testRegex: undefined,
   globalSetup: '<rootDir>/test/integration/setup/global-setup.ts',
   globalTeardown: '<rootDir>/test/integration/setup/global-teardown.ts',
+  setupFiles: ['<rootDir>/test/integration/setup/setup-env.ts'],
   setupFilesAfterEnv: ['<rootDir>/test/integration/setup/setup-after-env.ts'],
   testTimeout: 30000,
   maxWorkers: 1,

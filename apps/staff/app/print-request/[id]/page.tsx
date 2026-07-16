@@ -158,7 +158,7 @@ export default function PrintRequestPage() {
             </h2>
             <div className="space-y-3">
               {getFormDataDisplayItems(request.type, request.formData).map((item, index) => (
-                <div key={index} className="break-inside-avoid">
+                <div key={`${item.label}-${index}`} className="break-inside-avoid">
                   <p className="text-sm font-medium text-gray-700">{item.label}</p>
                   {item.value.length > 100 ? (
                     <p className="text-base text-gray-900 whitespace-pre-wrap bg-gray-50 p-3 rounded border border-gray-200">
@@ -210,7 +210,7 @@ export default function PrintRequestPage() {
             <div className="bg-gray-50 p-4 rounded border border-gray-200">
               <ul className="space-y-2">
                 {request.attachments.map((attachment, index) => (
-                  <li key={index} className="text-sm text-gray-900">
+                  <li key={`${attachment.name}-${index}`} className="text-sm text-gray-900">
                     <span className="font-medium">{index + 1}.</span> {attachment.name} (
                     {attachment.size})
                   </li>

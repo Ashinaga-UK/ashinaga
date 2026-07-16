@@ -167,7 +167,7 @@ export function TaskCompletionDialog({
               <div className="space-y-2">
                 {selectedFiles.map((file, index) => (
                   <div
-                    key={index}
+                    key={`${file.name}-${index}`}
                     className="flex items-center justify-between p-2 bg-gray-50 rounded-md"
                   >
                     <div className="flex items-center gap-2">
@@ -195,7 +195,7 @@ export function TaskCompletionDialog({
             {uploadProgress.length > 0 && (
               <div className="space-y-2">
                 {uploadProgress.map((progress, index) => (
-                  <div key={index} className="space-y-1">
+                  <div key={`${progress.file.name}-${index}`} className="space-y-1">
                     <div className="flex items-center justify-between text-sm">
                       <span>{progress.file.name}</span>
                       <span>{Math.round(progress.progress)}%</span>

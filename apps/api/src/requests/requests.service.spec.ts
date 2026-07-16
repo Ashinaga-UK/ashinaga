@@ -138,15 +138,33 @@ describe('RequestsService', () => {
       ];
 
       const mockDatabase = require('../db/connection').database;
-      mockDatabase.select = jest.fn().mockReturnValue({
-        from: jest.fn().mockReturnValue({
-          where: jest.fn().mockReturnValue({
-            groupBy: jest.fn().mockResolvedValue(mockStats),
-          }),
-        }),
+
+      let callCount = 0;
+      mockDatabase.select = jest.fn().mockImplementation(() => {
+        callCount++;
+
+        if (callCount === 1) {
+          // First call - verify caller is staff
+          return {
+            from: jest.fn().mockReturnValue({
+              where: jest.fn().mockResolvedValue([{ isSuperAdmin: true }]),
+            }),
+          };
+        } else if (callCount === 2) {
+          // Second call - stats query
+          return {
+            from: jest.fn().mockReturnValue({
+              where: jest.fn().mockReturnValue({
+                groupBy: jest.fn().mockResolvedValue(mockStats),
+              }),
+            }),
+          };
+        }
+
+        return {};
       });
 
-      const result = await service.getRequestStats();
+      const result = await service.getRequestStats('staff-user-id');
 
       expect(result.total).toBe(18);
       expect(result.pending).toBe(10);

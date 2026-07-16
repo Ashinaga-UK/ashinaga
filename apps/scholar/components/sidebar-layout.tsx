@@ -106,8 +106,16 @@ export function SidebarLayout({ children, activeTab, onTabChange, onLogout }: Si
       {/* Mobile overlay */}
       {isSidebarOpen && (
         <div
+          role="button"
+          tabIndex={0}
+          aria-label="Close sidebar"
           className="fixed inset-0 bg-black/50 z-30 lg:hidden"
           onClick={() => setIsSidebarOpen(false)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+              setIsSidebarOpen(false);
+            }
+          }}
         />
       )}
     </div>

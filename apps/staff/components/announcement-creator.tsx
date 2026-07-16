@@ -49,13 +49,6 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
     { value: 'university', label: 'University' },
   ];
 
-  // Fetch data when dialog opens
-  useEffect(() => {
-    if (open) {
-      fetchData();
-    }
-  }, [open]);
-
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -68,6 +61,13 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
       setLoading(false);
     }
   };
+
+  // Fetch data when dialog opens
+  useEffect(() => {
+    if (open) {
+      fetchData();
+    }
+  }, [open, fetchData]);
 
   // Function to filter students based on active filters
   const getFilteredStudents = useCallback(() => {
