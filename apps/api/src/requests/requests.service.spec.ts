@@ -108,13 +108,29 @@ describe('RequestsService', () => {
               }),
             }),
           };
-        } else {
+        } else if (callCount === 5) {
           // Fifth call - audit logs query
           return {
             from: jest.fn().mockReturnValue({
               where: jest.fn().mockReturnValue({
                 orderBy: jest.fn().mockResolvedValue([]),
               }),
+            }),
+          };
+        } else if (callCount === 6) {
+          // Sixth call - assignees query
+          return {
+            from: jest.fn().mockReturnValue({
+              innerJoin: jest.fn().mockReturnValue({
+                where: jest.fn().mockResolvedValue([]),
+              }),
+            }),
+          };
+        } else {
+          // Seventh call - any additional queries
+          return {
+            from: jest.fn().mockReturnValue({
+              where: jest.fn().mockResolvedValue([]),
             }),
           };
         }

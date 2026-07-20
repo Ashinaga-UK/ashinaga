@@ -156,9 +156,13 @@ export class RequestsService {
       whereConditions.push(archivedCondition);
     }
 
-    // If not a super admin, show requests assigned to this user or unassigned
+    // If not a super admin, only show requests assigned to this user
     if (!staffRecord?.isSuperAdmin) {
-      whereConditions.push(or(eq(requests.assignedTo, userId), eq(requests.assignedTo, '')));
+      const assignedRequestIds = database
+        .select({ requestId: requestAssignees.requestId })
+        .from(requestAssignees)
+        .where(eq(requestAssignees.userId, userId));
+      whereConditions.push(inArray(requests.id, assignedRequestIds));
     }
 
     if (search) {
@@ -226,6 +230,7 @@ export class RequestsService {
 
     const attachments = await this.getAttachments(requestIds);
     const auditLogs = await this.getAuditLogs(requestIds);
+    const assignees = await this.getAssignees(requestIds);
 
     const data: RequestResponseDto[] = requestsWithScholars.map((row) => ({
       id: row.request.id,
@@ -244,7 +249,7 @@ export class RequestsService {
       reviewedBy: row.request.reviewedBy,
       reviewComment: row.request.reviewComment,
       reviewDate: row.request.reviewDate,
-      assignees: [],
+      assignees: assignees[row.request.id] || [],
       attachments: attachments[row.request.id] || [],
       auditLogs: auditLogs[row.request.id] || [],
       createdAt: row.request.createdAt,
@@ -445,10 +450,11 @@ export class RequestsService {
       .where(and(...whereConditions))
       .orderBy(desc(requests.submittedDate));
 
-    // Get attachments and audit logs for all requests
+    // Get attachments, audit logs and assignees for all requests
     const requestIds = requestsWithScholars.map((row) => row.request.id);
     const attachments = await this.getAttachments(requestIds);
     const auditLogs = await this.getAuditLogs(requestIds);
+    const assignees = await this.getAssignees(requestIds);
 
     // Format the response
     const data: RequestResponseDto[] = requestsWithScholars.map((row) => ({
@@ -468,7 +474,7 @@ export class RequestsService {
       reviewedBy: row.request.reviewedBy,
       reviewComment: row.request.reviewComment,
       reviewDate: row.request.reviewDate,
-      assignees: [],
+      assignees: assignees[row.request.id] || [],
       attachments: attachments[row.request.id] || [],
       auditLogs: auditLogs[row.request.id] || [],
       createdAt: row.request.createdAt,
@@ -495,6 +501,12 @@ export class RequestsService {
 
     const scholarId = scholar[0].id;
 
+    // Dedupe assignees and keep the first as the primary (legacy assignedTo)
+    const assigneeIds = Array.from(new Set(createRequestDto.assigneeIds.filter(Boolean)));
+    if (assigneeIds.length === 0) {
+      throw new NotFoundException('At least one assignee is required');
+    }
+
     // Create the request
     const [newRequest] = await database
       .insert(requests)
@@ -505,8 +517,14 @@ export class RequestsService {
         formData: createRequestDto.formData ? JSON.stringify(createRequestDto.formData) : null,
         priority: createRequestDto.priority || 'medium',
         status: 'pending',
+        assignedTo: assigneeIds[0],
       })
       .returning();
+
+    // Insert all assignees into the join table
+    await database
+      .insert(requestAssignees)
+      .values(assigneeIds.map((id) => ({ requestId: newRequest.id, userId: id })));
 
     // Create audit log for request creation
     await database.insert(requestAuditLogs).values({
@@ -516,16 +534,6 @@ export class RequestsService {
       newStatus: 'pending',
       comment: 'Request submitted by scholar',
     });
-
-    // Assign the request to the specified staff members
-    if (createRequestDto.assigneeIds && createRequestDto.assigneeIds.length > 0) {
-      await database.insert(requestAssignees).values(
-        createRequestDto.assigneeIds.map((userId) => ({
-          requestId: newRequest.id,
-          userId,
-        }))
-      );
-    }
 
     // Link attachments to the request if provided
     if (createRequestDto.attachmentIds && createRequestDto.attachmentIds.length > 0) {
@@ -553,7 +561,7 @@ export class RequestsService {
       priority: newRequest.priority,
       status: newRequest.status,
       submittedDate: newRequest.submittedDate,
-      assigneeIds: createRequestDto.assigneeIds || [],
+      assigneeIds,
       createdAt: newRequest.createdAt,
       updatedAt: newRequest.updatedAt,
     };
@@ -742,5 +750,36 @@ export class RequestsService {
     });
 
     return restoredRequest;
+  }
+
+  private async getAssignees(
+    requestIds: string[]
+  ): Promise<Record<string, { id: string; name: string; email: string }[]>> {
+    if (requestIds.length === 0) return {};
+
+    const rows = await database
+      .select({
+        requestId: requestAssignees.requestId,
+        userId: users.id,
+        userName: users.name,
+        userEmail: users.email,
+      })
+      .from(requestAssignees)
+      .innerJoin(users, eq(requestAssignees.userId, users.id))
+      .where(inArray(requestAssignees.requestId, requestIds));
+
+    const grouped: Record<string, { id: string; name: string; email: string }[]> = {};
+    for (const row of rows) {
+      if (!grouped[row.requestId]) {
+        grouped[row.requestId] = [];
+      }
+      grouped[row.requestId].push({
+        id: row.userId,
+        name: row.userName,
+        email: row.userEmail,
+      });
+    }
+
+    return grouped;
   }
 }

@@ -1,10 +1,11 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, ilike, isNull, sql } from 'drizzle-orm';
 import { getDatabase } from '../db/connection';
 import { scholars } from '../db/schema/scholars';
 import { taskAttachments, taskResponses } from '../db/schema/task-responses';
 import { tasks } from '../db/schema/tasks';
 import { users } from '../db/schema/users';
+import { CreateBulkTasksDto } from './dto/create-bulk-tasks.dto';
 import { AttachmentDto, CompleteTaskDto } from './dto/complete-task.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
@@ -122,32 +123,6 @@ export class TasksService {
     return task;
   }
 
-  async archiveTask(taskId: string, archivedBy: string) {
-    await this.ensureStaffUser(archivedBy);
-
-    const [task] = await this.db.select().from(tasks).where(eq(tasks.id, taskId));
-
-    if (!task) {
-      throw new NotFoundException('Task not found');
-    }
-
-    if (task.deletedAt) {
-      throw new Error('Task is already archived');
-    }
-
-    const [archivedTask] = await this.db
-      .update(tasks)
-      .set({
-        deletedAt: new Date(),
-        deletedBy: archivedBy,
-        updatedAt: new Date(),
-      })
-      .where(eq(tasks.id, taskId))
-      .returning();
-
-    return archivedTask;
-  }
-
   async restoreTask(taskId: string, restoredBy: string) {
     await this.ensureStaffUser(restoredBy);
 
@@ -174,23 +149,71 @@ export class TasksService {
     return restoredTask;
   }
 
-  async createBulkTasks(
-    dto: { title: string; description?: string; type: string; priority?: string; dueDate: string; scholarIds: string[] },
-    assignedBy: string
-  ) {
-    const tasksToInsert = dto.scholarIds.map((scholarId) => ({
+  async createBulkTasks(dto: CreateBulkTasksDto, assignedBy: string) {
+    const uniqueScholarIds = Array.from(new Set(dto.scholarIds));
+    const dueDate = new Date(dto.dueDate);
+    const rows = uniqueScholarIds.map((scholarId) => ({
       title: dto.title,
-      description: dto.description ?? null,
-      type: dto.type as 'document_upload' | 'form_completion' | 'meeting_attendance' | 'goal_update' | 'feedback_submission' | 'other',
-      priority: (dto.priority as 'high' | 'medium' | 'low') ?? 'medium',
-      dueDate: new Date(dto.dueDate),
+      description: dto.description,
+      type: dto.type,
+      priority: dto.priority || 'medium',
+      dueDate,
       scholarId,
       assignedBy,
       status: 'pending' as const,
     }));
 
-    const created = await this.db.insert(tasks).values(tasksToInsert).returning();
-    return { created: created.length, tasks: created };
+    const inserted = await this.db.insert(tasks).values(rows).returning();
+
+    return { created: inserted.length, tasks: inserted };
+  }
+
+  async getTitleSuggestions(query: string, assignedBy: string, limit = 8) {
+    const trimmed = (query || '').trim();
+    const baseConditions = [isNull(tasks.deletedAt), eq(tasks.assignedBy, assignedBy)];
+    if (trimmed.length > 0) {
+      baseConditions.push(ilike(tasks.title, `${trimmed}%`));
+    }
+
+    const rows = await this.db
+      .select({
+        title: tasks.title,
+        description: sql<string | null>`max(${tasks.description})`.as('description'),
+        type: sql<string>`(array_agg(${tasks.type} ORDER BY ${tasks.createdAt} DESC))[1]`.as(
+          'type'
+        ),
+        priority:
+          sql<string>`(array_agg(${tasks.priority} ORDER BY ${tasks.createdAt} DESC))[1]`.as(
+            'priority'
+          ),
+        lastUsedAt: sql<Date>`max(${tasks.createdAt})`.as('last_used_at'),
+        useCount: sql<number>`count(*)::int`.as('use_count'),
+      })
+      .from(tasks)
+      .where(and(...baseConditions))
+      .groupBy(tasks.title)
+      .orderBy(desc(sql`max(${tasks.createdAt})`))
+      .limit(Math.max(1, Math.min(limit, 25)));
+
+    return rows;
+  }
+
+  async softDeleteTask(taskId: string, deletedBy: string) {
+    const [task] = await this.db.select().from(tasks).where(eq(tasks.id, taskId));
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+    if (task.deletedAt) {
+      return { id: taskId, alreadyDeleted: true };
+    }
+
+    const [deleted] = await this.db
+      .update(tasks)
+      .set({ deletedAt: new Date(), deletedBy, updatedAt: new Date() })
+      .where(eq(tasks.id, taskId))
+      .returning();
+
+    return { id: deleted.id, alreadyDeleted: false };
   }
 
   async completeTask(taskId: string, completeTaskDto: CompleteTaskDto, userId: string) {
