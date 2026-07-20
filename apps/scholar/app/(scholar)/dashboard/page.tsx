@@ -97,63 +97,71 @@ export default function DashboardPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-ashinaga-teal-100 dark:border-gray-700">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Tasks</CardTitle>
-            <CheckSquare className="h-4 w-4 text-ashinaga-teal-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{pendingTasks}</div>
-            <p className="text-xs text-muted-foreground">
-              {dueSoon === 0 ? 'None due this week' : `${dueSoon} due this week`}
-            </p>
-          </CardContent>
-        </Card>
+        <a href="/tasks" className="block group">
+          <Card className="border-ashinaga-teal-100 dark:border-gray-700 transition-colors hover:border-ashinaga-teal-300 dark:hover:border-ashinaga-teal-700 cursor-pointer">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Pending Tasks</CardTitle>
+              <CheckSquare className="h-4 w-4 text-ashinaga-teal-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{pendingTasks}</div>
+              <p className="text-xs text-muted-foreground">
+                {dueSoon === 0 ? 'None due this week' : `${dueSoon} due this week`}
+              </p>
+            </CardContent>
+          </Card>
+        </a>
 
-        <Card className="border-ashinaga-teal-100 dark:border-gray-700">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active LDF Goals</CardTitle>
-            <Target className="h-4 w-4 text-ashinaga-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{activeGoals}</div>
-            <p className="text-xs text-muted-foreground">{onTrackPercentage}% on track</p>
-          </CardContent>
-        </Card>
+        <a href="/goals" className="block group">
+          <Card className="border-ashinaga-teal-100 dark:border-gray-700 transition-colors hover:border-ashinaga-teal-300 dark:hover:border-ashinaga-teal-700 cursor-pointer">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active LDF Goals</CardTitle>
+              <Target className="h-4 w-4 text-ashinaga-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{activeGoals}</div>
+              <p className="text-xs text-muted-foreground">{onTrackPercentage}% on track</p>
+            </CardContent>
+          </Card>
+        </a>
 
-        <Card className="border-ashinaga-teal-100 dark:border-gray-700">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Open Requests</CardTitle>
-            <FileText className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{openRequests}</div>
-            <p className="text-xs text-muted-foreground">
-              {openRequests === 0
-                ? 'All clear'
-                : openRequests === 1
-                  ? 'Awaiting response'
-                  : `${openRequests} awaiting response`}
-            </p>
-          </CardContent>
-        </Card>
+        <a href="/requests" className="block group">
+          <Card className="border-ashinaga-teal-100 dark:border-gray-700 transition-colors hover:border-ashinaga-teal-300 dark:hover:border-ashinaga-teal-700 cursor-pointer">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Open Requests</CardTitle>
+              <FileText className="h-4 w-4 text-orange-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{openRequests}</div>
+              <p className="text-xs text-muted-foreground">
+                {openRequests === 0
+                  ? 'All clear'
+                  : openRequests === 1
+                    ? 'Awaiting response'
+                    : `${openRequests} awaiting response`}
+              </p>
+            </CardContent>
+          </Card>
+        </a>
 
-        <Card className="border-ashinaga-teal-100 dark:border-gray-700">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">New Announcements</CardTitle>
-            <Bell className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{recentAnnouncements}</div>
-            <p className="text-xs text-muted-foreground">
-              {recentAnnouncements === 0
-                ? 'No new'
-                : recentAnnouncements === 1
-                  ? 'New announcement'
-                  : 'New announcements'}
-            </p>
-          </CardContent>
-        </Card>
+        <a href="/announcements" className="block group">
+          <Card className="border-ashinaga-teal-100 dark:border-gray-700 transition-colors hover:border-ashinaga-teal-300 dark:hover:border-ashinaga-teal-700 cursor-pointer">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">New Announcements</CardTitle>
+              <Bell className="h-4 w-4 text-blue-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{recentAnnouncements}</div>
+              <p className="text-xs text-muted-foreground">
+                {recentAnnouncements === 0
+                  ? 'No new'
+                  : recentAnnouncements === 1
+                    ? 'New announcement'
+                    : 'New announcements'}
+              </p>
+            </CardContent>
+          </Card>
+        </a>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle, Download, Eye, Paperclip, RotateCcw, Trash2, X } from 'lucide-react';
+import { CheckCircle, Download, Eye, MessageSquare, Paperclip, RotateCcw, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import {
   archiveRequest,
@@ -76,6 +76,35 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
     } catch (error) {
       console.error('Error updating request status:', error);
       alert('Failed to update request status. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRequestInfo = async () => {
+    if (!approvalComment.trim()) {
+      toast({
+        title: 'Comment required',
+        description: 'Please describe what additional information the scholar needs to provide.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!user?.id) {
+      alert('Please log in to perform this action.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await updateRequestStatus(request.id, 'commented', approvalComment, user.id);
+      onStatusUpdate(request.id, 'commented', approvalComment);
+      setApprovalOpen(false);
+      setApprovalComment('');
+    } catch (error) {
+      console.error('Error requesting more information:', error);
+      alert('Failed to request more information. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -304,9 +333,18 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
                         />
                       </div>
                     </div>
-                    <DialogFooter>
+                    <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
                       <Button variant="outline" onClick={() => setApprovalOpen(false)}>
                         Cancel
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={handleRequestInfo}
+                        disabled={isSubmitting}
+                        className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                      >
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        {isSubmitting ? 'Processing...' : 'Request More Information'}
                       </Button>
                       <Button
                         variant="outline"
