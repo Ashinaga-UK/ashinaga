@@ -3,6 +3,7 @@ import {
   archiveRequest,
   createRequest,
   getMyAnnouncements,
+  type GetMyAnnouncementsParams,
   getMyRequests,
   getStaffList,
   restoreRequest,
@@ -10,16 +11,16 @@ import {
 
 // Query keys
 export const queryKeys = {
-  myAnnouncements: ['my-announcements'] as const,
+  myAnnouncements: (params?: GetMyAnnouncementsParams) => ['my-announcements', params] as const,
   myRequests: (includeArchived = false) => ['my-requests', includeArchived] as const,
   staffList: ['staff-list'] as const,
 };
 
 // My announcements query
-export function useMyAnnouncements(enabled = true) {
+export function useMyAnnouncements(params?: GetMyAnnouncementsParams, enabled = true) {
   return useQuery({
-    queryKey: queryKeys.myAnnouncements,
-    queryFn: getMyAnnouncements,
+    queryKey: queryKeys.myAnnouncements(params),
+    queryFn: () => getMyAnnouncements(params),
     enabled,
   });
 }

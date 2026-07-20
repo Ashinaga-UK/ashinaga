@@ -43,10 +43,33 @@ export interface Announcement {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  filters?: Array<{ type: string; value: string }>;
 }
 
-export async function getMyAnnouncements(): Promise<Announcement[]> {
-  return fetchAPI<Announcement[]>('/api/announcements/my-announcements');
+export interface GetMyAnnouncementsParams {
+  year?: string;
+  program?: string;
+  university?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+export async function getMyAnnouncements(
+  params?: GetMyAnnouncementsParams
+): Promise<Announcement[]> {
+  const queryParams = new URLSearchParams();
+
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '' && value !== 'all') {
+        queryParams.append(key, String(value));
+      }
+    });
+  }
+
+  const queryString = queryParams.toString();
+  return fetchAPI<Announcement[]>(
+    `/api/announcements/my-announcements${queryString ? `?${queryString}` : ''}`
+  );
 }
 
 // Request types and functions

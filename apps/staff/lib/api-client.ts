@@ -570,6 +570,7 @@ export async function getFilterOptions(): Promise<ScholarFilterOptions> {
 // User management functions
 export interface UpdateUserData {
   name?: string;
+  image?: string | null;
 }
 
 export async function updateUser(data: UpdateUserData): Promise<any> {
@@ -640,6 +641,25 @@ export interface UpdateTaskData {
 export async function updateTask(taskId: string, data: UpdateTaskData): Promise<Task> {
   return fetchAPI<Task>(`/api/tasks/${taskId}`, {
     method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+}
+
+export interface CreateBulkTasksData {
+  title: string;
+  description?: string;
+  type: Task['type'];
+  priority: Task['priority'];
+  dueDate: string;
+  scholarIds: string[];
+}
+
+export async function createBulkTasks(data: CreateBulkTasksData): Promise<{ created: number; tasks: Task[] }> {
+  return fetchAPI<{ created: number; tasks: Task[] }>('/api/tasks/bulk', {
+    method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
@@ -756,6 +776,34 @@ export async function resendInvitation(
 
 export async function cancelInvitation(invitationId: string): Promise<{ message: string }> {
   return fetchAPI<{ message: string }>(`/api/invitations/${invitationId}`, {
+    method: 'DELETE',
+  });
+}
+
+export interface StaffMember {
+  id: string;
+  userId: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'viewer';
+  isSuperAdmin: boolean;
+  joinedAt: string;
+  isSelf: boolean;
+}
+
+export interface StaffManagementResponse {
+  staff: StaffMember[];
+  canManage: boolean;
+}
+
+export async function getStaffForManagement(): Promise<StaffManagementResponse> {
+  return fetchAPI<StaffManagementResponse>('/api/users/staff/manage');
+}
+
+export async function removeStaffMember(
+  userId: string
+): Promise<{ success: boolean; alreadyInactive: boolean }> {
+  return fetchAPI<{ success: boolean; alreadyInactive: boolean }>(`/api/users/staff/${userId}`, {
     method: 'DELETE',
   });
 }

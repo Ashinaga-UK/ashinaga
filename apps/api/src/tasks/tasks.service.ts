@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { getDatabase } from '../db/connection';
 import { scholars } from '../db/schema/scholars';
 import { taskAttachments, taskResponses } from '../db/schema/task-responses';
@@ -18,7 +18,7 @@ export class TasksService {
       return eq(tasks.scholarId, scholarId);
     }
 
-    return and(eq(tasks.scholarId, scholarId), eq(tasks.archived, false));
+    return and(eq(tasks.scholarId, scholarId), isNull(tasks.deletedAt));
   }
 
   private async ensureStaffUser(userId: string) {
@@ -75,9 +75,9 @@ export class TasksService {
         assignedBy: tasks.assignedBy,
         assignedByName: users.name,
         scholarId: tasks.scholarId,
-        archived: tasks.archived,
-        archivedAt: tasks.archivedAt,
-        archivedBy: tasks.archivedBy,
+        archived: sql`${tasks.deletedAt} IS NOT NULL`,
+        archivedAt: tasks.deletedAt,
+        archivedBy: tasks.deletedBy,
         createdAt: tasks.createdAt,
         updatedAt: tasks.updatedAt,
         completedAt: tasks.completedAt,
@@ -131,16 +131,15 @@ export class TasksService {
       throw new NotFoundException('Task not found');
     }
 
-    if (task.archived) {
+    if (task.deletedAt) {
       throw new Error('Task is already archived');
     }
 
     const [archivedTask] = await this.db
       .update(tasks)
       .set({
-        archived: true,
-        archivedAt: new Date(),
-        archivedBy,
+        deletedAt: new Date(),
+        deletedBy: archivedBy,
         updatedAt: new Date(),
       })
       .where(eq(tasks.id, taskId))
@@ -158,22 +157,40 @@ export class TasksService {
       throw new NotFoundException('Task not found');
     }
 
-    if (!task.archived) {
+    if (!task.deletedAt) {
       throw new Error('Task is not archived');
     }
 
     const [restoredTask] = await this.db
       .update(tasks)
       .set({
-        archived: false,
-        archivedAt: null,
-        archivedBy: null,
+        deletedAt: null,
+        deletedBy: null,
         updatedAt: new Date(),
       })
       .where(eq(tasks.id, taskId))
       .returning();
 
     return restoredTask;
+  }
+
+  async createBulkTasks(
+    dto: { title: string; description?: string; type: string; priority?: string; dueDate: string; scholarIds: string[] },
+    assignedBy: string
+  ) {
+    const tasksToInsert = dto.scholarIds.map((scholarId) => ({
+      title: dto.title,
+      description: dto.description ?? null,
+      type: dto.type as 'document_upload' | 'form_completion' | 'meeting_attendance' | 'goal_update' | 'feedback_submission' | 'other',
+      priority: (dto.priority as 'high' | 'medium' | 'low') ?? 'medium',
+      dueDate: new Date(dto.dueDate),
+      scholarId,
+      assignedBy,
+      status: 'pending' as const,
+    }));
+
+    const created = await this.db.insert(tasks).values(tasksToInsert).returning();
+    return { created: created.length, tasks: created };
   }
 
   async completeTask(taskId: string, completeTaskDto: CompleteTaskDto, userId: string) {

@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import { and, count, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 import { database } from '../db/connection';
 import {
+  requestAssignees,
   requestAttachments,
   requestAuditLogs,
   requests,
@@ -243,6 +244,7 @@ export class RequestsService {
       reviewedBy: row.request.reviewedBy,
       reviewComment: row.request.reviewComment,
       reviewDate: row.request.reviewDate,
+      assignees: [],
       attachments: attachments[row.request.id] || [],
       auditLogs: auditLogs[row.request.id] || [],
       createdAt: row.request.createdAt,
@@ -466,6 +468,7 @@ export class RequestsService {
       reviewedBy: row.request.reviewedBy,
       reviewComment: row.request.reviewComment,
       reviewDate: row.request.reviewDate,
+      assignees: [],
       attachments: attachments[row.request.id] || [],
       auditLogs: auditLogs[row.request.id] || [],
       createdAt: row.request.createdAt,
@@ -502,7 +505,6 @@ export class RequestsService {
         formData: createRequestDto.formData ? JSON.stringify(createRequestDto.formData) : null,
         priority: createRequestDto.priority || 'medium',
         status: 'pending',
-        assignedTo: createRequestDto.assignedTo || null,
       })
       .returning();
 
@@ -514,6 +516,16 @@ export class RequestsService {
       newStatus: 'pending',
       comment: 'Request submitted by scholar',
     });
+
+    // Assign the request to the specified staff members
+    if (createRequestDto.assigneeIds && createRequestDto.assigneeIds.length > 0) {
+      await database.insert(requestAssignees).values(
+        createRequestDto.assigneeIds.map((userId) => ({
+          requestId: newRequest.id,
+          userId,
+        }))
+      );
+    }
 
     // Link attachments to the request if provided
     if (createRequestDto.attachmentIds && createRequestDto.attachmentIds.length > 0) {
@@ -541,6 +553,7 @@ export class RequestsService {
       priority: newRequest.priority,
       status: newRequest.status,
       submittedDate: newRequest.submittedDate,
+      assigneeIds: createRequestDto.assigneeIds || [],
       createdAt: newRequest.createdAt,
       updatedAt: newRequest.updatedAt,
     };
