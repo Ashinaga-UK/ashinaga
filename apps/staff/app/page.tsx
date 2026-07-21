@@ -1,9 +1,10 @@
 'use client';
 
-import { AlertCircle, FileText, Loader2, MessageSquare, Plus, Trash2, Users } from 'lucide-react';
+import { AlertCircle, FileText, Loader2, Mail, MessageSquare, Plus, Trash2, Users } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { AnnouncementCreator } from '../components/announcement-creator';
+import { InvitationsManagement } from '../components/invitations-management';
 import { LoginPage } from '../components/login-page';
 import { MyProfile } from '../components/my-profile';
 import { RequestManagement } from '../components/request-management';
@@ -324,11 +325,15 @@ function StaffDashboardContent() {
             onValueChange={(tab) => router.push(tab === 'overview' ? '/' : `?tab=${tab}`)}
             className="space-y-6"
           >
-            <TabsList className="grid w-full grid-cols-4 lg:w-[600px]">
+            <TabsList className="grid w-full grid-cols-5 lg:w-[750px]">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="scholars">Scholars</TabsTrigger>
               <TabsTrigger value="requests">Requests</TabsTrigger>
               <TabsTrigger value="announcements">Announcements</TabsTrigger>
+              <TabsTrigger value="invitations" className="gap-1.5">
+                <Mail className="h-3.5 w-3.5" />
+                Invitations
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
@@ -741,6 +746,9 @@ function StaffDashboardContent() {
                   )}
                 </CardContent>
               </Card>
+            </TabsContent>
+            <TabsContent value="invitations" className="space-y-6">
+              <InvitationsManagement onOnboardScholar={() => router.push('?view=onboarding')} />
             </TabsContent>
           </Tabs>
         )}
