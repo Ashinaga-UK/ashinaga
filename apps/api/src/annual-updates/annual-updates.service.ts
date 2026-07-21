@@ -8,6 +8,7 @@ import { and, desc, eq } from 'drizzle-orm';
 import { getDatabase } from '../db/connection';
 import { annualUpdates } from '../db/schema/annual-updates';
 import { scholars } from '../db/schema/scholars';
+import { users } from '../db/schema/users';
 import { UpsertAnnualUpdateDto } from './dto/upsert-annual-update.dto';
 
 @Injectable()
@@ -40,6 +41,96 @@ export class AnnualUpdatesService {
       .from(annualUpdates)
       .where(eq(annualUpdates.scholarId, scholarId))
       .orderBy(desc(annualUpdates.createdAt));
+  }
+
+  async exportAnnualUpdatesCsv(scholarId?: string): Promise<string> {
+    const query = this.db
+      .select({
+        annualUpdate: annualUpdates,
+        scholarName: users.name,
+        scholarEmail: users.email,
+        aaiScholarId: scholars.aaiScholarId,
+        program: scholars.program,
+        year: scholars.year,
+        university: scholars.university,
+        location: scholars.location,
+      })
+      .from(annualUpdates)
+      .innerJoin(scholars, eq(annualUpdates.scholarId, scholars.id))
+      .innerJoin(users, eq(scholars.userId, users.id))
+      .where(scholarId ? eq(annualUpdates.scholarId, scholarId) : undefined)
+      .orderBy(desc(annualUpdates.createdAt));
+
+    const rows = await query;
+
+    const headers = [
+      'Scholar Name',
+      'Scholar Email',
+      'AAI Scholar ID',
+      'Program',
+      'Scholar Year',
+      'University',
+      'Location',
+      'Academic Year',
+      'Review Status',
+      'Submitted At',
+      'Last Updated At',
+      'Highlights',
+      'Part-Time Jobs',
+      'Extracurriculars',
+      'Leadership Roles Description',
+      'Leadership Roles Count',
+      'Pay It Forward Description',
+      'Pay It Forward Count',
+      'Sub-Saharan Africa Activities Description',
+      'Sub-Saharan Africa Activities Count',
+      'Independent Internships Count',
+      'Internships In Africa Summary',
+      'Internships Outside Africa Summary',
+      'Completed Ashinaga 8-Week Internship In Sub-Saharan Africa',
+      'Academic Year Average Classification',
+      'Academic Year Weighted Grade',
+    ];
+
+    const csvRows = [headers.map((header) => this.escapeCsvValue(header)).join(',')];
+
+    for (const row of rows) {
+      const annualUpdate = row.annualUpdate;
+      csvRows.push(
+        [
+          row.scholarName,
+          row.scholarEmail,
+          row.aaiScholarId,
+          row.program,
+          row.year,
+          row.university,
+          row.location,
+          annualUpdate.academicYear,
+          annualUpdate.status,
+          this.formatCsvDate(annualUpdate.submittedAt),
+          this.formatCsvDate(annualUpdate.updatedAt),
+          annualUpdate.highlights,
+          annualUpdate.partTimeJobs,
+          annualUpdate.extracurriculars,
+          annualUpdate.leadershipRolesDescription,
+          annualUpdate.leadershipRolesCount,
+          annualUpdate.payItForwardDescription,
+          annualUpdate.payItForwardCount,
+          annualUpdate.subSaharanAfricaActivitiesDescription,
+          annualUpdate.subSaharanAfricaActivitiesCount,
+          annualUpdate.independentInternshipsCount,
+          annualUpdate.internshipsInAfricaSummary,
+          annualUpdate.internshipsElsewhereSummary,
+          this.formatCsvBoolean(annualUpdate.completedAshinagaAfricaInternship),
+          annualUpdate.academicYearAverageClassification,
+          annualUpdate.academicYearWeightedGrade,
+        ]
+          .map((value) => this.escapeCsvValue(value))
+          .join(',')
+      );
+    }
+
+    return csvRows.join('\n');
   }
 
   async saveDraft(userId: string, dto: UpsertAnnualUpdateDto) {
@@ -187,5 +278,20 @@ export class AnnualUpdatesService {
         missingFields,
       });
     }
+  }
+
+  private escapeCsvValue(value: unknown): string {
+    if (value === null || value === undefined) return '';
+    return `"${String(value).replace(/"/g, '""')}"`;
+  }
+
+  private formatCsvDate(value: Date | string | null | undefined): string {
+    if (!value) return '';
+    return new Date(value).toLocaleDateString('en-GB');
+  }
+
+  private formatCsvBoolean(value: boolean | null): string {
+    if (value === null) return '';
+    return value ? 'Yes' : 'No';
   }
 }

@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   Param,
   ParseUUIDPipe,
   Post,
@@ -32,10 +33,26 @@ interface AuthenticatedRequest {
 export class AnnualUpdatesController {
   constructor(private readonly annualUpdatesService: AnnualUpdatesService) {}
 
+  @Get('export/csv')
+  @UseGuards(StaffGuard)
+  @Header('Content-Type', 'text/csv')
+  @Header('Content-Disposition', 'attachment; filename="annual-reviews-export.csv"')
+  async exportAnnualUpdatesCsv(): Promise<string> {
+    return this.annualUpdatesService.exportAnnualUpdatesCsv();
+  }
+
   @Get('scholar/:scholarId')
   @UseGuards(StaffGuard)
   async getAnnualUpdatesForScholar(@Param('scholarId', ParseUUIDPipe) scholarId: string) {
     return this.annualUpdatesService.getAnnualUpdatesForScholar(scholarId);
+  }
+
+  @Get('scholar/:scholarId/export/csv')
+  @UseGuards(StaffGuard)
+  @Header('Content-Type', 'text/csv')
+  @Header('Content-Disposition', 'attachment; filename="scholar-annual-reviews-export.csv"')
+  async exportAnnualUpdatesForScholarCsv(@Param('scholarId', ParseUUIDPipe) scholarId: string) {
+    return this.annualUpdatesService.exportAnnualUpdatesCsv(scholarId);
   }
 
   @Get('my')

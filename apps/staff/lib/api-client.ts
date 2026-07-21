@@ -311,6 +311,43 @@ export async function getAnnualUpdatesByScholar(scholarId: string): Promise<Annu
   return fetchAPI<AnnualUpdate[]>(`/api/annual-updates/scholar/${scholarId}`);
 }
 
+export async function downloadScholarAnnualReviewsCSV(
+  scholarId: string,
+  scholarName: string
+): Promise<void> {
+  const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace(/\/$/, '');
+  const url = `${baseUrl}/api/annual-updates/scholar/${scholarId}/export/csv`;
+  const res = await fetch(url, { credentials: 'include' });
+
+  if (!res.ok) {
+    throw new Error('Failed to download annual reviews CSV');
+  }
+
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${scholarName.replace(/\s+/g, '_')}_Annual_Reviews.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+export async function downloadAnnualReviewsCSV(): Promise<void> {
+  const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace(/\/$/, '');
+  const url = `${baseUrl}/api/annual-updates/export/csv`;
+  const res = await fetch(url, { credentials: 'include' });
+
+  if (!res.ok) {
+    throw new Error('Failed to download annual reviews CSV');
+  }
+
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `annual-reviews-export-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 export async function updateScholarProfile(
   scholarId: string,
   data: UpdateScholarProfileData

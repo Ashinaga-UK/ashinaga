@@ -21,6 +21,7 @@ import { useEffect, useState } from 'react';
 import {
   type AnnualUpdate,
   type CreateTaskData,
+  downloadScholarAnnualReviewsCSV,
   getFileDownloadUrl,
   getFilterOptions,
   type ScholarFilterOptions,
@@ -44,6 +45,7 @@ import {
 } from '../lib/hooks/use-queries';
 import { CommentThread } from './comment-thread';
 import { TaskAssignment } from './task-assignment';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { Alert, AlertDescription } from './ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
@@ -216,6 +218,17 @@ export function ScholarProfilePage({
     } catch (error) {
       console.error('Error downloading LDF report:', error);
       alert('Failed to download LDF report. Please try again.');
+    }
+  };
+
+  const handleDownloadAnnualReviews = async () => {
+    if (!scholar) return;
+
+    try {
+      await downloadScholarAnnualReviewsCSV(scholar.id, scholar.name);
+    } catch (error) {
+      console.error('Error downloading annual review report:', error);
+      alert('Failed to download annual review report. Please try again.');
     }
   };
 
@@ -858,8 +871,17 @@ export function ScholarProfilePage({
         </TabsContent>
 
         <TabsContent value="annual-reviews" className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h3 className="text-lg font-semibold">Annual Reviews</h3>
+            <Button
+              variant="outline"
+              className="w-fit"
+              onClick={handleDownloadAnnualReviews}
+              disabled={annualUpdatesLoading || annualUpdates.length === 0}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export CSV
+            </Button>
           </div>
           <AnnualReviewsPanel annualUpdates={annualUpdates} isLoading={annualUpdatesLoading} />
         </TabsContent>
@@ -1053,90 +1075,97 @@ function AnnualReviewsPanel({
   }
 
   return (
-    <div className="space-y-4">
+    <Accordion type="single" collapsible defaultValue={annualUpdates[0]?.id} className="space-y-3">
       {annualUpdates.map((annualUpdate) => (
-        <Card key={annualUpdate.id}>
-          <CardHeader>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <ClipboardCheck className="h-5 w-5 text-ashinaga-teal-600" />
-                  {annualUpdate.academicYear} Annual Review
-                </CardTitle>
-                <CardDescription>
-                  {annualUpdate.status === 'submitted' && annualUpdate.submittedAt
-                    ? `Submitted ${new Date(annualUpdate.submittedAt).toLocaleDateString('en-GB')}`
-                    : `Draft updated ${new Date(annualUpdate.updatedAt).toLocaleDateString(
-                        'en-GB'
-                      )}`}
-                </CardDescription>
+        <AccordionItem
+          key={annualUpdate.id}
+          value={annualUpdate.id}
+          className="overflow-hidden rounded-lg border bg-card shadow-sm"
+        >
+          <AccordionTrigger className="px-4 py-4 text-left hover:no-underline sm:px-6">
+            <div className="flex min-w-0 flex-1 flex-col gap-3 pr-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <ClipboardCheck className="h-5 w-5 shrink-0 text-ashinaga-teal-600" />
+                  <span className="truncate text-base font-semibold">
+                    {annualUpdate.academicYear} Annual Review
+                  </span>
+                </div>
+                <p className="mt-1 text-sm font-normal text-muted-foreground">
+                  {getAnnualReviewDateLabel(annualUpdate)}
+                </p>
               </div>
               <Badge variant={annualUpdate.status === 'submitted' ? 'default' : 'secondary'}>
                 {annualUpdate.status === 'submitted' ? 'Submitted' : 'Draft'}
               </Badge>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <div className="grid gap-3 text-sm md:grid-cols-4">
-              <AnnualReviewMetric
-                label="Leadership roles"
-                value={formatCount(annualUpdate.leadershipRolesCount)}
-              />
-              <AnnualReviewMetric
-                label="Pay it forward"
-                value={formatCount(annualUpdate.payItForwardCount)}
-              />
-              <AnnualReviewMetric
-                label="Africa activities"
-                value={formatCount(annualUpdate.subSaharanAfricaActivitiesCount)}
-              />
-              <AnnualReviewMetric
-                label="Internships"
-                value={formatCount(annualUpdate.independentInternshipsCount)}
-              />
-            </div>
+          </AccordionTrigger>
+          <AccordionContent className="px-4 pb-5 pt-0 sm:px-6">
+            <div className="space-y-5 border-t pt-5">
+              <div className="grid gap-3 text-sm md:grid-cols-4">
+                <AnnualReviewMetric
+                  label="Leadership roles"
+                  value={formatCount(annualUpdate.leadershipRolesCount)}
+                />
+                <AnnualReviewMetric
+                  label="Pay it forward"
+                  value={formatCount(annualUpdate.payItForwardCount)}
+                />
+                <AnnualReviewMetric
+                  label="Africa activities"
+                  value={formatCount(annualUpdate.subSaharanAfricaActivitiesCount)}
+                />
+                <AnnualReviewMetric
+                  label="Internships"
+                  value={formatCount(annualUpdate.independentInternshipsCount)}
+                />
+              </div>
 
-            <div className="grid gap-4 lg:grid-cols-2">
-              <AnnualReviewAnswer label="Highlights" value={annualUpdate.highlights} />
-              <AnnualReviewAnswer label="Part-time jobs" value={annualUpdate.partTimeJobs} />
-              <AnnualReviewAnswer label="Extracurriculars" value={annualUpdate.extracurriculars} />
-              <AnnualReviewAnswer
-                label="Leadership roles"
-                value={annualUpdate.leadershipRolesDescription}
-              />
-              <AnnualReviewAnswer
-                label="Pay it forward"
-                value={annualUpdate.payItForwardDescription}
-              />
-              <AnnualReviewAnswer
-                label="Sub-Saharan Africa activities"
-                value={annualUpdate.subSaharanAfricaActivitiesDescription}
-              />
-              <AnnualReviewAnswer
-                label="Internships in Africa"
-                value={annualUpdate.internshipsInAfricaSummary}
-              />
-              <AnnualReviewAnswer
-                label="Internships outside Africa"
-                value={annualUpdate.internshipsElsewhereSummary}
-              />
-              <AnnualReviewAnswer
-                label="Ashinaga 8-week internship"
-                value={formatBoolean(annualUpdate.completedAshinagaAfricaInternship)}
-              />
-              <AnnualReviewAnswer
-                label="Academic classification"
-                value={annualUpdate.academicYearAverageClassification}
-              />
-              <AnnualReviewAnswer
-                label="Weighted grade"
-                value={annualUpdate.academicYearWeightedGrade}
-              />
+              <div className="grid gap-4 lg:grid-cols-2">
+                <AnnualReviewAnswer label="Highlights" value={annualUpdate.highlights} />
+                <AnnualReviewAnswer label="Part-time jobs" value={annualUpdate.partTimeJobs} />
+                <AnnualReviewAnswer
+                  label="Extracurriculars"
+                  value={annualUpdate.extracurriculars}
+                />
+                <AnnualReviewAnswer
+                  label="Leadership roles"
+                  value={annualUpdate.leadershipRolesDescription}
+                />
+                <AnnualReviewAnswer
+                  label="Pay it forward"
+                  value={annualUpdate.payItForwardDescription}
+                />
+                <AnnualReviewAnswer
+                  label="Sub-Saharan Africa activities"
+                  value={annualUpdate.subSaharanAfricaActivitiesDescription}
+                />
+                <AnnualReviewAnswer
+                  label="Internships in Africa"
+                  value={annualUpdate.internshipsInAfricaSummary}
+                />
+                <AnnualReviewAnswer
+                  label="Internships outside Africa"
+                  value={annualUpdate.internshipsElsewhereSummary}
+                />
+                <AnnualReviewAnswer
+                  label="Ashinaga 8-week internship"
+                  value={formatBoolean(annualUpdate.completedAshinagaAfricaInternship)}
+                />
+                <AnnualReviewAnswer
+                  label="Academic classification"
+                  value={annualUpdate.academicYearAverageClassification}
+                />
+                <AnnualReviewAnswer
+                  label="Weighted grade"
+                  value={annualUpdate.academicYearWeightedGrade}
+                />
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          </AccordionContent>
+        </AccordionItem>
       ))}
-    </div>
+    </Accordion>
   );
 }
 
@@ -1165,6 +1194,14 @@ function formatCount(value: number | null) {
 function formatBoolean(value: boolean | null) {
   if (value === null) return null;
   return value ? 'Yes' : 'No';
+}
+
+function getAnnualReviewDateLabel(annualUpdate: AnnualUpdate) {
+  if (annualUpdate.status === 'submitted' && annualUpdate.submittedAt) {
+    return `Submitted ${new Date(annualUpdate.submittedAt).toLocaleDateString('en-GB')}`;
+  }
+
+  return `Draft updated ${new Date(annualUpdate.updatedAt).toLocaleDateString('en-GB')}`;
 }
 
 function DeleteTaskButton({ scholarId, taskId }: { scholarId: string; taskId: string }) {
