@@ -2,6 +2,7 @@
 
 import {
   CheckSquare,
+  ClipboardCheck,
   FileText,
   Home,
   LogOut,
@@ -31,6 +32,12 @@ export function ScholarLayout({ children, onLogout }: ScholarLayoutProps) {
     { id: 'dashboard', href: '/dashboard', label: 'Overview', icon: Home },
     { id: 'profile', href: '/profile', label: 'My Profile', icon: User },
     { id: 'goals', href: '/goals', label: 'My LDF', icon: Target },
+    {
+      id: 'annual-review',
+      href: '/annual-review',
+      label: 'My Annual Review',
+      icon: ClipboardCheck,
+    },
     { id: 'tasks', href: '/tasks', label: 'My Tasks', icon: CheckSquare },
     { id: 'requests', href: '/requests', label: 'My Requests', icon: FileText },
     { id: 'announcements', href: '/announcements', label: 'Announcements', icon: MessageSquare },
@@ -121,7 +128,9 @@ export function ScholarLayout({ children, onLogout }: ScholarLayoutProps) {
 
       {/* Mobile overlay */}
       {isSidebarOpen && (
-        <div
+        <button
+          type="button"
+          aria-label="Close navigation menu"
           className="fixed inset-0 bg-black/50 z-30 lg:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
