@@ -128,6 +128,16 @@ export interface AnnualUpdate {
   updatedAt: string;
 }
 
+export interface AnnualUpdateReportRow extends AnnualUpdate {
+  scholarName: string;
+  scholarEmail: string;
+  aaiScholarId: string | null;
+  program: string;
+  scholarYear: string;
+  university: string;
+  location: string | null;
+}
+
 export interface ScholarProfile {
   id: string;
   userId: string;
@@ -309,6 +319,10 @@ export async function getScholarProfile(id: string): Promise<ScholarProfile> {
 
 export async function getAnnualUpdatesByScholar(scholarId: string): Promise<AnnualUpdate[]> {
   return fetchAPI<AnnualUpdate[]>(`/api/annual-updates/scholar/${scholarId}`);
+}
+
+export async function getAnnualUpdatesReport(): Promise<AnnualUpdateReportRow[]> {
+  return fetchAPI<AnnualUpdateReportRow[]>('/api/annual-updates');
 }
 
 export async function downloadScholarAnnualReviewsCSV(

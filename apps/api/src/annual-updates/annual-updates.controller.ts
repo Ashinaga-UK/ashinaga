@@ -33,6 +33,12 @@ interface AuthenticatedRequest {
 export class AnnualUpdatesController {
   constructor(private readonly annualUpdatesService: AnnualUpdatesService) {}
 
+  @Get()
+  @UseGuards(StaffGuard)
+  async getAnnualUpdatesReport() {
+    return this.annualUpdatesService.getAnnualUpdatesReport();
+  }
+
   @Get('export/csv')
   @UseGuards(StaffGuard)
   @Header('Content-Type', 'text/csv')

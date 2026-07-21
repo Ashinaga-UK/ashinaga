@@ -15,6 +15,21 @@ import { UpsertAnnualUpdateDto } from './dto/upsert-annual-update.dto';
 export class AnnualUpdatesService {
   private db = getDatabase();
 
+  async getAnnualUpdatesReport() {
+    const rows = await this.getAnnualUpdatesReportRows();
+
+    return rows.map((row) => ({
+      ...row.annualUpdate,
+      scholarName: row.scholarName,
+      scholarEmail: row.scholarEmail,
+      aaiScholarId: row.aaiScholarId,
+      program: row.program,
+      scholarYear: row.year,
+      university: row.university,
+      location: row.location,
+    }));
+  }
+
   async getMyAnnualUpdate(userId: string, academicYear?: string) {
     const scholar = await this.getScholarForUser(userId);
 
@@ -44,24 +59,7 @@ export class AnnualUpdatesService {
   }
 
   async exportAnnualUpdatesCsv(scholarId?: string): Promise<string> {
-    const query = this.db
-      .select({
-        annualUpdate: annualUpdates,
-        scholarName: users.name,
-        scholarEmail: users.email,
-        aaiScholarId: scholars.aaiScholarId,
-        program: scholars.program,
-        year: scholars.year,
-        university: scholars.university,
-        location: scholars.location,
-      })
-      .from(annualUpdates)
-      .innerJoin(scholars, eq(annualUpdates.scholarId, scholars.id))
-      .innerJoin(users, eq(scholars.userId, users.id))
-      .where(scholarId ? eq(annualUpdates.scholarId, scholarId) : undefined)
-      .orderBy(desc(annualUpdates.createdAt));
-
-    const rows = await query;
+    const rows = await this.getAnnualUpdatesReportRows(scholarId);
 
     const headers = [
       'Scholar Name',
@@ -131,6 +129,25 @@ export class AnnualUpdatesService {
     }
 
     return csvRows.join('\n');
+  }
+
+  private getAnnualUpdatesReportRows(scholarId?: string) {
+    return this.db
+      .select({
+        annualUpdate: annualUpdates,
+        scholarName: users.name,
+        scholarEmail: users.email,
+        aaiScholarId: scholars.aaiScholarId,
+        program: scholars.program,
+        year: scholars.year,
+        university: scholars.university,
+        location: scholars.location,
+      })
+      .from(annualUpdates)
+      .innerJoin(scholars, eq(annualUpdates.scholarId, scholars.id))
+      .innerJoin(users, eq(scholars.userId, users.id))
+      .where(scholarId ? eq(annualUpdates.scholarId, scholarId) : undefined)
+      .orderBy(desc(annualUpdates.createdAt));
   }
 
   async saveDraft(userId: string, dto: UpsertAnnualUpdateDto) {
