@@ -34,6 +34,14 @@ export class AnnualUpdatesService {
     return annualUpdate ?? null;
   }
 
+  async getAnnualUpdatesForScholar(scholarId: string) {
+    return this.db
+      .select()
+      .from(annualUpdates)
+      .where(eq(annualUpdates.scholarId, scholarId))
+      .orderBy(desc(annualUpdates.createdAt));
+  }
+
   async saveDraft(userId: string, dto: UpsertAnnualUpdateDto) {
     const scholar = await this.getScholarForUser(userId);
     const existing = await this.getAnnualUpdateForScholar(scholar.id, dto.academicYear);

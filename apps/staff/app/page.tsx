@@ -125,8 +125,11 @@ function StaffDashboardContent() {
   );
   const [selectedScholarId, setSelectedScholarId] = useState<string | null>(scholarIdFromUrl);
   const [scholarProfileTab, setScholarProfileTab] = useState<
-    'profile' | 'goals' | 'tasks' | 'documents'
-  >((scholarTabFromUrl as 'profile' | 'goals' | 'tasks' | 'documents') || 'profile');
+    'profile' | 'goals' | 'annual-reviews' | 'tasks' | 'documents'
+  >(
+    (scholarTabFromUrl as 'profile' | 'goals' | 'annual-reviews' | 'tasks' | 'documents') ||
+      'profile'
+  );
   const [requestCategoryFilter, setRequestCategoryFilter] = useState('all');
   const [requestStatusFilter, setRequestStatusFilter] = useState('all');
   const [announcementYearFilter, setAnnouncementYearFilter] = useState('all');
@@ -209,7 +212,7 @@ function StaffDashboardContent() {
     );
     setSelectedScholarId(newScholarId);
     setScholarProfileTab(
-      (newScholarTab || 'profile') as 'profile' | 'goals' | 'tasks' | 'documents'
+      (newScholarTab || 'profile') as 'profile' | 'goals' | 'annual-reviews' | 'tasks' | 'documents'
     );
   }, [searchParams]);
 

@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  Param,
+  ParseUUIDPipe,
   Post,
   Put,
   Query,
@@ -11,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/auth.guard';
+import { StaffGuard } from '../auth/staff.guard';
 import { AnnualUpdatesService } from './annual-updates.service';
 import { UpsertAnnualUpdateDto } from './dto/upsert-annual-update.dto';
 
@@ -28,6 +31,12 @@ interface AuthenticatedRequest {
 @UseGuards(AuthGuard)
 export class AnnualUpdatesController {
   constructor(private readonly annualUpdatesService: AnnualUpdatesService) {}
+
+  @Get('scholar/:scholarId')
+  @UseGuards(StaffGuard)
+  async getAnnualUpdatesForScholar(@Param('scholarId', ParseUUIDPipe) scholarId: string) {
+    return this.annualUpdatesService.getAnnualUpdatesForScholar(scholarId);
+  }
 
   @Get('my')
   async getMyAnnualUpdate(

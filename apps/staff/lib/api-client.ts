@@ -103,6 +103,31 @@ export interface Document {
   updatedAt: string;
 }
 
+export interface AnnualUpdate {
+  id: string;
+  scholarId: string;
+  academicYear: string;
+  status: 'draft' | 'submitted';
+  highlights: string | null;
+  partTimeJobs: string | null;
+  extracurriculars: string | null;
+  leadershipRolesDescription: string | null;
+  leadershipRolesCount: number | null;
+  payItForwardDescription: string | null;
+  payItForwardCount: number | null;
+  subSaharanAfricaActivitiesDescription: string | null;
+  subSaharanAfricaActivitiesCount: number | null;
+  independentInternshipsCount: number | null;
+  internshipsInAfricaSummary: string | null;
+  internshipsElsewhereSummary: string | null;
+  completedAshinagaAfricaInternship: boolean | null;
+  academicYearAverageClassification: string | null;
+  academicYearWeightedGrade: string | null;
+  submittedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ScholarProfile {
   id: string;
   userId: string;
@@ -280,6 +305,10 @@ export async function getScholar(id: string): Promise<Scholar> {
 
 export async function getScholarProfile(id: string): Promise<ScholarProfile> {
   return fetchAPI<ScholarProfile>(`/api/scholars/${id}/profile`);
+}
+
+export async function getAnnualUpdatesByScholar(scholarId: string): Promise<AnnualUpdate[]> {
+  return fetchAPI<AnnualUpdate[]>(`/api/annual-updates/scholar/${scholarId}`);
 }
 
 export async function updateScholarProfile(

@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   Calendar,
   CheckCircle,
+  ClipboardCheck,
   Clock,
   Download,
   Edit,
@@ -18,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
+  type AnnualUpdate,
   type CreateTaskData,
   getFileDownloadUrl,
   getFilterOptions,
@@ -36,6 +38,7 @@ import {
 } from '../lib/constants';
 import {
   useDeleteTask,
+  useScholarAnnualUpdates,
   useScholarProfile,
   useUpdateScholarProfile,
 } from '../lib/hooks/use-queries';
@@ -65,7 +68,7 @@ import { Textarea } from './ui/textarea';
 interface ScholarProfileProps {
   scholarId: string;
   onBack: () => void;
-  initialTab?: 'goals' | 'tasks' | 'documents' | 'profile';
+  initialTab?: 'goals' | 'tasks' | 'documents' | 'profile' | 'annual-reviews';
 }
 
 export function ScholarProfilePage({
@@ -75,6 +78,8 @@ export function ScholarProfilePage({
 }: ScholarProfileProps) {
   const { data: session } = useSession();
   const { data: scholar, isLoading, error } = useScholarProfile(scholarId);
+  const { data: annualUpdates = [], isLoading: annualUpdatesLoading } =
+    useScholarAnnualUpdates(scholarId);
   const updateProfile = useUpdateScholarProfile(scholarId);
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState<UpdateScholarProfileData>({});
@@ -587,6 +592,7 @@ export function ScholarProfilePage({
           <TabsList className="w-max sm:w-auto">
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="goals">LDF Goals</TabsTrigger>
+            <TabsTrigger value="annual-reviews">Annual Reviews</TabsTrigger>
             <TabsTrigger value="tasks">Tasks</TabsTrigger>
             <TabsTrigger value="documents">Documents</TabsTrigger>
           </TabsList>
@@ -851,6 +857,13 @@ export function ScholarProfilePage({
           </div>
         </TabsContent>
 
+        <TabsContent value="annual-reviews" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Annual Reviews</h3>
+          </div>
+          <AnnualReviewsPanel annualUpdates={annualUpdates} isLoading={annualUpdatesLoading} />
+        </TabsContent>
+
         <TabsContent value="tasks" className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Assigned Tasks</h3>
@@ -1003,6 +1016,155 @@ export function ScholarProfilePage({
       </Tabs>
     </div>
   );
+}
+
+function AnnualReviewsPanel({
+  annualUpdates,
+  isLoading,
+}: {
+  annualUpdates: AnnualUpdate[];
+  isLoading: boolean;
+}) {
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-10">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          <span className="ml-2 text-sm text-muted-foreground">Loading annual reviews...</span>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (annualUpdates.length === 0) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border bg-muted/40">
+            <ClipboardCheck className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <p className="text-sm font-medium">No annual reviews yet</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Submitted and draft annual reviews for this scholar will appear here.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {annualUpdates.map((annualUpdate) => (
+        <Card key={annualUpdate.id}>
+          <CardHeader>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <ClipboardCheck className="h-5 w-5 text-ashinaga-teal-600" />
+                  {annualUpdate.academicYear} Annual Review
+                </CardTitle>
+                <CardDescription>
+                  {annualUpdate.status === 'submitted' && annualUpdate.submittedAt
+                    ? `Submitted ${new Date(annualUpdate.submittedAt).toLocaleDateString('en-GB')}`
+                    : `Draft updated ${new Date(annualUpdate.updatedAt).toLocaleDateString(
+                        'en-GB'
+                      )}`}
+                </CardDescription>
+              </div>
+              <Badge variant={annualUpdate.status === 'submitted' ? 'default' : 'secondary'}>
+                {annualUpdate.status === 'submitted' ? 'Submitted' : 'Draft'}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="grid gap-3 text-sm md:grid-cols-4">
+              <AnnualReviewMetric
+                label="Leadership roles"
+                value={formatCount(annualUpdate.leadershipRolesCount)}
+              />
+              <AnnualReviewMetric
+                label="Pay it forward"
+                value={formatCount(annualUpdate.payItForwardCount)}
+              />
+              <AnnualReviewMetric
+                label="Africa activities"
+                value={formatCount(annualUpdate.subSaharanAfricaActivitiesCount)}
+              />
+              <AnnualReviewMetric
+                label="Internships"
+                value={formatCount(annualUpdate.independentInternshipsCount)}
+              />
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <AnnualReviewAnswer label="Highlights" value={annualUpdate.highlights} />
+              <AnnualReviewAnswer label="Part-time jobs" value={annualUpdate.partTimeJobs} />
+              <AnnualReviewAnswer label="Extracurriculars" value={annualUpdate.extracurriculars} />
+              <AnnualReviewAnswer
+                label="Leadership roles"
+                value={annualUpdate.leadershipRolesDescription}
+              />
+              <AnnualReviewAnswer
+                label="Pay it forward"
+                value={annualUpdate.payItForwardDescription}
+              />
+              <AnnualReviewAnswer
+                label="Sub-Saharan Africa activities"
+                value={annualUpdate.subSaharanAfricaActivitiesDescription}
+              />
+              <AnnualReviewAnswer
+                label="Internships in Africa"
+                value={annualUpdate.internshipsInAfricaSummary}
+              />
+              <AnnualReviewAnswer
+                label="Internships outside Africa"
+                value={annualUpdate.internshipsElsewhereSummary}
+              />
+              <AnnualReviewAnswer
+                label="Ashinaga 8-week internship"
+                value={formatBoolean(annualUpdate.completedAshinagaAfricaInternship)}
+              />
+              <AnnualReviewAnswer
+                label="Academic classification"
+                value={annualUpdate.academicYearAverageClassification}
+              />
+              <AnnualReviewAnswer
+                label="Weighted grade"
+                value={annualUpdate.academicYearWeightedGrade}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function AnnualReviewMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border bg-muted/30 p-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 text-xl font-semibold tabular-nums">{value}</p>
+    </div>
+  );
+}
+
+function AnnualReviewAnswer({ label, value }: { label: string; value: string | null }) {
+  return (
+    <div className="rounded-lg border bg-card p-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="mt-2 whitespace-pre-wrap text-sm leading-6">{value || '—'}</p>
+    </div>
+  );
+}
+
+function formatCount(value: number | null) {
+  return value === null ? '—' : String(value);
+}
+
+function formatBoolean(value: boolean | null) {
+  if (value === null) return null;
+  return value ? 'Yes' : 'No';
 }
 
 function DeleteTaskButton({ scholarId, taskId }: { scholarId: string; taskId: string }) {

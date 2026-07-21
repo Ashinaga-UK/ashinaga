@@ -8,6 +8,7 @@ import {
   deleteTask,
   type GetAnnouncementsParams,
   getAnnouncements,
+  getAnnualUpdatesByScholar,
   getScholarProfile,
   getTasksByScholar,
   type Task,
@@ -21,6 +22,7 @@ import {
 // Query keys
 export const queryKeys = {
   scholarProfile: (id: string) => ['scholar', id, 'profile'] as const,
+  scholarAnnualUpdates: (id: string) => ['scholar', id, 'annual-updates'] as const,
   scholarTasks: (id: string) => ['scholar', id, 'tasks'] as const,
   user: ['user'] as const,
   announcements: (params?: GetAnnouncementsParams) => ['announcements', params] as const,
@@ -31,6 +33,14 @@ export function useScholarProfile(scholarId: string) {
   return useQuery({
     queryKey: queryKeys.scholarProfile(scholarId),
     queryFn: () => getScholarProfile(scholarId),
+    enabled: !!scholarId,
+  });
+}
+
+export function useScholarAnnualUpdates(scholarId: string) {
+  return useQuery({
+    queryKey: queryKeys.scholarAnnualUpdates(scholarId),
+    queryFn: () => getAnnualUpdatesByScholar(scholarId),
     enabled: !!scholarId,
   });
 }
