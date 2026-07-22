@@ -174,5 +174,26 @@ export async function getStaffList(): Promise<StaffMember[]> {
   return fetchAPI<StaffMember[]>('/api/users/staff');
 }
 
+// Resources
+export type ResourceType = 'Guide' | 'Handbook' | 'Template';
+export type ResourceCategory = 'LDF' | 'Handbook' | 'Proposal' | 'Support';
+
+export interface Resource {
+  id: string;
+  title: string;
+  description: string;
+  type: ResourceType;
+  category: ResourceCategory;
+  url: string;
+  status: 'live';
+  filters: Array<{ type: string; value: string }>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getMyResources(): Promise<Resource[]> {
+  return fetchAPI<Resource[]>('/api/resources/my-resources');
+}
+
 // Export the fetchAPI function and any other API functions as needed
 export { fetchAPI };

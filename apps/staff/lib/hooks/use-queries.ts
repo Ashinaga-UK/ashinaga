@@ -8,6 +8,7 @@ import {
   deleteTask,
   type GetAnnouncementsParams,
   getAnnouncements,
+  getResources,
   getScholarProfile,
   getTasksByScholar,
   type Task,
@@ -24,6 +25,7 @@ export const queryKeys = {
   scholarTasks: (id: string) => ['scholar', id, 'tasks'] as const,
   user: ['user'] as const,
   announcements: (params?: GetAnnouncementsParams) => ['announcements', params] as const,
+  resources: ['resources'] as const,
 };
 
 // Scholar profile query
@@ -89,6 +91,15 @@ export function useAnnouncements(params?: GetAnnouncementsParams, enabled = true
   return useQuery({
     queryKey: queryKeys.announcements(params),
     queryFn: () => getAnnouncements(params),
+    enabled,
+  });
+}
+
+// Resources query
+export function useResources(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.resources,
+    queryFn: getResources,
     enabled,
   });
 }

@@ -10,6 +10,7 @@ import { GoalsModule } from './goals/goals.module';
 import { HealthModule } from './health/health.module';
 import { InvitationsModule } from './invitations/invitations.module';
 import { RequestsModule } from './requests/requests.module';
+import { ResourcesModule } from './resources/resources.module';
 import { ScholarsModule } from './scholars/scholars.module';
 import { TasksModule } from './tasks/tasks.module';
 import { UsersModule } from './users/users.module';
@@ -30,6 +31,7 @@ import { UsersModule } from './users/users.module';
     InvitationsModule,
     FilesModule,
     GoalsModule,
+    ResourcesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

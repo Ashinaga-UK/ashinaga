@@ -3,6 +3,7 @@
 import {
   AlertCircle,
   FileText,
+  Library,
   Loader2,
   LogOut,
   Mail,
@@ -18,6 +19,7 @@ import { InvitationsManagement } from '../components/invitations-management';
 import { LoginPage } from '../components/login-page';
 import { MyProfile } from '../components/my-profile';
 import { RequestManagement } from '../components/request-management';
+import { ResourcesManagement } from '../components/resources-management';
 import { ScholarManagementTable } from '../components/scholar-management-table';
 import { ScholarOnboarding } from '../components/scholar-onboarding';
 import { ScholarProfilePage } from '../components/scholar-profile';
@@ -64,6 +66,7 @@ const STAFF_NAV_ITEMS = [
   { value: 'scholars', label: 'Scholars' },
   { value: 'requests', label: 'Requests' },
   { value: 'announcements', label: 'Announcements' },
+  { value: 'resources', label: 'Resources' },
   { value: 'invitations', label: 'Invitations' },
 ];
 
@@ -178,7 +181,7 @@ function StaffDashboardContent() {
   useEffect(() => {
     if (isAuthenticated && !isStaff) {
       // Sign out and redirect to login with access denied message
-      signOut();
+      void signOut();
       router.push('/login?accessDenied=true');
     }
   }, [isAuthenticated, isStaff, router]);
@@ -189,7 +192,7 @@ function StaffDashboardContent() {
     isLoading: announcementsLoading,
     error: announcementsError,
     refetch: refetchAnnouncements,
-  } = useAnnouncements(announcementParams, isAuthenticated);
+  } = useAnnouncements(announcementParams, isStaff);
 
   // Update state when URL changes
   useEffect(() => {
@@ -382,6 +385,20 @@ function StaffDashboardContent() {
     return <LoginPage />;
   }
 
+  // Never render staff-only screens while a non-staff session is being cleared.
+  if (!isStaff) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-brand">
+            <span className="font-semibold text-base text-brand-foreground">A</span>
+          </div>
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header — sticky, glassy, sleek */}
@@ -445,6 +462,7 @@ function StaffDashboardContent() {
                   {activeTab === 'scholars' && 'Scholars'}
                   {activeTab === 'requests' && 'Requests'}
                   {activeTab === 'announcements' && 'Announcements'}
+                  {activeTab === 'resources' && 'Resources'}
                   {activeTab === 'invitations' && 'Invitations'}
                 </h2>
                 <p className="text-sm text-muted-foreground mt-0.5">
@@ -452,6 +470,7 @@ function StaffDashboardContent() {
                   {activeTab === 'scholars' && 'View and manage your assigned scholars.'}
                   {activeTab === 'requests' && 'Review and respond to scholar submissions.'}
                   {activeTab === 'announcements' && 'Create and manage announcements.'}
+                  {activeTab === 'resources' && 'Review scholar-facing handbooks and guides.'}
                   {activeTab === 'invitations' && 'Invite scholars and staff to the portal.'}
                 </p>
               </div>
@@ -475,6 +494,10 @@ function StaffDashboardContent() {
               <TabsTrigger value="scholars">Scholars</TabsTrigger>
               <TabsTrigger value="requests">Requests</TabsTrigger>
               <TabsTrigger value="announcements">Announcements</TabsTrigger>
+              <TabsTrigger value="resources" className="gap-1.5">
+                <Library className="h-3.5 w-3.5" />
+                Resources
+              </TabsTrigger>
               <TabsTrigger value="invitations" className="gap-1.5">
                 <Mail className="h-3.5 w-3.5" />
                 Invitations
@@ -552,7 +575,7 @@ function StaffDashboardContent() {
                     </p>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 gap-px border-t bg-border min-[520px]:grid-cols-2 lg:grid-cols-5 lg:gap-3 lg:border-t-0 lg:bg-transparent lg:p-5 lg:pt-2">
+                <div className="grid grid-cols-1 gap-px border-t bg-border min-[520px]:grid-cols-2 lg:grid-cols-6 lg:gap-3 lg:border-t-0 lg:bg-transparent lg:p-5 lg:pt-2">
                   <QuickActionButton
                     icon={<Users className="h-4 w-4" />}
                     label="Onboard Scholar"
@@ -585,6 +608,12 @@ function StaffDashboardContent() {
                     label="Review Requests"
                     description="Triage funding and requirement submissions."
                     onClick={() => router.push('?tab=requests')}
+                  />
+                  <QuickActionButton
+                    icon={<Library className="h-4 w-4" />}
+                    label="View Resources"
+                    description="Check scholar-facing handbooks and guides."
+                    onClick={() => router.push('?tab=resources')}
                   />
                   <StaffInviteDialog
                     trigger={
@@ -701,6 +730,10 @@ function StaffDashboardContent() {
 
             <TabsContent value="invitations" className="space-y-6">
               <InvitationsManagement onOnboardScholar={() => router.push('?view=onboarding')} />
+            </TabsContent>
+
+            <TabsContent value="resources" className="space-y-6">
+              <ResourcesManagement />
             </TabsContent>
 
             <TabsContent value="announcements" className="space-y-6">
