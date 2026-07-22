@@ -105,44 +105,57 @@ export default function ResourcesPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-2 md:gap-4 xl:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-3">
           {filteredResources.map((resource: ScholarResource) => {
             const Icon = resourceIcons[resource.type];
             return (
               <article
                 key={resource.id}
-                className="flex min-h-[168px] flex-col rounded-lg border border-ashinaga-teal-100 bg-white/50 p-3 transition-colors hover:bg-white/70 dark:border-gray-700 dark:bg-card/40 dark:hover:bg-muted/30 sm:min-h-[250px]"
+                className="group flex min-h-[158px] flex-col rounded-lg border border-ashinaga-teal-100 bg-white/50 p-3 transition-colors hover:border-ashinaga-teal-200 hover:bg-white/70 dark:border-gray-700 dark:bg-card/40 dark:hover:border-gray-600 dark:hover:bg-muted/30 sm:min-h-[190px] sm:p-4"
               >
-                <div className="space-y-2 sm:space-y-3">
-                  <div className="flex items-start justify-between gap-2 sm:gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground sm:h-10 sm:w-10">
-                      <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                <div className="flex min-w-0 items-start gap-2 sm:gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground sm:h-10 sm:w-10">
+                    <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <h2 className="line-clamp-2 text-sm font-semibold leading-5 text-foreground sm:text-base sm:leading-6">
+                          {resource.title}
+                        </h2>
+                        <p className="mt-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground sm:text-xs">
+                          {resource.type}
+                        </p>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={`${categoryStyles[resource.category]} hidden shrink-0 px-2 text-[10px] sm:inline-flex sm:px-2.5 sm:text-xs`}
+                      >
+                        {resource.category}
+                      </Badge>
                     </div>
                     <Badge
                       variant="outline"
-                      className={`${categoryStyles[resource.category]} shrink-0 px-2 text-[10px] sm:px-2.5 sm:text-xs`}
+                      className={`${categoryStyles[resource.category]} mt-2 shrink-0 px-2 text-[10px] sm:hidden`}
                     >
                       {resource.category}
                     </Badge>
                   </div>
-                  <div className="min-h-[58px] min-w-0 sm:min-h-[82px]">
-                    <h2 className="text-sm font-semibold leading-5 text-foreground sm:text-lg sm:leading-6">
-                      {resource.title}
-                    </h2>
-                    <p className="mt-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground sm:text-xs">
-                      {resource.type}
-                    </p>
-                  </div>
                 </div>
-                <div className="flex flex-1 flex-col gap-3 sm:gap-4">
-                  <p className="hidden text-sm leading-6 text-muted-foreground sm:block">
-                    {resource.description}
-                  </p>
-                  <div className="flex-1" />
-                  <Button asChild size="sm" className="min-h-9 w-full px-2 text-xs sm:text-sm">
+                <p className="mt-3 hidden line-clamp-2 text-sm leading-6 text-muted-foreground sm:block">
+                  {resource.description}
+                </p>
+                <div className="flex-1" />
+                <div className="mt-3 flex items-center justify-end gap-2">
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="ml-auto min-h-8 px-2 text-xs sm:px-3 sm:text-sm"
+                  >
                     <a href={resource.url} target="_blank" rel="noreferrer">
                       <ExternalLink className="mr-2 h-4 w-4" />
-                      Open resource
+                      Open
                     </a>
                   </Button>
                 </div>
