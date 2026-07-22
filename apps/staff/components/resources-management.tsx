@@ -3,6 +3,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import {
   BookOpen,
+  Edit,
   ExternalLink,
   FileText,
   GraduationCap,
@@ -37,12 +38,22 @@ import {
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Switch } from './ui/switch';
 import { Textarea } from './ui/textarea';
 import { useToast } from './ui/use-toast';
 
 type ResourceFilterDraft = {
   filterType: string;
   filterValue: string;
+};
+
+type ResourceFormData = {
+  title: string;
+  description: string;
+  url: string;
+  type: ResourceType;
+  category: ResourceCategory;
+  status: ResourceStatus;
 };
 
 const resourceTypes: ResourceType[] = ['Guide', 'Handbook', 'Template'];
@@ -102,41 +113,72 @@ function getFilterValues(filterType: string, options: ResourceFilterOptions) {
   }
 }
 
+const emptyResourceFormData: ResourceFormData = {
+  title: '',
+  description: '',
+  url: '',
+  type: 'Guide',
+  category: 'LDF',
+  status: 'draft',
+};
+
+function getResourceFormData(resource?: Resource): ResourceFormData {
+  if (!resource) return emptyResourceFormData;
+
+  return {
+    title: resource.title,
+    description: resource.description,
+    url: resource.url,
+    type: resource.type,
+    category: resource.category,
+    status: resource.status,
+  };
+}
+
+function getResourceFormFilters(resource?: Resource): ResourceFilterDraft[] {
+  if (!resource) return [];
+
+  return resource.filters.map((filter) => ({
+    filterType: filter.type,
+    filterValue: filter.value,
+  }));
+}
+
 function ResourceDialog({
-  onCreated,
+  resource,
+  onSaved,
   filterOptions,
 }: {
-  onCreated: (resource: Resource) => void;
+  resource?: Resource;
+  onSaved: (resource: Resource) => void;
   filterOptions: ResourceFilterOptions;
 }) {
   const { toast } = useToast();
+  const isEditing = Boolean(resource);
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [filterType, setFilterType] = useState('program');
   const [filterValue, setFilterValue] = useState('');
-  const [filters, setFilters] = useState<ResourceFilterDraft[]>([]);
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    url: '',
-    type: 'Guide' as ResourceType,
-    category: 'LDF' as ResourceCategory,
-    status: 'draft' as ResourceStatus,
-  });
+  const [filters, setFilters] = useState<ResourceFilterDraft[]>(() =>
+    getResourceFormFilters(resource)
+  );
+  const [formData, setFormData] = useState<ResourceFormData>(() => getResourceFormData(resource));
 
   const availableFilterValues = getFilterValues(filterType, filterOptions);
   const hasFilterValues = availableFilterValues.length > 0;
 
+  useEffect(() => {
+    if (!open) return;
+
+    setFormData(getResourceFormData(resource));
+    setFilters(getResourceFormFilters(resource));
+    setFilterType('program');
+    setFilterValue('');
+  }, [open, resource]);
+
   const reset = () => {
-    setFormData({
-      title: '',
-      description: '',
-      url: '',
-      type: 'Guide',
-      category: 'LDF',
-      status: 'draft',
-    });
-    setFilters([]);
+    setFormData(getResourceFormData(resource));
+    setFilters(getResourceFormFilters(resource));
     setFilterType('program');
     setFilterValue('');
   };
@@ -160,17 +202,23 @@ function ResourceDialog({
     setSubmitting(true);
 
     try {
-      const resource = await createResource({
-        ...formData,
-        filters,
-      });
-      toast({ title: 'Resource created' });
+      const savedResource =
+        resource === undefined
+          ? await createResource({
+              ...formData,
+              filters,
+            })
+          : await updateResource(resource.id, {
+              ...formData,
+              filters,
+            });
+      toast({ title: isEditing ? 'Resource updated' : 'Resource created' });
       reset();
       setOpen(false);
-      onCreated(resource);
+      onSaved(savedResource);
     } catch (error) {
       toast({
-        title: 'Could not create resource',
+        title: isEditing ? 'Could not update resource' : 'Could not create resource',
         description: getResourceErrorMessage(error),
         variant: 'destructive',
       });
@@ -182,16 +230,25 @@ function ResourceDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="w-full sm:w-auto">
-          <Library className="h-4 w-4" />
-          Add resource
-        </Button>
+        {isEditing ? (
+          <Button type="button" variant="outline" size="sm" className="h-9">
+            <Edit className="h-4 w-4" />
+            Edit
+          </Button>
+        ) : (
+          <Button className="w-full sm:w-auto">
+            <Library className="h-4 w-4" />
+            Add resource
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add resource</DialogTitle>
+          <DialogTitle>{isEditing ? 'Edit resource' : 'Add resource'}</DialogTitle>
           <DialogDescription>
-            Add a URL-based resource and choose which scholars should see it.
+            {isEditing
+              ? 'Update this URL-based resource and who should see it.'
+              : 'Add a URL-based resource and choose which scholars should see it.'}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -372,7 +429,7 @@ function ResourceDialog({
           <DialogFooter>
             <Button type="submit" disabled={submitting}>
               {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-              Save resource
+              {isEditing ? 'Update resource' : 'Save resource'}
             </Button>
           </DialogFooter>
         </form>
@@ -422,7 +479,10 @@ export function ResourcesManagement() {
       await updateResource(resource.id, {
         status: resource.status === 'live' ? 'draft' : 'live',
       });
-      toast({ title: resource.status === 'live' ? 'Resource moved to draft' : 'Resource is live' });
+      toast({
+        title: resource.status === 'live' ? 'Resource moved to draft' : 'Resource is live',
+        duration: 2500,
+      });
       await refetch();
     } catch (updateError) {
       toast({
@@ -442,6 +502,18 @@ export function ResourcesManagement() {
     queryClient.invalidateQueries({ queryKey: queryKeys.resources });
   };
 
+  const handleSaved = (resource: Resource) => {
+    queryClient.setQueryData<Resource[]>(queryKeys.resources, (current = []) => {
+      const exists = current.some((item) => item.id === resource.id);
+      const nextResources = exists
+        ? current.map((item) => (item.id === resource.id ? resource : item))
+        : [...current, resource];
+
+      return nextResources.sort((first, second) => first.title.localeCompare(second.title));
+    });
+    queryClient.invalidateQueries({ queryKey: queryKeys.resources });
+  };
+
   return (
     <div className="space-y-4">
       <div className="rounded-lg border bg-card">
@@ -457,7 +529,7 @@ export function ResourcesManagement() {
               </p>
             </div>
           </div>
-          <ResourceDialog filterOptions={filterOptions} onCreated={handleCreated} />
+          <ResourceDialog filterOptions={filterOptions} onSaved={handleCreated} />
         </div>
 
         <div className="grid gap-3 p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-[1fr_170px_170px_150px]">
@@ -552,7 +624,7 @@ export function ResourcesManagement() {
               return (
                 <div
                   key={resource.id}
-                  className="grid gap-3 px-4 py-4 transition-colors hover:bg-muted/30 sm:px-5 xl:grid-cols-[minmax(0,1fr)_170px_170px_130px]"
+                  className="grid gap-3 px-4 py-4 transition-colors hover:bg-muted/30 sm:px-5 xl:grid-cols-[minmax(0,1fr)_220px_minmax(150px,220px)_220px]"
                 >
                   <div className="flex min-w-0 gap-3">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
@@ -576,32 +648,53 @@ export function ResourcesManagement() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="outline">{resource.type}</Badge>
-                    <Badge variant="muted">{resource.category}</Badge>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Badge variant="outline" className="shrink-0">
+                      {resource.type}
+                    </Badge>
+                    <span className="min-w-0 truncate text-sm text-muted-foreground">
+                      {resource.category}
+                    </span>
                   </div>
-                  <div className="min-w-0 text-sm text-muted-foreground">
-                    <p className="truncate" title={audience}>
+                  <div className="flex min-w-0 items-center">
+                    <p className="truncate text-sm text-muted-foreground" title={audience}>
                       {audience}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={resource.status === 'live' ? 'success' : 'warning'}>
-                      {resource.status === 'live' ? 'Live' : 'Draft'}
-                    </Badge>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={busyId === resource.id}
-                      onClick={() => toggleStatus(resource)}
-                    >
-                      {busyId === resource.id
-                        ? 'Saving'
-                        : resource.status === 'live'
-                          ? 'Unpublish'
-                          : 'Publish'}
-                    </Button>
+                  <div className="flex items-center justify-start gap-3 xl:justify-end">
+                    <div className="flex min-w-28 items-center justify-end gap-2">
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <span
+                          className={
+                            resource.status === 'live'
+                              ? 'h-1.5 w-1.5 rounded-full bg-emerald-500'
+                              : 'h-1.5 w-1.5 rounded-full bg-amber-500'
+                          }
+                        />
+                        <span className="text-sm font-medium text-foreground">
+                          {resource.status === 'live' ? 'Live' : 'Draft'}
+                        </span>
+                      </div>
+                      {busyId === resource.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      ) : (
+                        <Switch
+                          checked={resource.status === 'live'}
+                          className="data-[state=checked]:bg-emerald-600 data-[state=unchecked]:bg-amber-500"
+                          aria-label={
+                            resource.status === 'live'
+                              ? `Unpublish ${resource.title}`
+                              : `Publish ${resource.title}`
+                          }
+                          onCheckedChange={() => toggleStatus(resource)}
+                        />
+                      )}
+                    </div>
+                    <ResourceDialog
+                      resource={resource}
+                      filterOptions={filterOptions}
+                      onSaved={handleSaved}
+                    />
                   </div>
                 </div>
               );
