@@ -5,8 +5,8 @@ import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import {
   type CreateTaskData,
-  getTaskSuggestions,
   getScholars,
+  getTaskSuggestions,
   type Scholar,
   type TaskSuggestion,
   type UpdateTaskData,

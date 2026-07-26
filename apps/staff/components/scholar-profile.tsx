@@ -81,6 +81,8 @@ export function ScholarProfilePage({
   const restoreTask = useRestoreTask();
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState<UpdateScholarProfileData>({});
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [taskToArchiveId, setTaskToArchiveId] = useState<string | null>(null);
   const [filterOptions, setFilterOptions] = useState<ScholarFilterOptions>({
     programs: [],
     years: [],
@@ -952,16 +954,46 @@ export function ScholarProfilePage({
                           Restore
                         </Button>
                       ) : (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => archiveTask.mutate(task.id)}
-                          disabled={archiveTask.isPending}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Archive
-                        </Button>
+                        <>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => {
+                              setTaskToArchiveId(task.id);
+                              setArchiveDialogOpen(true);
+                            }}
+                            disabled={archiveTask.isPending}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete task
+                          </Button>
+                          <Dialog open={archiveDialogOpen && taskToArchiveId === task.id} onOpenChange={(open) => { setArchiveDialogOpen(open); if (!open) setTaskToArchiveId(null); }}>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Delete task?</DialogTitle>
+                                <DialogDescription>
+                                  This task will be archived and hidden from the active list.
+                                  You can restore it later if needed.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <DialogFooter>
+                                <Button variant="outline" onClick={() => { setArchiveDialogOpen(false); setTaskToArchiveId(null); }}>
+                                  Cancel
+                                </Button>
+                                <Button variant="destructive" onClick={async () => {
+                                  if (taskToArchiveId) {
+                                    await archiveTask.mutateAsync(taskToArchiveId);
+                                    setArchiveDialogOpen(false);
+                                    setTaskToArchiveId(null);
+                                  }
+                                }}>
+                                  Delete
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        </>
                       )}
                     </div>
                   </CardContent>

@@ -105,39 +105,32 @@ test.describe('Staff Portal – new features', () => {
     expect(Array.isArray(body)).toBe(true);
   });
 
-  test('Soft-delete trash button + confirm dialog appear on a scholar profile with tasks', async ({
+  test('Soft-delete confirm dialog appears for a task on a scholar profile', async ({
     page,
   }) => {
     await page.getByRole('tab', { name: /Scholars/i }).click();
 
-    // Open the first scholar profile via "View" button (or row click)
-    const viewButton = page.getByRole('button', { name: /View Profile/i }).first();
-    if (await viewButton.isVisible().catch(() => false)) {
-      await viewButton.click();
-    } else {
-      const row = page.getByRole('row').nth(1);
-      if (!(await row.isVisible().catch(() => false))) {
-        test.skip();
-      }
-      await row.click();
-    }
+    // Open the first scholar profile
+    const row = page.getByRole('row').nth(1);
+    await expect(row).toBeVisible();
+    await row.click();
 
-    // Switch to tasks tab on the profile
+    // Wait for navigation and switch to tasks tab
     await page.getByRole('tab', { name: /Tasks/i }).click();
 
-    const trashButton = page.getByRole('button', { name: /Delete task/i }).first();
-    if (!(await trashButton.isVisible().catch(() => false))) {
-      // No tasks on the first scholar — skip rather than fail flakily
-      test.skip();
-    }
-    await trashButton.click();
+    // Wait for the Delete task button to be visible (fixture data guarantees a task exists)
+    const deleteButton = page.getByRole('button', { name: /Delete task/i }).first();
+    await expect(deleteButton).toBeVisible({ timeout: 10000 });
+    await deleteButton.click();
 
     // Confirm dialog opens with the soft-delete copy
-    await expect(page.getByRole('dialog')).toBeVisible();
-    await expect(page.getByText(/Delete task\?/i)).toBeVisible();
-    await expect(page.getByText(/archived and hidden/i)).toBeVisible();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+    await expect(dialog.getByText(/Delete task\?/i)).toBeVisible();
+    await expect(dialog.getByText(/archived and hidden/i)).toBeVisible();
 
-    // Don't actually click Delete; cancel out
-    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+    // Cancel out without deleting
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(dialog).not.toBeVisible();
   });
 });

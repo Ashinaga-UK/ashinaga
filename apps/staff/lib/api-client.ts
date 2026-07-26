@@ -657,7 +657,9 @@ export interface CreateBulkTasksData {
   scholarIds: string[];
 }
 
-export async function createBulkTasks(data: CreateBulkTasksData): Promise<{ created: number; tasks: Task[] }> {
+export async function createBulkTasks(
+  data: CreateBulkTasksData
+): Promise<{ created: number; tasks: Task[] }> {
   return fetchAPI<{ created: number; tasks: Task[] }>('/api/tasks/bulk', {
     method: 'POST',
     headers: {
