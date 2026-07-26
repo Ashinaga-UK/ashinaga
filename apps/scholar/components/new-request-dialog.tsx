@@ -48,7 +48,7 @@ const baseSchema = z.object({
     .min(20, 'Please provide at least 20 characters')
     .max(2000, 'Maximum 2000 characters'),
   priority: z.enum(['high', 'medium', 'low']).optional(),
-  assignedTo: z.string().min(1, 'Please select a staff member'),
+  assigneeIds: z.array(z.string()).min(1, 'Please select at least one staff member'),
 });
 
 type FormValues = z.infer<typeof baseSchema>;
@@ -89,7 +89,7 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
       type: 'extenuating_circumstances',
       description: '',
       priority: 'medium',
-      assignedTo: undefined,
+      assigneeIds: [],
     },
   });
 
@@ -189,7 +189,7 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
         type: values.type,
         description: values.description,
         priority: values.priority,
-        assignedTo: values.assignedTo,
+        assigneeIds: values.assigneeIds,
         formData,
       };
 
@@ -639,32 +639,50 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
 
             <FormField
               control={form.control}
-              name="assignedTo"
+              name="assigneeIds"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    Assign to Staff Member <span className="text-red-500">*</span>
+                    Assign to Staff Members <span className="text-red-500">*</span>
                   </FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value || ''}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue
-                          placeholder={
-                            isLoadingStaff ? 'Loading staff...' : 'Select a staff member'
-                          }
+                  {isLoadingStaff ? (
+                    <p className="text-xs text-muted-foreground">Loading staff...</p>
+                  ) : (
+                    staffList?.map((staff) => (
+                      <div
+                        key={staff.id}
+                        className="flex items-center space-x-3 space-y-0 py-1"
+                      >
+                        <Checkbox
+                          id={`staff-${staff.id}`}
+                          checked={field.value?.includes(staff.id)}
+                          onCheckedChange={(checked) => {
+                            const current = field.value || [];
+                            if (checked) {
+                              field.onChange([...current, staff.id]);
+                            } else {
+                              field.onChange(
+                                current.filter((id: string) => id !== staff.id)
+                              );
+                            }
+                          }}
                         />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {staffList?.map((staff) => (
-                        <SelectItem key={staff.id} value={staff.id}>
+                        <label
+                          htmlFor={`staff-${staff.id}`}
+                          className="text-sm font-normal cursor-pointer"
+                        >
                           {staff.name} ({staff.email})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                        </label>
+                      </div>
+                    ))
+                  )}
+                  {(field.value?.length || 0) > 0 && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      {field.value.length} selected
+                    </p>
+                  )}
                   <FormDescription>
-                    Select the staff member who should handle this request
+                    Select staff members who should handle this request
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

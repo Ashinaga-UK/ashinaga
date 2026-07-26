@@ -679,6 +679,22 @@ export async function restoreTask(taskId: string): Promise<Task> {
   });
 }
 
+export interface TaskSuggestion {
+  title: string;
+  description?: string | null;
+  type: string;
+  priority: string;
+  useCount: number;
+  lastUsedAt: string;
+}
+
+export async function getTaskSuggestions(query: string, limit = 8): Promise<TaskSuggestion[]> {
+  const qs = new URLSearchParams();
+  qs.set('q', query);
+  qs.set('limit', String(limit));
+  return fetchAPI<TaskSuggestion[]>(`/api/tasks/suggestions?${qs.toString()}`);
+}
+
 // Scholar creation function
 export interface CreateScholarData {
   name: string;

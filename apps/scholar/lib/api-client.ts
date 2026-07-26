@@ -135,7 +135,7 @@ export interface CreateRequestData {
   formData?: Record<string, any>;
   priority?: 'high' | 'medium' | 'low';
   attachmentIds?: string[];
-  assignedTo?: string;
+  assigneeIds?: string[];
 }
 
 export async function createRequest(data: CreateRequestData): Promise<Request> {
