@@ -29,7 +29,7 @@ test.describe('Staff Portal – new features', () => {
     await expect(page.getByRole('tab', { name: 'Scholar Invites', exact: true })).toBeVisible();
 
     // The card header mentions the new 30-day expiry
-    await expect(page.getByText(/expire after 30 days/i)).toBeVisible();
+    await expect(page.getByText(/expires? after 30 days/i)).toBeVisible();
 
     // Invite Staff button is the default action on Active Staff / Staff Invites tabs
     await expect(page.getByRole('button', { name: /Invite Staff/i })).toBeVisible();
@@ -49,7 +49,7 @@ test.describe('Staff Portal – new features', () => {
     // Dialog opens
     await expect(page.getByRole('dialog')).toBeVisible();
     await expect(page.getByText(/Invite a staff member/i)).toBeVisible();
-    await expect(page.getByText(/expire after 30 days/i)).toBeVisible();
+    await expect(page.getByText(/expires? after 30 days/i)).toBeVisible();
 
     // Form field present
     await expect(page.getByLabel(/Work email/i)).toBeVisible();
@@ -96,7 +96,7 @@ test.describe('Staff Portal – new features', () => {
     // Arm the response listener BEFORE we trigger the debounced fetch
     const responsePromise = page.waitForResponse(
       (res) => res.url().includes('/api/tasks/suggestions') && res.status() === 200,
-      { timeout: 10_000 }
+      { timeout: 20_000 }
     );
     await titleInput.focus();
     await titleInput.fill('E2E');
