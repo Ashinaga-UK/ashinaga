@@ -26,6 +26,7 @@ export function AnnualReviewsReport({ onViewScholarAnnualReviews }: AnnualReview
   const [searchTerm, setSearchTerm] = useState('');
   const [academicYearFilter, setAcademicYearFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'submitted'>('all');
+  const [exportingFilteredCsv, setExportingFilteredCsv] = useState(false);
   const [exportingAllCsv, setExportingAllCsv] = useState(false);
 
   useEffect(() => {
@@ -74,9 +75,16 @@ export function AnnualReviewsReport({ onViewScholarAnnualReviews }: AnnualReview
   ).length;
   const draftCount = filteredAnnualReviews.filter((review) => review.status === 'draft').length;
 
-  const handleExportFilteredAnnualReviewsCsv = () => {
-    const csv = buildAnnualReviewsCsv(filteredAnnualReviews);
-    downloadCsv(csv, `annual-reviews-filtered-${new Date().toISOString().slice(0, 10)}.csv`);
+  const handleExportFilteredAnnualReviewsCsv = async () => {
+    setExportingFilteredCsv(true);
+    try {
+      await downloadAnnualReviewsCSV(filteredAnnualReviews.map((review) => review.id));
+    } catch (err) {
+      console.error(err);
+      alert('Failed to download filtered annual reviews CSV. Please try again.');
+    } finally {
+      setExportingFilteredCsv(false);
+    }
   };
 
   const handleExportAllAnnualReviewsCsv = async () => {
@@ -161,9 +169,13 @@ export function AnnualReviewsReport({ onViewScholarAnnualReviews }: AnnualReview
             variant="outline"
             className="w-full sm:w-fit"
             onClick={handleExportFilteredAnnualReviewsCsv}
-            disabled={filteredAnnualReviews.length === 0}
+            disabled={exportingFilteredCsv || filteredAnnualReviews.length === 0}
           >
-            <Download className="h-4 w-4 mr-2" />
+            {exportingFilteredCsv ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4 mr-2" />
+            )}
             Export filtered
           </Button>
           <Button
@@ -258,93 +270,4 @@ function getAnnualReviewDateLabel(review: AnnualUpdateReportRow) {
   }
 
   return `Draft updated ${new Date(review.updatedAt).toLocaleDateString('en-GB')}`;
-}
-
-function buildAnnualReviewsCsv(reviews: AnnualUpdateReportRow[]) {
-  const headers = [
-    'Scholar Name',
-    'Scholar Email',
-    'AAI Scholar ID',
-    'Program',
-    'Scholar Year',
-    'University',
-    'Location',
-    'Academic Year',
-    'Review Status',
-    'Submitted At',
-    'Last Updated At',
-    'Highlights',
-    'Part-Time Jobs',
-    'Extracurriculars',
-    'Leadership Roles Description',
-    'Leadership Roles Count',
-    'Pay It Forward Description',
-    'Pay It Forward Count',
-    'Sub-Saharan Africa Activities Description',
-    'Sub-Saharan Africa Activities Count',
-    'Independent Internships Count',
-    'Internships In Africa Summary',
-    'Internships Outside Africa Summary',
-    'Completed Ashinaga 8-Week Internship In Sub-Saharan Africa',
-    'Academic Year Average Classification',
-    'Academic Year Weighted Grade',
-  ];
-
-  const rows = reviews.map((review) => [
-    review.scholarName,
-    review.scholarEmail,
-    review.aaiScholarId,
-    review.program,
-    review.scholarYear,
-    review.university,
-    review.location,
-    review.academicYear,
-    review.status,
-    formatCsvDate(review.submittedAt),
-    formatCsvDate(review.updatedAt),
-    review.highlights,
-    review.partTimeJobs,
-    review.extracurriculars,
-    review.leadershipRolesDescription,
-    review.leadershipRolesCount,
-    review.payItForwardDescription,
-    review.payItForwardCount,
-    review.subSaharanAfricaActivitiesDescription,
-    review.subSaharanAfricaActivitiesCount,
-    review.independentInternshipsCount,
-    review.internshipsInAfricaSummary,
-    review.internshipsElsewhereSummary,
-    formatCsvBoolean(review.completedAshinagaAfricaInternship),
-    review.academicYearAverageClassification,
-    review.academicYearWeightedGrade,
-  ]);
-
-  return [headers, ...rows].map((row) => row.map(escapeCsvValue).join(',')).join('\n');
-}
-
-function downloadCsv(csv: string, filename: string) {
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-function escapeCsvValue(value: unknown) {
-  if (value === null || value === undefined) return '';
-  const stringValue = String(value);
-  const formulaSafeValue = /^[=+\-@]/.test(stringValue) ? `'${stringValue}` : stringValue;
-  return `"${formulaSafeValue.replace(/"/g, '""')}"`;
-}
-
-function formatCsvDate(value: string | null) {
-  if (!value) return '';
-  return new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London' }).format(new Date(value));
-}
-
-function formatCsvBoolean(value: boolean | null) {
-  if (value === null) return '';
-  return value ? 'Yes' : 'No';
 }

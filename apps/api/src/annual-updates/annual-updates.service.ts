@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, desc, eq, ne } from 'drizzle-orm';
+import { and, desc, eq, inArray, ne } from 'drizzle-orm';
 import { getDatabase } from '../db/connection';
 import { annualUpdates } from '../db/schema/annual-updates';
 import { scholars } from '../db/schema/scholars';
@@ -73,8 +73,11 @@ export class AnnualUpdatesService {
       .orderBy(desc(annualUpdates.createdAt));
   }
 
-  async exportAnnualUpdatesCsv(scholarId?: string): Promise<string> {
-    const rows = await this.getAnnualUpdatesReportRows(scholarId);
+  async exportAnnualUpdatesCsv(scholarId?: string, annualUpdateIds?: string[]): Promise<string> {
+    const rows =
+      annualUpdateIds?.length === 0
+        ? []
+        : await this.getAnnualUpdatesReportRows(scholarId, annualUpdateIds);
 
     const headers = [
       'Scholar Name',
@@ -146,7 +149,12 @@ export class AnnualUpdatesService {
     return csvRows.join('\n');
   }
 
-  private getAnnualUpdatesReportRows(scholarId?: string) {
+  private getAnnualUpdatesReportRows(scholarId?: string, annualUpdateIds?: string[]) {
+    const filters = [
+      scholarId ? eq(annualUpdates.scholarId, scholarId) : undefined,
+      annualUpdateIds ? inArray(annualUpdates.id, annualUpdateIds) : undefined,
+    ].filter((filter) => filter !== undefined);
+
     return this.db
       .select({
         annualUpdate: annualUpdates,
@@ -161,7 +169,7 @@ export class AnnualUpdatesService {
       .from(annualUpdates)
       .innerJoin(scholars, eq(annualUpdates.scholarId, scholars.id))
       .innerJoin(users, eq(scholars.userId, users.id))
-      .where(scholarId ? eq(annualUpdates.scholarId, scholarId) : undefined)
+      .where(filters.length > 0 ? and(...filters) : undefined)
       .orderBy(desc(annualUpdates.createdAt));
   }
 

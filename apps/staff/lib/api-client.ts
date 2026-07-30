@@ -345,10 +345,15 @@ export async function downloadScholarAnnualReviewsCSV(
   URL.revokeObjectURL(a.href);
 }
 
-export async function downloadAnnualReviewsCSV(): Promise<void> {
+export async function downloadAnnualReviewsCSV(annualUpdateIds?: string[]): Promise<void> {
   const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace(/\/$/, '');
   const url = `${baseUrl}/api/annual-updates/export/csv`;
-  const res = await fetch(url, { credentials: 'include' });
+  const res = await fetch(url, {
+    method: annualUpdateIds ? 'POST' : 'GET',
+    credentials: 'include',
+    headers: annualUpdateIds ? { 'Content-Type': 'application/json' } : undefined,
+    body: annualUpdateIds ? JSON.stringify({ annualUpdateIds }) : undefined,
+  });
 
   if (!res.ok) {
     throw new Error('Failed to download annual reviews CSV');
@@ -357,7 +362,9 @@ export async function downloadAnnualReviewsCSV(): Promise<void> {
   const blob = await res.blob();
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `annual-reviews-export-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = `${annualUpdateIds ? 'annual-reviews-filtered' : 'annual-reviews-export'}-${new Date()
+    .toISOString()
+    .slice(0, 10)}.csv`;
   a.click();
   URL.revokeObjectURL(a.href);
 }

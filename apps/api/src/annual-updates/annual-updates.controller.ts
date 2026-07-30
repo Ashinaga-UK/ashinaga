@@ -16,6 +16,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/auth.guard';
 import { StaffGuard } from '../auth/staff.guard';
 import { AnnualUpdatesService } from './annual-updates.service';
+import { ExportAnnualUpdatesDto } from './dto/export-annual-updates.dto';
 import { UpsertAnnualUpdateDto } from './dto/upsert-annual-update.dto';
 
 interface AuthenticatedRequest {
@@ -45,6 +46,16 @@ export class AnnualUpdatesController {
   @Header('Content-Disposition', 'attachment; filename="annual-reviews-export.csv"')
   async exportAnnualUpdatesCsv(): Promise<string> {
     return this.annualUpdatesService.exportAnnualUpdatesCsv();
+  }
+
+  @Post('export/csv')
+  @UseGuards(StaffGuard)
+  @Header('Content-Type', 'text/csv')
+  @Header('Content-Disposition', 'attachment; filename="annual-reviews-export.csv"')
+  async exportFilteredAnnualUpdatesCsv(
+    @Body(new ValidationPipe({ transform: true, whitelist: true })) dto: ExportAnnualUpdatesDto
+  ): Promise<string> {
+    return this.annualUpdatesService.exportAnnualUpdatesCsv(undefined, dto.annualUpdateIds ?? []);
   }
 
   @Get('scholar/:scholarId')
