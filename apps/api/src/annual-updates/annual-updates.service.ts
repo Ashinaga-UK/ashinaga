@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, ne } from 'drizzle-orm';
 import { getDatabase } from '../db/connection';
 import { annualUpdates } from '../db/schema/annual-updates';
 import { scholars } from '../db/schema/scholars';
@@ -154,66 +154,59 @@ export class AnnualUpdatesService {
 
   async saveDraft(userId: string, dto: UpsertAnnualUpdateDto) {
     const scholar = await this.getScholarForUser(userId);
-    const existing = await this.getAnnualUpdateForScholar(scholar.id, dto.academicYear);
-
-    if (existing?.status === 'submitted') {
-      throw new ConflictException('This annual review has already been submitted and is final.');
-    }
-
+    await this.assertAnnualUpdateIsEditable(scholar.id, dto.academicYear);
     this.validateWordLimits(dto);
 
-    const values = {
-      ...this.toAnnualUpdateValues(dto),
-      scholarId: scholar.id,
-      academicYear: dto.academicYear,
-      status: 'draft' as const,
-      updatedAt: new Date(),
-    };
-
-    if (existing) {
-      const [updated] = await this.db
-        .update(annualUpdates)
-        .set(values)
-        .where(eq(annualUpdates.id, existing.id))
-        .returning();
-      return updated;
-    }
-
-    const [created] = await this.db.insert(annualUpdates).values(values).returning();
-    return created;
+    return this.upsertAnnualUpdate(scholar.id, dto, 'draft');
   }
 
   async submit(userId: string, dto: UpsertAnnualUpdateDto) {
     const scholar = await this.getScholarForUser(userId);
-    const existing = await this.getAnnualUpdateForScholar(scholar.id, dto.academicYear);
+    await this.assertAnnualUpdateIsEditable(scholar.id, dto.academicYear);
+    this.validateRequiredFields(dto);
+    this.validateWordLimits(dto);
+
+    return this.upsertAnnualUpdate(scholar.id, dto, 'submitted');
+  }
+
+  private async assertAnnualUpdateIsEditable(scholarId: string, academicYear: string) {
+    const existing = await this.getAnnualUpdateForScholar(scholarId, academicYear);
 
     if (existing?.status === 'submitted') {
       throw new ConflictException('This annual review has already been submitted and is final.');
     }
+  }
 
-    this.validateRequiredFields(dto);
-    this.validateWordLimits(dto);
-
+  private async upsertAnnualUpdate(
+    scholarId: string,
+    dto: UpsertAnnualUpdateDto,
+    status: 'draft' | 'submitted'
+  ) {
+    const now = new Date();
     const values = {
       ...this.toAnnualUpdateValues(dto),
-      scholarId: scholar.id,
+      scholarId,
       academicYear: dto.academicYear,
-      status: 'submitted' as const,
-      submittedAt: new Date(),
-      updatedAt: new Date(),
+      status,
+      submittedAt: status === 'submitted' ? now : null,
+      updatedAt: now,
     };
 
-    if (existing) {
-      const [updated] = await this.db
-        .update(annualUpdates)
-        .set(values)
-        .where(eq(annualUpdates.id, existing.id))
-        .returning();
-      return updated;
+    const [annualUpdate] = await this.db
+      .insert(annualUpdates)
+      .values(values)
+      .onConflictDoUpdate({
+        target: [annualUpdates.scholarId, annualUpdates.academicYear],
+        set: values,
+        setWhere: ne(annualUpdates.status, 'submitted'),
+      })
+      .returning();
+
+    if (!annualUpdate) {
+      throw new ConflictException('This annual review has already been submitted and is final.');
     }
 
-    const [created] = await this.db.insert(annualUpdates).values(values).returning();
-    return created;
+    return annualUpdate;
   }
 
   private async getScholarForUser(userId: string) {
