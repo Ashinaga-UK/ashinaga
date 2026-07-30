@@ -1,4 +1,13 @@
-import { IsArray, IsIn, IsNotEmpty, IsOptional, IsString, IsUrl } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUrl,
+  ValidateNested,
+} from 'class-validator';
 
 const resourceTypes = ['Guide', 'Handbook', 'Template'] as const;
 const resourceCategories = ['LDF', 'Handbook', 'Proposal', 'Support'] as const;
@@ -29,7 +38,7 @@ export class CreateResourceDto {
   @IsIn(resourceCategories)
   category: (typeof resourceCategories)[number];
 
-  @IsUrl({ require_tld: false })
+  @IsUrl({ require_protocol: true, require_tld: false })
   url: string;
 
   @IsIn(resourceStatuses)
@@ -37,6 +46,8 @@ export class CreateResourceDto {
   status?: (typeof resourceStatuses)[number];
 
   @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ResourceFilterDto)
   @IsOptional()
   filters?: ResourceFilterDto[];
 }

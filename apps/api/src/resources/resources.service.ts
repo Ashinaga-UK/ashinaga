@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import { database } from '../db/connection';
 import { resourceFilters, resources, scholars } from '../db/schema';
 import { CreateResourceDto, ResourceFilterDto } from './dto/create-resource.dto';
@@ -10,25 +10,29 @@ type ResourceFilter = {
   value: string;
 };
 
+type ResourceFilterWriter = Pick<typeof database, 'delete' | 'insert'>;
+
 @Injectable()
 export class ResourcesService {
   async createResource(dto: CreateResourceDto, userId: string) {
     const { filters = [], ...resourceData } = dto;
 
-    const [resource] = await database
-      .insert(resources)
-      .values({
-        ...resourceData,
-        status: resourceData.status ?? 'draft',
-        createdBy: userId,
-        updatedBy: userId,
-      })
-      .returning();
+    const resource = await database.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(resources)
+        .values({
+          ...resourceData,
+          status: resourceData.status ?? 'draft',
+          createdBy: userId,
+          updatedBy: userId,
+        })
+        .returning();
 
-    await this.replaceFilters(resource.id, filters);
+      await this.replaceFilters(created.id, filters, tx);
+      return created;
+    });
 
-    const savedFilters = await this.getResourceFilters(resource.id);
-    return this.formatResource(resource, savedFilters);
+    return this.formatResource(resource, this.formatFilters(filters));
   }
 
   async listResources() {
@@ -38,11 +42,12 @@ export class ResourcesService {
       .where(eq(resources.archived, false))
       .orderBy(asc(resources.title));
 
-    return Promise.all(
-      rows.map(async (resource) => {
-        const filters = await this.getResourceFilters(resource.id);
-        return this.formatResource(resource, filters);
-      })
+    const filtersByResourceId = await this.getResourceFiltersByResourceIds(
+      rows.map((resource) => resource.id)
+    );
+
+    return rows.map((resource) =>
+      this.formatResource(resource, filtersByResourceId.get(resource.id) ?? [])
     );
   }
 
@@ -58,21 +63,27 @@ export class ResourcesService {
     }
 
     const { filters, ...resourceData } = dto;
-    const [updated] = await database
-      .update(resources)
-      .set({
-        ...resourceData,
-        updatedBy: userId,
-        updatedAt: new Date(),
-      })
-      .where(eq(resources.id, resourceId))
-      .returning();
+    const updated = await database.transaction(async (tx) => {
+      const [resource] = await tx
+        .update(resources)
+        .set({
+          ...resourceData,
+          updatedBy: userId,
+          updatedAt: new Date(),
+        })
+        .where(eq(resources.id, resourceId))
+        .returning();
 
-    if (filters) {
-      await this.replaceFilters(resourceId, filters);
-    }
+      if (filters) {
+        await this.replaceFilters(resourceId, filters, tx);
+      }
 
-    const nextFilters = await this.getResourceFilters(resourceId);
+      return resource;
+    });
+
+    const nextFilters = filters
+      ? this.formatFilters(filters)
+      : await this.getResourceFilters(resourceId);
     return this.formatResource(updated, nextFilters);
   }
 
@@ -112,37 +123,46 @@ export class ResourcesService {
       .where(and(eq(resources.status, 'live'), eq(resources.archived, false)))
       .orderBy(asc(resources.title));
 
-    const withFilters = await Promise.all(
-      liveResources.map(async (resource) => ({
-        resource,
-        filters: await this.getResourceFilters(resource.id),
-      }))
+    const filtersByResourceId = await this.getResourceFiltersByResourceIds(
+      liveResources.map((resource) => resource.id)
     );
 
-    return withFilters
+    return liveResources
+      .map((resource) => ({
+        resource,
+        filters: filtersByResourceId.get(resource.id) ?? [],
+      }))
       .filter(({ filters }) => this.matchesScholarFilters(filters, scholar))
       .map(({ resource, filters }) => this.formatResource(resource, filters));
   }
 
   async getFilterOptions() {
-    const scholarRows = await database.select().from(scholars);
+    const [programRows, yearRows, universityRows, locationRows, statusRows] = await Promise.all([
+      database.selectDistinct({ value: scholars.program }).from(scholars),
+      database.selectDistinct({ value: scholars.year }).from(scholars),
+      database.selectDistinct({ value: scholars.university }).from(scholars),
+      database.selectDistinct({ value: scholars.location }).from(scholars),
+      database.selectDistinct({ value: scholars.status }).from(scholars),
+    ]);
 
     return {
-      programs: [...new Set(scholarRows.map((scholar) => scholar.program))].sort(),
-      years: [...new Set(scholarRows.map((scholar) => scholar.year))].sort(),
-      universities: [...new Set(scholarRows.map((scholar) => scholar.university))].sort(),
-      locations: [
-        ...new Set(scholarRows.map((scholar) => scholar.location).filter(Boolean)),
-      ].sort(),
-      statuses: [...new Set(scholarRows.map((scholar) => scholar.status))].sort(),
+      programs: this.formatFilterOptions(programRows),
+      years: this.formatFilterOptions(yearRows),
+      universities: this.formatFilterOptions(universityRows),
+      locations: this.formatFilterOptions(locationRows),
+      statuses: this.formatFilterOptions(statusRows),
     };
   }
 
-  private async replaceFilters(resourceId: string, filters: ResourceFilterDto[]) {
-    await database.delete(resourceFilters).where(eq(resourceFilters.resourceId, resourceId));
+  private async replaceFilters(
+    resourceId: string,
+    filters: ResourceFilterDto[],
+    db: ResourceFilterWriter = database
+  ) {
+    await db.delete(resourceFilters).where(eq(resourceFilters.resourceId, resourceId));
 
     if (filters.length > 0) {
-      await database.insert(resourceFilters).values(
+      await db.insert(resourceFilters).values(
         filters.map((filter) => ({
           resourceId,
           filterType: filter.filterType,
@@ -164,25 +184,71 @@ export class ResourcesService {
     }));
   }
 
+  private async getResourceFiltersByResourceIds(resourceIds: string[]) {
+    const filtersByResourceId = new Map<string, ResourceFilter[]>();
+    if (resourceIds.length === 0) return filtersByResourceId;
+
+    const filters = await database
+      .select()
+      .from(resourceFilters)
+      .where(inArray(resourceFilters.resourceId, resourceIds));
+
+    for (const filter of filters) {
+      const resourceFiltersForId = filtersByResourceId.get(filter.resourceId) ?? [];
+      resourceFiltersForId.push({
+        type: filter.filterType,
+        value: filter.filterValue,
+      });
+      filtersByResourceId.set(filter.resourceId, resourceFiltersForId);
+    }
+
+    return filtersByResourceId;
+  }
+
+  private formatFilters(filters: ResourceFilterDto[]): ResourceFilter[] {
+    return filters.map((filter) => ({
+      type: filter.filterType,
+      value: filter.filterValue,
+    }));
+  }
+
+  private formatFilterOptions(rows: Array<{ value: string | null }>) {
+    return rows
+      .map((row) => row.value)
+      .filter((value): value is string => Boolean(value))
+      .sort();
+  }
+
   private matchesScholarFilters(filters: ResourceFilter[], scholar: typeof scholars.$inferSelect) {
     if (filters.length === 0) return true;
 
-    return filters.every((filter) => {
-      switch (filter.type) {
-        case 'program':
-          return scholar.program === filter.value;
-        case 'year':
-          return scholar.year === filter.value;
-        case 'university':
-          return scholar.university === filter.value;
-        case 'location':
-          return scholar.location === filter.value;
-        case 'status':
-          return scholar.status === filter.value;
-        default:
-          return false;
-      }
-    });
+    const filtersByType = filters.reduce((groups, filter) => {
+      const values = groups.get(filter.type) ?? [];
+      values.push(filter.value);
+      groups.set(filter.type, values);
+      return groups;
+    }, new Map<string, string[]>());
+
+    return Array.from(filtersByType.entries()).every(([type, values]) =>
+      values.some((value) => this.matchesScholarFilter(type, value, scholar))
+    );
+  }
+
+  private matchesScholarFilter(type: string, value: string, scholar: typeof scholars.$inferSelect) {
+    switch (type) {
+      case 'program':
+        return scholar.program === value;
+      case 'year':
+        return scholar.year === value;
+      case 'university':
+        return scholar.university === value;
+      case 'location':
+        return scholar.location === value;
+      case 'status':
+        return scholar.status === value;
+      default:
+        return false;
+    }
   }
 
   private formatResource(resource: typeof resources.$inferSelect, filters: ResourceFilter[]) {

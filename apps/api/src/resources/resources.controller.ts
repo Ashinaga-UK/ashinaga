@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Req,
@@ -49,7 +50,7 @@ export class ResourcesController {
   @Patch(':id')
   @UseGuards(StaffGuard)
   async updateResource(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body(new ValidationPipe({ transform: true, whitelist: true })) dto: UpdateResourceDto,
     @Req() req: AuthenticatedRequest
   ) {
@@ -58,7 +59,7 @@ export class ResourcesController {
 
   @Delete(':id')
   @UseGuards(StaffGuard)
-  async archiveResource(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+  async archiveResource(@Param('id', ParseUUIDPipe) id: string, @Req() req: AuthenticatedRequest) {
     return this.resourcesService.archiveResource(id, req.user?.id || '');
   }
 
