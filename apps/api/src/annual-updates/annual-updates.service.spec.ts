@@ -119,6 +119,45 @@ describe('AnnualUpdatesService', () => {
     });
   });
 
+  describe('validateRequiredFields', () => {
+    it('requires all annual review answers before final submission', () => {
+      expect(() =>
+        internals.validateRequiredFields({
+          academicYear: '2025/26',
+        })
+      ).toThrow(BadRequestException);
+    });
+
+    it('reports the missing required fields', () => {
+      const payload = {
+        academicYear: '2025/26',
+        highlights: 'Highlights',
+      };
+
+      expect(() => internals.validateRequiredFields(payload)).toThrow(BadRequestException);
+
+      try {
+        internals.validateRequiredFields(payload);
+      } catch (error) {
+        expect((error as BadRequestException).getResponse()).toEqual(
+          expect.objectContaining({
+            message: 'Please complete all required fields before submitting.',
+            missingFields: expect.arrayContaining([
+              'Part-time jobs',
+              'Number of leadership roles',
+              'Ashinaga 8-week internship answer',
+              'Academic year weighted grade',
+            ]),
+          })
+        );
+      }
+    });
+
+    it('allows a complete final submission payload', () => {
+      expect(() => internals.validateRequiredFields(createCompletePayload())).not.toThrow();
+    });
+  });
+
   describe('upsertAnnualUpdate', () => {
     it('uses the scholar/academic-year unique target for conflict-safe upserts', async () => {
       const annualUpdate = {
@@ -196,6 +235,7 @@ type AnnualUpdatesServiceInternals = AnnualUpdatesService & {
     status: 'draft' | 'submitted'
   ) => Promise<unknown>;
   validateWordLimits: (dto: UpsertAnnualUpdateDto) => void;
+  validateRequiredFields: (dto: UpsertAnnualUpdateDto) => void;
 };
 
 type AnnualUpdateFixture = {
@@ -249,6 +289,30 @@ function createAnnualUpdate(overrides: Partial<AnnualUpdateFixture> = {}): Annua
     submittedAt: now,
     createdAt: now,
     updatedAt: now,
+    ...overrides,
+  };
+}
+
+function createCompletePayload(
+  overrides: Partial<UpsertAnnualUpdateDto> = {}
+): UpsertAnnualUpdateDto {
+  return {
+    academicYear: '2025/26',
+    highlights: 'Highlights',
+    partTimeJobs: 'Part-time jobs',
+    extracurriculars: 'Extracurriculars',
+    leadershipRolesDescription: 'Leadership roles',
+    leadershipRolesCount: 1,
+    payItForwardDescription: 'Pay it forward',
+    payItForwardCount: 2,
+    subSaharanAfricaActivitiesDescription: 'Africa activities',
+    subSaharanAfricaActivitiesCount: 3,
+    independentInternshipsCount: 4,
+    internshipsInAfricaSummary: 'Africa internship',
+    internshipsElsewhereSummary: 'Elsewhere internship',
+    completedAshinagaAfricaInternship: true,
+    academicYearAverageClassification: '1st',
+    academicYearWeightedGrade: '70%',
     ...overrides,
   };
 }
