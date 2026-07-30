@@ -10,11 +10,13 @@ import {
   Library,
   Loader2,
   Search,
+  Trash2,
 } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import {
   createResource,
+  deleteResource,
   getResourceFilterOptions,
   type Resource,
   type ResourceCategory,
@@ -24,6 +26,17 @@ import {
   updateResource,
 } from '../lib/api-client';
 import { queryKeys, useResources } from '../lib/hooks/use-queries';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from './ui/alert-dialog';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import {
@@ -438,6 +451,78 @@ function ResourceDialog({
   );
 }
 
+function DeleteResourceDialog({
+  resource,
+  onDeleted,
+  disabled,
+}: {
+  resource: Resource;
+  onDeleted: (resourceId: string) => void;
+  disabled: boolean;
+}) {
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await deleteResource(resource.id);
+      toast({ title: 'Resource deleted', duration: 2500 });
+      setOpen(false);
+      onDeleted(resource.id);
+    } catch (error) {
+      toast({
+        title: 'Could not delete resource',
+        description: getResourceErrorMessage(error),
+        variant: 'destructive',
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-9 px-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          disabled={disabled}
+          aria-label={`Delete ${resource.title}`}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete resource?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will remove "{resource.title}" from the staff resource library and from scholar
+            Resources. This action cannot be undone from the app.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            disabled={deleting}
+            onClick={(event) => {
+              event.preventDefault();
+              void handleDelete();
+            }}
+          >
+            {deleting && <Loader2 className="h-4 w-4 animate-spin" />}
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 export function ResourcesManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -511,6 +596,13 @@ export function ResourcesManagement() {
 
       return nextResources.sort((first, second) => first.title.localeCompare(second.title));
     });
+    queryClient.invalidateQueries({ queryKey: queryKeys.resources });
+  };
+
+  const handleDeleted = (resourceId: string) => {
+    queryClient.setQueryData<Resource[]>(queryKeys.resources, (current = []) =>
+      current.filter((resource) => resource.id !== resourceId)
+    );
     queryClient.invalidateQueries({ queryKey: queryKeys.resources });
   };
 
@@ -624,7 +716,7 @@ export function ResourcesManagement() {
               return (
                 <div
                   key={resource.id}
-                  className="grid gap-3 px-4 py-4 transition-colors hover:bg-muted/30 sm:px-5 xl:grid-cols-[minmax(0,1fr)_220px_minmax(150px,220px)_220px]"
+                  className="grid gap-3 px-4 py-4 transition-colors hover:bg-muted/30 sm:px-5 lg:grid-cols-[minmax(0,1fr)_220px_minmax(150px,220px)_260px]"
                 >
                   <div className="flex min-w-0 gap-3">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
@@ -661,7 +753,7 @@ export function ResourcesManagement() {
                       {audience}
                     </p>
                   </div>
-                  <div className="flex items-center justify-start gap-3 xl:justify-end">
+                  <div className="flex items-center justify-start gap-3 lg:justify-end">
                     <div className="flex min-w-28 items-center justify-end gap-2">
                       <div className="flex min-w-0 items-center gap-1.5">
                         <span
@@ -694,6 +786,11 @@ export function ResourcesManagement() {
                       resource={resource}
                       filterOptions={filterOptions}
                       onSaved={handleSaved}
+                    />
+                    <DeleteResourceDialog
+                      resource={resource}
+                      disabled={busyId === resource.id}
+                      onDeleted={handleDeleted}
                     />
                   </div>
                 </div>
