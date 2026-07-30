@@ -22,11 +22,17 @@ test.describe('Staff Portal – new features', () => {
     const invitationsTab = page.getByRole('tab', { name: /Invitations/i });
     await expect(invitationsTab).toBeVisible();
     await invitationsTab.click();
+    await expect(page.getByRole('heading', { name: /Staff & Invitations/i })).toBeVisible();
 
-    // Sub-tabs visible (renamed when the Active Staff management view was added)
-    await expect(page.getByRole('tab', { name: 'Active Staff', exact: true })).toBeVisible();
-    await expect(page.getByRole('tab', { name: 'Staff Invites', exact: true })).toBeVisible();
-    await expect(page.getByRole('tab', { name: 'Scholar Invites', exact: true })).toBeVisible();
+    // Sub-sections are rendered as tabs on desktop and as a select on narrow viewports.
+    const activeStaffTab = page.getByRole('tab', { name: 'Active Staff', exact: true });
+    if (await activeStaffTab.isVisible().catch(() => false)) {
+      await expect(activeStaffTab).toBeVisible();
+      await expect(page.getByRole('tab', { name: 'Staff Invites', exact: true })).toBeVisible();
+      await expect(page.getByRole('tab', { name: 'Scholar Invites', exact: true })).toBeVisible();
+    } else {
+      await expect(page.getByLabel('Invitation section')).toBeVisible();
+    }
 
     // The card header mentions the new 30-day expiry
     await expect(page.getByText(/expire after 30 days/i)).toBeVisible();
