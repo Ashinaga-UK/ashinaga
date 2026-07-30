@@ -455,7 +455,10 @@ export function MyAnnualReview() {
       )}
 
       {error && (
-        <Alert variant="destructive">
+        <Alert
+          variant="destructive"
+          className="border-destructive bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-red-100"
+        >
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
             <div>{error}</div>
@@ -719,7 +722,7 @@ function ReviewSection({
 function RequiredLabel({ htmlFor, children }: { htmlFor?: string; children: React.ReactNode }) {
   return (
     <Label htmlFor={htmlFor}>
-      {children} <span className="text-red-600">*</span>
+      {children} <span className="text-destructive">*</span>
     </Label>
   );
 }
@@ -756,7 +759,7 @@ function LongTextField({
           <span
             className={
               isOverLimit
-                ? 'shrink-0 text-sm text-red-600'
+                ? 'shrink-0 rounded-md bg-destructive/10 px-2 py-1 text-sm font-medium text-destructive dark:bg-destructive/20 dark:text-red-100'
                 : 'shrink-0 text-sm text-muted-foreground'
             }
           >
@@ -770,7 +773,7 @@ function LongTextField({
         onChange={(event) => onChange(event.target.value)}
         rows={4}
         disabled={disabled}
-        className={isOverLimit ? 'border-red-500 focus-visible:ring-red-500' : undefined}
+        className={isOverLimit ? 'border-destructive focus-visible:ring-destructive' : undefined}
       />
     </div>
   );
