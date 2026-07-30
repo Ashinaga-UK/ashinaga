@@ -1096,71 +1096,83 @@ function AnnualReviewsPanel({
                 </p>
               </div>
               <Badge variant={annualUpdate.status === 'submitted' ? 'default' : 'secondary'}>
-                {annualUpdate.status === 'submitted' ? 'Submitted' : 'Draft'}
+                {annualUpdate.status === 'submitted' ? 'Submitted' : 'Draft in progress'}
               </Badge>
             </div>
           </AccordionTrigger>
           <AccordionContent className="px-4 pb-5 pt-0 sm:px-6">
             <div className="space-y-5 border-t pt-5">
-              <div className="grid gap-3 text-sm md:grid-cols-4">
-                <AnnualReviewMetric
-                  label="Leadership roles"
-                  value={formatCount(annualUpdate.leadershipRolesCount)}
-                />
-                <AnnualReviewMetric
-                  label="Pay it forward"
-                  value={formatCount(annualUpdate.payItForwardCount)}
-                />
-                <AnnualReviewMetric
-                  label="Africa activities"
-                  value={formatCount(annualUpdate.subSaharanAfricaActivitiesCount)}
-                />
-                <AnnualReviewMetric
-                  label="Internships"
-                  value={formatCount(annualUpdate.independentInternshipsCount)}
-                />
-              </div>
+              {annualUpdate.status === 'submitted' ? (
+                <>
+                  <div className="grid gap-3 text-sm md:grid-cols-4">
+                    <AnnualReviewMetric
+                      label="Leadership roles"
+                      value={formatCount(annualUpdate.leadershipRolesCount)}
+                    />
+                    <AnnualReviewMetric
+                      label="Pay it forward"
+                      value={formatCount(annualUpdate.payItForwardCount)}
+                    />
+                    <AnnualReviewMetric
+                      label="Africa activities"
+                      value={formatCount(annualUpdate.subSaharanAfricaActivitiesCount)}
+                    />
+                    <AnnualReviewMetric
+                      label="Internships"
+                      value={formatCount(annualUpdate.independentInternshipsCount)}
+                    />
+                  </div>
 
-              <div className="grid gap-4 lg:grid-cols-2">
-                <AnnualReviewAnswer label="Highlights" value={annualUpdate.highlights} />
-                <AnnualReviewAnswer label="Part-time jobs" value={annualUpdate.partTimeJobs} />
-                <AnnualReviewAnswer
-                  label="Extracurriculars"
-                  value={annualUpdate.extracurriculars}
-                />
-                <AnnualReviewAnswer
-                  label="Leadership roles"
-                  value={annualUpdate.leadershipRolesDescription}
-                />
-                <AnnualReviewAnswer
-                  label="Pay it forward"
-                  value={annualUpdate.payItForwardDescription}
-                />
-                <AnnualReviewAnswer
-                  label="Sub-Saharan Africa activities"
-                  value={annualUpdate.subSaharanAfricaActivitiesDescription}
-                />
-                <AnnualReviewAnswer
-                  label="Internships in Africa"
-                  value={annualUpdate.internshipsInAfricaSummary}
-                />
-                <AnnualReviewAnswer
-                  label="Internships outside Africa"
-                  value={annualUpdate.internshipsElsewhereSummary}
-                />
-                <AnnualReviewAnswer
-                  label="Ashinaga 8-week internship"
-                  value={formatBoolean(annualUpdate.completedAshinagaAfricaInternship)}
-                />
-                <AnnualReviewAnswer
-                  label="Academic classification"
-                  value={annualUpdate.academicYearAverageClassification}
-                />
-                <AnnualReviewAnswer
-                  label="Weighted grade"
-                  value={annualUpdate.academicYearWeightedGrade}
-                />
-              </div>
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <AnnualReviewAnswer label="Highlights" value={annualUpdate.highlights} />
+                    <AnnualReviewAnswer label="Part-time jobs" value={annualUpdate.partTimeJobs} />
+                    <AnnualReviewAnswer
+                      label="Extracurriculars"
+                      value={annualUpdate.extracurriculars}
+                    />
+                    <AnnualReviewAnswer
+                      label="Leadership roles"
+                      value={annualUpdate.leadershipRolesDescription}
+                    />
+                    <AnnualReviewAnswer
+                      label="Pay it forward"
+                      value={annualUpdate.payItForwardDescription}
+                    />
+                    <AnnualReviewAnswer
+                      label="Sub-Saharan Africa activities"
+                      value={annualUpdate.subSaharanAfricaActivitiesDescription}
+                    />
+                    <AnnualReviewAnswer
+                      label="Internships in Africa"
+                      value={annualUpdate.internshipsInAfricaSummary}
+                    />
+                    <AnnualReviewAnswer
+                      label="Internships outside Africa"
+                      value={annualUpdate.internshipsElsewhereSummary}
+                    />
+                    <AnnualReviewAnswer
+                      label="Ashinaga 8-week internship"
+                      value={formatBoolean(annualUpdate.completedAshinagaAfricaInternship)}
+                    />
+                    <AnnualReviewAnswer
+                      label="Academic classification"
+                      value={annualUpdate.academicYearAverageClassification}
+                    />
+                    <AnnualReviewAnswer
+                      label="Weighted grade"
+                      value={annualUpdate.academicYearWeightedGrade}
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-lg border bg-muted/30 p-4">
+                  <p className="text-sm font-medium">Draft in progress</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    This scholar has started their annual review, but answers will only be visible
+                    after final submission.
+                  </p>
+                </div>
+              )}
             </div>
           </AccordionContent>
         </AccordionItem>

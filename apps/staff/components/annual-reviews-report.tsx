@@ -228,7 +228,7 @@ export function AnnualReviewsReport({ onViewScholarAnnualReviews }: AnnualReview
                   <TableCell className="font-medium">{review.academicYear}</TableCell>
                   <TableCell>
                     <Badge variant={review.status === 'submitted' ? 'default' : 'secondary'}>
-                      {review.status === 'submitted' ? 'Submitted' : 'Draft'}
+                      {review.status === 'submitted' ? 'Submitted' : 'Draft in progress'}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">

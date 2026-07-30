@@ -12,6 +12,7 @@ import { users } from '../db/schema/users';
 import { UpsertAnnualUpdateDto } from './dto/upsert-annual-update.dto';
 
 const LIMITED_RESPONSE_WORD_LIMIT = 150;
+type AnnualUpdate = typeof annualUpdates.$inferSelect;
 
 @Injectable()
 export class AnnualUpdatesService {
@@ -21,7 +22,7 @@ export class AnnualUpdatesService {
     const rows = await this.getAnnualUpdatesReportRows();
 
     return rows.map((row) => ({
-      ...row.annualUpdate,
+      ...this.hideDraftAnswersForStaff(row.annualUpdate),
       scholarName: row.scholarName,
       scholarEmail: row.scholarEmail,
       aaiScholarId: row.aaiScholarId,
@@ -66,11 +67,13 @@ export class AnnualUpdatesService {
   }
 
   async getAnnualUpdatesForScholar(scholarId: string) {
-    return this.db
+    const rows = await this.db
       .select()
       .from(annualUpdates)
       .where(eq(annualUpdates.scholarId, scholarId))
       .orderBy(desc(annualUpdates.createdAt));
+
+    return rows.map((annualUpdate) => this.hideDraftAnswersForStaff(annualUpdate));
   }
 
   async exportAnnualUpdatesCsv(scholarId?: string, annualUpdateIds?: string[]): Promise<string> {
@@ -111,7 +114,7 @@ export class AnnualUpdatesService {
     const csvRows = [headers.map((header) => this.escapeCsvValue(header)).join(',')];
 
     for (const row of rows) {
-      const annualUpdate = row.annualUpdate;
+      const annualUpdate = this.hideDraftAnswersForStaff(row.annualUpdate);
       csvRows.push(
         [
           row.scholarName,
@@ -171,6 +174,31 @@ export class AnnualUpdatesService {
       .innerJoin(users, eq(scholars.userId, users.id))
       .where(filters.length > 0 ? and(...filters) : undefined)
       .orderBy(desc(annualUpdates.createdAt));
+  }
+
+  private hideDraftAnswersForStaff(annualUpdate: AnnualUpdate): AnnualUpdate {
+    if (annualUpdate.status === 'submitted') {
+      return annualUpdate;
+    }
+
+    return {
+      ...annualUpdate,
+      highlights: null,
+      partTimeJobs: null,
+      extracurriculars: null,
+      leadershipRolesDescription: null,
+      leadershipRolesCount: null,
+      payItForwardDescription: null,
+      payItForwardCount: null,
+      subSaharanAfricaActivitiesDescription: null,
+      subSaharanAfricaActivitiesCount: null,
+      independentInternshipsCount: null,
+      internshipsInAfricaSummary: null,
+      internshipsElsewhereSummary: null,
+      completedAshinagaAfricaInternship: null,
+      academicYearAverageClassification: null,
+      academicYearWeightedGrade: null,
+    };
   }
 
   async saveDraft(userId: string, dto: UpsertAnnualUpdateDto) {

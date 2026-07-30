@@ -36,6 +36,61 @@ describe('AnnualUpdatesService', () => {
     it('formats CSV dates with an explicit UK timezone', () => {
       expect(internals.formatCsvDate('2026-07-21T23:30:00.000Z')).toBe('22/07/2026');
     });
+
+    it('does not include draft answers in staff CSV exports', async () => {
+      internals.getAnnualUpdatesReportRows = jest.fn().mockResolvedValue([
+        {
+          annualUpdate: createAnnualUpdate({
+            status: 'draft',
+            highlights: 'Private draft highlight',
+            leadershipRolesCount: 3,
+          }),
+          scholarName: 'Test Scholar',
+          scholarEmail: 'scholar@example.com',
+          aaiScholarId: 'AAI-1',
+          program: 'UK',
+          year: 'Year 1',
+          university: 'Test University',
+          location: 'UK',
+        },
+      ]);
+
+      const csv = await service.exportAnnualUpdatesCsv();
+
+      expect(csv).toContain('"draft"');
+      expect(csv).not.toContain('Private draft highlight');
+      expect(csv).not.toContain('"3"');
+    });
+  });
+
+  describe('hideDraftAnswersForStaff', () => {
+    it('removes answer fields from draft annual reviews', () => {
+      const draft = internals.hideDraftAnswersForStaff(
+        createAnnualUpdate({
+          status: 'draft',
+          highlights: 'Private draft highlight',
+          leadershipRolesCount: 3,
+        })
+      );
+
+      expect(draft.status).toBe('draft');
+      expect(draft.academicYear).toBe('2025/26');
+      expect(draft.highlights).toBeNull();
+      expect(draft.leadershipRolesCount).toBeNull();
+    });
+
+    it('keeps submitted answer fields visible to staff', () => {
+      const submitted = internals.hideDraftAnswersForStaff(
+        createAnnualUpdate({
+          status: 'submitted',
+          highlights: 'Submitted highlight',
+          leadershipRolesCount: 3,
+        })
+      );
+
+      expect(submitted.highlights).toBe('Submitted highlight');
+      expect(submitted.leadershipRolesCount).toBe(3);
+    });
   });
 
   describe('validateWordLimits', () => {
@@ -133,6 +188,8 @@ describe('AnnualUpdatesService', () => {
 type AnnualUpdatesServiceInternals = AnnualUpdatesService & {
   escapeCsvValue: (value: unknown) => string;
   formatCsvDate: (value: Date | string | null | undefined) => string;
+  getAnnualUpdatesReportRows: jest.Mock;
+  hideDraftAnswersForStaff: (annualUpdate: AnnualUpdateFixture) => AnnualUpdateFixture;
   upsertAnnualUpdate: (
     scholarId: string,
     dto: UpsertAnnualUpdateDto,
@@ -140,3 +197,58 @@ type AnnualUpdatesServiceInternals = AnnualUpdatesService & {
   ) => Promise<unknown>;
   validateWordLimits: (dto: UpsertAnnualUpdateDto) => void;
 };
+
+type AnnualUpdateFixture = {
+  id: string;
+  scholarId: string;
+  academicYear: string;
+  status: 'draft' | 'submitted';
+  highlights: string | null;
+  partTimeJobs: string | null;
+  extracurriculars: string | null;
+  leadershipRolesDescription: string | null;
+  leadershipRolesCount: number | null;
+  payItForwardDescription: string | null;
+  payItForwardCount: number | null;
+  subSaharanAfricaActivitiesDescription: string | null;
+  subSaharanAfricaActivitiesCount: number | null;
+  independentInternshipsCount: number | null;
+  internshipsInAfricaSummary: string | null;
+  internshipsElsewhereSummary: string | null;
+  completedAshinagaAfricaInternship: boolean | null;
+  academicYearAverageClassification: string | null;
+  academicYearWeightedGrade: string | null;
+  submittedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+function createAnnualUpdate(overrides: Partial<AnnualUpdateFixture> = {}): AnnualUpdateFixture {
+  const now = new Date('2026-07-21T12:00:00.000Z');
+
+  return {
+    id: 'annual-update-1',
+    scholarId: 'scholar-1',
+    academicYear: '2025/26',
+    status: 'submitted',
+    highlights: 'Highlights',
+    partTimeJobs: 'Part-time jobs',
+    extracurriculars: 'Extracurriculars',
+    leadershipRolesDescription: 'Leadership roles',
+    leadershipRolesCount: 1,
+    payItForwardDescription: 'Pay it forward',
+    payItForwardCount: 2,
+    subSaharanAfricaActivitiesDescription: 'Africa activities',
+    subSaharanAfricaActivitiesCount: 3,
+    independentInternshipsCount: 4,
+    internshipsInAfricaSummary: 'Africa internship',
+    internshipsElsewhereSummary: 'Elsewhere internship',
+    completedAshinagaAfricaInternship: true,
+    academicYearAverageClassification: '1st',
+    academicYearWeightedGrade: '70%',
+    submittedAt: now,
+    createdAt: now,
+    updatedAt: now,
+    ...overrides,
+  };
+}
