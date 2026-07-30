@@ -1210,10 +1210,18 @@ function formatBoolean(value: boolean | null) {
 
 function getAnnualReviewDateLabel(annualUpdate: AnnualUpdate) {
   if (annualUpdate.status === 'submitted' && annualUpdate.submittedAt) {
-    return `Submitted ${new Date(annualUpdate.submittedAt).toLocaleDateString('en-GB')}`;
+    return `Submitted ${formatAnnualReviewDateTime(annualUpdate.submittedAt)}`;
   }
 
-  return `Draft updated ${new Date(annualUpdate.updatedAt).toLocaleDateString('en-GB')}`;
+  return `Draft updated ${formatAnnualReviewDateTime(annualUpdate.updatedAt)}`;
+}
+
+function formatAnnualReviewDateTime(value: string) {
+  return new Intl.DateTimeFormat('en-GB', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+    timeZone: 'Europe/London',
+  }).format(new Date(value));
 }
 
 function DeleteTaskButton({ scholarId, taskId }: { scholarId: string; taskId: string }) {

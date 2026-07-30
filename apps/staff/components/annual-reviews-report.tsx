@@ -266,8 +266,16 @@ function AnnualReviewStat({ label, value }: { label: string; value: number }) {
 
 function getAnnualReviewDateLabel(review: AnnualUpdateReportRow) {
   if (review.status === 'submitted' && review.submittedAt) {
-    return new Date(review.submittedAt).toLocaleDateString('en-GB');
+    return `Submitted ${formatAnnualReviewDateTime(review.submittedAt)}`;
   }
 
-  return `Draft updated ${new Date(review.updatedAt).toLocaleDateString('en-GB')}`;
+  return `Draft updated ${formatAnnualReviewDateTime(review.updatedAt)}`;
+}
+
+function formatAnnualReviewDateTime(value: string) {
+  return new Intl.DateTimeFormat('en-GB', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+    timeZone: 'Europe/London',
+  }).format(new Date(value));
 }
