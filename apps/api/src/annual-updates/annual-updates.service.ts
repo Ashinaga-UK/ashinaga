@@ -11,6 +11,8 @@ import { scholars } from '../db/schema/scholars';
 import { users } from '../db/schema/users';
 import { UpsertAnnualUpdateDto } from './dto/upsert-annual-update.dto';
 
+const LIMITED_RESPONSE_WORD_LIMIT = 150;
+
 @Injectable()
 export class AnnualUpdatesService {
   private db = getDatabase();
@@ -158,6 +160,8 @@ export class AnnualUpdatesService {
       throw new ConflictException('This annual review has already been submitted and is final.');
     }
 
+    this.validateWordLimits(dto);
+
     const values = {
       ...this.toAnnualUpdateValues(dto),
       scholarId: scholar.id,
@@ -188,6 +192,7 @@ export class AnnualUpdatesService {
     }
 
     this.validateRequiredFields(dto);
+    this.validateWordLimits(dto);
 
     const values = {
       ...this.toAnnualUpdateValues(dto),
@@ -297,14 +302,44 @@ export class AnnualUpdatesService {
     }
   }
 
+  private validateWordLimits(dto: UpsertAnnualUpdateDto) {
+    const overLimitFields: string[] = [];
+
+    const requireWordLimit = (value: string | undefined, label: string) => {
+      if (value && this.countWords(value) > LIMITED_RESPONSE_WORD_LIMIT) {
+        overLimitFields.push(label);
+      }
+    };
+
+    requireWordLimit(dto.leadershipRolesDescription, 'Leadership roles description');
+    requireWordLimit(dto.payItForwardDescription, 'Pay-it-forward description');
+    requireWordLimit(
+      dto.subSaharanAfricaActivitiesDescription,
+      'Sub-Saharan Africa-related activities'
+    );
+
+    if (overLimitFields.length > 0) {
+      throw new BadRequestException({
+        message: `Please keep each limited response within ${LIMITED_RESPONSE_WORD_LIMIT} words.`,
+        overLimitFields,
+      });
+    }
+  }
+
+  private countWords(value: string) {
+    return value.trim().split(/\s+/).filter(Boolean).length;
+  }
+
   private escapeCsvValue(value: unknown): string {
     if (value === null || value === undefined) return '';
-    return `"${String(value).replace(/"/g, '""')}"`;
+    const stringValue = String(value);
+    const formulaSafeValue = /^[=+\-@]/.test(stringValue) ? `'${stringValue}` : stringValue;
+    return `"${formulaSafeValue.replace(/"/g, '""')}"`;
   }
 
   private formatCsvDate(value: Date | string | null | undefined): string {
     if (!value) return '';
-    return new Date(value).toLocaleDateString('en-GB');
+    return new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London' }).format(new Date(value));
   }
 
   private formatCsvBoolean(value: boolean | null): string {

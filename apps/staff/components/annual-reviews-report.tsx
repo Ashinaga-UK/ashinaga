@@ -334,12 +334,14 @@ function downloadCsv(csv: string, filename: string) {
 
 function escapeCsvValue(value: unknown) {
   if (value === null || value === undefined) return '';
-  return `"${String(value).replace(/"/g, '""')}"`;
+  const stringValue = String(value);
+  const formulaSafeValue = /^[=+\-@]/.test(stringValue) ? `'${stringValue}` : stringValue;
+  return `"${formulaSafeValue.replace(/"/g, '""')}"`;
 }
 
 function formatCsvDate(value: string | null) {
   if (!value) return '';
-  return new Date(value).toLocaleDateString('en-GB');
+  return new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London' }).format(new Date(value));
 }
 
 function formatCsvBoolean(value: boolean | null) {

@@ -135,6 +135,15 @@ function numberOrUndefined(value: string) {
   return Number(value);
 }
 
+function isValidCountValue(value: string) {
+  if (value.trim() === '') {
+    return false;
+  }
+
+  const numberValue = Number(value);
+  return Number.isInteger(numberValue) && numberValue >= 0;
+}
+
 function optionalText(value: string) {
   const trimmed = value.trim();
   return trimmed === '' ? undefined : trimmed;
@@ -176,7 +185,7 @@ function getMissingRequiredFields(form: FormState) {
 
   const requireNumber = (field: keyof FormState) => {
     const value = form[field];
-    if (typeof value !== 'string' || value.trim() === '' || !Number.isFinite(Number(value))) {
+    if (typeof value !== 'string' || !isValidCountValue(value)) {
       missingFields.push(REQUIRED_FIELD_LABELS[field]);
     }
   };
@@ -201,6 +210,25 @@ function getMissingRequiredFields(form: FormState) {
   requireText('academicYearWeightedGrade');
 
   return missingFields;
+}
+
+function getInvalidOptionalNumberFields(form: FormState) {
+  const invalidFields: string[] = [];
+  const numberFields: Array<keyof FormState> = [
+    'leadershipRolesCount',
+    'payItForwardCount',
+    'subSaharanAfricaActivitiesCount',
+    'independentInternshipsCount',
+  ];
+
+  for (const field of numberFields) {
+    const value = form[field];
+    if (typeof value === 'string' && value.trim() !== '' && !isValidCountValue(value)) {
+      invalidFields.push(REQUIRED_FIELD_LABELS[field]);
+    }
+  }
+
+  return invalidFields;
 }
 
 export function MyAnnualReview() {
@@ -258,6 +286,13 @@ export function MyAnnualReview() {
       return;
     }
 
+    const invalidNumberFields = getInvalidOptionalNumberFields(form);
+    if (invalidNumberFields.length > 0) {
+      setMissingFields(invalidNumberFields);
+      setError('Please enter whole numbers greater than or equal to 0.');
+      return;
+    }
+
     setSaving(true);
     setError(null);
     try {
@@ -275,6 +310,13 @@ export function MyAnnualReview() {
   const handleSubmit = async () => {
     if (wordLimitExceeded) {
       setError('Please keep each limited response within 150 words.');
+      return;
+    }
+
+    const invalidNumberFields = getInvalidOptionalNumberFields(form);
+    if (invalidNumberFields.length > 0) {
+      setMissingFields(invalidNumberFields);
+      setError('Please enter whole numbers greater than or equal to 0.');
       return;
     }
 
@@ -746,6 +788,7 @@ function NumberField({
         id={id}
         type="number"
         min={0}
+        step={1}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         disabled={disabled}
