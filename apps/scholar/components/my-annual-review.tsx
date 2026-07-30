@@ -800,11 +800,16 @@ function NumberField({
       )}
       <Input
         id={id}
-        type="number"
-        min={0}
-        step={1}
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) => {
+          const nextValue = event.target.value;
+          if (/^\d*$/.test(nextValue)) {
+            onChange(nextValue);
+          }
+        }}
         disabled={disabled}
         className="md:max-w-xs"
       />
