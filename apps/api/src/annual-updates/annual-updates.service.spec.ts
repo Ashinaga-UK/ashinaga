@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException } from '@nestjs/common';
 import { AnnualUpdatesService } from './annual-updates.service';
 import type { UpsertAnnualUpdateDto } from './dto/upsert-annual-update.dto';
 
-let mockDb: { insert: jest.Mock };
+let mockDb: { insert: jest.Mock; select: jest.Mock };
 
 jest.mock('../db/connection', () => ({
   getDatabase: jest.fn(() => mockDb),
@@ -15,6 +15,7 @@ describe('AnnualUpdatesService', () => {
   beforeEach(() => {
     mockDb = {
       insert: jest.fn(),
+      select: jest.fn(),
     };
     service = new AnnualUpdatesService();
     internals = service as unknown as AnnualUpdatesServiceInternals;
@@ -102,6 +103,29 @@ describe('AnnualUpdatesService', () => {
       await expect(
         internals.upsertAnnualUpdate('scholar-1', { academicYear: '2025/26' }, 'draft')
       ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('getMyDraftAnnualUpdate', () => {
+    it('returns the latest draft for the scholar', async () => {
+      const draft = {
+        id: 'annual-update-1',
+        scholarId: 'scholar-1',
+        academicYear: '2024/25',
+        status: 'draft',
+      };
+      const scholarWhere = jest.fn().mockResolvedValue([{ id: 'scholar-1', userId: 'user-1' }]);
+      const draftLimit = jest.fn().mockResolvedValue([draft]);
+      const draftOrderBy = jest.fn().mockReturnValue({ limit: draftLimit });
+      const draftWhere = jest.fn().mockReturnValue({ orderBy: draftOrderBy });
+      const scholarFrom = jest.fn().mockReturnValue({ where: scholarWhere });
+      const draftFrom = jest.fn().mockReturnValue({ where: draftWhere });
+
+      mockDb.select.mockReturnValueOnce({ from: scholarFrom }).mockReturnValueOnce({
+        from: draftFrom,
+      });
+
+      await expect(service.getMyDraftAnnualUpdate('user-1')).resolves.toBe(draft);
     });
   });
 });

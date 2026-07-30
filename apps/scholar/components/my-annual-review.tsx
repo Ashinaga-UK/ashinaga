@@ -17,6 +17,7 @@ import {
   type AnnualUpdate,
   type AnnualUpdatePayload,
   getMyAnnualUpdate,
+  getMyDraftAnnualUpdate,
   saveAnnualUpdateDraft,
   submitAnnualUpdate,
 } from '../lib/api/annual-updates';
@@ -259,8 +260,21 @@ export function MyAnnualReview() {
     setError(null);
     try {
       const data = await getMyAnnualUpdate(academicYear);
-      setAnnualUpdate(data);
-      setForm(toFormState(data, academicYear));
+      if (data) {
+        setAnnualUpdate(data);
+        setForm(toFormState(data, academicYear));
+        setMessage(null);
+        return;
+      }
+
+      const draft = await getMyDraftAnnualUpdate();
+      setAnnualUpdate(draft);
+      setForm(toFormState(draft, draft?.academicYear ?? academicYear));
+      setMessage(
+        draft && draft.academicYear !== academicYear
+          ? `Resumed your draft for ${draft.academicYear}.`
+          : null
+      );
     } catch (loadError) {
       console.error('Failed to load annual review:', loadError);
       setError('Could not load your annual review.');

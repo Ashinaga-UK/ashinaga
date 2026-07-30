@@ -61,6 +61,11 @@ export class AnnualUpdatesController {
     return this.annualUpdatesService.exportAnnualUpdatesCsv(scholarId);
   }
 
+  @Get('my/draft')
+  async getMyDraftAnnualUpdate(@Req() req: AuthenticatedRequest) {
+    return this.annualUpdatesService.getMyDraftAnnualUpdate(req.user.id);
+  }
+
   @Get('my')
   async getMyAnnualUpdate(
     @Req() req: AuthenticatedRequest,

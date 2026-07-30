@@ -51,6 +51,10 @@ export async function getMyAnnualUpdate(academicYear: string): Promise<AnnualUpd
   return fetchAPI<AnnualUpdate | null>(`/api/annual-updates/my?${params.toString()}`);
 }
 
+export async function getMyDraftAnnualUpdate(): Promise<AnnualUpdate | null> {
+  return fetchAPI<AnnualUpdate | null>('/api/annual-updates/my/draft');
+}
+
 export async function saveAnnualUpdateDraft(data: AnnualUpdatePayload): Promise<AnnualUpdate> {
   return fetchAPI<AnnualUpdate>('/api/annual-updates/my', {
     method: 'PUT',
