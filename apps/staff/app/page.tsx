@@ -3,9 +3,11 @@
 import {
   AlertCircle,
   FileText,
+  Home,
   Loader2,
   LogOut,
   Mail,
+  Menu,
   MessageSquare,
   Trash2,
   UserPlus,
@@ -44,6 +46,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from '../components/ui/sidebar';
