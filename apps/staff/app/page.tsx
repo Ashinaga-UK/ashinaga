@@ -12,7 +12,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { forwardRef, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { forwardRef, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnnouncementCreator } from '../components/announcement-creator';
 import { InvitationsManagement } from '../components/invitations-management';
 import { LoginPage } from '../components/login-page';
@@ -35,6 +35,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../components/ui/select';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+} from '../components/ui/sidebar';
 import { Skeleton } from '../components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import {
@@ -66,6 +78,14 @@ const STAFF_NAV_ITEMS = [
   { value: 'announcements', label: 'Announcements' },
   { value: 'invitations', label: 'Invitations' },
 ];
+const SIDEBAR_NAV_ITEMS = [
+  { value: 'overview', label: 'Overview', icon: Home },
+  { value: 'scholars', label: 'Scholars', icon: Users },
+  { value: 'requests', label: 'Requests', icon: FileText },
+  { value: 'announcements', label: 'Announcements', icon: MessageSquare },
+  { value: 'invitations', label: 'Invitations', icon: Mail },
+];
+
 
 interface QuickActionButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   icon: React.ReactNode;
@@ -383,7 +403,61 @@ function StaffDashboardContent() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <SidebarProvider defaultOpen={true}>
+      <Sidebar collapsible="icon">
+        <SidebarHeader className="border-b border-border py-4">
+          <div className="flex items-center gap-3 px-2">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand">
+              <span className="text-brand-foreground font-semibold text-sm">A</span>
+            </div>
+            <div className="flex min-w-0 flex-col leading-tight group-data-[collapsible=icon]:hidden">
+              <h1 className="truncate text-sm font-medium text-foreground">Ashinaga Staff</h1>
+              <p className="truncate text-[11px] text-muted-foreground">
+                Supporting Scholar Success
+              </p>
+            </div>
+          </div>
+        </SidebarHeader>
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarMenu>
+              {SIDEBAR_NAV_ITEMS.map((item) => {
+                const isActive = activeTab === item.value && currentView === 'dashboard';
+                const Icon = item.icon;
+                return (
+                  <SidebarMenuItem key={item.value}>
+                    <SidebarMenuButton
+                      isActive={isActive}
+                      onClick={() => {
+                        handleTabChange(item.value);
+                        setCurrentView('dashboard');
+                      }}
+                      tooltip={item.label}
+                      aria-label={item.label}
+                    >
+                      <Icon />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroup>
+        </SidebarContent>
+        <SidebarFooter className="border-t border-border p-2">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton onClick={handleSignOut} tooltip="Logout" aria-label="Logout">
+                <LogOut />
+                <span>Logout</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+      </Sidebar>
+      <SidebarTrigger className="fixed top-4 left-4 z-40" />
+      <SidebarInset>
+        <div className="min-h-screen bg-background">
       {/* Header — sticky, glassy, sleek */}
       <header className="sticky top-0 z-40 w-full border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:gap-3 sm:px-6">
@@ -900,6 +974,8 @@ function StaffDashboardContent() {
         )}
       </div>
     </div>
+    </SidebarInset>
+    </SidebarProvider>
   );
 }
 
