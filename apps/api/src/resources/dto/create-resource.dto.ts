@@ -8,10 +8,15 @@ import {
   IsUrl,
   ValidateNested,
 } from 'class-validator';
+import {
+  resourceCategoryEnum,
+  resourceStatusEnum,
+  resourceTypeEnum,
+} from '../../db/schema/resources';
 
-const resourceTypes = ['Guide', 'Handbook', 'Template'] as const;
-const resourceCategories = ['LDF', 'Handbook', 'Proposal', 'Support'] as const;
-const resourceStatuses = ['draft', 'live'] as const;
+const resourceTypes = resourceTypeEnum.enumValues;
+const resourceCategories = resourceCategoryEnum.enumValues;
+const resourceStatuses = resourceStatusEnum.enumValues;
 export const resourceFilterTypes = [
   'program',
   'year',

@@ -47,6 +47,18 @@ export class ResourcesController {
     return this.resourcesService.createResource(dto, req.user?.id || '');
   }
 
+  @Get('filter-options')
+  @UseGuards(StaffGuard)
+  async getFilterOptions() {
+    return this.resourcesService.getFilterOptions();
+  }
+
+  @Get('my-resources')
+  @UseGuards(AuthGuard)
+  async getMyResources(@Req() req: AuthenticatedRequest) {
+    return this.resourcesService.getResourcesForScholar(req.user?.id || '');
+  }
+
   @Patch(':id')
   @UseGuards(StaffGuard)
   async updateResource(
@@ -61,17 +73,5 @@ export class ResourcesController {
   @UseGuards(StaffGuard)
   async archiveResource(@Param('id', ParseUUIDPipe) id: string, @Req() req: AuthenticatedRequest) {
     return this.resourcesService.archiveResource(id, req.user?.id || '');
-  }
-
-  @Get('filter-options')
-  @UseGuards(StaffGuard)
-  async getFilterOptions() {
-    return this.resourcesService.getFilterOptions();
-  }
-
-  @Get('my-resources')
-  @UseGuards(AuthGuard)
-  async getMyResources(@Req() req: AuthenticatedRequest) {
-    return this.resourcesService.getResourcesForScholar(req.user?.id || '');
   }
 }

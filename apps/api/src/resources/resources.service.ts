@@ -52,16 +52,6 @@ export class ResourcesService {
   }
 
   async updateResource(resourceId: string, dto: UpdateResourceDto, userId: string) {
-    const existing = await database
-      .select()
-      .from(resources)
-      .where(and(eq(resources.id, resourceId), eq(resources.archived, false)))
-      .limit(1);
-
-    if (!existing[0]) {
-      throw new NotFoundException('Resource not found');
-    }
-
     const { filters, ...resourceData } = dto;
     const updated = await database.transaction(async (tx) => {
       const [resource] = await tx
@@ -71,8 +61,12 @@ export class ResourcesService {
           updatedBy: userId,
           updatedAt: new Date(),
         })
-        .where(eq(resources.id, resourceId))
+        .where(and(eq(resources.id, resourceId), eq(resources.archived, false)))
         .returning();
+
+      if (!resource) {
+        throw new NotFoundException('Resource not found');
+      }
 
       if (filters) {
         await this.replaceFilters(resourceId, filters, tx);

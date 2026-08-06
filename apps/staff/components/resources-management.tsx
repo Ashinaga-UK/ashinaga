@@ -627,29 +627,15 @@ export function ResourcesManagement() {
     }
   };
 
-  const handleCreated = (resource: Resource) => {
-    queryClient.setQueryData<Resource[]>(queryKeys.resources, (current = []) =>
-      [...current, resource].sort((first, second) => first.title.localeCompare(second.title))
-    );
+  const handleCreated = () => {
     queryClient.invalidateQueries({ queryKey: queryKeys.resources });
   };
 
-  const handleSaved = (resource: Resource) => {
-    queryClient.setQueryData<Resource[]>(queryKeys.resources, (current = []) => {
-      const exists = current.some((item) => item.id === resource.id);
-      const nextResources = exists
-        ? current.map((item) => (item.id === resource.id ? resource : item))
-        : [...current, resource];
-
-      return nextResources.sort((first, second) => first.title.localeCompare(second.title));
-    });
+  const handleSaved = () => {
     queryClient.invalidateQueries({ queryKey: queryKeys.resources });
   };
 
-  const handleDeleted = (resourceId: string) => {
-    queryClient.setQueryData<Resource[]>(queryKeys.resources, (current = []) =>
-      current.filter((resource) => resource.id !== resourceId)
-    );
+  const handleDeleted = () => {
     queryClient.invalidateQueries({ queryKey: queryKeys.resources });
   };
 

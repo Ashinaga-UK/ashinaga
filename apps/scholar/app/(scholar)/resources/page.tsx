@@ -12,19 +12,8 @@ import {
 import { useMemo, useState } from 'react';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
+import type { Resource, ResourceCategory, ResourceType } from '../../../lib/api-client';
 import { useMyResources } from '../../../lib/hooks/use-queries';
-
-type ResourceCategory = 'LDF' | 'Handbook' | 'Proposal' | 'Support';
-type ResourceType = 'Guide' | 'Handbook' | 'Template';
-
-interface ScholarResource {
-  id: string;
-  title: string;
-  description: string;
-  category: ResourceCategory;
-  type: ResourceType;
-  url: string;
-}
 
 const categoryStyles: Record<ResourceCategory, string> = {
   LDF: 'bg-ashinaga-green-50 text-ashinaga-green-700 border-ashinaga-green-200 dark:bg-ashinaga-green-900/20 dark:text-ashinaga-green-300 dark:border-ashinaga-green-800',
@@ -36,7 +25,7 @@ const categoryStyles: Record<ResourceCategory, string> = {
     'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800',
 };
 
-const resourceIcons: Record<ScholarResource['type'], typeof BookOpen> = {
+const resourceIcons: Record<ResourceType, typeof BookOpen> = {
   Guide: GraduationCap,
   Handbook: BookOpen,
   Template: FileText,
@@ -106,7 +95,7 @@ export default function ResourcesPage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-3">
-          {filteredResources.map((resource: ScholarResource) => {
+          {filteredResources.map((resource: Resource) => {
             const Icon = resourceIcons[resource.type];
             return (
               <article
