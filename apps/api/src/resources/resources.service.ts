@@ -237,18 +237,23 @@ export class ResourcesService {
   private matchesScholarFilter(type: string, value: string, scholar: typeof scholars.$inferSelect) {
     switch (type) {
       case 'program':
-        return scholar.program === value;
+        return this.valuesMatchIgnoreCase(scholar.program, value);
       case 'year':
-        return scholar.year === value;
+        return this.valuesMatchIgnoreCase(scholar.year, value);
       case 'university':
-        return scholar.university === value;
+        return this.valuesMatchIgnoreCase(scholar.university, value);
       case 'location':
-        return scholar.location === value;
+        return this.valuesMatchIgnoreCase(scholar.location, value);
       case 'status':
-        return scholar.status === value;
+        return this.valuesMatchIgnoreCase(scholar.status, value);
       default:
         return false;
     }
+  }
+
+  private valuesMatchIgnoreCase(left: string | null | undefined, right: string) {
+    if (!left) return false;
+    return left.localeCompare(right, undefined, { sensitivity: 'accent' }) === 0;
   }
 
   private formatResource(resource: typeof resources.$inferSelect, filters: ResourceFilter[]) {

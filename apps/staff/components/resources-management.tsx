@@ -161,10 +161,14 @@ function ResourceDialog({
   resource,
   onSaved,
   filterOptions,
+  filterOptionsError,
+  filterOptionsLoading,
 }: {
   resource?: Resource;
   onSaved: (resource: Resource) => void;
   filterOptions: ResourceFilterOptions;
+  filterOptionsError: string | null;
+  filterOptionsLoading: boolean;
 }) {
   const { toast } = useToast();
   const isEditing = Boolean(resource);
@@ -179,7 +183,10 @@ function ResourceDialog({
 
   const availableFilterValues = getFilterValues(filterType, filterOptions);
   const hasFilterValues = availableFilterValues.length > 0;
+  const canEditFilters = !filterOptionsLoading && !filterOptionsError;
 
+  // Only re-initialize when the dialog opens (or switches resource), not when
+  // react-query refreshes the resource object while editing.
   useEffect(() => {
     if (!open) return;
 
@@ -187,7 +194,7 @@ function ResourceDialog({
     setFilters(getResourceFormFilters(resource));
     setFilterType('program');
     setFilterValue('');
-  }, [open, resource]);
+  }, [open, resource?.id]);
 
   const reset = () => {
     setFormData(getResourceFormData(resource));
@@ -367,9 +374,18 @@ function ResourceDialog({
                 Leave empty to show this resource to all scholars.
               </p>
             </div>
+            {filterOptionsError && (
+              <p className="text-xs text-destructive">
+                Could not load audience options: {filterOptionsError}
+              </p>
+            )}
+            {filterOptionsLoading && (
+              <p className="text-xs text-muted-foreground">Loading audience options…</p>
+            )}
             <div className="grid gap-2 sm:grid-cols-[160px_1fr_auto]">
               <Select
                 value={filterType}
+                disabled={!canEditFilters}
                 onValueChange={(value) => {
                   setFilterType(value);
                   setFilterValue('');
@@ -386,30 +402,34 @@ function ResourceDialog({
                   ))}
                 </SelectContent>
               </Select>
-              {hasFilterValues ? (
-                <Select value={filterValue} onValueChange={setFilterValue}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose value" />
-                  </SelectTrigger>
-                  <SelectContent className="z-[100] max-h-64">
-                    {availableFilterValues.map((value) => (
-                      <SelectItem key={value} value={value}>
-                        {value}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <Input
-                  value={filterValue}
-                  placeholder="Type value"
-                  onChange={(event) => setFilterValue(event.target.value)}
-                />
-              )}
+              <Select
+                value={filterValue || undefined}
+                disabled={!canEditFilters || !hasFilterValues}
+                onValueChange={setFilterValue}
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      !canEditFilters
+                        ? 'Unavailable'
+                        : hasFilterValues
+                          ? 'Choose value'
+                          : 'No values available'
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent className="z-[100] max-h-64">
+                  {availableFilterValues.map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {value}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Button
                 type="button"
                 variant="outline"
-                disabled={!filterValue.trim()}
+                disabled={!canEditFilters || !filterValue.trim()}
                 onClick={addFilter}
               >
                 Add
@@ -532,14 +552,41 @@ export function ResourcesManagement() {
   const [categoryFilter, setCategoryFilter] = useState<ResourceCategory | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<ResourceStatus | 'all'>('all');
   const [filterOptions, setFilterOptions] = useState<ResourceFilterOptions>(emptyFilterOptions);
+  const [filterOptionsLoading, setFilterOptionsLoading] = useState(true);
+  const [filterOptionsError, setFilterOptionsError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
+    setFilterOptionsLoading(true);
+    setFilterOptionsError(null);
+
     getResourceFilterOptions()
-      .then(setFilterOptions)
+      .then((options) => {
+        if (cancelled) return;
+        setFilterOptions(options);
+        setFilterOptionsError(null);
+      })
       .catch((loadError) => {
-        console.error('Failed to load resource filter options:', loadError);
+        if (cancelled) return;
+        const message = getResourceErrorMessage(loadError);
+        setFilterOptionsError(message);
+        toast({
+          title: 'Could not load audience filter options',
+          description: message,
+          variant: 'destructive',
+        });
+      })
+      .finally(() => {
+        if (!cancelled) setFilterOptionsLoading(false);
       });
+
+    return () => {
+      cancelled = true;
+    };
+    // Intentionally load once on mount; toast is stable enough for this one-shot fetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filteredResources = useMemo(() => {
@@ -621,7 +668,12 @@ export function ResourcesManagement() {
               </p>
             </div>
           </div>
-          <ResourceDialog filterOptions={filterOptions} onSaved={handleCreated} />
+          <ResourceDialog
+            filterOptions={filterOptions}
+            filterOptionsError={filterOptionsError}
+            filterOptionsLoading={filterOptionsLoading}
+            onSaved={handleCreated}
+          />
         </div>
 
         <div className="grid gap-3 p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-[1fr_170px_170px_150px]">
@@ -785,6 +837,8 @@ export function ResourcesManagement() {
                     <ResourceDialog
                       resource={resource}
                       filterOptions={filterOptions}
+                      filterOptionsError={filterOptionsError}
+                      filterOptionsLoading={filterOptionsLoading}
                       onSaved={handleSaved}
                     />
                     <DeleteResourceDialog

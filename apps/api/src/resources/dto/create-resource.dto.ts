@@ -12,11 +12,17 @@ import {
 const resourceTypes = ['Guide', 'Handbook', 'Template'] as const;
 const resourceCategories = ['LDF', 'Handbook', 'Proposal', 'Support'] as const;
 const resourceStatuses = ['draft', 'live'] as const;
+export const resourceFilterTypes = [
+  'program',
+  'year',
+  'university',
+  'location',
+  'status',
+] as const;
 
 export class ResourceFilterDto {
-  @IsString()
-  @IsNotEmpty()
-  filterType: string;
+  @IsIn(resourceFilterTypes)
+  filterType: (typeof resourceFilterTypes)[number];
 
   @IsString()
   @IsNotEmpty()

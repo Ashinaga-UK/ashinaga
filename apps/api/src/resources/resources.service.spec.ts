@@ -56,6 +56,21 @@ describe('ResourcesService', () => {
     it('matches resources with no filters for every scholar', () => {
       expect(matchesScholarFilters([], scholar)).toBe(true);
     });
+
+    it('matches filter values case-insensitively', () => {
+      expect(
+        matchesScholarFilters([{ type: 'program', value: 'medicine' }], scholar)
+      ).toBe(true);
+      expect(
+        matchesScholarFilters([{ type: 'university', value: 'makerere university' }], scholar)
+      ).toBe(true);
+    });
+
+    it('rejects unknown filter types', () => {
+      expect(
+        matchesScholarFilters([{ type: 'programme', value: 'Medicine' }], scholar)
+      ).toBe(false);
+    });
   });
 });
 
@@ -88,5 +103,21 @@ describe('CreateResourceDto', () => {
     const filtersError = errors.find((error) => error.property === 'filters');
 
     expect(filtersError?.children?.[0]?.children?.[0]?.property).toBe('filterValue');
+  });
+
+  it('rejects unknown filter types', async () => {
+    const dto = plainToInstance(CreateResourceDto, {
+      title: 'Scholar Handbook',
+      description: 'Reference material',
+      type: 'Handbook',
+      category: 'Handbook',
+      url: 'https://docs.example/handbook',
+      filters: [{ filterType: 'programme', filterValue: 'Medicine' }],
+    });
+
+    const errors = await validate(dto);
+    const filtersError = errors.find((error) => error.property === 'filters');
+
+    expect(filtersError?.children?.[0]?.children?.[0]?.property).toBe('filterType');
   });
 });
