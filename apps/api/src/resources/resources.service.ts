@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { database } from '../db/connection';
 import { resourceFilters, resources, scholars } from '../db/schema';
 import { CreateResourceDto, ResourceFilterDto } from './dto/create-resource.dto';
@@ -101,7 +101,13 @@ export class ResourcesService {
 
   async getResourcesForScholar(userId: string) {
     const scholarRows = await database
-      .select()
+      .select({
+        program: scholars.program,
+        year: scholars.year,
+        university: scholars.university,
+        location: scholars.location,
+        status: scholars.status,
+      })
       .from(scholars)
       .where(eq(scholars.userId, userId))
       .limit(1);
@@ -111,23 +117,47 @@ export class ResourcesService {
     }
 
     const scholar = scholarRows[0];
-    const liveResources = await database
+    const visibleResources = await database
       .select()
       .from(resources)
-      .where(and(eq(resources.status, 'live'), eq(resources.archived, false)))
+      .where(
+        and(
+          eq(resources.status, 'live'),
+          eq(resources.archived, false),
+          sql`${resources.id} NOT IN (
+            SELECT audience_groups.resource_id
+            FROM (
+              SELECT
+                ${resourceFilters.resourceId} AS resource_id,
+                BOOL_OR(
+                  COALESCE(
+                    CASE ${resourceFilters.filterType}
+                      WHEN 'program' THEN LOWER(${resourceFilters.filterValue}) = LOWER(${scholar.program})
+                      WHEN 'year' THEN LOWER(${resourceFilters.filterValue}) = LOWER(${scholar.year})
+                      WHEN 'university' THEN LOWER(${resourceFilters.filterValue}) = LOWER(${scholar.university})
+                      WHEN 'location' THEN LOWER(${resourceFilters.filterValue}) = LOWER(${scholar.location})
+                      WHEN 'status' THEN LOWER(${resourceFilters.filterValue}) = LOWER(${scholar.status})
+                      ELSE FALSE
+                    END,
+                    FALSE
+                  )
+                ) AS group_matches
+              FROM ${resourceFilters}
+              GROUP BY ${resourceFilters.resourceId}, ${resourceFilters.filterType}
+            ) AS audience_groups
+            WHERE NOT audience_groups.group_matches
+          )`
+        )
+      )
       .orderBy(asc(resources.title));
 
     const filtersByResourceId = await this.getResourceFiltersByResourceIds(
-      liveResources.map((resource) => resource.id)
+      visibleResources.map((resource) => resource.id)
     );
 
-    return liveResources
-      .map((resource) => ({
-        resource,
-        filters: filtersByResourceId.get(resource.id) ?? [],
-      }))
-      .filter(({ filters }) => this.matchesScholarFilters(filters, scholar))
-      .map(({ resource, filters }) => this.formatResource(resource, filters));
+    return visibleResources.map((resource) =>
+      this.formatResource(resource, filtersByResourceId.get(resource.id) ?? [])
+    );
   }
 
   async getFilterOptions() {
@@ -211,43 +241,6 @@ export class ResourcesService {
       .map((row) => row.value)
       .filter((value): value is string => Boolean(value))
       .sort();
-  }
-
-  private matchesScholarFilters(filters: ResourceFilter[], scholar: typeof scholars.$inferSelect) {
-    if (filters.length === 0) return true;
-
-    const filtersByType = filters.reduce((groups, filter) => {
-      const values = groups.get(filter.type) ?? [];
-      values.push(filter.value);
-      groups.set(filter.type, values);
-      return groups;
-    }, new Map<string, string[]>());
-
-    return Array.from(filtersByType.entries()).every(([type, values]) =>
-      values.some((value) => this.matchesScholarFilter(type, value, scholar))
-    );
-  }
-
-  private matchesScholarFilter(type: string, value: string, scholar: typeof scholars.$inferSelect) {
-    switch (type) {
-      case 'program':
-        return this.valuesMatchIgnoreCase(scholar.program, value);
-      case 'year':
-        return this.valuesMatchIgnoreCase(scholar.year, value);
-      case 'university':
-        return this.valuesMatchIgnoreCase(scholar.university, value);
-      case 'location':
-        return this.valuesMatchIgnoreCase(scholar.location, value);
-      case 'status':
-        return this.valuesMatchIgnoreCase(scholar.status, value);
-      default:
-        return false;
-    }
-  }
-
-  private valuesMatchIgnoreCase(left: string | null | undefined, right: string) {
-    if (!left) return false;
-    return left.localeCompare(right, undefined, { sensitivity: 'accent' }) === 0;
   }
 
   private formatResource(resource: typeof resources.$inferSelect, filters: ResourceFilter[]) {
