@@ -69,7 +69,7 @@ describe('Resources API – scholar audience filtering (integration)', () => {
     staffActor = await seedStaffUser(db, { name: 'Resource Test Staff' });
     scholar = await seedScholarUser(db, {
       name: 'Resource Test Scholar',
-      program: 'Medicine',
+      program: ' Medicine ',
       year: 'Year 1',
       university: 'Makerere University',
     });

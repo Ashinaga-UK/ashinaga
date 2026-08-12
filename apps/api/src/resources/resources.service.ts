@@ -1,5 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
+import { normalizeAudienceFilters } from '../common/audience-filters/audience-filter';
+import { buildResourceAudienceVisibilitySql } from '../common/audience-filters/audience-filter.sql';
+import { getScholarAudienceFilterOptions } from '../common/audience-filters/audience-filter-options';
 import { database } from '../db/connection';
 import { resourceFilters, resources, scholars } from '../db/schema';
 import { CreateResourceDto, ResourceFilterDto } from './dto/create-resource.dto';
@@ -15,7 +18,8 @@ type ResourceFilterWriter = Pick<typeof database, 'delete' | 'insert'>;
 @Injectable()
 export class ResourcesService {
   async createResource(dto: CreateResourceDto, userId: string) {
-    const { filters = [], ...resourceData } = dto;
+    const { filters: rawFilters, ...resourceData } = dto;
+    const filters = normalizeAudienceFilters(rawFilters ?? []);
 
     const resource = await database.transaction(async (tx) => {
       const [created] = await tx
@@ -52,7 +56,9 @@ export class ResourcesService {
   }
 
   async updateResource(resourceId: string, dto: UpdateResourceDto, userId: string) {
-    const { filters, ...resourceData } = dto;
+    const { filters: rawFilters, ...resourceData } = dto;
+    const filters =
+      rawFilters === undefined ? undefined : normalizeAudienceFilters(rawFilters ?? []);
     const updated = await database.transaction(async (tx) => {
       const [resource] = await tx
         .update(resources)
@@ -68,16 +74,17 @@ export class ResourcesService {
         throw new NotFoundException('Resource not found');
       }
 
-      if (filters) {
+      if (filters !== undefined) {
         await this.replaceFilters(resourceId, filters, tx);
       }
 
       return resource;
     });
 
-    const nextFilters = filters
-      ? this.formatFilters(filters)
-      : await this.getResourceFilters(resourceId);
+    const nextFilters =
+      filters !== undefined
+        ? this.formatFilters(filters)
+        : await this.getResourceFilters(resourceId);
     return this.formatResource(updated, nextFilters);
   }
 
@@ -124,29 +131,7 @@ export class ResourcesService {
         and(
           eq(resources.status, 'live'),
           eq(resources.archived, false),
-          sql`${resources.id} NOT IN (
-            SELECT audience_groups.resource_id
-            FROM (
-              SELECT
-                ${resourceFilters.resourceId} AS resource_id,
-                BOOL_OR(
-                  COALESCE(
-                    CASE ${resourceFilters.filterType}
-                      WHEN 'program' THEN LOWER(${resourceFilters.filterValue}) = LOWER(${scholar.program})
-                      WHEN 'year' THEN LOWER(${resourceFilters.filterValue}) = LOWER(${scholar.year})
-                      WHEN 'university' THEN LOWER(${resourceFilters.filterValue}) = LOWER(${scholar.university})
-                      WHEN 'location' THEN LOWER(${resourceFilters.filterValue}) = LOWER(${scholar.location})
-                      WHEN 'status' THEN LOWER(${resourceFilters.filterValue}) = LOWER(${scholar.status})
-                      ELSE FALSE
-                    END,
-                    FALSE
-                  )
-                ) AS group_matches
-              FROM ${resourceFilters}
-              GROUP BY ${resourceFilters.resourceId}, ${resourceFilters.filterType}
-            ) AS audience_groups
-            WHERE NOT audience_groups.group_matches
-          )`
+          buildResourceAudienceVisibilitySql(scholar)
         )
       )
       .orderBy(asc(resources.title));
@@ -161,21 +146,7 @@ export class ResourcesService {
   }
 
   async getFilterOptions() {
-    const [programRows, yearRows, universityRows, locationRows, statusRows] = await Promise.all([
-      database.selectDistinct({ value: scholars.program }).from(scholars),
-      database.selectDistinct({ value: scholars.year }).from(scholars),
-      database.selectDistinct({ value: scholars.university }).from(scholars),
-      database.selectDistinct({ value: scholars.location }).from(scholars),
-      database.selectDistinct({ value: scholars.status }).from(scholars),
-    ]);
-
-    return {
-      programs: this.formatFilterOptions(programRows),
-      years: this.formatFilterOptions(yearRows),
-      universities: this.formatFilterOptions(universityRows),
-      locations: this.formatFilterOptions(locationRows),
-      statuses: this.formatFilterOptions(statusRows),
-    };
+    return getScholarAudienceFilterOptions();
   }
 
   private async replaceFilters(
@@ -234,13 +205,6 @@ export class ResourcesService {
       type: filter.filterType,
       value: filter.filterValue,
     }));
-  }
-
-  private formatFilterOptions(rows: Array<{ value: string | null }>) {
-    return rows
-      .map((row) => row.value)
-      .filter((value): value is string => Boolean(value))
-      .sort();
   }
 
   private formatResource(resource: typeof resources.$inferSelect, filters: ResourceFilter[]) {

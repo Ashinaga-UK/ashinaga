@@ -1,0 +1,1 @@
+CREATE INDEX "resource_filters_resource_id_idx" ON "resource_filters" USING btree ("resource_id");

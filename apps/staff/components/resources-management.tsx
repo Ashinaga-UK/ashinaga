@@ -13,11 +13,10 @@ import {
   Trash2,
 } from 'lucide-react';
 import type React from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   createResource,
   deleteResource,
-  getResourceFilterOptions,
   type Resource,
   type ResourceCategory,
   type ResourceFilterOptions,
@@ -25,7 +24,7 @@ import {
   type ResourceType,
   updateResource,
 } from '../lib/api-client';
-import { queryKeys, useResources } from '../lib/hooks/use-queries';
+import { queryKeys, useResourceFilterOptions, useResources } from '../lib/hooks/use-queries';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -163,16 +162,20 @@ function ResourceDialog({
   filterOptions,
   filterOptionsError,
   filterOptionsLoading,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   resource?: Resource;
   onSaved: (resource: Resource) => void;
   filterOptions: ResourceFilterOptions;
   filterOptionsError: string | null;
   filterOptionsLoading: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const { toast } = useToast();
   const isEditing = Boolean(resource);
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [filterType, setFilterType] = useState('program');
   const [filterValue, setFilterValue] = useState('');
@@ -180,21 +183,27 @@ function ResourceDialog({
     getResourceFormFilters(resource)
   );
   const [formData, setFormData] = useState<ResourceFormData>(() => getResourceFormData(resource));
+  const resourceRef = useRef(resource);
+  resourceRef.current = resource;
+  const resourceId = resource?.id;
 
   const availableFilterValues = getFilterValues(filterType, filterOptions);
   const hasFilterValues = availableFilterValues.length > 0;
   const canEditFilters = !filterOptionsLoading && !filterOptionsError;
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
 
   // Only re-initialize when the dialog opens (or switches resource), not when
   // react-query refreshes the resource object while editing.
   useEffect(() => {
     if (!open) return;
+    if (resourceRef.current?.id !== resourceId) return;
 
-    setFormData(getResourceFormData(resource));
-    setFilters(getResourceFormFilters(resource));
+    setFormData(getResourceFormData(resourceRef.current));
+    setFilters(getResourceFormFilters(resourceRef.current));
     setFilterType('program');
     setFilterValue('');
-  }, [open, resource?.id]);
+  }, [open, resourceId]);
 
   const reset = () => {
     setFormData(getResourceFormData(resource));
@@ -249,19 +258,14 @@ function ResourceDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {isEditing ? (
-          <Button type="button" variant="outline" size="sm" className="h-9">
-            <Edit className="h-4 w-4" />
-            Edit
-          </Button>
-        ) : (
+      {controlledOpen === undefined && (
+        <DialogTrigger asChild>
           <Button className="w-full sm:w-auto">
             <Library className="h-4 w-4" />
             Add resource
           </Button>
-        )}
-      </DialogTrigger>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Edit resource' : 'Add resource'}</DialogTitle>
@@ -475,14 +479,20 @@ function DeleteResourceDialog({
   resource,
   onDeleted,
   disabled,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   resource: Resource;
   onDeleted: (resourceId: string) => void;
   disabled: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const { toast } = useToast();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -504,18 +514,20 @@ function DeleteResourceDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-9 px-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
-          disabled={disabled}
-          aria-label={`Delete ${resource.title}`}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </AlertDialogTrigger>
+      {controlledOpen === undefined && (
+        <AlertDialogTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-9 px-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+            disabled={disabled}
+            aria-label={`Delete ${resource.title}`}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </AlertDialogTrigger>
+      )}
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Delete resource?</AlertDialogTitle>
@@ -547,47 +559,30 @@ export function ResourcesManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: resources = [], isLoading, error, refetch } = useResources();
+  const filterOptionsQuery = useResourceFilterOptions();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<ResourceType | 'all'>('all');
   const [categoryFilter, setCategoryFilter] = useState<ResourceCategory | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<ResourceStatus | 'all'>('all');
-  const [filterOptions, setFilterOptions] = useState<ResourceFilterOptions>(emptyFilterOptions);
-  const [filterOptionsLoading, setFilterOptionsLoading] = useState(true);
-  const [filterOptionsError, setFilterOptionsError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [editingResourceId, setEditingResourceId] = useState<string | null>(null);
+  const [deletingResourceId, setDeletingResourceId] = useState<string | null>(null);
+
+  const filterOptions = filterOptionsQuery.data ?? emptyFilterOptions;
+  const filterOptionsError = filterOptionsQuery.error
+    ? getResourceErrorMessage(filterOptionsQuery.error)
+    : null;
+  const editingResource = resources.find((resource) => resource.id === editingResourceId);
+  const deletingResource = resources.find((resource) => resource.id === deletingResourceId);
 
   useEffect(() => {
-    let cancelled = false;
-
-    setFilterOptionsLoading(true);
-    setFilterOptionsError(null);
-
-    getResourceFilterOptions()
-      .then((options) => {
-        if (cancelled) return;
-        setFilterOptions(options);
-        setFilterOptionsError(null);
-      })
-      .catch((loadError) => {
-        if (cancelled) return;
-        const message = getResourceErrorMessage(loadError);
-        setFilterOptionsError(message);
-        toast({
-          title: 'Could not load audience filter options',
-          description: message,
-          variant: 'destructive',
-        });
-      })
-      .finally(() => {
-        if (!cancelled) setFilterOptionsLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-    // Intentionally load once on mount; toast is stable enough for this one-shot fetch.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (!filterOptionsQuery.error) return;
+    toast({
+      title: 'Could not load audience filter options',
+      description: getResourceErrorMessage(filterOptionsQuery.error),
+      variant: 'destructive',
+    });
+  }, [filterOptionsQuery.error, toast]);
 
   const filteredResources = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -627,16 +622,22 @@ export function ResourcesManagement() {
     }
   };
 
-  const handleCreated = () => {
-    queryClient.invalidateQueries({ queryKey: queryKeys.resources });
+  const handleSaved = (savedResource: Resource) => {
+    queryClient.setQueryData<Resource[]>(queryKeys.resources, (current = []) => {
+      const resourceExists = current.some((resource) => resource.id === savedResource.id);
+      return resourceExists
+        ? current.map((resource) => (resource.id === savedResource.id ? savedResource : resource))
+        : [...current, savedResource];
+    });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.resources });
   };
 
-  const handleSaved = () => {
-    queryClient.invalidateQueries({ queryKey: queryKeys.resources });
-  };
-
-  const handleDeleted = () => {
-    queryClient.invalidateQueries({ queryKey: queryKeys.resources });
+  const handleDeleted = (resourceId: string) => {
+    queryClient.setQueryData<Resource[]>(queryKeys.resources, (current = []) =>
+      current.filter((resource) => resource.id !== resourceId)
+    );
+    setDeletingResourceId(null);
+    void queryClient.invalidateQueries({ queryKey: queryKeys.resources });
   };
 
   return (
@@ -657,8 +658,8 @@ export function ResourcesManagement() {
           <ResourceDialog
             filterOptions={filterOptions}
             filterOptionsError={filterOptionsError}
-            filterOptionsLoading={filterOptionsLoading}
-            onSaved={handleCreated}
+            filterOptionsLoading={filterOptionsQuery.isLoading}
+            onSaved={handleSaved}
           />
         </div>
 
@@ -820,18 +821,27 @@ export function ResourcesManagement() {
                         />
                       )}
                     </div>
-                    <ResourceDialog
-                      resource={resource}
-                      filterOptions={filterOptions}
-                      filterOptionsError={filterOptionsError}
-                      filterOptionsLoading={filterOptionsLoading}
-                      onSaved={handleSaved}
-                    />
-                    <DeleteResourceDialog
-                      resource={resource}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-9"
+                      onClick={() => setEditingResourceId(resource.id)}
+                    >
+                      <Edit className="h-4 w-4" />
+                      Edit
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-9 px-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
                       disabled={busyId === resource.id}
-                      onDeleted={handleDeleted}
-                    />
+                      aria-label={`Delete ${resource.title}`}
+                      onClick={() => setDeletingResourceId(resource.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               );
@@ -839,6 +849,30 @@ export function ResourcesManagement() {
           )}
         </div>
       </div>
+      {editingResource && (
+        <ResourceDialog
+          resource={editingResource}
+          filterOptions={filterOptions}
+          filterOptionsError={filterOptionsError}
+          filterOptionsLoading={filterOptionsQuery.isLoading}
+          onSaved={handleSaved}
+          open={editingResourceId !== null}
+          onOpenChange={(open) => {
+            if (!open) setEditingResourceId(null);
+          }}
+        />
+      )}
+      {deletingResource && (
+        <DeleteResourceDialog
+          resource={deletingResource}
+          disabled={busyId === deletingResource.id}
+          onDeleted={handleDeleted}
+          open={deletingResourceId !== null}
+          onOpenChange={(open) => {
+            if (!open) setDeletingResourceId(null);
+          }}
+        />
+      )}
     </div>
   );
 }

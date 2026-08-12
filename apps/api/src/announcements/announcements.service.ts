@@ -1,5 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { and, asc, count, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, or, sql } from 'drizzle-orm';
+import {
+  audienceValuesEqual,
+  normalizeAudienceFilters,
+} from '../common/audience-filters/audience-filter';
+import { normalizedSqlEquals } from '../common/audience-filters/audience-filter.sql';
+import { getScholarAudienceFilterOptions } from '../common/audience-filters/audience-filter-options';
 import { database } from '../db/connection';
 import {
   announcementFilters,
@@ -21,7 +27,8 @@ type AnnouncementFilter = {
 export class AnnouncementsService {
   constructor(private readonly emailService: EmailService) {}
   async createAnnouncement(createAnnouncementDto: CreateAnnouncementDto, createdBy: string) {
-    const { title, content, filters = [] } = createAnnouncementDto;
+    const { title, content, filters: rawFilters } = createAnnouncementDto;
+    const filters = normalizeAudienceFilters(rawFilters ?? []);
 
     // Create the announcement
     const [announcement] = await database
@@ -200,21 +207,7 @@ export class AnnouncementsService {
   }
 
   async getFilterOptions() {
-    const scholars = await this.getScholarsForFiltering();
-
-    const programs = [...new Set(scholars.map((s) => s.program))].sort();
-    const years = [...new Set(scholars.map((s) => s.year))].sort();
-    const universities = [...new Set(scholars.map((s) => s.university))].sort();
-    const locations = [...new Set(scholars.map((s) => s.location).filter(Boolean))].sort();
-    const statuses = [...new Set(scholars.map((s) => s.status))].sort();
-
-    return {
-      programs,
-      years,
-      universities,
-      locations,
-      statuses,
-    };
+    return getScholarAudienceFilterOptions();
   }
 
   async archiveAnnouncement(announcementId: string, archivedBy: string) {
@@ -251,38 +244,26 @@ export class AnnouncementsService {
     announcementId: string,
     filters: Array<{ filterType: string; filterValue: string }>
   ): Promise<string[]> {
-    // Build where conditions based on filters
-    const whereConditions = [];
-
+    const filtersByType = new Map<string, string[]>();
     for (const filter of filters) {
-      switch (filter.filterType) {
-        case 'year':
-          whereConditions.push(eq(scholars.year, filter.filterValue));
-          break;
-        case 'program':
-          whereConditions.push(eq(scholars.program, filter.filterValue));
-          break;
-        case 'university':
-          whereConditions.push(eq(scholars.university, filter.filterValue));
-          break;
-        case 'status':
-          if (
-            filter.filterValue === 'active' ||
-            filter.filterValue === 'inactive' ||
-            filter.filterValue === 'on_hold'
-          ) {
-            whereConditions.push(
-              eq(scholars.status, filter.filterValue as 'active' | 'inactive' | 'on_hold')
-            );
-          }
-          break;
-        case 'location':
-          whereConditions.push(eq(scholars.location, filter.filterValue));
-          break;
-      }
+      const values = filtersByType.get(filter.filterType) ?? [];
+      values.push(filter.filterValue);
+      filtersByType.set(filter.filterType, values);
     }
 
-    // If no filters, get all scholars
+    const scholarColumns = {
+      year: scholars.year,
+      program: scholars.program,
+      university: scholars.university,
+      status: scholars.status,
+      location: scholars.location,
+    };
+    const whereConditions = Array.from(filtersByType.entries()).map(([type, values]) => {
+      const column = scholarColumns[type as keyof typeof scholarColumns];
+      if (!column) return sql`FALSE`;
+      return or(...values.map((value) => normalizedSqlEquals(column, value))) ?? sql`FALSE`;
+    });
+
     const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
 
     // Get scholars that match the filters
@@ -363,7 +344,7 @@ export class AnnouncementsService {
     }
 
     return activeFilters.every(([type, value]) =>
-      filters.some((filter) => filter.type === type && filter.value === value)
+      filters.some((filter) => filter.type === type && audienceValuesEqual(filter.value, value))
     );
   }
 }

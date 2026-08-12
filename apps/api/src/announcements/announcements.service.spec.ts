@@ -169,28 +169,9 @@ describe('AnnouncementsService', () => {
 
   describe('getFilterOptions', () => {
     it('should return filter options', async () => {
-      const mockScholars = [
-        {
-          id: '1',
-          name: 'John Doe',
-          email: 'john@example.com',
-          currentLevel: 'undergraduate',
-          program: 'Program A',
-          university: 'University A',
-          location: 'USA',
-          year: '2024',
-          status: 'active' as const,
-        },
-      ];
-
       const mockDatabase = require('../db/connection').database;
-      // Mock getScholarsForFiltering call inside getFilterOptions
-      mockDatabase.select = jest.fn().mockReturnValue({
-        from: jest.fn().mockReturnValue({
-          innerJoin: jest.fn().mockReturnValue({
-            orderBy: jest.fn().mockResolvedValue(mockScholars),
-          }),
-        }),
+      mockDatabase.selectDistinct = jest.fn().mockReturnValue({
+        from: jest.fn().mockResolvedValue([{ value: 'Option A' }, { value: null }]),
       });
 
       const result = await service.getFilterOptions();

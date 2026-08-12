@@ -31,6 +31,10 @@ interface AnnouncementCreatorProps {
   trigger?: React.ReactNode;
 }
 
+function audienceValuesEqual(left: string | null | undefined, right: string) {
+  return left?.trim().toLowerCase() === right.trim().toLowerCase();
+}
+
 export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
   const createAnnouncementMutation = useCreateAnnouncement();
   const [open, setOpen] = useState(false);
@@ -49,14 +53,7 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
     { value: 'university', label: 'University' },
   ];
 
-  // Fetch data when dialog opens
-  useEffect(() => {
-    if (open) {
-      fetchData();
-    }
-  }, [open]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const scholarsData = await getScholarsForFiltering();
@@ -67,25 +64,46 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Fetch data when dialog opens
+  useEffect(() => {
+    if (open) {
+      void fetchData();
+    }
+  }, [fetchData, open]);
 
   // Function to filter students based on active filters
   const getFilteredStudents = useCallback(() => {
     if (filters.length === 0) return allStudents;
 
+    const filtersByType = new Map<string, string[]>();
+    for (const filter of filters) {
+      const [filterType, filterValue] = filter.split(': ');
+      if (!filterType || filterValue === undefined) continue;
+      const values = filtersByType.get(filterType) ?? [];
+      values.push(filterValue);
+      filtersByType.set(filterType, values);
+    }
+
     return allStudents.filter((student) => {
-      return filters.every((filter) => {
-        const [filterType, filterValue] = filter.split(': ');
+      return Array.from(filtersByType.entries()).every(([filterType, values]) => {
+        let scholarValue: string | null | undefined;
         switch (filterType) {
           case 'year':
-            return student.year === filterValue;
+            scholarValue = student.year;
+            break;
           case 'program':
-            return student.program === filterValue;
+            scholarValue = student.program;
+            break;
           case 'university':
-            return student.university === filterValue;
+            scholarValue = student.university;
+            break;
           default:
-            return true;
+            return false;
         }
+
+        return values.some((value) => audienceValuesEqual(scholarValue, value));
       });
     });
   }, [filters, allStudents]);
@@ -144,7 +162,7 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
       content,
       filters: filters.map((filter) => {
         const [filterType, filterValue] = filter.split(': ');
-        return { filterType: filterType!, filterValue: filterValue! };
+        return { filterType: filterType!, filterValue: filterValue!.trim() };
       }),
     };
 

@@ -1,4 +1,4 @@
-import { boolean, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { boolean, index, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { users } from './users';
 
 export const resourceStatusEnum = pgEnum('resource_status', ['draft', 'live']);
@@ -27,12 +27,16 @@ export const resources = pgTable('resources', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
-export const resourceFilters = pgTable('resource_filters', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  resourceId: uuid('resource_id')
-    .notNull()
-    .references(() => resources.id, { onDelete: 'cascade' }),
-  filterType: text('filter_type').notNull(),
-  filterValue: text('filter_value').notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-});
+export const resourceFilters = pgTable(
+  'resource_filters',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    resourceId: uuid('resource_id')
+      .notNull()
+      .references(() => resources.id, { onDelete: 'cascade' }),
+    filterType: text('filter_type').notNull(),
+    filterValue: text('filter_value').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index('resource_filters_resource_id_idx').on(table.resourceId)]
+);

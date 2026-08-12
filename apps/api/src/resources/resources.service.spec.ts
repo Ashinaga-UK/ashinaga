@@ -3,6 +3,7 @@ import { describe, expect, it } from '@jest/globals';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { CreateResourceDto } from './dto/create-resource.dto';
+import { UpdateResourceDto } from './dto/update-resource.dto';
 
 describe('CreateResourceDto', () => {
   it('rejects protocol-less URLs', async () => {
@@ -49,5 +50,40 @@ describe('CreateResourceDto', () => {
     const filtersError = errors.find((error) => error.property === 'filters');
 
     expect(filtersError?.children?.[0]?.children?.[0]?.property).toBe('filterType');
+  });
+
+  it('normalizes null filters to an empty audience', async () => {
+    const dto = plainToInstance(CreateResourceDto, {
+      title: 'Scholar Handbook',
+      description: 'Reference material',
+      type: 'Handbook',
+      category: 'Handbook',
+      url: 'https://docs.example/handbook',
+      filters: null,
+    });
+
+    expect(await validate(dto)).toHaveLength(0);
+    expect(dto.filters).toEqual([]);
+  });
+
+  it('normalizes null filters on partial updates', async () => {
+    const dto = plainToInstance(UpdateResourceDto, { filters: null });
+
+    expect(await validate(dto)).toHaveLength(0);
+    expect(dto.filters).toEqual([]);
+  });
+
+  it('trims filter values at the API boundary', async () => {
+    const dto = plainToInstance(CreateResourceDto, {
+      title: 'Scholar Handbook',
+      description: 'Reference material',
+      type: 'Handbook',
+      category: 'Handbook',
+      url: 'https://docs.example/handbook',
+      filters: [{ filterType: 'program', filterValue: ' Medicine ' }],
+    });
+
+    expect(await validate(dto)).toHaveLength(0);
+    expect(dto.filters?.[0]?.filterValue).toBe('Medicine');
   });
 });

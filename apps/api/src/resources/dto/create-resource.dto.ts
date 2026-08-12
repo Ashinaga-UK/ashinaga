@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
   IsIn,
@@ -8,6 +8,8 @@ import {
   IsUrl,
   ValidateNested,
 } from 'class-validator';
+import { audienceFilterTypes } from '../../common/audience-filters/audience-filter';
+import { AudienceFilterDto } from '../../common/audience-filters/audience-filter.dto';
 import {
   resourceCategoryEnum,
   resourceStatusEnum,
@@ -17,22 +19,9 @@ import {
 const resourceTypes = resourceTypeEnum.enumValues;
 const resourceCategories = resourceCategoryEnum.enumValues;
 const resourceStatuses = resourceStatusEnum.enumValues;
-export const resourceFilterTypes = [
-  'program',
-  'year',
-  'university',
-  'location',
-  'status',
-] as const;
+export const resourceFilterTypes = audienceFilterTypes;
 
-export class ResourceFilterDto {
-  @IsIn(resourceFilterTypes)
-  filterType: (typeof resourceFilterTypes)[number];
-
-  @IsString()
-  @IsNotEmpty()
-  filterValue: string;
-}
+export class ResourceFilterDto extends AudienceFilterDto {}
 
 export class CreateResourceDto {
   @IsString()
@@ -59,6 +48,7 @@ export class CreateResourceDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ResourceFilterDto)
+  @Transform(({ value }) => (value === null ? [] : value))
   @IsOptional()
   filters?: ResourceFilterDto[];
 }
