@@ -4,6 +4,7 @@ import {
   CheckSquare,
   FileText,
   Home,
+  Library,
   LogOut,
   Menu,
   MessageSquare,
@@ -34,6 +35,7 @@ export function ScholarLayout({ children, onLogout }: ScholarLayoutProps) {
     { id: 'tasks', href: '/tasks', label: 'My Tasks', icon: CheckSquare },
     { id: 'requests', href: '/requests', label: 'My Requests', icon: FileText },
     { id: 'announcements', href: '/announcements', label: 'Announcements', icon: MessageSquare },
+    { id: 'resources', href: '/resources', label: 'Resources', icon: Library },
   ];
 
   return (
@@ -123,7 +125,15 @@ export function ScholarLayout({ children, onLogout }: ScholarLayoutProps) {
       {isSidebarOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          role="button"
+          tabIndex={0}
+          aria-label="Close sidebar"
           onClick={() => setIsSidebarOpen(false)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              setIsSidebarOpen(false);
+            }
+          }}
         />
       )}
     </div>

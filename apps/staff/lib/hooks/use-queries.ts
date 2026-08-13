@@ -8,8 +8,11 @@ import {
   deleteTask,
   type GetAnnouncementsParams,
   getAnnouncements,
+  getResourceFilterOptions,
+  getResources,
   getScholarProfile,
   getTasksByScholar,
+  type ResourceFilterOptions,
   type Task,
   type UpdateScholarProfileData,
   type UpdateTaskData,
@@ -24,6 +27,8 @@ export const queryKeys = {
   scholarTasks: (id: string) => ['scholar', id, 'tasks'] as const,
   user: ['user'] as const,
   announcements: (params?: GetAnnouncementsParams) => ['announcements', params] as const,
+  resources: ['resources'] as const,
+  resourceFilterOptions: ['resources', 'filter-options'] as const,
 };
 
 // Scholar profile query
@@ -90,6 +95,23 @@ export function useAnnouncements(params?: GetAnnouncementsParams, enabled = true
     queryKey: queryKeys.announcements(params),
     queryFn: () => getAnnouncements(params),
     enabled,
+  });
+}
+
+// Resources query
+export function useResources(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.resources,
+    queryFn: getResources,
+    enabled,
+  });
+}
+
+export function useResourceFilterOptions() {
+  return useQuery<ResourceFilterOptions>({
+    queryKey: queryKeys.resourceFilterOptions,
+    queryFn: getResourceFilterOptions,
+    staleTime: 5 * 60 * 1000,
   });
 }
 

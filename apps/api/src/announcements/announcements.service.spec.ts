@@ -1,10 +1,17 @@
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
+import { database } from '../db/connection';
 import { EmailService } from '../email/email.service';
 import { AnnouncementsService } from './announcements.service';
 
 // Mock the database module
 jest.mock('../db/connection');
+
+const mockDatabase = database as unknown as {
+  insert: jest.Mock;
+  select: jest.Mock;
+  selectDistinct: jest.Mock;
+};
 
 describe('AnnouncementsService', () => {
   let service: AnnouncementsService;
@@ -39,7 +46,6 @@ describe('AnnouncementsService', () => {
         updatedAt: new Date(),
       };
 
-      const mockDatabase = require('../db/connection').database;
       mockDatabase.insert = jest.fn().mockReturnValue({
         values: jest.fn().mockReturnValue({
           returning: jest.fn().mockResolvedValue([mockAnnouncement]),
@@ -84,8 +90,6 @@ describe('AnnouncementsService', () => {
           },
         },
       ];
-
-      const mockDatabase = require('../db/connection').database;
 
       // Mock main query
       mockDatabase.select = jest.fn().mockReturnValue({
@@ -149,7 +153,6 @@ describe('AnnouncementsService', () => {
         },
       ];
 
-      const mockDatabase = require('../db/connection').database;
       mockDatabase.select = jest.fn().mockReturnValue({
         from: jest.fn().mockReturnValue({
           innerJoin: jest.fn().mockReturnValue({
@@ -169,28 +172,8 @@ describe('AnnouncementsService', () => {
 
   describe('getFilterOptions', () => {
     it('should return filter options', async () => {
-      const mockScholars = [
-        {
-          id: '1',
-          name: 'John Doe',
-          email: 'john@example.com',
-          currentLevel: 'undergraduate',
-          program: 'Program A',
-          university: 'University A',
-          location: 'USA',
-          year: '2024',
-          status: 'active' as const,
-        },
-      ];
-
-      const mockDatabase = require('../db/connection').database;
-      // Mock getScholarsForFiltering call inside getFilterOptions
-      mockDatabase.select = jest.fn().mockReturnValue({
-        from: jest.fn().mockReturnValue({
-          innerJoin: jest.fn().mockReturnValue({
-            orderBy: jest.fn().mockResolvedValue(mockScholars),
-          }),
-        }),
+      mockDatabase.selectDistinct = jest.fn().mockReturnValue({
+        from: jest.fn().mockResolvedValue([{ value: 'Option A' }, { value: null }]),
       });
 
       const result = await service.getFilterOptions();
