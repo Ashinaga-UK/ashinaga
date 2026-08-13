@@ -55,13 +55,7 @@ export class AnnualUpdatesController {
   async exportFilteredAnnualUpdatesCsv(
     @Body(new ValidationPipe({ transform: true, whitelist: true })) dto: ExportAnnualUpdatesDto
   ): Promise<string> {
-    return this.annualUpdatesService.exportAnnualUpdatesCsv(undefined, dto.annualUpdateIds ?? []);
-  }
-
-  @Get('scholar/:scholarId')
-  @UseGuards(StaffGuard)
-  async getAnnualUpdatesForScholar(@Param('scholarId', ParseUUIDPipe) scholarId: string) {
-    return this.annualUpdatesService.getAnnualUpdatesForScholar(scholarId);
+    return this.annualUpdatesService.exportAnnualUpdatesCsv(undefined, dto.annualUpdateIds);
   }
 
   @Get('scholar/:scholarId/export/csv')
@@ -70,6 +64,12 @@ export class AnnualUpdatesController {
   @Header('Content-Disposition', 'attachment; filename="scholar-annual-reviews-export.csv"')
   async exportAnnualUpdatesForScholarCsv(@Param('scholarId', ParseUUIDPipe) scholarId: string) {
     return this.annualUpdatesService.exportAnnualUpdatesCsv(scholarId);
+  }
+
+  @Get('scholar/:scholarId')
+  @UseGuards(StaffGuard)
+  async getAnnualUpdatesForScholar(@Param('scholarId', ParseUUIDPipe) scholarId: string) {
+    return this.annualUpdatesService.getAnnualUpdatesForScholar(scholarId);
   }
 
   @Get('my/draft')
