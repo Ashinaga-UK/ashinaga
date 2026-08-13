@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { ResourcesManagement } from '../resources-management';
 
 const mockGetResources = jest.fn();
@@ -62,11 +62,14 @@ function renderResources() {
     },
   });
 
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <ResourcesManagement />
-    </QueryClientProvider>
-  );
+  return {
+    ...render(
+      <QueryClientProvider client={queryClient}>
+        <ResourcesManagement />
+      </QueryClientProvider>
+    ),
+    queryClient,
+  };
 }
 
 describe('ResourcesManagement', () => {
@@ -111,6 +114,18 @@ describe('ResourcesManagement', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Edit' }));
     fireEvent.change(screen.getByPlaceholderText('Search resources'), {
       target: { value: 'does not match' },
+    });
+
+    expect(screen.getByText('Edit resource')).toBeInTheDocument();
+    expect(screen.getByLabelText('Title')).toHaveValue('Original title');
+  });
+
+  it('keeps the edit snapshot when a refetch removes the resource', async () => {
+    const { queryClient } = renderResources();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit' }));
+    act(() => {
+      queryClient.setQueryData(['resources'], []);
     });
 
     expect(screen.getByText('Edit resource')).toBeInTheDocument();

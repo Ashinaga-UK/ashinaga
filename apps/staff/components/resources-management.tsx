@@ -566,13 +566,15 @@ export function ResourcesManagement() {
   const [statusFilter, setStatusFilter] = useState<ResourceStatus | 'all'>('all');
   const [busyId, setBusyId] = useState<string | null>(null);
   const [editingResourceId, setEditingResourceId] = useState<string | null>(null);
+  const [editingResourceSnapshot, setEditingResourceSnapshot] = useState<Resource | null>(null);
   const [deletingResourceId, setDeletingResourceId] = useState<string | null>(null);
 
   const filterOptions = filterOptionsQuery.data ?? emptyFilterOptions;
   const filterOptionsError = filterOptionsQuery.error
     ? getResourceErrorMessage(filterOptionsQuery.error)
     : null;
-  const editingResource = resources.find((resource) => resource.id === editingResourceId);
+  const editingResource =
+    resources.find((resource) => resource.id === editingResourceId) ?? editingResourceSnapshot;
   const deletingResource = resources.find((resource) => resource.id === deletingResourceId);
 
   useEffect(() => {
@@ -826,7 +828,10 @@ export function ResourcesManagement() {
                       variant="outline"
                       size="sm"
                       className="h-9"
-                      onClick={() => setEditingResourceId(resource.id)}
+                      onClick={() => {
+                        setEditingResourceId(resource.id);
+                        setEditingResourceSnapshot(resource);
+                      }}
                     >
                       <Edit className="h-4 w-4" />
                       Edit
@@ -849,7 +854,7 @@ export function ResourcesManagement() {
           )}
         </div>
       </div>
-      {editingResource && (
+      {editingResourceId !== null && editingResource && (
         <ResourceDialog
           resource={editingResource}
           filterOptions={filterOptions}
@@ -858,7 +863,10 @@ export function ResourcesManagement() {
           onSaved={handleSaved}
           open={editingResourceId !== null}
           onOpenChange={(open) => {
-            if (!open) setEditingResourceId(null);
+            if (!open) {
+              setEditingResourceId(null);
+              setEditingResourceSnapshot(null);
+            }
           }}
         />
       )}
