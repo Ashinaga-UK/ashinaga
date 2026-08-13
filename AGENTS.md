@@ -10,13 +10,26 @@ This is a Turborepo + pnpm monorepo. The standard commands in `README.md`, `CLAU
 - `apps/scholar` — Next.js scholar portal on `http://localhost:4002`.
 - `packages/ui` — Storybook on `http://localhost:6006`.
 
-Note: `README.md`/`docs` mention ports 3000/3001/3002, but the actual dev ports are **4000/4001/4002** (see `apps/*/package.json` and `apps/api/.env.example`).
+### Docker
 
-### Postgres runs in Docker (must be started manually)
-- Postgres 17.5 runs via `docker compose up -d postgres` and is published on host port **5433** (not 5432). See `docker-compose.yml`.
-- Docker is pre-installed in the VM snapshot, but `dockerd` is **not** running on boot. Start it once per session:
-  - `sudo bash -c 'nohup dockerd > /tmp/dockerd.log 2>&1 &'` then `sudo chmod 666 /var/run/docker.sock` so `docker` works without sudo (Turbo's `pnpm dev` calls `docker compose` directly).
-- After Docker is up: `pnpm dev:db` (or `docker compose up -d postgres`).
+Cursor Cloud snapshots may already have Docker installed, but `dockerd` is **not** running on boot, and some snapshots have no Docker at all. `pnpm dev` depends on `docker compose` to start Postgres, so the daemon must be up and your user must be in the `docker` group.
+
+Cloud Agents run `./scripts/_docker_install.sh` automatically from `.cursor/environment.json` (`install` bakes Docker into the Build; `start` brings `dockerd` up for the session). If Docker is not already healthy, run the same idempotent helper yourself:
+
+```bash
+./scripts/_docker_install.sh
+```
+
+That script:
+
+- exits immediately when Docker is already healthy (does not `pkill` a running daemon)
+- installs Docker CE when `dockerd` is missing
+- starts `dockerd` when it is installed but not running
+- adds your user to the `docker` group so `docker compose` works without sudo
+
+Do **not** `chmod 666 /var/run/docker.sock`. A world-writable Docker socket is root-equivalent for every process on the VM.
+
+After Docker is up: `pnpm dev:db` (or `docker compose up -d postgres`). Postgres 17.5 is published on host port **5433** (not 5432). See `docker-compose.yml`.
 
 ### Env files
 - `.env` files are gitignored. Create them once from the examples: copy `apps/api/.env.example` → `apps/api/.env` (and the same for `staff`/`scholar`). The example values already point at the local Postgres (`DB_PORT=5433`) and a valid dev `BETTER_AUTH_SECRET`.

@@ -10,10 +10,10 @@ First, run the development server:
 pnpm run dev
 ```
 
-By default, your server will run at [http://localhost:3000](http://localhost:3000). 
+In development (`PORT=4000` in `.env.example`), your server will run at [http://localhost:4000](http://localhost:4000).
 
-- **API Documentation**: [http://localhost:3000/api](http://localhost:3000/api) (Swagger UI)
-- **Homepage**: [http://localhost:3000](http://localhost:3000) (API welcome page)
+- **API Documentation**: [http://localhost:4000/api](http://localhost:4000/api) (Swagger UI)
+- **Homepage**: [http://localhost:4000](http://localhost:4000) (API welcome page)
 
 ## Architecture
 
