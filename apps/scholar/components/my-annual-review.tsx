@@ -12,7 +12,7 @@ import {
   Send,
   Sparkles,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   type AnnualUpdate,
   type AnnualUpdatePayload,
@@ -49,6 +49,7 @@ type FormState = {
 };
 
 const WORD_LIMIT = 150;
+const COUNT_MAX = 1000;
 
 const REQUIRED_FIELD_LABELS: Record<keyof FormState, string> = {
   academicYear: 'Academic year',
@@ -142,7 +143,7 @@ function isValidCountValue(value: string) {
   }
 
   const numberValue = Number(value);
-  return Number.isInteger(numberValue) && numberValue >= 0;
+  return Number.isInteger(numberValue) && numberValue >= 0 && numberValue <= COUNT_MAX;
 }
 
 function optionalText(value: string) {
@@ -232,6 +233,45 @@ function getInvalidOptionalNumberFields(form: FormState) {
   return invalidFields;
 }
 
+type FormValidation = { ok: true } | { ok: false; error: string; missingFields?: string[] };
+
+function validateForm(form: FormState, requireComplete: boolean): FormValidation {
+  const limitedFields = [
+    'leadershipRolesDescription',
+    'payItForwardDescription',
+    'subSaharanAfricaActivitiesDescription',
+  ] as const;
+
+  if (limitedFields.some((field) => countWords(form[field]) > WORD_LIMIT)) {
+    return {
+      ok: false,
+      error: `Please keep each limited response within ${WORD_LIMIT} words.`,
+    };
+  }
+
+  const invalidNumberFields = getInvalidOptionalNumberFields(form);
+  if (invalidNumberFields.length > 0) {
+    return {
+      ok: false,
+      error: `Please enter whole numbers between 0 and ${COUNT_MAX}.`,
+      missingFields: invalidNumberFields,
+    };
+  }
+
+  if (requireComplete) {
+    const missingFields = getMissingRequiredFields(form);
+    if (missingFields.length > 0) {
+      return {
+        ok: false,
+        error: 'Please complete all required fields before submitting.',
+        missingFields,
+      };
+    }
+  }
+
+  return { ok: true };
+}
+
 export function MyAnnualReview() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [annualUpdate, setAnnualUpdate] = useState<AnnualUpdate | null>(null);
@@ -243,17 +283,6 @@ export function MyAnnualReview() {
   const [initialAcademicYear] = useState(emptyForm.academicYear);
 
   const isSubmitted = annualUpdate?.status === 'submitted';
-  const wordLimitExceeded = useMemo(
-    () =>
-      countWords(form.leadershipRolesDescription) > WORD_LIMIT ||
-      countWords(form.payItForwardDescription) > WORD_LIMIT ||
-      countWords(form.subSaharanAfricaActivitiesDescription) > WORD_LIMIT,
-    [
-      form.leadershipRolesDescription,
-      form.payItForwardDescription,
-      form.subSaharanAfricaActivitiesDescription,
-    ]
-  );
 
   const loadAnnualUpdate = useCallback(async (academicYear: string) => {
     setLoading(true);
@@ -295,15 +324,10 @@ export function MyAnnualReview() {
   };
 
   const handleSaveDraft = async () => {
-    if (wordLimitExceeded) {
-      setError('Please keep each limited response within 150 words.');
-      return;
-    }
-
-    const invalidNumberFields = getInvalidOptionalNumberFields(form);
-    if (invalidNumberFields.length > 0) {
-      setMissingFields(invalidNumberFields);
-      setError('Please enter whole numbers greater than or equal to 0.');
+    const validation = validateForm(form, false);
+    if (!validation.ok) {
+      setMissingFields(validation.missingFields ?? []);
+      setError(validation.error);
       return;
     }
 
@@ -322,22 +346,10 @@ export function MyAnnualReview() {
   };
 
   const handleSubmit = async () => {
-    if (wordLimitExceeded) {
-      setError('Please keep each limited response within 150 words.');
-      return;
-    }
-
-    const invalidNumberFields = getInvalidOptionalNumberFields(form);
-    if (invalidNumberFields.length > 0) {
-      setMissingFields(invalidNumberFields);
-      setError('Please enter whole numbers greater than or equal to 0.');
-      return;
-    }
-
-    const nextMissingFields = getMissingRequiredFields(form);
-    if (nextMissingFields.length > 0) {
-      setMissingFields(nextMissingFields);
-      setError('Please complete all required fields before submitting.');
+    const validation = validateForm(form, true);
+    if (!validation.ok) {
+      setMissingFields(validation.missingFields ?? []);
+      setError(validation.error);
       return;
     }
 

@@ -67,10 +67,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Textarea } from './ui/textarea';
 
+type ScholarProfileTab = 'goals' | 'tasks' | 'documents' | 'profile' | 'annual-reviews';
+
 interface ScholarProfileProps {
   scholarId: string;
   onBack: () => void;
-  initialTab?: 'goals' | 'tasks' | 'documents' | 'profile' | 'annual-reviews';
+  initialTab?: ScholarProfileTab;
 }
 
 export function ScholarProfilePage({
@@ -79,9 +81,12 @@ export function ScholarProfilePage({
   initialTab = 'profile',
 }: ScholarProfileProps) {
   const { data: session } = useSession();
+  const [activeTab, setActiveTab] = useState<ScholarProfileTab>(initialTab);
   const { data: scholar, isLoading, error } = useScholarProfile(scholarId);
-  const { data: annualUpdates = [], isLoading: annualUpdatesLoading } =
-    useScholarAnnualUpdates(scholarId);
+  const { data: annualUpdates = [], isLoading: annualUpdatesLoading } = useScholarAnnualUpdates(
+    scholarId,
+    activeTab === 'annual-reviews'
+  );
   const updateProfile = useUpdateScholarProfile(scholarId);
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState<UpdateScholarProfileData>({});
@@ -96,6 +101,10 @@ export function ScholarProfilePage({
       .then(setFilterOptions)
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -600,7 +609,11 @@ export function ScholarProfilePage({
       </Card>
 
       {/* Tabs */}
-      <Tabs defaultValue={initialTab} className="space-y-4">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as ScholarProfileTab)}
+        className="space-y-4"
+      >
         <div className="-mx-3 overflow-x-auto px-3 sm:mx-0 sm:px-0">
           <TabsList className="w-max sm:w-auto">
             <TabsTrigger value="profile">Profile</TabsTrigger>

@@ -20,6 +20,7 @@ import {
   users,
 } from '../db/schema';
 import { InvitationsService } from '../invitations/invitations.service';
+import { escapeCsvValue } from '../utils/csv';
 import { CreateScholarDto } from './dto/create-scholar.dto';
 import {
   DocumentDto,
@@ -951,7 +952,7 @@ export class ScholarsService {
         'Created Date',
         'Comments Thread',
       ]
-        .map((v) => `"${v}"`)
+        .map((v) => escapeCsvValue(v))
         .join(',')
     );
 
@@ -981,8 +982,7 @@ export class ScholarsService {
         commentsText,
       ];
 
-      // Escape and quote each field
-      csvRows.push(row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','));
+      csvRows.push(row.map((v) => escapeCsvValue(v)).join(','));
     }
 
     return csvRows.join('\n');
@@ -1000,11 +1000,6 @@ export class ScholarsService {
       .innerJoin(users, eq(scholars.userId, users.id))
       .orderBy(users.name);
 
-    const csvEscape = (v: unknown): string => {
-      if (v === null || v === undefined) return '';
-      const s = String(v);
-      return `"${s.replace(/"/g, '""')}"`;
-    };
     const fmtDate = (d: Date | string | null | undefined): string =>
       d ? new Date(d).toISOString().split('T')[0]! : '';
 
@@ -1040,7 +1035,7 @@ export class ScholarsService {
       'Created At',
       'Updated At',
     ];
-    const csvRows: string[] = [headers.map((h) => csvEscape(h)).join(',')];
+    const csvRows: string[] = [headers.map((h) => escapeCsvValue(h)).join(',')];
 
     for (const { scholar: s, userName, userEmail } of rows) {
       const row = [
@@ -1075,7 +1070,7 @@ export class ScholarsService {
         s.createdAt ? new Date(s.createdAt).toISOString() : '',
         s.updatedAt ? new Date(s.updatedAt).toISOString() : '',
       ];
-      csvRows.push(row.map(csvEscape).join(','));
+      csvRows.push(row.map(escapeCsvValue).join(','));
     }
 
     return csvRows.join('\n');

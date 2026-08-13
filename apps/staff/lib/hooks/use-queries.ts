@@ -37,11 +37,11 @@ export function useScholarProfile(scholarId: string) {
   });
 }
 
-export function useScholarAnnualUpdates(scholarId: string) {
+export function useScholarAnnualUpdates(scholarId: string, enabled = true) {
   return useQuery({
     queryKey: queryKeys.scholarAnnualUpdates(scholarId),
     queryFn: () => getAnnualUpdatesByScholar(scholarId),
-    enabled: !!scholarId,
+    enabled: !!scholarId && enabled,
   });
 }
 

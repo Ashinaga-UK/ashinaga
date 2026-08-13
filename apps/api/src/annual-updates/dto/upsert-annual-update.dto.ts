@@ -1,7 +1,24 @@
-import { IsBoolean, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Matches,
+  Max,
+  Min,
+  ValidateIf,
+} from 'class-validator';
+
+export const ANNUAL_UPDATE_COUNT_MAX = 1000;
+export const ACADEMIC_YEAR_PATTERN = /^\d{4}\/\d{2}$/;
 
 export class UpsertAnnualUpdateDto {
   @IsString()
+  @IsNotEmpty()
+  @Matches(ACADEMIC_YEAR_PATTERN, {
+    message: 'academicYear must be in YYYY/YY format',
+  })
   academicYear: string;
 
   @IsOptional()
@@ -23,6 +40,7 @@ export class UpsertAnnualUpdateDto {
   @IsOptional()
   @IsInt()
   @Min(0)
+  @Max(ANNUAL_UPDATE_COUNT_MAX)
   leadershipRolesCount?: number;
 
   @IsOptional()
@@ -32,6 +50,7 @@ export class UpsertAnnualUpdateDto {
   @IsOptional()
   @IsInt()
   @Min(0)
+  @Max(ANNUAL_UPDATE_COUNT_MAX)
   payItForwardCount?: number;
 
   @IsOptional()
@@ -41,11 +60,13 @@ export class UpsertAnnualUpdateDto {
   @IsOptional()
   @IsInt()
   @Min(0)
+  @Max(ANNUAL_UPDATE_COUNT_MAX)
   subSaharanAfricaActivitiesCount?: number;
 
   @IsOptional()
   @IsInt()
   @Min(0)
+  @Max(ANNUAL_UPDATE_COUNT_MAX)
   independentInternshipsCount?: number;
 
   @IsOptional()
@@ -56,7 +77,7 @@ export class UpsertAnnualUpdateDto {
   @IsString()
   internshipsElsewhereSummary?: string;
 
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   @IsBoolean()
   completedAshinagaAfricaInternship?: boolean;
 

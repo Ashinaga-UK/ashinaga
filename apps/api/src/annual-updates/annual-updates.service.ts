@@ -9,6 +9,7 @@ import { getDatabase } from '../db/connection';
 import { annualUpdates } from '../db/schema/annual-updates';
 import { scholars } from '../db/schema/scholars';
 import { users } from '../db/schema/users';
+import { escapeCsvValue } from '../utils/csv';
 import { UpsertAnnualUpdateDto } from './dto/upsert-annual-update.dto';
 
 const LIMITED_RESPONSE_WORD_LIMIT = 150;
@@ -19,18 +20,26 @@ export class AnnualUpdatesService {
   private db = getDatabase();
 
   async getAnnualUpdatesReport() {
-    const rows = await this.getAnnualUpdatesReportRows();
+    const rows = await this.db
+      .select({
+        id: annualUpdates.id,
+        scholarId: annualUpdates.scholarId,
+        academicYear: annualUpdates.academicYear,
+        status: annualUpdates.status,
+        submittedAt: annualUpdates.submittedAt,
+        updatedAt: annualUpdates.updatedAt,
+        scholarName: users.name,
+        scholarEmail: users.email,
+        aaiScholarId: scholars.aaiScholarId,
+        scholarYear: scholars.year,
+        university: scholars.university,
+      })
+      .from(annualUpdates)
+      .innerJoin(scholars, eq(annualUpdates.scholarId, scholars.id))
+      .innerJoin(users, eq(scholars.userId, users.id))
+      .orderBy(desc(annualUpdates.createdAt));
 
-    return rows.map((row) => ({
-      ...this.hideDraftAnswersForStaff(row.annualUpdate),
-      scholarName: row.scholarName,
-      scholarEmail: row.scholarEmail,
-      aaiScholarId: row.aaiScholarId,
-      program: row.program,
-      scholarYear: row.year,
-      university: row.university,
-      location: row.location,
-    }));
+    return rows;
   }
 
   async getMyAnnualUpdate(userId: string, academicYear?: string) {
@@ -111,7 +120,7 @@ export class AnnualUpdatesService {
       'Academic Year Weighted Grade',
     ];
 
-    const csvRows = [headers.map((header) => this.escapeCsvValue(header)).join(',')];
+    const csvRows = [headers.map((header) => escapeCsvValue(header)).join(',')];
 
     for (const row of rows) {
       const annualUpdate = this.hideDraftAnswersForStaff(row.annualUpdate);
@@ -144,7 +153,7 @@ export class AnnualUpdatesService {
           annualUpdate.academicYearAverageClassification,
           annualUpdate.academicYearWeightedGrade,
         ]
-          .map((value) => this.escapeCsvValue(value))
+          .map((value) => escapeCsvValue(value))
           .join(',')
       );
     }
@@ -152,11 +161,15 @@ export class AnnualUpdatesService {
     return csvRows.join('\n');
   }
 
-  private getAnnualUpdatesReportRows(scholarId?: string, annualUpdateIds?: string[]) {
-    const filters = [
+  private getAnnualUpdatesReportFilters(scholarId?: string, annualUpdateIds?: string[]) {
+    return [
       scholarId ? eq(annualUpdates.scholarId, scholarId) : undefined,
       annualUpdateIds ? inArray(annualUpdates.id, annualUpdateIds) : undefined,
     ].filter((filter) => filter !== undefined);
+  }
+
+  private getAnnualUpdatesReportRows(scholarId?: string, annualUpdateIds?: string[]) {
+    const filters = this.getAnnualUpdatesReportFilters(scholarId, annualUpdateIds);
 
     return this.db
       .select({
@@ -203,7 +216,6 @@ export class AnnualUpdatesService {
 
   async saveDraft(userId: string, dto: UpsertAnnualUpdateDto) {
     const scholar = await this.getScholarForUser(userId);
-    await this.assertAnnualUpdateIsEditable(scholar.id, dto.academicYear);
     this.validateWordLimits(dto);
 
     return this.upsertAnnualUpdate(scholar.id, dto, 'draft');
@@ -211,19 +223,10 @@ export class AnnualUpdatesService {
 
   async submit(userId: string, dto: UpsertAnnualUpdateDto) {
     const scholar = await this.getScholarForUser(userId);
-    await this.assertAnnualUpdateIsEditable(scholar.id, dto.academicYear);
     this.validateRequiredFields(dto);
     this.validateWordLimits(dto);
 
     return this.upsertAnnualUpdate(scholar.id, dto, 'submitted');
-  }
-
-  private async assertAnnualUpdateIsEditable(scholarId: string, academicYear: string) {
-    const existing = await this.getAnnualUpdateForScholar(scholarId, academicYear);
-
-    if (existing?.status === 'submitted') {
-      throw new ConflictException('This annual review has already been submitted and is final.');
-    }
   }
 
   private async upsertAnnualUpdate(
@@ -266,17 +269,6 @@ export class AnnualUpdatesService {
     }
 
     return scholar;
-  }
-
-  private async getAnnualUpdateForScholar(scholarId: string, academicYear: string) {
-    const [annualUpdate] = await this.db
-      .select()
-      .from(annualUpdates)
-      .where(
-        and(eq(annualUpdates.scholarId, scholarId), eq(annualUpdates.academicYear, academicYear))
-      );
-
-    return annualUpdate;
   }
 
   private toAnnualUpdateValues(dto: UpsertAnnualUpdateDto) {
@@ -330,7 +322,7 @@ export class AnnualUpdatesService {
     requireNumber(dto.independentInternshipsCount, 'Number of independently secured internships');
     requireText(dto.internshipsInAfricaSummary, 'Internships in Africa summary');
     requireText(dto.internshipsElsewhereSummary, 'Internships outside Africa summary');
-    if (dto.completedAshinagaAfricaInternship === undefined) {
+    if (dto.completedAshinagaAfricaInternship == null) {
       missingFields.push('Ashinaga 8-week internship answer');
     }
     requireText(dto.academicYearAverageClassification, 'Academic year average classification');
@@ -370,13 +362,6 @@ export class AnnualUpdatesService {
 
   private countWords(value: string) {
     return value.trim().split(/\s+/).filter(Boolean).length;
-  }
-
-  private escapeCsvValue(value: unknown): string {
-    if (value === null || value === undefined) return '';
-    const stringValue = String(value);
-    const formulaSafeValue = /^[=+\-@]/.test(stringValue) ? `'${stringValue}` : stringValue;
-    return `"${formulaSafeValue.replace(/"/g, '""')}"`;
   }
 
   private formatCsvDate(value: Date | string | null | undefined): string {

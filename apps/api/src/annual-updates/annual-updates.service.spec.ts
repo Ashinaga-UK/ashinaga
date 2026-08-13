@@ -22,17 +22,6 @@ describe('AnnualUpdatesService', () => {
   });
 
   describe('CSV helpers', () => {
-    it.each(['=SUM(A1:A2)', '+SUM(A1:A2)', '-SUM(A1:A2)', '@SUM(A1:A2)'])(
-      'neutralizes formula-like CSV values: %s',
-      (value) => {
-        expect(internals.escapeCsvValue(value)).toBe(`"'${value}"`);
-      }
-    );
-
-    it('escapes quotes in CSV values', () => {
-      expect(internals.escapeCsvValue('He said "hello"')).toBe('"He said ""hello"""');
-    });
-
     it('formats CSV dates with an explicit UK timezone', () => {
       expect(internals.formatCsvDate('2026-07-21T23:30:00.000Z')).toBe('22/07/2026');
     });
@@ -60,6 +49,47 @@ describe('AnnualUpdatesService', () => {
       expect(csv).toContain('"draft"');
       expect(csv).not.toContain('Private draft highlight');
       expect(csv).not.toContain('"3"');
+    });
+  });
+
+  describe('getAnnualUpdatesReport', () => {
+    it('returns metadata without essay answers', async () => {
+      const orderBy = jest.fn().mockResolvedValue([
+        {
+          id: 'annual-update-1',
+          scholarId: 'scholar-1',
+          academicYear: '2025/26',
+          status: 'submitted',
+          submittedAt: new Date('2026-07-21T12:00:00.000Z'),
+          updatedAt: new Date('2026-07-21T12:00:00.000Z'),
+          scholarName: 'Test Scholar',
+          scholarEmail: 'scholar@example.com',
+          aaiScholarId: 'AAI-1',
+          scholarYear: 'Year 1',
+          university: 'Test University',
+        },
+      ]);
+      const innerJoinUsers = jest.fn().mockReturnValue({ orderBy });
+      const innerJoinScholars = jest.fn().mockReturnValue({ innerJoin: innerJoinUsers });
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({ innerJoin: innerJoinScholars }),
+      });
+
+      const rows = await service.getAnnualUpdatesReport();
+      const [row] = rows;
+
+      expect(Array.isArray(rows)).toBe(true);
+
+      expect(row).toEqual(
+        expect.objectContaining({
+          id: 'annual-update-1',
+          scholarName: 'Test Scholar',
+          academicYear: '2025/26',
+          status: 'submitted',
+        })
+      );
+      expect(row).not.toHaveProperty('highlights');
+      expect(row).not.toHaveProperty('leadershipRolesCount');
     });
   });
 
@@ -153,8 +183,25 @@ describe('AnnualUpdatesService', () => {
       }
     });
 
+    it('rejects a null Ashinaga internship answer', () => {
+      expect(() =>
+        internals.validateRequiredFields({
+          ...createCompletePayload(),
+          completedAshinagaAfricaInternship: null,
+        } as UpsertAnnualUpdateDto)
+      ).toThrow(BadRequestException);
+    });
+
     it('allows a complete final submission payload', () => {
       expect(() => internals.validateRequiredFields(createCompletePayload())).not.toThrow();
+    });
+
+    it('allows a submitted internship answer of false', () => {
+      expect(() =>
+        internals.validateRequiredFields(
+          createCompletePayload({ completedAshinagaAfricaInternship: false })
+        )
+      ).not.toThrow();
     });
   });
 
@@ -225,7 +272,6 @@ describe('AnnualUpdatesService', () => {
 });
 
 type AnnualUpdatesServiceInternals = AnnualUpdatesService & {
-  escapeCsvValue: (value: unknown) => string;
   formatCsvDate: (value: Date | string | null | undefined) => string;
   getAnnualUpdatesReportRows: jest.Mock;
   hideDraftAnswersForStaff: (annualUpdate: AnnualUpdateFixture) => AnnualUpdateFixture;
