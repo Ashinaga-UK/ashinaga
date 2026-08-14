@@ -917,6 +917,81 @@ export async function cancelInvitation(invitationId: string): Promise<{ message:
   });
 }
 
+// Resources
+export type ResourceType = 'Guide' | 'Handbook' | 'Template';
+export type ResourceCategory = 'LDF' | 'Handbook' | 'Proposal' | 'Support';
+export type ResourceStatus = 'draft' | 'live';
+
+export interface ResourceFilter {
+  type: string;
+  value: string;
+}
+
+export interface Resource {
+  id: string;
+  title: string;
+  description: string;
+  type: ResourceType;
+  category: ResourceCategory;
+  url: string;
+  status: ResourceStatus;
+  filters: ResourceFilter[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ResourceFilterOptions {
+  programs: string[];
+  years: string[];
+  universities: string[];
+  locations: string[];
+  statuses: string[];
+}
+
+export interface SaveResourceData {
+  title: string;
+  description: string;
+  type: ResourceType;
+  category: ResourceCategory;
+  url: string;
+  status?: ResourceStatus;
+  filters?: Array<{
+    filterType: string;
+    filterValue: string;
+  }>;
+}
+
+export async function getResources(): Promise<Resource[]> {
+  return fetchAPI<Resource[]>('/api/resources');
+}
+
+export async function createResource(data: SaveResourceData): Promise<Resource> {
+  return fetchAPI<Resource>('/api/resources', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateResource(
+  resourceId: string,
+  data: Partial<SaveResourceData>
+): Promise<Resource> {
+  return fetchAPI<Resource>(`/api/resources/${resourceId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteResource(resourceId: string): Promise<{ success: boolean }> {
+  return fetchAPI<{ success: boolean }>(`/api/resources/${resourceId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function getResourceFilterOptions(): Promise<ResourceFilterOptions> {
+  return fetchAPI<ResourceFilterOptions>('/api/resources/filter-options');
+}
+
 // Staff management
 export interface StaffMember {
   id: string;

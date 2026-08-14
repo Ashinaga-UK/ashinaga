@@ -5,6 +5,7 @@ export * from './documents';
 export * from './goals';
 export * from './invitations';
 export * from './requests';
+export * from './resources';
 export * from './scholars';
 export * from './task-responses';
 export * from './tasks';

@@ -5,6 +5,7 @@ import {
   ClipboardCheck,
   FileText,
   Home,
+  Library,
   LogOut,
   Menu,
   MessageSquare,
@@ -41,6 +42,7 @@ export function ScholarLayout({ children, onLogout }: ScholarLayoutProps) {
     { id: 'tasks', href: '/tasks', label: 'My Tasks', icon: CheckSquare },
     { id: 'requests', href: '/requests', label: 'My Requests', icon: FileText },
     { id: 'announcements', href: '/announcements', label: 'Announcements', icon: MessageSquare },
+    { id: 'resources', href: '/resources', label: 'Resources', icon: Library },
   ];
 
   return (

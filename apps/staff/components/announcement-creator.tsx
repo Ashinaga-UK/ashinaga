@@ -31,12 +31,18 @@ interface AnnouncementCreatorProps {
   trigger?: React.ReactNode;
 }
 
+type AnnouncementFilterDraft = NonNullable<CreateAnnouncementData['filters']>[number];
+
+function audienceValuesEqual(left: string | null | undefined, right: string) {
+  return left?.trim().toLowerCase() === right.trim().toLowerCase();
+}
+
 export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
   const createAnnouncementMutation = useCreateAnnouncement();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [filters, setFilters] = useState<string[]>([]);
+  const [filters, setFilters] = useState<AnnouncementFilterDraft[]>([]);
   const [currentFilter, setCurrentFilter] = useState('');
   const [currentFilterValue, setCurrentFilterValue] = useState('');
   const [previewStudents, setPreviewStudents] = useState<ScholarFilter[]>([]);
@@ -49,14 +55,7 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
     { value: 'university', label: 'University' },
   ];
 
-  // Fetch data when dialog opens
-  useEffect(() => {
-    if (open) {
-      fetchData();
-    }
-  }, [open]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const scholarsData = await getScholarsForFiltering();
@@ -67,25 +66,44 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Fetch data when dialog opens
+  useEffect(() => {
+    if (open) {
+      void fetchData();
+    }
+  }, [fetchData, open]);
 
   // Function to filter students based on active filters
   const getFilteredStudents = useCallback(() => {
     if (filters.length === 0) return allStudents;
 
+    const filtersByType = new Map<string, string[]>();
+    for (const filter of filters) {
+      const values = filtersByType.get(filter.filterType) ?? [];
+      values.push(filter.filterValue);
+      filtersByType.set(filter.filterType, values);
+    }
+
     return allStudents.filter((student) => {
-      return filters.every((filter) => {
-        const [filterType, filterValue] = filter.split(': ');
+      return Array.from(filtersByType.entries()).every(([filterType, values]) => {
+        let scholarValue: string | null | undefined;
         switch (filterType) {
           case 'year':
-            return student.year === filterValue;
+            scholarValue = student.year;
+            break;
           case 'program':
-            return student.program === filterValue;
+            scholarValue = student.program;
+            break;
           case 'university':
-            return student.university === filterValue;
+            scholarValue = student.university;
+            break;
           default:
-            return true;
+            return false;
         }
+
+        return values.some((value) => audienceValuesEqual(scholarValue, value));
       });
     });
   }, [filters, allStudents]);
@@ -125,27 +143,35 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
 
   const addFilter = () => {
     if (currentFilter && currentFilterValue) {
-      const filterString = `${currentFilter}: ${currentFilterValue}`;
-      if (!filters.includes(filterString)) {
-        setFilters([...filters, filterString]);
+      const filterExists = filters.some(
+        (filter) => filter.filterType === currentFilter && filter.filterValue === currentFilterValue
+      );
+      if (!filterExists) {
+        setFilters([...filters, { filterType: currentFilter, filterValue: currentFilterValue }]);
       }
       setCurrentFilter('');
       setCurrentFilterValue('');
     }
   };
 
-  const removeFilter = (filterToRemove: string) => {
-    setFilters(filters.filter((filter) => filter !== filterToRemove));
+  const removeFilter = (filterToRemove: AnnouncementFilterDraft) => {
+    setFilters(
+      filters.filter(
+        (filter) =>
+          filter.filterType !== filterToRemove.filterType ||
+          filter.filterValue !== filterToRemove.filterValue
+      )
+    );
   };
 
   const handleSend = () => {
     const announcementData: CreateAnnouncementData = {
       title,
       content,
-      filters: filters.map((filter) => {
-        const [filterType, filterValue] = filter.split(': ');
-        return { filterType: filterType!, filterValue: filterValue! };
-      }),
+      filters: filters.map((filter) => ({
+        ...filter,
+        filterValue: filter.filterValue.trim(),
+      })),
     };
 
     createAnnouncementMutation.mutate(announcementData, {
@@ -270,8 +296,12 @@ export function AnnouncementCreator({ trigger }: AnnouncementCreatorProps) {
                     <Label>Active Filters:</Label>
                     <div className="flex flex-wrap gap-2">
                       {filters.map((filter) => (
-                        <Badge key={filter} variant="secondary" className="flex items-center gap-1">
-                          {filter}
+                        <Badge
+                          key={`${filter.filterType}:${filter.filterValue}`}
+                          variant="secondary"
+                          className="flex items-center gap-1"
+                        >
+                          {filter.filterType}: {filter.filterValue}
                           <X
                             className="h-3 w-3 cursor-pointer"
                             onClick={() => removeFilter(filter)}
