@@ -36,8 +36,8 @@ This is a **monorepo** (multiple projects in one repository) built with:
 ashinaga/
 ├── apps/
 │   ├── api/          # Backend API server (NestJS)
-│   ├── staff/        # Staff portal (Next.js) - Port 3001
-│   └── scholar/      # Scholar portal (Next.js) - Port 3002
+│   ├── staff/        # Staff portal (Next.js) - Port 4001
+│   └── scholar/      # Scholar portal (Next.js) - Port 4002
 ├── packages/
 │   ├── ui/           # Shared React components
 │   └── ...           # Other shared packages
@@ -254,7 +254,7 @@ This will install all packages needed for all apps and packages in the monorepo.
 2. The default values should work:
    ```env
    NEXT_PUBLIC_API_URL=http://localhost:4000
-   NEXT_PUBLIC_SCHOLAR_APP_URL=http://localhost:3002
+   NEXT_PUBLIC_SCHOLAR_APP_URL=http://localhost:4002
    ```
 
 #### Scholar App Environment Variables
@@ -335,8 +335,8 @@ pnpm dev
 
 This starts all applications:
 - **API**: http://localhost:4000 (or port specified in .env)
-- **Staff Portal**: http://localhost:3001
-- **Scholar Portal**: http://localhost:3002
+- **Staff Portal**: http://localhost:4001
+- **Scholar Portal**: http://localhost:4002
 
 **Note**: Keep this terminal open - it runs the servers in watch mode (auto-restarts on changes).
 
@@ -348,10 +348,10 @@ This starts all applications:
 2. **API Documentation**: Visit http://localhost:4000/api
    - Should show Swagger UI with API endpoints
 
-3. **Staff Portal**: Visit http://localhost:3001
+3. **Staff Portal**: Visit http://localhost:4001
    - Should load the staff portal
 
-4. **Scholar Portal**: Visit http://localhost:3002
+4. **Scholar Portal**: Visit http://localhost:4002
    - Should load the scholar portal
 
 ### Common Setup Issues
@@ -546,7 +546,7 @@ pnpm build
 #### Frontend Testing
 
 1. **Manual Testing**:
-   - Visit http://localhost:3001 (staff) or http://localhost:3002 (scholar)
+   - Visit http://localhost:4001 (staff) or http://localhost:4002 (scholar)
    - Test the UI manually
 
 2. **Run Tests**:
@@ -883,8 +883,8 @@ Before starting your first task, make sure you can:
 
 - [ ] Run `pnpm dev` and see all apps running
 - [ ] Access API docs at http://localhost:4000/api
-- [ ] Access staff portal at http://localhost:3001
-- [ ] Access scholar portal at http://localhost:3002
+- [ ] Access staff portal at http://localhost:4001
+- [ ] Access scholar portal at http://localhost:4002
 - [ ] Run `pnpm lint` without errors
 - [ ] Run `pnpm test` and see tests pass
 - [ ] Open database GUI with `pnpm db:studio`
