@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AnnouncementsModule } from './announcements/announcements.module';
+import { AnnualUpdatesModule } from './annual-updates/annual-updates.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -32,6 +33,7 @@ import { UsersModule } from './users/users.module';
     FilesModule,
     GoalsModule,
     ResourcesModule,
+    AnnualUpdatesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

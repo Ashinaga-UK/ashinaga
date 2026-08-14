@@ -16,6 +16,7 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import {
   downloadAllScholarsCSV,
+  downloadAnnualReviewsCSV,
   type GetScholarsParams,
   getFilterOptions,
   getScholars,
@@ -65,6 +66,7 @@ export function ScholarManagementTable({
     'all' | 'active' | 'inactive' | 'on_hold' | 'archived'
   >('all');
   const [exportingCsv, setExportingCsv] = useState(false);
+  const [exportingAnnualReviewsCsv, setExportingAnnualReviewsCsv] = useState(false);
   const archiveScholar = useArchiveScholar();
   const deleteScholar = useDeleteScholar();
 
@@ -162,6 +164,18 @@ export function ScholarManagementTable({
       alert('Failed to download CSV. Please try again.');
     } finally {
       setExportingCsv(false);
+    }
+  };
+
+  const handleExportAnnualReviewsCsv = async () => {
+    setExportingAnnualReviewsCsv(true);
+    try {
+      await downloadAnnualReviewsCSV();
+    } catch (e) {
+      console.error(e);
+      alert('Failed to download annual reviews CSV. Please try again.');
+    } finally {
+      setExportingAnnualReviewsCsv(false);
     }
   };
 
@@ -269,6 +283,19 @@ export function ScholarManagementTable({
               <Download className="h-4 w-4 mr-2" />
             )}
             Export all (CSV)
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full sm:w-auto"
+            onClick={handleExportAnnualReviewsCsv}
+            disabled={exportingAnnualReviewsCsv}
+          >
+            {exportingAnnualReviewsCsv ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4 mr-2" />
+            )}
+            Export annual reviews
           </Button>
           <Button
             className="w-full bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700 sm:w-auto"

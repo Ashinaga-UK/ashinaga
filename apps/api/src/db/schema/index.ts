@@ -1,5 +1,6 @@
 // Export all schemas and types
 export * from './announcements';
+export * from './annual-updates';
 export * from './documents';
 export * from './goals';
 export * from './invitations';
