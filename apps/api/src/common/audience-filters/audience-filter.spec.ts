@@ -1,7 +1,8 @@
 import { describe, expect, it } from '@jest/globals';
 import { PgDialect } from 'drizzle-orm/pg-core';
+import { scholars } from '../../db/schema';
 import { audienceValuesEqual, matchesAudienceFilters } from './audience-filter';
-import { buildResourceAudienceVisibilitySql } from './audience-filter.sql';
+import { buildResourceAudienceVisibilitySql, normalizedSqlEquals } from './audience-filter.sql';
 
 const scholar = {
   program: ' Medicine ',
@@ -45,6 +46,12 @@ describe('audience filters', () => {
     expect(
       matchesAudienceFilters([{ type: 'university', value: ' makerere university ' }], scholar)
     ).toBe(true);
+  });
+
+  it('casts enum audience columns to text before normalization', () => {
+    const query = new PgDialect().sqlToQuery(normalizedSqlEquals(scholars.status, 'active'));
+
+    expect(query.sql.toLowerCase()).toContain('lower(trim("scholars"."status"::text))');
   });
 
   it('rejects unknown filter types', () => {

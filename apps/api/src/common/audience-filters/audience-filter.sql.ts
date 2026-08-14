@@ -3,7 +3,7 @@ import { resourceFilters, resources } from '../../db/schema';
 import type { ScholarAudience } from './audience-filter';
 
 export function normalizedSqlEquals(column: SQLWrapper, value: string | null | undefined): SQL {
-  return sql`LOWER(TRIM(${column})) = LOWER(TRIM(${value}))`;
+  return sql`LOWER(TRIM(${column}::text)) = LOWER(TRIM(${value}))`;
 }
 
 export function buildResourceAudienceVisibilitySql(scholar: ScholarAudience): SQL {
