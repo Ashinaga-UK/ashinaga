@@ -103,6 +103,45 @@ export interface Document {
   updatedAt: string;
 }
 
+export interface AnnualUpdate {
+  id: string;
+  scholarId: string;
+  academicYear: string;
+  status: 'draft' | 'submitted';
+  highlights: string | null;
+  partTimeJobs: string | null;
+  extracurriculars: string | null;
+  leadershipRolesDescription: string | null;
+  leadershipRolesCount: number | null;
+  payItForwardDescription: string | null;
+  payItForwardCount: number | null;
+  subSaharanAfricaActivitiesDescription: string | null;
+  subSaharanAfricaActivitiesCount: number | null;
+  independentInternshipsCount: number | null;
+  internshipsInAfricaSummary: string | null;
+  internshipsElsewhereSummary: string | null;
+  completedAshinagaAfricaInternship: boolean | null;
+  academicYearAverageClassification: string | null;
+  academicYearWeightedGrade: string | null;
+  submittedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AnnualUpdateReportRow {
+  id: string;
+  scholarId: string;
+  academicYear: string;
+  status: 'draft' | 'submitted';
+  submittedAt: string | null;
+  updatedAt: string;
+  scholarName: string;
+  scholarEmail: string;
+  aaiScholarId: string | null;
+  scholarYear: string;
+  university: string;
+}
+
 export interface ScholarProfile {
   id: string;
   userId: string;
@@ -282,6 +321,66 @@ export async function getScholarProfile(id: string): Promise<ScholarProfile> {
   return fetchAPI<ScholarProfile>(`/api/scholars/${id}/profile`);
 }
 
+export async function getAnnualUpdatesByScholar(scholarId: string): Promise<AnnualUpdate[]> {
+  return fetchAPI<AnnualUpdate[]>(`/api/annual-updates/scholar/${scholarId}`);
+}
+
+export async function getAnnualUpdatesReport(): Promise<AnnualUpdateReportRow[]> {
+  return fetchAPI<AnnualUpdateReportRow[]>('/api/annual-updates');
+}
+
+async function downloadCsvFile(
+  endpoint: string,
+  filename: string,
+  errorMessage: string,
+  options: RequestInit = {}
+): Promise<void> {
+  const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace(/\/$/, '');
+  const res = await fetch(`${baseUrl}${endpoint}`, {
+    ...options,
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    throw new Error(errorMessage);
+  }
+
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+export async function downloadScholarAnnualReviewsCSV(
+  scholarId: string,
+  scholarName: string
+): Promise<void> {
+  await downloadCsvFile(
+    `/api/annual-updates/scholar/${scholarId}/export/csv`,
+    `${scholarName.replace(/\s+/g, '_')}_Annual_Reviews.csv`,
+    'Failed to download annual reviews CSV'
+  );
+}
+
+export async function downloadAnnualReviewsCSV(annualUpdateIds?: string[]): Promise<void> {
+  await downloadCsvFile(
+    '/api/annual-updates/export/csv',
+    `${annualUpdateIds ? 'annual-reviews-filtered' : 'annual-reviews-export'}-${new Date()
+      .toISOString()
+      .slice(0, 10)}.csv`,
+    'Failed to download annual reviews CSV',
+    annualUpdateIds
+      ? {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ annualUpdateIds }),
+        }
+      : { method: 'GET' }
+  );
+}
+
 export async function updateScholarProfile(
   scholarId: string,
   data: UpdateScholarProfileData
@@ -295,16 +394,11 @@ export async function updateScholarProfile(
 
 /** Trigger download of all scholars CSV (staff). */
 export async function downloadAllScholarsCSV(): Promise<void> {
-  const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace(/\/$/, '');
-  const url = `${baseUrl}/api/scholars/export/csv`;
-  const res = await fetch(url, { credentials: 'include' });
-  if (!res.ok) throw new Error('Failed to download scholars CSV');
-  const blob = await res.blob();
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `scholars-export-${new Date().toISOString().slice(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(a.href);
+  await downloadCsvFile(
+    '/api/scholars/export/csv',
+    `scholars-export-${new Date().toISOString().slice(0, 10)}.csv`,
+    'Failed to download scholars CSV'
+  );
 }
 
 export async function archiveScholar(scholarId: string): Promise<Scholar> {
