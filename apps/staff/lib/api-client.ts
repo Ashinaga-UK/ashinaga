@@ -827,6 +827,7 @@ export async function cancelInvitation(invitationId: string): Promise<{ message:
 export type ResourceType = 'Guide' | 'Handbook' | 'Template';
 export type ResourceCategory = 'LDF' | 'Handbook' | 'Proposal' | 'Support';
 export type ResourceStatus = 'draft' | 'live';
+export type ResourceSourceType = 'url' | 'file';
 
 export interface ResourceFilter {
   type: string;
@@ -839,7 +840,11 @@ export interface Resource {
   description: string;
   type: ResourceType;
   category: ResourceCategory;
-  url: string;
+  sourceType: ResourceSourceType;
+  url: string | null;
+  fileName: string | null;
+  fileMimeType: string | null;
+  fileSizeBytes: number | null;
   status: ResourceStatus;
   filters: ResourceFilter[];
   createdAt: string;
@@ -859,7 +864,12 @@ export interface SaveResourceData {
   description: string;
   type: ResourceType;
   category: ResourceCategory;
-  url: string;
+  sourceType?: ResourceSourceType;
+  url?: string;
+  pendingFileKey?: string;
+  fileName?: string;
+  fileMimeType?: string;
+  fileSizeBytes?: number;
   status?: ResourceStatus;
   filters?: Array<{
     filterType: string;
@@ -896,6 +906,21 @@ export async function deleteResource(resourceId: string): Promise<{ success: boo
 
 export async function getResourceFilterOptions(): Promise<ResourceFilterOptions> {
   return fetchAPI<ResourceFilterOptions>('/api/resources/filter-options');
+}
+
+export async function createResourceUploadUrl(data: {
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+}): Promise<{ uploadUrl: string; fileKey: string }> {
+  return fetchAPI<{ uploadUrl: string; fileKey: string }>('/api/resources/upload-url', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getResourceDownloadUrl(resourceId: string): Promise<{ downloadUrl: string }> {
+  return fetchAPI<{ downloadUrl: string }>(`/api/resources/${resourceId}/download`);
 }
 
 // Staff management

@@ -15,7 +15,7 @@ import { ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
 import { StaffGuard } from '../auth/staff.guard';
-import { CreateResourceDto } from './dto/create-resource.dto';
+import { CreateResourceDto, CreateResourceUploadUrlDto } from './dto/create-resource.dto';
 import { UpdateResourceDto } from './dto/update-resource.dto';
 import { ResourcesService } from './resources.service';
 
@@ -47,6 +47,14 @@ export class ResourcesController {
     return this.resourcesService.createResource(dto, req.user?.id || '');
   }
 
+  @Post('upload-url')
+  @UseGuards(StaffGuard)
+  async createUploadUrl(
+    @Body(new ValidationPipe({ transform: true, whitelist: true })) dto: CreateResourceUploadUrlDto
+  ) {
+    return this.resourcesService.createUploadUrl(dto);
+  }
+
   @Get('filter-options')
   @UseGuards(StaffGuard)
   async getFilterOptions() {
@@ -57,6 +65,12 @@ export class ResourcesController {
   @UseGuards(AuthGuard)
   async getMyResources(@Req() req: AuthenticatedRequest) {
     return this.resourcesService.getResourcesForScholar(req.user?.id || '');
+  }
+
+  @Get(':id/download')
+  @UseGuards(AuthGuard)
+  async getDownloadUrl(@Param('id', ParseUUIDPipe) id: string, @Req() req: AuthenticatedRequest) {
+    return this.resourcesService.getDownloadUrl(id, req.user?.id || '');
   }
 
   @Patch(':id')

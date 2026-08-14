@@ -120,6 +120,13 @@
       "when": 1786576215303,
       "tag": "0016_thankful_patch",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1786641850176,
+      "tag": "0017_new_redwing",
+      "breakpoints": true
     }
   ]
 }

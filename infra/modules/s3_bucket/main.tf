@@ -79,7 +79,7 @@ resource "aws_s3_bucket_cors_configuration" "this" {
   }
 }
 
-# Lifecycle policy for old versions
+# Lifecycle policy for old versions and abandoned resource uploads
 resource "aws_s3_bucket_lifecycle_configuration" "this" {
   bucket = aws_s3_bucket.this.id
 
@@ -96,6 +96,19 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
 
     noncurrent_version_expiration {
       noncurrent_days = 365
+    }
+  }
+
+  rule {
+    id     = "expire-pending-resource-uploads"
+    status = "Enabled"
+
+    filter {
+      prefix = "resources/pending/"
+    }
+
+    expiration {
+      days = 1
     }
   }
 }

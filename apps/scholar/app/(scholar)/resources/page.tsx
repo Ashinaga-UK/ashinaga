@@ -3,6 +3,7 @@
 import {
   AlertCircle,
   BookOpen,
+  Download,
   ExternalLink,
   FileText,
   GraduationCap,
@@ -12,7 +13,13 @@ import {
 import { useMemo, useState } from 'react';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
-import type { Resource, ResourceCategory, ResourceType } from '../../../lib/api-client';
+import { useToast } from '../../../components/ui/use-toast';
+import {
+  getResourceDownloadUrl,
+  type Resource,
+  type ResourceCategory,
+  type ResourceType,
+} from '../../../lib/api-client';
 import { useMyResources } from '../../../lib/hooks/use-queries';
 
 const categoryStyles: Record<ResourceCategory, string> = {
@@ -35,7 +42,9 @@ const resourceTypeFilters: Array<ResourceType | 'All'> = ['All', 'Guide', 'Handb
 
 export default function ResourcesPage() {
   const [selectedType, setSelectedType] = useState<ResourceType | 'All'>('All');
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const { data: resources = [], isLoading, error } = useMyResources();
+  const { toast } = useToast();
 
   const filteredResources = useMemo(() => {
     if (selectedType === 'All') return resources;
@@ -136,17 +145,49 @@ export default function ResourcesPage() {
                 </p>
                 <div className="flex-1" />
                 <div className="mt-3 flex items-center justify-end gap-2">
-                  <Button
-                    asChild
-                    variant="outline"
-                    size="sm"
-                    className="ml-auto min-h-8 px-2 text-xs sm:px-3 sm:text-sm"
-                  >
-                    <a href={resource.url} target="_blank" rel="noreferrer">
-                      <ExternalLink className="mr-2 h-4 w-4" />
-                      Open
-                    </a>
-                  </Button>
+                  {resource.sourceType === 'file' ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="ml-auto min-h-8 px-2 text-xs sm:px-3 sm:text-sm"
+                      disabled={downloadingId === resource.id}
+                      onClick={async () => {
+                        setDownloadingId(resource.id);
+                        try {
+                          const { downloadUrl } = await getResourceDownloadUrl(resource.id);
+                          window.open(downloadUrl, '_blank', 'noopener,noreferrer');
+                        } catch {
+                          toast({
+                            title: 'Could not download resource',
+                            description: 'Please try again.',
+                            variant: 'destructive',
+                          });
+                        } finally {
+                          setDownloadingId(null);
+                        }
+                      }}
+                    >
+                      {downloadingId === resource.id ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Download className="mr-2 h-4 w-4" />
+                      )}
+                      Download
+                    </Button>
+                  ) : (
+                    <Button
+                      asChild
+                      variant="outline"
+                      size="sm"
+                      className="ml-auto min-h-8 px-2 text-xs sm:px-3 sm:text-sm"
+                    >
+                      <a href={resource.url ?? undefined} target="_blank" rel="noreferrer">
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        Open
+                      </a>
+                    </Button>
+                  )}
                 </div>
               </article>
             );

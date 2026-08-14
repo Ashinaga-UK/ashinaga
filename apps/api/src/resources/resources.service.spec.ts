@@ -86,4 +86,36 @@ describe('CreateResourceDto', () => {
     expect(await validate(dto)).toHaveLength(0);
     expect(dto.filters?.[0]?.filterValue).toBe('Medicine');
   });
+
+  it('accepts a file resource without a URL', async () => {
+    const dto = plainToInstance(CreateResourceDto, {
+      title: 'Scholar Handbook',
+      description: 'Reference material',
+      type: 'Handbook',
+      category: 'Handbook',
+      sourceType: 'file',
+      pendingFileKey: 'resources/pending/upload-1-handbook.pdf',
+      fileName: 'handbook.pdf',
+      fileMimeType: 'application/pdf',
+      fileSizeBytes: 2048,
+    });
+
+    expect(await validate(dto)).toHaveLength(0);
+  });
+
+  it('rejects a file resource without a pending file key', async () => {
+    const dto = plainToInstance(CreateResourceDto, {
+      title: 'Scholar Handbook',
+      description: 'Reference material',
+      type: 'Handbook',
+      category: 'Handbook',
+      sourceType: 'file',
+      fileName: 'handbook.pdf',
+      fileMimeType: 'application/pdf',
+      fileSizeBytes: 2048,
+    });
+
+    const errors = await validate(dto);
+    expect(errors.some((error) => error.property === 'pendingFileKey')).toBe(true);
+  });
 });

@@ -1,7 +1,8 @@
 import { describe, expect, it } from '@jest/globals';
+import { sql } from 'drizzle-orm';
 import { PgDialect } from 'drizzle-orm/pg-core';
 import { audienceValuesEqual, matchesAudienceFilters } from './audience-filter';
-import { buildResourceAudienceVisibilitySql } from './audience-filter.sql';
+import { buildResourceAudienceVisibilitySql, matchAnyNormalizedValue } from './audience-filter.sql';
 
 const scholar = {
   program: ' Medicine ',
@@ -49,6 +50,24 @@ describe('audience filters', () => {
 
   it('rejects unknown filter types', () => {
     expect(matchesAudienceFilters([{ type: 'programme', value: 'Medicine' }], scholar)).toBe(false);
+  });
+
+  it('uses a single equality when a filter type has one value', () => {
+    const query = new PgDialect().sqlToQuery(
+      matchAnyNormalizedValue(sql.raw('program'), ['Medicine'])
+    );
+    const generated = query.sql.toLowerCase();
+
+    expect(generated).toContain('lower(trim(');
+    expect(generated).not.toContain(' or ');
+  });
+
+  it('ors equalities when a filter type has multiple values', () => {
+    const query = new PgDialect().sqlToQuery(
+      matchAnyNormalizedValue(sql.raw('program'), ['Medicine', 'Nursing'])
+    );
+
+    expect(query.sql.toLowerCase()).toContain(' or ');
   });
 
   it('builds a correlated, normalized resource visibility predicate', () => {
