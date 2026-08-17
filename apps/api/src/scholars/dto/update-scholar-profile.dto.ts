@@ -7,6 +7,11 @@ export enum Gender {
   PREFER_NOT_TO_SAY = 'prefer_not_to_say',
 }
 
+export enum ProgramStage {
+  PREP_YEAR = 'prep_year',
+  SCHOLAR = 'scholar',
+}
+
 export class UpdateScholarProfileDto {
   // Note: These fields are locked and cannot be updated by the scholar
   // - name (from users table)
@@ -114,4 +119,21 @@ export class UpdateScholarProfileDto {
   @IsOptional()
   @IsString()
   fieldOfStudy?: string;
+
+  // Prep Year programme stage (ASH-79)
+  @IsOptional()
+  @IsEnum(ProgramStage)
+  programStage?: ProgramStage;
+
+  @IsOptional()
+  @IsString()
+  intendedUniversity?: string | null;
+
+  @IsOptional()
+  @IsString()
+  intendedCourse?: string | null;
+
+  @IsOptional()
+  @IsString()
+  degreePathway?: string | null;
 }

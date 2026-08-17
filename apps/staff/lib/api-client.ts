@@ -29,6 +29,10 @@ export interface Scholar {
   location?: string | null;
   bio?: string | null;
   status: 'active' | 'inactive' | 'on_hold' | 'archived';
+  programStage: 'prep_year' | 'scholar';
+  intendedUniversity?: string | null;
+  intendedCourse?: string | null;
+  degreePathway?: string | null;
   startDate: string;
   lastActivity?: string | null;
   goals: ScholarGoalsStats;
@@ -155,6 +159,10 @@ export interface ScholarProfile {
   location?: string | null;
   bio?: string | null;
   status: 'active' | 'inactive' | 'on_hold' | 'archived';
+  programStage: 'prep_year' | 'scholar';
+  intendedUniversity?: string | null;
+  intendedCourse?: string | null;
+  degreePathway?: string | null;
   startDate: string;
   lastActivity?: string | null;
   aaiScholarId?: string | null;
@@ -205,6 +213,10 @@ export interface UpdateScholarProfileData {
   bio?: string;
   majorCategory?: string;
   fieldOfStudy?: string;
+  programStage?: 'prep_year' | 'scholar';
+  intendedUniversity?: string;
+  intendedCourse?: string;
+  degreePathway?: string;
 }
 
 export interface PaginationMeta {
@@ -229,6 +241,7 @@ export interface GetScholarsParams {
   year?: string;
   university?: string;
   status?: 'active' | 'inactive' | 'on_hold' | 'archived';
+  programStage?: 'prep_year' | 'scholar';
   sortBy?: 'name' | 'lastActivity' | 'createdAt';
   sortOrder?: 'asc' | 'desc';
 }
@@ -842,6 +855,10 @@ export interface CreateScholarData {
   bio?: string;
   majorCategory?: string;
   fieldOfStudy?: string;
+  programStage?: 'prep_year' | 'scholar';
+  intendedUniversity?: string;
+  intendedCourse?: string;
+  degreePathway?: string;
 }
 
 export async function createScholar(data: CreateScholarData): Promise<{
@@ -882,13 +899,49 @@ export interface CreateInvitationResponse {
   sentAt: string;
 }
 
-export async function createStaffInvitation(email: string): Promise<CreateInvitationResponse> {
+export interface StaffInvitationOptions {
+  /** Defaults to `staff` so existing invite dialogs keep working. */
+  userType?: 'staff' | 'scholar';
+  /** Programme stage: 'prep_year' or 'scholar' */
+  programStage?: 'prep_year' | 'scholar';
+  /** Intended destination (only meaningful when programStage = prep_year) */
+  intendedUniversity?: string;
+  intendedCourse?: string;
+  degreePathway?: string;
+}
+
+/** Create an invitation. Defaults to staff invites unless userType is overridden. */
+export async function createStaffInvitation(
+  email: string,
+  options: StaffInvitationOptions = {}
+): Promise<CreateInvitationResponse> {
+  const body: {
+    email: string;
+    userType: 'staff' | 'scholar';
+    scholarData?: {
+      programStage?: 'prep_year' | 'scholar';
+      intendedUniversity?: string;
+      intendedCourse?: string;
+      degreePathway?: string;
+    };
+  } = {
+    email,
+    userType: options.userType ?? 'staff',
+  };
+  if (body.userType === 'scholar' && options.programStage) {
+    body.scholarData = {
+      programStage: options.programStage,
+      intendedUniversity: options.intendedUniversity,
+      intendedCourse: options.intendedCourse,
+      degreePathway: options.degreePathway,
+    };
+  }
   return fetchAPI<CreateInvitationResponse>('/api/invitations', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ email, userType: 'staff' }),
+    body: JSON.stringify(body),
   });
 }
 

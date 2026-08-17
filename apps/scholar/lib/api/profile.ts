@@ -33,6 +33,14 @@ export interface ScholarProfile {
   longTermCareerPlan?: string | null;
   postGraduationPlan?: string | null;
 
+  // Prep-year / destination fields
+  programStage?: 'prep_year' | 'scholar';
+  intendedUniversity?: string | null;
+  intendedCourse?: string | null;
+  degreePathway?: string | null;
+  majorCategory?: string | null;
+  fieldOfStudy?: string | null;
+
   // Related data
   goals: any[];
   tasks: any[];
@@ -64,6 +72,11 @@ export interface UpdateProfileData {
   longTermCareerPlan?: string;
   postGraduationPlan?: string;
   bio?: string;
+  majorCategory?: string;
+  fieldOfStudy?: string;
+  intendedUniversity?: string;
+  intendedCourse?: string;
+  degreePathway?: string;
 }
 
 export async function getMyProfile(): Promise<ScholarProfile> {

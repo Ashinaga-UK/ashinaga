@@ -17,7 +17,7 @@ import {
   X,
 } from 'lucide-react';
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   getMyProfile,
   type ScholarProfile,
@@ -26,6 +26,7 @@ import {
 } from '../lib/api/profile';
 import { Alert, AlertDescription } from './ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from './ui/dialog';
@@ -44,7 +45,7 @@ export function MyProfile() {
   const [success, setSuccess] = useState(false);
   const [formData, setFormData] = useState<UpdateProfileData>({});
 
-  const loadProfile = async () => {
+  const loadProfile = useCallback(async () => {
     try {
       const data = await getMyProfile();
       setProfile(data);
@@ -74,6 +75,11 @@ export function MyProfile() {
         longTermCareerPlan: data.longTermCareerPlan || '',
         postGraduationPlan: data.postGraduationPlan || '',
         bio: data.bio || '',
+        intendedUniversity: data.intendedUniversity || '',
+        intendedCourse: data.intendedCourse || '',
+        degreePathway: data.degreePathway || '',
+        majorCategory: data.majorCategory || '',
+        fieldOfStudy: data.fieldOfStudy || '',
       });
     } catch (err) {
       setError('Failed to load profile. Please try again.');
@@ -81,11 +87,11 @@ export function MyProfile() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadProfile();
-  }, []);
+  }, [loadProfile]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,6 +143,11 @@ export function MyProfile() {
         longTermCareerPlan: profile.longTermCareerPlan || '',
         postGraduationPlan: profile.postGraduationPlan || '',
         bio: profile.bio || '',
+        intendedUniversity: profile.intendedUniversity || '',
+        intendedCourse: profile.intendedCourse || '',
+        degreePathway: profile.degreePathway || '',
+        majorCategory: profile.majorCategory || '',
+        fieldOfStudy: profile.fieldOfStudy || '',
       });
     }
   };
@@ -333,6 +344,33 @@ export function MyProfile() {
                   disabled
                   className="bg-muted"
                 />
+              </div>
+              <div className="flex items-end gap-2">
+                <div className="flex-1">
+                  <Label htmlFor="programStage">Program Stage</Label>
+                  <Input
+                    id="programStage"
+                    value={
+                      profile.programStage === 'prep_year'
+                        ? 'Prep-Year'
+                        : profile.programStage === 'scholar'
+                          ? 'Scholar'
+                          : 'Scholar'
+                    }
+                    disabled
+                    className="bg-muted"
+                  />
+                </div>
+                <Badge
+                  variant={profile.programStage === 'prep_year' ? 'default' : 'secondary'}
+                  className={
+                    profile.programStage === 'prep_year'
+                      ? 'bg-ashinaga-green-600 hover:bg-ashinaga-green-700'
+                      : undefined
+                  }
+                >
+                  {profile.programStage === 'prep_year' ? 'Prep-Year' : 'Scholar'}
+                </Badge>
               </div>
             </div>
           </CardContent>
@@ -621,6 +659,75 @@ export function MyProfile() {
                   onChange={(e) => setFormData({ ...formData, universityId: e.target.value })}
                   disabled={!editing}
                   placeholder="Your student ID number"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Destination & Pathway */}
+        <Card className="border-ashinaga-teal-100 dark:border-border">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <GraduationCap className="h-5 w-5" />
+              Destination & Pathway
+            </CardTitle>
+            <CardDescription>
+              {profile.programStage === 'prep_year'
+                ? 'Details about your intended destination and studies.'
+                : 'Update your study area and destination plans.'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="majorCategory">Major Category</Label>
+                <Input
+                  id="majorCategory"
+                  value={formData.majorCategory}
+                  onChange={(e) => setFormData({ ...formData, majorCategory: e.target.value })}
+                  disabled={!editing}
+                  placeholder="e.g. Engineering and Technology"
+                />
+              </div>
+              <div>
+                <Label htmlFor="fieldOfStudy">Field of Study</Label>
+                <Input
+                  id="fieldOfStudy"
+                  value={formData.fieldOfStudy}
+                  onChange={(e) => setFormData({ ...formData, fieldOfStudy: e.target.value })}
+                  disabled={!editing}
+                  placeholder="e.g. Computer Science"
+                />
+              </div>
+              <div>
+                <Label htmlFor="intendedUniversity">Intended University</Label>
+                <Input
+                  id="intendedUniversity"
+                  value={formData.intendedUniversity}
+                  onChange={(e) => setFormData({ ...formData, intendedUniversity: e.target.value })}
+                  disabled={!editing}
+                  placeholder="University you intend to attend"
+                />
+              </div>
+              <div>
+                <Label htmlFor="intendedCourse">Intended Course</Label>
+                <Input
+                  id="intendedCourse"
+                  value={formData.intendedCourse}
+                  onChange={(e) => setFormData({ ...formData, intendedCourse: e.target.value })}
+                  disabled={!editing}
+                  placeholder="Intended degree or course"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Label htmlFor="degreePathway">Degree Pathway</Label>
+                <Input
+                  id="degreePathway"
+                  value={formData.degreePathway}
+                  onChange={(e) => setFormData({ ...formData, degreePathway: e.target.value })}
+                  disabled={!editing}
+                  placeholder="e.g. Foundation Year, Direct Entry"
                 />
               </div>
             </div>

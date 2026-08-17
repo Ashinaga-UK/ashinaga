@@ -32,7 +32,7 @@ jest.mock('../auth/auth.config', () => ({
 
 import { InvitationsService } from '../invitations/invitations.service';
 import type { CreateScholarDto } from './dto/create-scholar.dto';
-import { Gender } from './dto/update-scholar-profile.dto';
+import { Gender, ProgramStage } from './dto/update-scholar-profile.dto';
 import { ScholarsService } from './scholars.service';
 
 describe('ScholarsService', () => {
@@ -599,6 +599,76 @@ describe('ScholarsService', () => {
       expect(updateSpy).toHaveBeenCalledWith('user-123', updateData);
       expect(result.userId).toBe('user-123');
       updateSpy.mockRestore();
+    });
+  });
+
+  describe('updateScholarProfile', () => {
+    it('should write prep-year destination fields when provided', async () => {
+      const mockFrom = jest.fn().mockReturnThis();
+      const mockWhere = jest.fn().mockReturnThis();
+      const mockLimit = jest.fn().mockResolvedValue([{ id: 's1', userId: 'u1' }]);
+
+      mockDatabase.select = jest.fn().mockReturnValue({
+        from: mockFrom,
+        where: mockWhere,
+        limit: mockLimit,
+      });
+
+      const mockSet = jest.fn().mockReturnThis();
+      const mockUpdateWhere = jest.fn().mockResolvedValue(undefined);
+      mockDatabase.update = jest.fn().mockReturnValue({
+        set: mockSet,
+        where: mockUpdateWhere,
+      });
+
+      mockFrom.mockReturnThis();
+      mockWhere.mockReturnThis();
+
+      const profileSpy = jest.spyOn(service, 'getScholarProfileByUserId').mockResolvedValueOnce({
+        id: 's1',
+        userId: 'u1',
+        name: 'Test Scholar',
+        email: 't@x.com',
+        program: 'CS',
+        year: 'Year 1',
+        university: 'MIT',
+        status: 'active',
+        programStage: 'prep_year',
+        intendedUniversity: 'University of Edinburgh',
+        intendedCourse: 'Computer Science',
+        degreePathway: 'Foundation Year',
+        startDate: new Date(),
+        goals: [],
+        tasks: [],
+        documents: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as Awaited<ReturnType<ScholarsService['getScholarProfileByUserId']>>);
+
+      const result = await service.updateScholarProfile('u1', {
+        majorCategory: 'Engineering and Technology',
+        fieldOfStudy: 'Computer Science',
+        programStage: ProgramStage.PREP_YEAR,
+        intendedUniversity: 'University of Edinburgh',
+        intendedCourse: 'Computer Science',
+        degreePathway: 'Foundation Year',
+      });
+
+      expect(mockDatabase.update).toHaveBeenCalled();
+      expect(mockSet).toHaveBeenCalledWith(
+        expect.objectContaining({
+          majorCategory: 'Engineering and Technology',
+          fieldOfStudy: 'Computer Science',
+          programStage: 'prep_year',
+          intendedUniversity: 'University of Edinburgh',
+          intendedCourse: 'Computer Science',
+          degreePathway: 'Foundation Year',
+        })
+      );
+      expect(profileSpy).toHaveBeenCalledWith('u1');
+      expect(result.programStage).toBe('prep_year');
+      expect(result.intendedUniversity).toBe('University of Edinburgh');
+      profileSpy.mockRestore();
     });
   });
 

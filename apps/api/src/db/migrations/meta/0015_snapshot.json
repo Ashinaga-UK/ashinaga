@@ -47,12 +47,8 @@
           "name": "announcement_filters_announcement_id_announcements_id_fk",
           "tableFrom": "announcement_filters",
           "tableTo": "announcements",
-          "columnsFrom": [
-            "announcement_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["announcement_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -100,12 +96,8 @@
           "name": "announcement_recipients_announcement_id_announcements_id_fk",
           "tableFrom": "announcement_recipients",
           "tableTo": "announcements",
-          "columnsFrom": [
-            "announcement_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["announcement_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -113,12 +105,8 @@
           "name": "announcement_recipients_scholar_id_scholars_id_fk",
           "tableFrom": "announcement_recipients",
           "tableTo": "scholars",
-          "columnsFrom": [
-            "scholar_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["scholar_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -198,12 +186,8 @@
           "name": "announcements_created_by_user_id_fk",
           "tableFrom": "announcements",
           "tableTo": "user",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -211,12 +195,8 @@
           "name": "announcements_archived_by_user_id_fk",
           "tableFrom": "announcements",
           "tableTo": "user",
-          "columnsFrom": [
-            "archived_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["archived_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -397,12 +377,8 @@
           "name": "annual_updates_scholar_id_scholars_id_fk",
           "tableFrom": "annual_updates",
           "tableTo": "scholars",
-          "columnsFrom": [
-            "scholar_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["scholar_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -494,12 +470,8 @@
           "name": "documents_scholar_id_scholars_id_fk",
           "tableFrom": "documents",
           "tableTo": "scholars",
-          "columnsFrom": [
-            "scholar_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["scholar_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -507,12 +479,8 @@
           "name": "documents_uploaded_by_user_id_fk",
           "tableFrom": "documents",
           "tableTo": "user",
-          "columnsFrom": [
-            "uploaded_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["uploaded_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -573,12 +541,8 @@
           "name": "goal_comments_goal_id_goals_id_fk",
           "tableFrom": "goal_comments",
           "tableTo": "goals",
-          "columnsFrom": [
-            "goal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["goal_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -586,12 +550,8 @@
           "name": "goal_comments_user_id_user_id_fk",
           "tableFrom": "goal_comments",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -718,12 +678,8 @@
           "name": "goals_scholar_id_scholars_id_fk",
           "tableFrom": "goals",
           "tableTo": "scholars",
-          "columnsFrom": [
-            "scholar_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["scholar_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -791,12 +747,8 @@
           "name": "milestones_goal_id_goals_id_fk",
           "tableFrom": "milestones",
           "tableTo": "goals",
-          "columnsFrom": [
-            "goal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["goal_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -915,12 +867,8 @@
           "name": "invitations_invited_by_user_id_fk",
           "tableFrom": "invitations",
           "tableTo": "user",
-          "columnsFrom": [
-            "invited_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["invited_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -928,12 +876,8 @@
           "name": "invitations_user_id_user_id_fk",
           "tableFrom": "invitations",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -943,16 +887,12 @@
         "invitations_email_unique": {
           "name": "invitations_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         },
         "invitations_token_unique": {
           "name": "invitations_token_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "token"
-          ]
+          "columns": ["token"]
         }
       },
       "policies": {},
@@ -989,12 +929,8 @@
           "name": "request_assignees_request_id_requests_id_fk",
           "tableFrom": "request_assignees",
           "tableTo": "requests",
-          "columnsFrom": [
-            "request_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["request_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1002,12 +938,8 @@
           "name": "request_assignees_user_id_user_id_fk",
           "tableFrom": "request_assignees",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1015,10 +947,7 @@
       "compositePrimaryKeys": {
         "request_assignees_request_id_user_id_pk": {
           "name": "request_assignees_request_id_user_id_pk",
-          "columns": [
-            "request_id",
-            "user_id"
-          ]
+          "columns": ["request_id", "user_id"]
         }
       },
       "uniqueConstraints": {},
@@ -1081,12 +1010,8 @@
           "name": "request_attachments_request_id_requests_id_fk",
           "tableFrom": "request_attachments",
           "tableTo": "requests",
-          "columnsFrom": [
-            "request_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["request_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1166,12 +1091,8 @@
           "name": "request_audit_logs_request_id_requests_id_fk",
           "tableFrom": "request_audit_logs",
           "tableTo": "requests",
-          "columnsFrom": [
-            "request_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["request_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1179,12 +1100,8 @@
           "name": "request_audit_logs_performed_by_user_id_fk",
           "tableFrom": "request_audit_logs",
           "tableTo": "user",
-          "columnsFrom": [
-            "performed_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["performed_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1318,12 +1235,8 @@
           "name": "requests_scholar_id_scholars_id_fk",
           "tableFrom": "requests",
           "tableTo": "scholars",
-          "columnsFrom": [
-            "scholar_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["scholar_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1331,12 +1244,8 @@
           "name": "requests_assigned_to_user_id_fk",
           "tableFrom": "requests",
           "tableTo": "user",
-          "columnsFrom": [
-            "assigned_to"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["assigned_to"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1344,12 +1253,8 @@
           "name": "requests_reviewed_by_user_id_fk",
           "tableFrom": "requests",
           "tableTo": "user",
-          "columnsFrom": [
-            "reviewed_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["reviewed_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1357,12 +1262,8 @@
           "name": "requests_archived_by_user_id_fk",
           "tableFrom": "requests",
           "tableTo": "user",
-          "columnsFrom": [
-            "archived_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["archived_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1570,12 +1471,8 @@
           "name": "scholars_user_id_user_id_fk",
           "tableFrom": "scholars",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1585,16 +1482,12 @@
         "scholars_user_id_unique": {
           "name": "scholars_user_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "user_id"
-          ]
+          "columns": ["user_id"]
         },
         "scholars_aai_scholar_id_unique": {
           "name": "scholars_aai_scholar_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "aai_scholar_id"
-          ]
+          "columns": ["aai_scholar_id"]
         }
       },
       "policies": {},
@@ -1656,12 +1549,8 @@
           "name": "task_attachments_task_response_id_task_responses_id_fk",
           "tableFrom": "task_attachments",
           "tableTo": "task_responses",
-          "columnsFrom": [
-            "task_response_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["task_response_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1716,12 +1605,8 @@
           "name": "task_responses_task_id_tasks_id_fk",
           "tableFrom": "task_responses",
           "tableTo": "tasks",
-          "columnsFrom": [
-            "task_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["task_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1731,9 +1616,7 @@
         "task_responses_task_id_unique": {
           "name": "task_responses_task_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "task_id"
-          ]
+          "columns": ["task_id"]
         }
       },
       "policies": {},
@@ -1843,12 +1726,8 @@
           "name": "tasks_scholar_id_scholars_id_fk",
           "tableFrom": "tasks",
           "tableTo": "scholars",
-          "columnsFrom": [
-            "scholar_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["scholar_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1856,12 +1735,8 @@
           "name": "tasks_assigned_by_user_id_fk",
           "tableFrom": "tasks",
           "tableTo": "user",
-          "columnsFrom": [
-            "assigned_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["assigned_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1869,12 +1744,8 @@
           "name": "tasks_deleted_by_user_id_fk",
           "tableFrom": "tasks",
           "tableTo": "user",
-          "columnsFrom": [
-            "deleted_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["deleted_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1964,12 +1835,8 @@
           "name": "account_user_id_user_id_fk",
           "tableFrom": "account",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2041,12 +1908,8 @@
           "name": "session_user_id_user_id_fk",
           "tableFrom": "session",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2056,9 +1919,7 @@
         "session_token_unique": {
           "name": "session_token_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "token"
-          ]
+          "columns": ["token"]
         }
       },
       "policies": {},
@@ -2137,12 +1998,8 @@
           "name": "staff_user_id_user_id_fk",
           "tableFrom": "staff",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2152,9 +2009,7 @@
         "staff_user_id_unique": {
           "name": "staff_user_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "user_id"
-          ]
+          "columns": ["user_id"]
         }
       },
       "policies": {},
@@ -2225,9 +2080,7 @@
         "user_email_unique": {
           "name": "user_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "policies": {},
@@ -2290,67 +2143,37 @@
     "public.annual_update_status": {
       "name": "annual_update_status",
       "schema": "public",
-      "values": [
-        "draft",
-        "submitted"
-      ]
+      "values": ["draft", "submitted"]
     },
     "public.goal_category": {
       "name": "goal_category",
       "schema": "public",
-      "values": [
-        "academic_development",
-        "personal_development",
-        "professional_development"
-      ]
+      "values": ["academic_development", "personal_development", "professional_development"]
     },
     "public.goal_status": {
       "name": "goal_status",
       "schema": "public",
-      "values": [
-        "pending",
-        "in_progress",
-        "completed"
-      ]
+      "values": ["pending", "in_progress", "completed"]
     },
     "public.goal_term": {
       "name": "goal_term",
       "schema": "public",
-      "values": [
-        "term_1",
-        "term_2",
-        "term_3"
-      ]
+      "values": ["term_1", "term_2", "term_3"]
     },
     "public.invitation_status": {
       "name": "invitation_status",
       "schema": "public",
-      "values": [
-        "pending",
-        "accepted",
-        "expired",
-        "cancelled"
-      ]
+      "values": ["pending", "accepted", "expired", "cancelled"]
     },
     "public.request_priority": {
       "name": "request_priority",
       "schema": "public",
-      "values": [
-        "high",
-        "medium",
-        "low"
-      ]
+      "values": ["high", "medium", "low"]
     },
     "public.request_status": {
       "name": "request_status",
       "schema": "public",
-      "values": [
-        "pending",
-        "approved",
-        "rejected",
-        "reviewed",
-        "commented"
-      ]
+      "values": ["pending", "approved", "rejected", "reviewed", "commented"]
     },
     "public.request_type": {
       "name": "request_type",
@@ -2365,40 +2188,22 @@
     "public.gender": {
       "name": "gender",
       "schema": "public",
-      "values": [
-        "male",
-        "female",
-        "other",
-        "prefer_not_to_say"
-      ]
+      "values": ["male", "female", "other", "prefer_not_to_say"]
     },
     "public.scholar_status": {
       "name": "scholar_status",
       "schema": "public",
-      "values": [
-        "active",
-        "inactive",
-        "on_hold",
-        "archived"
-      ]
+      "values": ["active", "inactive", "on_hold", "archived"]
     },
     "public.task_priority": {
       "name": "task_priority",
       "schema": "public",
-      "values": [
-        "high",
-        "medium",
-        "low"
-      ]
+      "values": ["high", "medium", "low"]
     },
     "public.task_status": {
       "name": "task_status",
       "schema": "public",
-      "values": [
-        "pending",
-        "in_progress",
-        "completed"
-      ]
+      "values": ["pending", "in_progress", "completed"]
     },
     "public.task_type": {
       "name": "task_type",
@@ -2415,18 +2220,12 @@
     "public.user_role": {
       "name": "user_role",
       "schema": "public",
-      "values": [
-        "admin",
-        "viewer"
-      ]
+      "values": ["admin", "viewer"]
     },
     "public.user_type": {
       "name": "user_type",
       "schema": "public",
-      "values": [
-        "staff",
-        "scholar"
-      ]
+      "values": ["staff", "scholar"]
     }
   },
   "schemas": {},

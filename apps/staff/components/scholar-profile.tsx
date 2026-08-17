@@ -726,6 +726,12 @@ export function ScholarProfilePage({
                   <p className="font-medium">{scholar.fieldOfStudy || '—'}</p>
                 </div>
                 <div>
+                  <span className="text-muted-foreground">Program Stage</span>
+                  <Badge variant={scholar.programStage === 'prep_year' ? 'default' : 'secondary'}>
+                    {scholar.programStage === 'prep_year' ? 'Prep-Year' : 'Scholar'}
+                  </Badge>
+                </div>
+                <div>
                   <span className="text-muted-foreground">Start date</span>
                   <p className="font-medium">{new Date(scholar.startDate).toLocaleDateString()}</p>
                 </div>
@@ -738,6 +744,22 @@ export function ScholarProfilePage({
                   </p>
                 </div>
               </div>
+              {scholar.programStage === 'prep_year' && (
+                <div className="mt-4 grid grid-cols-2 gap-4 pt-4 border-t">
+                  <div>
+                    <span className="text-muted-foreground">Intended University</span>
+                    <p className="font-medium">{scholar.intendedUniversity || '—'}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Intended Course</span>
+                    <p className="font-medium">{scholar.intendedCourse || '—'}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-muted-foreground">Degree Pathway</span>
+                    <p className="font-medium">{scholar.degreePathway || '—'}</p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
           <Card>

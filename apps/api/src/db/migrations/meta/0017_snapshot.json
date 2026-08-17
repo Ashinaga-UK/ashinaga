@@ -1,6 +1,6 @@
 {
-  "id": "9ba0f5bc-48c2-4947-ba9a-896cc411d41a",
-  "prevId": "8116a292-6d9a-4485-acc9-4686e036a0d3",
+  "id": "27092fbd-ff57-422a-9564-9e913daf40da",
+  "prevId": "9ba0f5bc-48c2-4947-ba9a-896cc411d41a",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1633,6 +1633,32 @@
           "primaryKey": false,
           "notNull": false
         },
+        "program_stage": {
+          "name": "program_stage",
+          "type": "program_stage",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'scholar'"
+        },
+        "intended_university": {
+          "name": "intended_university",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "intended_course": {
+          "name": "intended_course",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "degree_pathway": {
+          "name": "degree_pathway",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -2387,6 +2413,11 @@
       "name": "gender",
       "schema": "public",
       "values": ["male", "female", "other", "prefer_not_to_say"]
+    },
+    "public.program_stage": {
+      "name": "program_stage",
+      "schema": "public",
+      "values": ["prep_year", "scholar"]
     },
     "public.scholar_status": {
       "name": "scholar_status",

@@ -56,7 +56,7 @@ export class ScholarsService {
   async createScholar(
     createScholarDto: CreateScholarDto,
     createdBy: string
-  ): Promise<{ success: boolean; message: string; scholar?: any }> {
+  ): Promise<{ success: boolean; message: string; scholar?: unknown }> {
     // Match invitation + auth flows (always lowercase in `invitations`; users may differ by case from signup)
     const emailNormalized = createScholarDto.email.trim().toLowerCase();
 
@@ -112,6 +112,10 @@ export class ScholarsService {
         graduationDate: createScholarDto.graduationDate,
         majorCategory: createScholarDto.majorCategory,
         fieldOfStudy: createScholarDto.fieldOfStudy,
+        programStage: createScholarDto.programStage,
+        intendedUniversity: createScholarDto.intendedUniversity,
+        intendedCourse: createScholarDto.intendedCourse,
+        degreePathway: createScholarDto.degreePathway,
       },
     };
 
@@ -134,6 +138,7 @@ export class ScholarsService {
       year,
       university,
       status,
+      programStage,
       sortBy = 'createdAt',
       sortOrder = 'desc',
     } = query;
@@ -170,6 +175,10 @@ export class ScholarsService {
     } else {
       // Exclude archived by default so they don't appear in main list
       whereConditions.push(not(eq(scholars.status, 'archived')));
+    }
+
+    if (programStage) {
+      whereConditions.push(eq(scholars.programStage, programStage));
     }
 
     const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
@@ -222,6 +231,10 @@ export class ScholarsService {
       location: row.scholar.location,
       bio: row.scholar.bio,
       status: row.scholar.status as 'active' | 'inactive' | 'on_hold' | 'archived',
+      programStage: row.scholar.programStage as 'prep_year' | 'scholar',
+      intendedUniversity: row.scholar.intendedUniversity,
+      intendedCourse: row.scholar.intendedCourse,
+      degreePathway: row.scholar.degreePathway,
       startDate: row.scholar.startDate,
       lastActivity: row.scholar.lastActivity,
       goals: goalsStats[row.scholar.id] || { total: 0, completed: 0, inProgress: 0, pending: 0 },
@@ -277,6 +290,10 @@ export class ScholarsService {
       location: row.scholar.location,
       bio: row.scholar.bio,
       status: row.scholar.status as 'active' | 'inactive' | 'on_hold' | 'archived',
+      programStage: row.scholar.programStage as 'prep_year' | 'scholar',
+      intendedUniversity: row.scholar.intendedUniversity,
+      intendedCourse: row.scholar.intendedCourse,
+      degreePathway: row.scholar.degreePathway,
       startDate: row.scholar.startDate,
       lastActivity: row.scholar.lastActivity,
       goals: goalsStats[row.scholar.id] || { total: 0, completed: 0, inProgress: 0, pending: 0 },
@@ -465,7 +482,7 @@ export class ScholarsService {
 
     // Create maps for easy lookup
     const responseMap = new Map(responsesData.map((r) => [r.taskId, r]));
-    const attachmentMap = new Map<string, any[]>();
+    const attachmentMap = new Map<string, (typeof attachmentsData)[number][]>();
     attachmentsData.forEach((a) => {
       const existing = attachmentMap.get(a.taskResponseId) || [];
       attachmentMap.set(a.taskResponseId, [...existing, a]);
@@ -531,6 +548,10 @@ export class ScholarsService {
       location: row.scholar.location,
       bio: row.scholar.bio,
       status: row.scholar.status as 'active' | 'inactive' | 'on_hold' | 'archived',
+      programStage: row.scholar.programStage as 'prep_year' | 'scholar',
+      intendedUniversity: row.scholar.intendedUniversity,
+      intendedCourse: row.scholar.intendedCourse,
+      degreePathway: row.scholar.degreePathway,
       startDate: row.scholar.startDate,
       lastActivity: row.scholar.lastActivity,
       aaiScholarId: row.scholar.aaiScholarId,
@@ -733,6 +754,10 @@ export class ScholarsService {
       location: row.scholar.location,
       bio: row.scholar.bio,
       status: row.scholar.status as 'active' | 'inactive' | 'on_hold' | 'archived',
+      programStage: row.scholar.programStage as 'prep_year' | 'scholar',
+      intendedUniversity: row.scholar.intendedUniversity,
+      intendedCourse: row.scholar.intendedCourse,
+      degreePathway: row.scholar.degreePathway,
       startDate: row.scholar.startDate,
       lastActivity: row.scholar.lastActivity,
       // New fields
@@ -803,10 +828,14 @@ export class ScholarsService {
       majorCategory,
       fieldOfStudy,
       image,
+      programStage,
+      intendedUniversity,
+      intendedCourse,
+      degreePathway,
     } = profileUpdateData;
 
     // Update scholar record - handle empty strings and date conversions properly
-    const dbUpdateData: any = { updatedAt: new Date() };
+    const dbUpdateData: Record<string, unknown> = { updatedAt: new Date() };
 
     // Handle date fields - only set if not empty string
     if (dateOfBirth && dateOfBirth !== '') dbUpdateData.dateOfBirth = dateOfBirth;
@@ -852,6 +881,13 @@ export class ScholarsService {
     if (bio !== undefined) dbUpdateData.bio = bio || null;
     if (majorCategory !== undefined) dbUpdateData.majorCategory = majorCategory || null;
     if (fieldOfStudy !== undefined) dbUpdateData.fieldOfStudy = fieldOfStudy || null;
+
+    // Prep Year programme stage (ASH-79)
+    if (programStage !== undefined) dbUpdateData.programStage = programStage;
+    if (intendedUniversity !== undefined)
+      dbUpdateData.intendedUniversity = intendedUniversity || null;
+    if (intendedCourse !== undefined) dbUpdateData.intendedCourse = intendedCourse || null;
+    if (degreePathway !== undefined) dbUpdateData.degreePathway = degreePathway || null;
 
     await database.update(scholars).set(dbUpdateData).where(eq(scholars.id, scholarId));
 
@@ -924,7 +960,7 @@ export class ScholarsService {
         : [];
 
     // Group comments by goalId
-    const commentsByGoal = new Map<string, any[]>();
+    const commentsByGoal = new Map<string, (typeof commentsData)[number][]>();
     for (const comment of commentsData) {
       if (!commentsByGoal.has(comment.goalId)) {
         commentsByGoal.set(comment.goalId, []);

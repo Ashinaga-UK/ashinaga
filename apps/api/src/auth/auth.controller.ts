@@ -1,4 +1,4 @@
-import { All, Body, Controller, Get, Post, Req, Res } from '@nestjs/common';
+import { All, Controller, Get, Post, Req, Res } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { eq } from 'drizzle-orm';
 import type { FastifyReply, FastifyRequest } from 'fastify';
@@ -139,6 +139,9 @@ export class AuthController {
       location?: string;
       phone?: string;
       bio?: string;
+      intendedUniversity?: string;
+      intendedCourse?: string;
+      degreePathway?: string;
     };
     const emailLower = body.email.toLowerCase();
 
@@ -155,11 +158,77 @@ export class AuthController {
     }
 
     const userType = invitation[0].userType;
+    const invitationWithData = invitation[0];
+    let scholarData: {
+      program?: string;
+      year?: string;
+      university?: string;
+      location?: string;
+      phone?: string;
+      bio?: string;
+      aaiScholarId?: string;
+      dateOfBirth?: string;
+      gender?: string;
+      nationality?: string;
+      addressHomeCountry?: string;
+      passportExpirationDate?: string;
+      visaExpirationDate?: string;
+      emergencyContactCountryOfStudy?: string;
+      emergencyContactHomeCountry?: string;
+      startDate?: string;
+      graduationDate?: string;
+      universityId?: string;
+      dietaryInformation?: string;
+      kokorozashi?: string;
+      longTermCareerPlan?: string;
+      postGraduationPlan?: string;
+      majorCategory?: string;
+      fieldOfStudy?: string;
+      programStage?: 'prep_year' | 'scholar';
+      intendedUniversity?: string;
+      intendedCourse?: string;
+      degreePathway?: string;
+    } = {};
+
+    if (userType === 'scholar' && invitationWithData.scholarData) {
+      try {
+        scholarData =
+          typeof invitationWithData.scholarData === 'string'
+            ? JSON.parse(invitationWithData.scholarData)
+            : invitationWithData.scholarData;
+      } catch (error) {
+        console.error('Failed to parse scholar data from invitation:', error);
+        scholarData = {};
+      }
+    }
+
+    const intendedUniversity =
+      body.intendedUniversity?.trim() || scholarData.intendedUniversity?.trim() || '';
+    const intendedCourse = body.intendedCourse?.trim() || scholarData.intendedCourse?.trim() || '';
+    const degreePathway = body.degreePathway?.trim() || scholarData.degreePathway?.trim() || '';
+
+    if (scholarData.programStage === 'prep_year') {
+      if (!intendedUniversity) {
+        return res.status(400).send({
+          error: 'Intended university is required for prep-year sign up',
+        });
+      }
+      if (!intendedCourse) {
+        return res.status(400).send({
+          error: 'Intended course is required for prep-year sign up',
+        });
+      }
+      if (!degreePathway) {
+        return res.status(400).send({
+          error: 'Degree pathway is required for prep-year sign up',
+        });
+      }
+    }
 
     // Capture the response body
     let responseBody: string | undefined;
     const originalSend = res.send.bind(res);
-    res.send = (data: any) => {
+    res.send = (data: unknown) => {
       responseBody = typeof data === 'string' ? data : JSON.stringify(data);
       return originalSend(data);
     };
@@ -204,25 +273,6 @@ export class AuthController {
             });
             console.log('Staff profile created');
           } else if (userType === 'scholar') {
-            // Get the scholar data from the invitation
-            const invitationWithData = invitation[0];
-            let scholarData: any = {};
-
-            // Parse the scholar data JSON string
-            if (invitationWithData.scholarData) {
-              try {
-                scholarData =
-                  typeof invitationWithData.scholarData === 'string'
-                    ? JSON.parse(invitationWithData.scholarData)
-                    : invitationWithData.scholarData;
-              } catch (error) {
-                console.error('Failed to parse scholar data from invitation:', error);
-                scholarData = {};
-              }
-            }
-
-            console.log('Parsed scholar data from invitation:', scholarData);
-
             // Use scholar data from invitation - form data should be minimal (just password)
             // Since staff has already filled all the data, we use it directly
             await db.insert(scholars).values({
@@ -239,14 +289,17 @@ export class AuthController {
               bio: scholarData.bio || null,
               aaiScholarId: scholarData.aaiScholarId || null,
               dateOfBirth: scholarData.dateOfBirth || null,
-              gender: scholarData.gender || null,
+              gender:
+                (scholarData.gender as 'male' | 'female' | 'other' | 'prefer_not_to_say') || null,
               nationality: scholarData.nationality || null,
               addressHomeCountry: scholarData.addressHomeCountry || null,
               passportExpirationDate: scholarData.passportExpirationDate || null,
               visaExpirationDate: scholarData.visaExpirationDate || null,
               emergencyContactCountryOfStudy: scholarData.emergencyContactCountryOfStudy || null,
               emergencyContactHomeCountry: scholarData.emergencyContactHomeCountry || null,
-              graduationDate: scholarData.graduationDate || null,
+              graduationDate: scholarData.graduationDate
+                ? new Date(scholarData.graduationDate)
+                : null,
               universityId: scholarData.universityId || null,
               dietaryInformation: scholarData.dietaryInformation || null,
               kokorozashi: scholarData.kokorozashi || null,
@@ -254,6 +307,10 @@ export class AuthController {
               postGraduationPlan: scholarData.postGraduationPlan || null,
               majorCategory: scholarData.majorCategory || null,
               fieldOfStudy: scholarData.fieldOfStudy || null,
+              programStage: scholarData.programStage || 'scholar',
+              intendedUniversity: intendedUniversity || null,
+              intendedCourse: intendedCourse || null,
+              degreePathway: degreePathway || null,
             });
             console.log('Scholar profile created with all invitation data');
           }

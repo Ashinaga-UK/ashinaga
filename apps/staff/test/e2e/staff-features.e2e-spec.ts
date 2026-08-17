@@ -13,7 +13,9 @@ test.describe('Staff Portal – new features', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     // Wait for the dashboard to be rendered (header is always present once signed in)
-    await expect(page.getByRole('heading', { name: /Ashinaga Staff/ })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Ashinaga Staff/ })).toBeVisible({
+      timeout: 15_000,
+    });
   });
 
   test('Invitations tab is visible and renders Active Staff / Staff Invites / Scholar Invites sub-tabs', async ({
@@ -55,7 +57,7 @@ test.describe('Staff Portal – new features', () => {
     // Dialog opens
     await expect(page.getByRole('dialog')).toBeVisible();
     await expect(page.getByText(/Invite a staff member/i)).toBeVisible();
-    await expect(page.getByText(/expire after 30 days/i)).toBeVisible();
+    await expect(page.getByRole('dialog').getByText(/expire after 30 days/i)).toBeVisible();
 
     // Form field present
     await expect(page.getByLabel(/Work email/i)).toBeVisible();

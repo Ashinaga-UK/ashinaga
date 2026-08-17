@@ -25,7 +25,7 @@ import { ResourcesManagement } from '../components/resources-management';
 import { ScholarManagementTable } from '../components/scholar-management-table';
 import { ScholarOnboarding } from '../components/scholar-onboarding';
 import { ScholarProfilePage } from '../components/scholar-profile';
-import { StaffInviteDialog } from '../components/staff-invite-dialog';
+
 import { TaskAssignment } from '../components/task-assignment';
 import { ThemeToggle } from '../components/theme-toggle';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
@@ -627,15 +627,6 @@ function StaffDashboardContent() {
                     label="View Resources"
                     description="Check scholar-facing handbooks and guides."
                     onClick={() => router.push('?tab=resources')}
-                  />
-                  <StaffInviteDialog
-                    trigger={
-                      <QuickActionButton
-                        icon={<UserPlus className="h-4 w-4" />}
-                        label="Invite Staff"
-                        description="Add another staff member to the portal."
-                      />
-                    }
                   />
                 </div>
               </div>

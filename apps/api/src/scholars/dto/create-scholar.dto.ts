@@ -10,7 +10,7 @@ import {
   ValidatorConstraint,
   type ValidatorConstraintInterface,
 } from 'class-validator';
-import { Gender } from './update-scholar-profile.dto';
+import { Gender, ProgramStage } from './update-scholar-profile.dto';
 
 // Custom validator: Date must be in the past
 @ValidatorConstraint({ name: 'isPastDate', async: false })
@@ -60,9 +60,10 @@ export class IsReasonableAgeConstraint implements ValidatorConstraintInterface {
 
 export class CreateScholarDto {
   // Basic required information
-  @IsNotEmpty()
+  // name is now captured by the scholar at signup (minimal-invite flow) — optional here.
+  @IsOptional()
   @IsString()
-  name: string;
+  name?: string;
 
   @IsNotEmpty()
   @IsEmail()
@@ -172,4 +173,21 @@ export class CreateScholarDto {
   @IsOptional()
   @IsString()
   fieldOfStudy?: string;
+
+  // Prep Year programme stage (ASH-79)
+  @IsOptional()
+  @IsEnum(ProgramStage)
+  programStage?: ProgramStage;
+
+  @IsOptional()
+  @IsString()
+  intendedUniversity?: string;
+
+  @IsOptional()
+  @IsString()
+  intendedCourse?: string;
+
+  @IsOptional()
+  @IsString()
+  degreePathway?: string;
 }

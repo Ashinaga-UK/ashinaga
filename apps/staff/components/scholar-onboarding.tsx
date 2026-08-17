@@ -3,28 +3,138 @@
 import {
   AlertCircle,
   ArrowLeft,
+  Check,
   CheckCircle,
+  ChevronsUpDown,
   FileSpreadsheet,
   Send,
   Upload,
   UserPlus,
 } from 'lucide-react';
 import type React from 'react';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { type CreateScholarData, createScholar } from '../lib/api-client';
-import { GENDER_OPTIONS, type Gender } from '../lib/constants';
+import { DEFAULT_UNIVERSITY_OPTIONS, type Gender } from '../lib/constants';
+import { cn } from '../lib/utils';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from './ui/command';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Textarea } from './ui/textarea';
 
 interface ScholarOnboardingProps {
   onBack: () => void;
+}
+
+const DEGREE_PATHWAY_OPTIONS = ['Foundation Year', 'Direct Entry', 'Top-up Degree', 'Other'];
+const COURSE_OPTIONS = [
+  'Computer Science',
+  'Medicine',
+  'Engineering',
+  'Economics',
+  'Law',
+  'Business',
+  'Psychology',
+  'Environmental Science',
+  'Mathematics',
+  'International Relations',
+];
+
+function SearchableValueField({
+  id,
+  value,
+  options,
+  placeholder,
+  searchPlaceholder,
+  emptyText,
+  onChange,
+}: {
+  id: string;
+  value: string;
+  options: readonly string[];
+  placeholder: string;
+  searchPlaceholder: string;
+  emptyText: string;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState(value);
+
+  useEffect(() => {
+    if (!open) {
+      setSearch(value);
+    }
+  }, [open, value]);
+
+  const filteredOptions = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return options;
+    return options.filter((option) => option.toLowerCase().includes(term));
+  }, [options, search]);
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) {
+          setSearch(value);
+        }
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          id={id}
+          variant="outline"
+          aria-expanded={open}
+          aria-haspopup="listbox"
+          className="w-full justify-between font-normal"
+        >
+          <span className={cn('truncate', !value && 'text-muted-foreground')}>
+            {value || placeholder}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+        <Command shouldFilter={false}>
+          <CommandInput
+            placeholder={searchPlaceholder}
+            value={search}
+            onValueChange={(nextValue) => {
+              setSearch(nextValue);
+              onChange(nextValue);
+            }}
+          />
+          <CommandList>
+            <CommandEmpty>{search.trim() ? `Use "${search.trim()}"` : emptyText}</CommandEmpty>
+            {filteredOptions.map((option) => (
+              <CommandItem
+                key={option}
+                value={option}
+                onSelect={() => {
+                  setSearch(option);
+                  onChange(option);
+                  setOpen(false);
+                }}
+              >
+                <Check
+                  className={cn('mr-2 h-4 w-4', value === option ? 'opacity-100' : 'opacity-0')}
+                />
+                {option}
+              </CommandItem>
+            ))}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 interface ScholarData {
@@ -54,116 +164,11 @@ interface ScholarData {
   bio: string;
   majorCategory: string;
   fieldOfStudy: string;
+  programStage: 'prep_year' | 'scholar';
+  intendedUniversity: string;
+  intendedCourse: string;
+  degreePathway: string;
 }
-
-// Major Categories from Insightly
-const MAJOR_CATEGORIES = [
-  'Business-Related',
-  'Development, Public Policy, Law',
-  'Engineering and Technology',
-  'Environment and Agriculture-related',
-  'Literature and Arts-related',
-  'Medical, Science, and Math-related',
-];
-
-// Fields of Study from Insightly
-const FIELDS_OF_STUDY = [
-  'Accounting',
-  'Actuarial Science',
-  'Advertising',
-  'Aerospace Engineering',
-  'Agriculture',
-  'Agricultural and Biological Engineering',
-  'Agricultural Business Management',
-  'Agriculture Economics',
-  'Animal Bioscience',
-  'Animal Sciences',
-  'Anthropology',
-  'Applied Mathematics',
-  'Archaeology',
-  'Architectural Engineering',
-  'Architecture',
-  'Art History',
-  'Studio Art',
-  'Art Education',
-  'Biobehavioral Health',
-  'Biochemistry',
-  'Bioengineering',
-  'Biology',
-  'Biophysics',
-  'Biomedical Sciences',
-  'Biotechnology',
-  'Business Administration and Management',
-  'Business Logistics',
-  'Chemical Engineering',
-  'Chemistry',
-  'Children',
-  'Civil Engineering',
-  'Computer Engineering',
-  'Computer Science',
-  'Crime, Law, and Justice',
-  'Dance',
-  'Diamond Mining and Processing',
-  'Earth Sciences',
-  'Economics',
-  'Electrical Engineering',
-  'Elementary and Kindergarten Education',
-  'Engineering Science',
-  'English',
-  'Environmental Systems Engineering',
-  'Environmental Sciences',
-  'Environmental Resource Management',
-  'Film and Video',
-  'Finance',
-  'Food Science',
-  'Foreign Investments and Management',
-  'Forest Science',
-  'Forest Technology',
-  'General Science',
-  'Geography',
-  'Geosciences',
-  'Graphic Design and Photography',
-  'Health and Physical Education',
-  'Health Policy and Administration',
-  'History',
-  'Horticulture',
-  'Hotel, Restaurant, and Institutional Management',
-  'Human Development and Family Studies',
-  'Individual and Family Studies',
-  'Industrial Engineering',
-  'Information Sciences and Technology',
-  'Journalism',
-  'Kinesiology',
-  'Landscape Architecture',
-  'Law Enforcement and Correction',
-  'Marine Biology',
-  'Marketing',
-  'Mathematics',
-  'Mechanical Engineering',
-  'Media Studies',
-  'Meteorology',
-  'Microbiology',
-  'Mineral Economics',
-  'Modern Languages',
-  'Music Education',
-  'Nuclear Engineering',
-  'Nursing',
-  'Nutrition',
-  'Pharmacy',
-  'Philosophy',
-  'Physics',
-  'Physiology',
-  'Political Science',
-  'Pre-medicine',
-  'Psychology',
-  'Public Relations',
-  'Real Estate',
-  'Recreation and Parks',
-  'Rehabilitation Services',
-  'Religious Studies',
-  'Social Sciences',
-  'Tourism',
-];
 
 // Validation functions
 const validatePhone = (phone: string): string | null => {
@@ -226,6 +231,10 @@ const initialScholarData: ScholarData = {
   bio: '',
   majorCategory: '',
   fieldOfStudy: '',
+  programStage: 'scholar',
+  intendedUniversity: '',
+  intendedCourse: '',
+  degreePathway: '',
 };
 
 export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
@@ -290,6 +299,10 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
           bio: 'Computer Science student',
           majorCategory: 'Engineering and Technology',
           fieldOfStudy: 'Computer Science',
+          programStage: 'scholar',
+          intendedUniversity: '',
+          intendedCourse: '',
+          degreePathway: '',
         },
         {
           name: 'Jane Smith',
@@ -318,6 +331,10 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
           bio: 'Medicine student',
           majorCategory: 'Medical, Science, and Math-related',
           fieldOfStudy: 'Medicine',
+          programStage: 'scholar',
+          intendedUniversity: '',
+          intendedCourse: '',
+          degreePathway: '',
         },
       ];
       setCsvData(mockCsvData);
@@ -513,9 +530,11 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
                       type="email"
                       value={scholarData.email}
                       onChange={(e) => handleInputChange('email', e.target.value)}
-                      placeholder="scholar@university.ac.uk"
-                      required
+                      placeholder="scholar@example.com"
                     />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      The invitation link will be sent to this email address.
+                    </p>
                   </div>
                   <div>
                     <Label htmlFor="aaiScholarId">AAI Scholar ID</Label>
@@ -523,314 +542,80 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
                       id="aaiScholarId"
                       value={scholarData.aaiScholarId}
                       onChange={(e) => handleInputChange('aaiScholarId', e.target.value)}
-                      placeholder="Enter AAI Scholar ID"
+                      placeholder="e.g. AAI-00012345"
                     />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      The predefined identifier for this scholar.
+                    </p>
                   </div>
+                </div>
+                <div className="space-y-4">
                   <div>
-                    <Label htmlFor="dateOfBirth">Date of Birth</Label>
-                    <Input
-                      id="dateOfBirth"
-                      type="date"
-                      value={scholarData.dateOfBirth}
-                      onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-                      className={validationErrors.dateOfBirth ? 'border-red-500' : ''}
-                    />
-                    {validationErrors.dateOfBirth && (
-                      <p className="text-sm text-red-600 mt-1">{validationErrors.dateOfBirth}</p>
-                    )}
-                  </div>
-                  <div>
-                    <Label htmlFor="gender">Gender</Label>
+                    <Label htmlFor="programStage">Invite As</Label>
                     <Select
-                      value={scholarData.gender}
-                      onValueChange={(value) => handleInputChange('gender', value as Gender)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select gender" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {GENDER_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="nationality">Nationality</Label>
-                    <Input
-                      id="nationality"
-                      value={scholarData.nationality}
-                      onChange={(e) => handleInputChange('nationality', e.target.value)}
-                      placeholder="Enter nationality"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input
-                      id="phone"
-                      value={scholarData.phone}
-                      onChange={(e) => handleInputChange('phone', e.target.value)}
-                      placeholder="+44 7123 456789"
-                      className={validationErrors.phone ? 'border-red-500' : ''}
-                    />
-                    {validationErrors.phone && (
-                      <p className="text-sm text-red-600 mt-1">{validationErrors.phone}</p>
-                    )}
-                  </div>
-                  <div>
-                    <Label htmlFor="location">Address (Country of Study)</Label>
-                    <Textarea
-                      id="location"
-                      value={scholarData.location}
-                      onChange={(e) => handleInputChange('location', e.target.value)}
-                      placeholder="Scholar's address in the country of study"
-                      rows={3}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="addressHomeCountry">Address (Home Country)</Label>
-                    <Textarea
-                      id="addressHomeCountry"
-                      value={scholarData.addressHomeCountry}
-                      onChange={(e) => handleInputChange('addressHomeCountry', e.target.value)}
-                      placeholder="Scholar's address in their home country"
-                      rows={3}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="passportExpirationDate">Passport Expiration Date</Label>
-                    <Input
-                      id="passportExpirationDate"
-                      type="date"
-                      value={scholarData.passportExpirationDate}
-                      onChange={(e) => handleInputChange('passportExpirationDate', e.target.value)}
-                      className={validationErrors.passportExpirationDate ? 'border-red-500' : ''}
-                    />
-                    {validationErrors.passportExpirationDate && (
-                      <p className="text-sm text-red-600 mt-1">
-                        {validationErrors.passportExpirationDate}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <Label htmlFor="visaExpirationDate">Visa Expiration Date</Label>
-                    <Input
-                      id="visaExpirationDate"
-                      type="date"
-                      value={scholarData.visaExpirationDate}
-                      onChange={(e) => handleInputChange('visaExpirationDate', e.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="emergencyContactCountryOfStudy">
-                      Emergency Contact (Country of Study)
-                    </Label>
-                    <Input
-                      id="emergencyContactCountryOfStudy"
-                      value={scholarData.emergencyContactCountryOfStudy}
-                      onChange={(e) =>
-                        handleInputChange('emergencyContactCountryOfStudy', e.target.value)
+                      value={scholarData.programStage}
+                      onValueChange={(value) =>
+                        handleInputChange('programStage', value as 'prep_year' | 'scholar')
                       }
-                      placeholder="Emergency contact in country of study"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="emergencyContactHomeCountry">
-                      Emergency Contact (Home Country)
-                    </Label>
-                    <Input
-                      id="emergencyContactHomeCountry"
-                      value={scholarData.emergencyContactHomeCountry}
-                      onChange={(e) =>
-                        handleInputChange('emergencyContactHomeCountry', e.target.value)
-                      }
-                      placeholder="Emergency contact in home country"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="program">Program of Study *</Label>
-                    <Select
-                      value={scholarData.program}
-                      onValueChange={(value) => handleInputChange('program', value)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select program" />
+                        <SelectValue placeholder="Select program stage" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Computer Science">Computer Science</SelectItem>
-                        <SelectItem value="Medicine">Medicine</SelectItem>
-                        <SelectItem value="Engineering">Engineering</SelectItem>
-                        <SelectItem value="International Relations">
-                          International Relations
-                        </SelectItem>
-                        <SelectItem value="Business">Business</SelectItem>
-                        <SelectItem value="Law">Law</SelectItem>
+                        <SelectItem value="scholar">Uni Student</SelectItem>
+                        <SelectItem value="prep_year">Prep-Year</SelectItem>
                       </SelectContent>
                     </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      The scholar completes the rest of their profile after signing up.
+                    </p>
                   </div>
-                  <div>
-                    <Label htmlFor="university">University</Label>
-                    <Select
-                      value={scholarData.university}
-                      onValueChange={(value) => handleInputChange('university', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select university" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Imperial College London">
-                          Imperial College London
-                        </SelectItem>
-                        <SelectItem value="University of Edinburgh">
-                          University of Edinburgh
-                        </SelectItem>
-                        <SelectItem value="LSE">London School of Economics</SelectItem>
-                        <SelectItem value="Cambridge University">Cambridge University</SelectItem>
-                        <SelectItem value="Oxford University">Oxford University</SelectItem>
-                        <SelectItem value="UCL">University College London</SelectItem>
-                        <SelectItem value="University of York">University of York</SelectItem>
-                        <SelectItem value="University of Warwick">University of Warwick</SelectItem>
-                        <SelectItem value="University of Central Lancashire">
-                          University of Central Lancashire
-                        </SelectItem>
-                        <SelectItem value="University of East Anglia">
-                          University of East Anglia
-                        </SelectItem>
-                        <SelectItem value="University of Manchester">
-                          University of Manchester
-                        </SelectItem>
-                        <SelectItem value="University of Leeds">University of Leeds</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="majorCategory">Major Category</Label>
-                    <Select
-                      value={scholarData.majorCategory}
-                      onValueChange={(value) => handleInputChange('majorCategory', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select major category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {MAJOR_CATEGORIES.map((category) => (
-                          <SelectItem key={category} value={category}>
-                            {category}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="fieldOfStudy">Field of Study</Label>
-                    <Select
-                      value={scholarData.fieldOfStudy}
-                      onValueChange={(value) => handleInputChange('fieldOfStudy', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select field of study" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-[300px]">
-                        {FIELDS_OF_STUDY.map((field) => (
-                          <SelectItem key={field} value={field}>
-                            {field}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="year">Academic Year</Label>
-                    <Select
-                      value={scholarData.year}
-                      onValueChange={(value) => handleInputChange('year', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select year" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Pre-University">Pre-University</SelectItem>
-                        <SelectItem value="Foundation">Foundation</SelectItem>
-                        <SelectItem value="Year 1">Year 1</SelectItem>
-                        <SelectItem value="Year 2">Year 2</SelectItem>
-                        <SelectItem value="Year 3">Year 3</SelectItem>
-                        <SelectItem value="Year 4">Year 4</SelectItem>
-                        <SelectItem value="Year 5">Year 5</SelectItem>
-                        <SelectItem value="Postgraduate">Postgraduate</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="startDate">Start Date</Label>
-                    <Input
-                      id="startDate"
-                      type="date"
-                      value={scholarData.startDate}
-                      onChange={(e) => handleInputChange('startDate', e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="universityId">University Scholar ID</Label>
-                    <Input
-                      id="universityId"
-                      value={scholarData.universityId}
-                      onChange={(e) => handleInputChange('universityId', e.target.value)}
-                      placeholder="Enter University Scholar ID"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="dietaryInformation">Dietary Information</Label>
-                    <Textarea
-                      id="dietaryInformation"
-                      value={scholarData.dietaryInformation}
-                      onChange={(e) => handleInputChange('dietaryInformation', e.target.value)}
-                      placeholder="Any dietary restrictions or allergies"
-                      rows={3}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="kokorozashi">Kokorozashi Essay</Label>
-                    <Textarea
-                      id="kokorozashi"
-                      value={scholarData.kokorozashi}
-                      onChange={(e) => handleInputChange('kokorozashi', e.target.value)}
-                      placeholder="Kokorozashi Essay"
-                      rows={3}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="longTermCareerPlan">Long Term Career Plan</Label>
-                    <Textarea
-                      id="longTermCareerPlan"
-                      value={scholarData.longTermCareerPlan}
-                      onChange={(e) => handleInputChange('longTermCareerPlan', e.target.value)}
-                      placeholder="Long Term Career Plan"
-                      rows={3}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="postGraduationPlan">Post Graduation Plan</Label>
-                    <Textarea
-                      id="postGraduationPlan"
-                      value={scholarData.postGraduationPlan}
-                      onChange={(e) => handleInputChange('postGraduationPlan', e.target.value)}
-                      placeholder="Post Graduation Plan"
-                      rows={3}
-                    />
-                  </div>
+                  {scholarData.programStage === 'prep_year' && (
+                    <>
+                      <div>
+                        <Label htmlFor="intendedUniversity">Intended University</Label>
+                        <SearchableValueField
+                          id="intendedUniversity"
+                          value={scholarData.intendedUniversity}
+                          options={DEFAULT_UNIVERSITY_OPTIONS}
+                          placeholder="Select or type a university"
+                          searchPlaceholder="Start typing a university..."
+                          emptyText="No universities match. Keep typing to enter a custom one."
+                          onChange={(value) => handleInputChange('intendedUniversity', value)}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="intendedCourse">Intended Course</Label>
+                        <SearchableValueField
+                          id="intendedCourse"
+                          value={scholarData.intendedCourse}
+                          options={COURSE_OPTIONS}
+                          placeholder="Select or type a course"
+                          searchPlaceholder="Start typing a course..."
+                          emptyText="No courses match. Keep typing to enter a custom one."
+                          onChange={(value) => handleInputChange('intendedCourse', value)}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="degreePathway">Degree Pathway</Label>
+                        <Select
+                          value={scholarData.degreePathway}
+                          onValueChange={(value) => handleInputChange('degreePathway', value)}
+                        >
+                          <SelectTrigger id="degreePathway">
+                            <SelectValue placeholder="Select degree pathway" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {DEGREE_PATHWAY_OPTIONS.map((option) => (
+                              <SelectItem key={option} value={option}>
+                                {option}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 

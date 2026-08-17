@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import type { ProgramStage } from '../../scholars/dto/update-scholar-profile.dto';
 
 export class CreateInvitationDto {
   @ApiProperty({ description: 'Email address of the person to invite' })
@@ -36,6 +37,12 @@ export class CreateInvitationDto {
     location?: string;
     phone?: string;
     bio?: string;
+    /** Programme stage: 'prep_year' or 'scholar' */
+    programStage?: ProgramStage;
+    /** Intended destination (only meaningful when programStage = prep_year) */
+    intendedUniversity?: string;
+    intendedCourse?: string;
+    degreePathway?: string;
   };
 }
 
