@@ -14,7 +14,6 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ThemeToggle } from './theme-toggle';
-import { Separator } from './ui/separator';
 import {
   Sidebar,
   SidebarContent,
@@ -28,7 +27,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
-  SidebarRail,
   SidebarTrigger,
   useSidebar,
 } from './ui/sidebar';
@@ -56,21 +54,24 @@ function ScholarSidebar({ onLogout }: { onLogout: () => void }) {
   return (
     <Sidebar collapsible="icon" variant="inset">
       <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild tooltip="Ashinaga Scholar Portal">
-              <Link href="/dashboard" onClick={() => setOpenMobile(false)}>
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600">
-                  <span className="text-sm font-bold text-white">A</span>
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">Ashinaga</span>
-                  <span className="truncate text-xs text-muted-foreground">Scholar Portal</span>
-                </div>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <div className="flex items-center justify-between gap-1 group-data-[collapsible=icon]:justify-center">
+          <SidebarMenu className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
+            <SidebarMenuItem>
+              <SidebarMenuButton size="lg" asChild>
+                <Link href="/dashboard" onClick={() => setOpenMobile(false)}>
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600">
+                    <span className="text-sm font-bold text-white">A</span>
+                  </div>
+                  <div className="grid flex-1 text-left text-sm leading-tight">
+                    <span className="truncate font-semibold">Ashinaga</span>
+                    <span className="truncate text-xs text-muted-foreground">Scholar Portal</span>
+                  </div>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+          <SidebarTrigger aria-label="Toggle sidebar" className="shrink-0" />
+        </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
@@ -108,7 +109,6 @@ function ScholarSidebar({ onLogout }: { onLogout: () => void }) {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
-      <SidebarRail />
     </Sidebar>
   );
 }
@@ -119,8 +119,7 @@ export function ScholarLayout({ children, onLogout }: ScholarLayoutProps) {
       <ScholarSidebar onLogout={onLogout} />
       <SidebarInset>
         <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b bg-background/80 px-3 backdrop-blur-xl sm:px-4">
-          <SidebarTrigger aria-label="Toggle sidebar" />
-          <Separator orientation="vertical" className="mr-1 h-4" />
+          <SidebarTrigger aria-label="Toggle sidebar" className="md:hidden" />
           <h1 className="truncate text-sm font-semibold text-foreground">
             Ashinaga Scholar Portal
           </h1>

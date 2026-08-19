@@ -55,13 +55,17 @@ test.describe('Scholar Portal – new request multi-assignee', () => {
 test.describe('Scholar Portal – collapsible sidebar', () => {
   test('sidebar trigger collapses and expands navigation on desktop', async ({ page }) => {
     await page.goto('/dashboard');
+    const sidebarToggle = page.locator('[data-sidebar="sidebar"] [data-sidebar="trigger"]');
+
     await expect(page.getByRole('heading', { name: 'Ashinaga Scholar Portal' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Overview', exact: true })).toBeVisible();
+    await expect(sidebarToggle).toBeVisible();
 
-    await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+    await sidebarToggle.click();
     await expect(page.locator('[data-collapsible="icon"]')).toBeVisible();
+    await expect(sidebarToggle).toBeVisible();
 
-    await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+    await sidebarToggle.click();
     await expect(page.getByRole('link', { name: 'My Requests', exact: true })).toBeVisible();
   });
 

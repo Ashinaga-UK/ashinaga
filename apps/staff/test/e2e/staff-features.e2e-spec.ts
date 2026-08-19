@@ -152,12 +152,16 @@ test.describe('Staff Portal – new features', () => {
   });
 
   test('sidebar trigger collapses and expands navigation on desktop', async ({ page }) => {
+    const sidebarToggle = page.locator('[data-sidebar="sidebar"] [data-sidebar="trigger"]');
+
     await expect(page.getByRole('link', { name: 'Overview', exact: true })).toBeVisible();
+    await expect(sidebarToggle).toBeVisible();
 
-    await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+    await sidebarToggle.click();
     await expect(page.locator('[data-collapsible="icon"]')).toBeVisible();
+    await expect(sidebarToggle).toBeVisible();
 
-    await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+    await sidebarToggle.click();
     await expect(page.getByRole('link', { name: 'Invitations', exact: true })).toBeVisible();
   });
 

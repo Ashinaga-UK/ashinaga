@@ -21,6 +21,16 @@ jest.mock('../theme-toggle', () => ({
   ThemeToggle: () => null,
 }));
 
+function getSidebar() {
+  return document.querySelector('[data-side="left"]') as HTMLElement;
+}
+
+function getDesktopToggle() {
+  return document.querySelector(
+    '[data-sidebar="sidebar"] [data-sidebar="trigger"]'
+  ) as HTMLButtonElement;
+}
+
 describe('StaffLayout', () => {
   const renderLayout = (onLogout = jest.fn()) =>
     render(
@@ -54,18 +64,31 @@ describe('StaffLayout', () => {
     expect(screen.getByText('Staff content')).toBeInTheDocument();
   });
 
-  it('collapses and expands the sidebar from the header trigger', async () => {
+  it('places the collapse toggle on the same header row, opposite the Ashinaga brand', () => {
+    renderLayout();
+
+    const header = document.querySelector('[data-sidebar="header"]') as HTMLElement;
+    const brand = screen.getByText('Ashinaga');
+    const toggle = getDesktopToggle();
+
+    expect(header).toContainElement(brand);
+    expect(header).toContainElement(toggle);
+    expect(brand.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('collapses to an icon rail while keeping the in-sidebar toggle visible', async () => {
     const user = userEvent.setup();
     renderLayout();
 
-    const sidebar = document.querySelector('[data-side="left"]');
+    const sidebar = getSidebar();
     expect(sidebar).toHaveAttribute('data-state', 'expanded');
 
-    await user.click(screen.getByRole('button', { name: 'Toggle sidebar' }));
+    await user.click(getDesktopToggle());
     expect(sidebar).toHaveAttribute('data-state', 'collapsed');
     expect(sidebar).toHaveAttribute('data-collapsible', 'icon');
+    expect(getDesktopToggle()).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Toggle sidebar' }));
+    await user.click(getDesktopToggle());
     expect(sidebar).toHaveAttribute('data-state', 'expanded');
   });
 

@@ -6,6 +6,16 @@ jest.mock('next-themes', () => ({
   useTheme: () => ({ theme: 'light', setTheme: jest.fn() }),
 }));
 
+function getSidebar() {
+  return document.querySelector('[data-side="left"]') as HTMLElement;
+}
+
+function getDesktopToggle() {
+  return document.querySelector(
+    '[data-sidebar="sidebar"] [data-sidebar="trigger"]'
+  ) as HTMLButtonElement;
+}
+
 describe('ScholarLayout', () => {
   it('renders navigation links and page content', () => {
     render(
@@ -22,10 +32,26 @@ describe('ScholarLayout', () => {
     );
     expect(screen.getByRole('link', { name: 'Resources' })).toHaveAttribute('href', '/resources');
     expect(screen.getByText('Dashboard content')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Toggle sidebar' })).toBeInTheDocument();
+    expect(getDesktopToggle()).toBeInTheDocument();
   });
 
-  it('collapses and expands the sidebar from the header trigger', async () => {
+  it('places the collapse toggle on the same header row, opposite the Ashinaga brand', () => {
+    render(
+      <ScholarLayout onLogout={jest.fn()}>
+        <p>Dashboard content</p>
+      </ScholarLayout>
+    );
+
+    const header = document.querySelector('[data-sidebar="header"]') as HTMLElement;
+    const brand = screen.getByText('Ashinaga');
+    const toggle = getDesktopToggle();
+
+    expect(header).toContainElement(brand);
+    expect(header).toContainElement(toggle);
+    expect(brand.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('collapses to an icon rail while keeping the in-sidebar toggle visible', async () => {
     const user = userEvent.setup();
     render(
       <ScholarLayout onLogout={jest.fn()}>
@@ -33,14 +59,15 @@ describe('ScholarLayout', () => {
       </ScholarLayout>
     );
 
-    const sidebar = document.querySelector('[data-side="left"]');
+    const sidebar = getSidebar();
     expect(sidebar).toHaveAttribute('data-state', 'expanded');
 
-    await user.click(screen.getByRole('button', { name: 'Toggle sidebar' }));
+    await user.click(getDesktopToggle());
     expect(sidebar).toHaveAttribute('data-state', 'collapsed');
     expect(sidebar).toHaveAttribute('data-collapsible', 'icon');
+    expect(getDesktopToggle()).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Toggle sidebar' }));
+    await user.click(getDesktopToggle());
     expect(sidebar).toHaveAttribute('data-state', 'expanded');
   });
 
