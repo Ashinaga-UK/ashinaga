@@ -51,3 +51,28 @@ test.describe('Scholar Portal – new request multi-assignee', () => {
     await expect(page.getByText(/1 selected/)).toHaveCount(0);
   });
 });
+
+test.describe('Scholar Portal – collapsible sidebar', () => {
+  test('sidebar trigger collapses and expands navigation on desktop', async ({ page }) => {
+    await page.goto('/dashboard');
+    await expect(page.getByRole('heading', { name: 'Ashinaga Scholar Portal' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Overview', exact: true })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+    await expect(page.locator('[data-collapsible="icon"]')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+    await expect(page.getByRole('link', { name: 'My Requests', exact: true })).toBeVisible();
+  });
+
+  test('sidebar trigger opens mobile navigation and a section can be selected', async ({
+    page,
+  }) => {
+    await page.goto('/dashboard');
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+    await expect(page.getByRole('link', { name: 'My Requests', exact: true })).toBeVisible();
+    await page.getByRole('link', { name: 'My Requests', exact: true }).click();
+    await expect(page).toHaveURL(/\/requests/);
+  });
+});

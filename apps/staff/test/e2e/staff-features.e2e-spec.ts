@@ -4,10 +4,15 @@
  *  - Bulk task assignment dialog (issue #3)
  *  - Task title autocomplete suggestion dropdown (issue #5)
  *  - Soft-delete task confirmation dialog (issue #4)
+ *  - Collapsible sidebar (ASH-9)
  *
  * Auth is handled by ./auth.setup.ts via the 'setup' Playwright project.
  */
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
+
+async function openStaffSection(page: Page, name: string) {
+  await page.getByRole('link', { name, exact: true }).click();
+}
 
 test.describe('Staff Portal – new features', () => {
   test.beforeEach(async ({ page }) => {
@@ -19,8 +24,7 @@ test.describe('Staff Portal – new features', () => {
   test('Invitations tab is visible and renders Active Staff / Staff Invites / Scholar Invites sub-tabs', async ({
     page,
   }) => {
-    const invitationsTab = page.getByRole('tab', { name: /Invitations/i });
-    await expect(invitationsTab).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Invitations', exact: true })).toBeVisible();
     await page.goto('/?tab=invitations');
     await expect(page.getByText('Staff & Invitations')).toBeVisible();
 
@@ -46,7 +50,7 @@ test.describe('Staff Portal – new features', () => {
   });
 
   test('Invite Staff dialog opens with the 30-day expiry copy', async ({ page }) => {
-    await page.getByRole('tab', { name: /Invitations/i }).click();
+    await openStaffSection(page, 'Invitations');
     await page
       .getByRole('button', { name: /Invite Staff/i })
       .first()
@@ -62,7 +66,7 @@ test.describe('Staff Portal – new features', () => {
   });
 
   test('Bulk task assignment dialog opens from the Scholars tab', async ({ page }) => {
-    await page.getByRole('tab', { name: /Scholars/i }).click();
+    await openStaffSection(page, 'Scholars');
 
     // Wait for at least one scholar row to render (we just need a checkbox to click)
     const checkboxes = page.getByRole('checkbox');
@@ -114,7 +118,7 @@ test.describe('Staff Portal – new features', () => {
   test('Soft-delete trash button + confirm dialog appear on a scholar profile with tasks', async ({
     page,
   }) => {
-    await page.getByRole('tab', { name: /Scholars/i }).click();
+    await openStaffSection(page, 'Scholars');
 
     // Open the first scholar profile via "View" button (or row click)
     const viewButton = page.getByRole('button', { name: /View Profile/i }).first();
@@ -145,5 +149,25 @@ test.describe('Staff Portal – new features', () => {
 
     // Don't actually click Delete; cancel out
     await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  });
+
+  test('sidebar trigger collapses and expands navigation on desktop', async ({ page }) => {
+    await expect(page.getByRole('link', { name: 'Overview', exact: true })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+    await expect(page.locator('[data-collapsible="icon"]')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+    await expect(page.getByRole('link', { name: 'Invitations', exact: true })).toBeVisible();
+  });
+
+  test('sidebar trigger opens mobile navigation and a section can be selected', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+    await expect(page.getByRole('link', { name: 'Requests', exact: true })).toBeVisible();
+    await page.getByRole('link', { name: 'Requests', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Requests' })).toBeVisible();
   });
 });

@@ -7,136 +7,129 @@ import {
   Home,
   Library,
   LogOut,
-  Menu,
   MessageSquare,
   Target,
   User,
-  X,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
-import { cn } from '../lib/utils';
 import { ThemeToggle } from './theme-toggle';
-import { Button } from './ui/button';
+import { Separator } from './ui/separator';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarTrigger,
+  useSidebar,
+} from './ui/sidebar';
 
 interface ScholarLayoutProps {
   children: React.ReactNode;
   onLogout: () => void;
 }
 
-export function ScholarLayout({ children, onLogout }: ScholarLayoutProps) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const pathname = usePathname();
+const NAV_ITEMS = [
+  { id: 'dashboard', href: '/dashboard', label: 'Overview', icon: Home },
+  { id: 'profile', href: '/profile', label: 'My Profile', icon: User },
+  { id: 'goals', href: '/goals', label: 'My LDF', icon: Target },
+  { id: 'annual-review', href: '/annual-review', label: 'My Annual Review', icon: ClipboardCheck },
+  { id: 'tasks', href: '/tasks', label: 'My Tasks', icon: CheckSquare },
+  { id: 'requests', href: '/requests', label: 'My Requests', icon: FileText },
+  { id: 'announcements', href: '/announcements', label: 'Announcements', icon: MessageSquare },
+  { id: 'resources', href: '/resources', label: 'Resources', icon: Library },
+] as const;
 
-  const navItems = [
-    { id: 'dashboard', href: '/dashboard', label: 'Overview', icon: Home },
-    { id: 'profile', href: '/profile', label: 'My Profile', icon: User },
-    { id: 'goals', href: '/goals', label: 'My LDF', icon: Target },
-    {
-      id: 'annual-review',
-      href: '/annual-review',
-      label: 'My Annual Review',
-      icon: ClipboardCheck,
-    },
-    { id: 'tasks', href: '/tasks', label: 'My Tasks', icon: CheckSquare },
-    { id: 'requests', href: '/requests', label: 'My Requests', icon: FileText },
-    { id: 'announcements', href: '/announcements', label: 'Announcements', icon: MessageSquare },
-    { id: 'resources', href: '/resources', label: 'Resources', icon: Library },
-  ];
+function ScholarSidebar({ onLogout }: { onLogout: () => void }) {
+  const pathname = usePathname();
+  const { setOpenMobile } = useSidebar();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:from-background dark:to-background dark:bg-background">
-      {/* Mobile header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white dark:bg-sidebar border-b border-ashinaga-teal-100 dark:border-sidebar-border z-50 px-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-            {isSidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </Button>
-          <h1 className="text-lg font-semibold text-foreground">Ashinaga Scholar Portal</h1>
-        </div>
-      </div>
-
-      {/* Sidebar */}
-      <div
-        className={cn(
-          'fixed left-0 top-0 bottom-0 w-64 bg-white dark:bg-sidebar border-r border-ashinaga-teal-100 dark:border-sidebar-border transform transition-transform duration-200 ease-in-out z-40',
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        )}
-      >
-        <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="p-6 border-b border-ashinaga-teal-100 dark:border-sidebar-border">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">A</span>
-              </div>
-              <div>
-                <h1 className="font-semibold text-foreground">Ashinaga</h1>
-                <p className="text-xs text-muted-foreground">Scholar Portal</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Navigation */}
-          <nav className="flex-1 p-4">
-            <ul className="space-y-2">
-              {navItems.map((item) => {
+    <Sidebar collapsible="icon" variant="inset">
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton size="lg" asChild tooltip="Ashinaga Scholar Portal">
+              <Link href="/dashboard" onClick={() => setOpenMobile(false)}>
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600">
+                  <span className="text-sm font-bold text-white">A</span>
+                </div>
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-semibold">Ashinaga</span>
+                  <span className="truncate text-xs text-muted-foreground">Scholar Portal</span>
+                </div>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {NAV_ITEMS.map((item) => {
                 const Icon = item.icon;
-                const isActive = pathname === item.href;
                 return (
-                  <li key={item.id}>
-                    <Link href={item.href} onClick={() => setIsSidebarOpen(false)}>
-                      <Button
-                        variant="ghost"
-                        className={cn(
-                          'w-full justify-start',
-                          isActive &&
-                            'bg-ashinaga-teal-50 dark:bg-accent text-ashinaga-teal-700 dark:text-accent-foreground hover:bg-ashinaga-teal-100 dark:hover:bg-accent/80'
-                        )}
-                        asChild
-                      >
-                        <span>
-                          <Icon className="mr-3 h-4 w-4" />
-                          {item.label}
-                        </span>
-                      </Button>
-                    </Link>
-                  </li>
+                  <SidebarMenuItem key={item.id}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname === item.href}
+                      tooltip={item.label}
+                    >
+                      <Link href={item.href} onClick={() => setOpenMobile(false)}>
+                        <Icon />
+                        <span>{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
                 );
               })}
-            </ul>
-          </nav>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton tooltip="Logout" onClick={onLogout}>
+              <LogOut />
+              <span>Logout</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+      <SidebarRail />
+    </Sidebar>
+  );
+}
 
-          {/* Bottom section */}
-          <div className="p-4 border-t border-ashinaga-teal-100 dark:border-sidebar-border space-y-1">
+export function ScholarLayout({ children, onLogout }: ScholarLayoutProps) {
+  return (
+    <SidebarProvider className="bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:from-background dark:to-background">
+      <ScholarSidebar onLogout={onLogout} />
+      <SidebarInset>
+        <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b bg-background/80 px-3 backdrop-blur-xl sm:px-4">
+          <SidebarTrigger aria-label="Toggle sidebar" />
+          <Separator orientation="vertical" className="mr-1 h-4" />
+          <h1 className="truncate text-sm font-semibold text-foreground">
+            Ashinaga Scholar Portal
+          </h1>
+          <div className="ml-auto">
             <ThemeToggle />
-            <Button
-              variant="ghost"
-              className="w-full justify-start text-muted-foreground hover:text-foreground"
-              onClick={onLogout}
-            >
-              <LogOut className="mr-3 h-4 w-4" />
-              Logout
-            </Button>
           </div>
-        </div>
-      </div>
-
-      {/* Main content */}
-      <div className="lg:ml-64 min-h-screen">
-        <div className="pt-16 lg:pt-0">{children}</div>
-      </div>
-
-      {/* Mobile overlay */}
-      {isSidebarOpen && (
-        <button
-          type="button"
-          aria-label="Close navigation menu"
-          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-    </div>
+        </header>
+        <div className="flex-1">{children}</div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

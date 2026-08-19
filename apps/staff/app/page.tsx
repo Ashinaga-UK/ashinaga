@@ -2,12 +2,9 @@
 
 import {
   AlertCircle,
-  ClipboardCheck,
   FileText,
   Library,
   Loader2,
-  LogOut,
-  Mail,
   MessageSquare,
   Trash2,
   UserPlus,
@@ -26,9 +23,8 @@ import { ScholarManagementTable } from '../components/scholar-management-table';
 import { ScholarOnboarding } from '../components/scholar-onboarding';
 import { ScholarProfilePage } from '../components/scholar-profile';
 import { StaffInviteDialog } from '../components/staff-invite-dialog';
+import { StaffLayout } from '../components/staff-layout';
 import { TaskAssignment } from '../components/task-assignment';
-import { ThemeToggle } from '../components/theme-toggle';
-import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
@@ -40,7 +36,7 @@ import {
   SelectValue,
 } from '../components/ui/select';
 import { Skeleton } from '../components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Tabs, TabsContent } from '../components/ui/tabs';
 import {
   type AnnouncementFilterOptions,
   deleteAnnouncement,
@@ -62,16 +58,6 @@ type StaffDashboardView =
   | 'onboarding'
   | 'task-assignment'
   | 'my-profile';
-
-const STAFF_NAV_ITEMS = [
-  { value: 'overview', label: 'Overview' },
-  { value: 'scholars', label: 'Scholars' },
-  { value: 'annual-reviews', label: 'Annual Reviews' },
-  { value: 'requests', label: 'Requests' },
-  { value: 'announcements', label: 'Announcements' },
-  { value: 'resources', label: 'Resources' },
-  { value: 'invitations', label: 'Invitations' },
-];
 
 interface QuickActionButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   icon: React.ReactNode;
@@ -406,54 +392,12 @@ function StaffDashboardContent() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header — sticky, glassy, sleek */}
-      <header className="sticky top-0 z-40 w-full border-b border-border bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:gap-3 sm:px-6">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand">
-              <span className="text-brand-foreground font-semibold text-sm">A</span>
-            </div>
-            <div className="flex min-w-0 flex-col leading-tight">
-              <h1 className="truncate text-sm font-medium text-foreground">Ashinaga Staff</h1>
-              <p className="hidden truncate text-[11px] text-muted-foreground sm:block">
-                Supporting Scholar Success
-              </p>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-1">
-            <ThemeToggle />
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 px-0 sm:w-auto sm:px-3"
-              onClick={handleSignOut}
-              aria-label="Logout"
-            >
-              <LogOut className="h-4 w-4 sm:hidden" />
-              <span className="hidden sm:inline">Logout</span>
-            </Button>
-            <button
-              type="button"
-              className="ml-2 rounded-full transition-opacity hover:opacity-80 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              onClick={() => router.push('?view=my-profile')}
-              aria-label="Open my profile"
-            >
-              <Avatar className="h-8 w-8 cursor-pointer max-[380px]:hidden">
-                {user?.image && <AvatarImage src={user.image} alt={user.name || 'User'} />}
-                <AvatarFallback className="text-xs">
-                  {user?.name
-                    ?.split(' ')
-                    .map((n: string) => n[0])
-                    .join('')
-                    .toUpperCase() || 'U'}
-                </AvatarFallback>
-              </Avatar>
-            </button>
-          </div>
-        </div>
-      </header>
-
+    <StaffLayout
+      activeTab={activeTab}
+      onLogout={handleSignOut}
+      onOpenProfile={() => router.push('?view=my-profile')}
+      user={user}
+    >
       <div className="mx-auto max-w-7xl px-3 py-5 animate-fade-in sm:px-6 sm:py-8">
         {currentView === 'onboarding' ? (
           <ScholarOnboarding onBack={() => router.push('/')} />
@@ -461,61 +405,27 @@ function StaffDashboardContent() {
           <MyProfile onBack={() => router.push('/')} />
         ) : (
           <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div className="min-w-0">
-                <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-                  {activeTab === 'overview' && 'Overview'}
-                  {activeTab === 'scholars' && 'Scholars'}
-                  {activeTab === 'annual-reviews' && 'Annual Reviews'}
-                  {activeTab === 'requests' && 'Requests'}
-                  {activeTab === 'announcements' && 'Announcements'}
-                  {activeTab === 'resources' && 'Resources'}
-                  {activeTab === 'invitations' && 'Invitations'}
-                </h2>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  {activeTab === 'overview' && 'Your dashboard at a glance.'}
-                  {activeTab === 'scholars' && 'View and manage your assigned scholars.'}
-                  {activeTab === 'annual-reviews' &&
-                    'Track annual review submissions by scholar and academic year.'}
-                  {activeTab === 'requests' && 'Review and respond to scholar submissions.'}
-                  {activeTab === 'announcements' && 'Create and manage announcements.'}
-                  {activeTab === 'resources' && 'Review scholar-facing handbooks and guides.'}
-                  {activeTab === 'invitations' && 'Invite scholars and staff to the portal.'}
-                </p>
-              </div>
-              <div className="sm:hidden">
-                <Select value={activeTab} onValueChange={handleTabChange}>
-                  <SelectTrigger aria-label="Section" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STAFF_NAV_ITEMS.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="min-w-0">
+              <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+                {activeTab === 'overview' && 'Overview'}
+                {activeTab === 'scholars' && 'Scholars'}
+                {activeTab === 'annual-reviews' && 'Annual Reviews'}
+                {activeTab === 'requests' && 'Requests'}
+                {activeTab === 'announcements' && 'Announcements'}
+                {activeTab === 'resources' && 'Resources'}
+                {activeTab === 'invitations' && 'Invitations'}
+              </h2>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {activeTab === 'overview' && 'Your dashboard at a glance.'}
+                {activeTab === 'scholars' && 'View and manage your assigned scholars.'}
+                {activeTab === 'annual-reviews' &&
+                  'Track annual review submissions by scholar and academic year.'}
+                {activeTab === 'requests' && 'Review and respond to scholar submissions.'}
+                {activeTab === 'announcements' && 'Create and manage announcements.'}
+                {activeTab === 'resources' && 'Review scholar-facing handbooks and guides.'}
+                {activeTab === 'invitations' && 'Invite scholars and staff to the portal.'}
+              </p>
             </div>
-            <TabsList className="hidden h-auto flex-wrap sm:inline-flex">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="scholars">Scholars</TabsTrigger>
-              <TabsTrigger value="annual-reviews" className="gap-1.5">
-                <ClipboardCheck className="h-3.5 w-3.5" />
-                Annual Reviews
-              </TabsTrigger>
-              <TabsTrigger value="requests">Requests</TabsTrigger>
-              <TabsTrigger value="announcements">Announcements</TabsTrigger>
-              <TabsTrigger value="resources" className="gap-1.5">
-                <Library className="h-3.5 w-3.5" />
-                Resources
-              </TabsTrigger>
-              <TabsTrigger value="invitations" className="gap-1.5">
-                <Mail className="h-3.5 w-3.5" />
-                Invitations
-              </TabsTrigger>
-            </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
               {/* Stats Overview — flatter, tabular numerals, brand chip rather than gradient tile */}
@@ -959,7 +869,7 @@ function StaffDashboardContent() {
           </Tabs>
         )}
       </div>
-    </div>
+    </StaffLayout>
   );
 }
 
