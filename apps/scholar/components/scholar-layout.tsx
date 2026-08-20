@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { cn } from '../lib/utils';
 import { ThemeToggle } from './theme-toggle';
 import {
   Sidebar,
@@ -20,8 +21,6 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
   SidebarInset,
   SidebarMenu,
   SidebarMenuButton,
@@ -52,40 +51,24 @@ function ScholarSidebar({ onLogout }: { onLogout: () => void }) {
   const { setOpenMobile } = useSidebar();
 
   return (
-    <Sidebar collapsible="icon" variant="inset">
-      <SidebarHeader>
-        <div className="flex items-center justify-between gap-1 group-data-[collapsible=icon]:justify-center">
-          <SidebarMenu className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-            <SidebarMenuItem>
-              <SidebarMenuButton size="lg" asChild>
-                <Link href="/dashboard" onClick={() => setOpenMobile(false)}>
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600">
-                    <span className="text-sm font-bold text-white">A</span>
-                  </div>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">Ashinaga</span>
-                    <span className="truncate text-xs text-muted-foreground">Scholar Portal</span>
-                  </div>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-          <SidebarTrigger aria-label="Toggle sidebar" className="shrink-0" />
-        </div>
-      </SidebarHeader>
+    <Sidebar collapsible="icon" className="border-ashinaga-teal-100 dark:border-sidebar-border">
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {NAV_ITEMS.map((item) => {
                 const Icon = item.icon;
+                const isActive = pathname === item.href;
                 return (
                   <SidebarMenuItem key={item.id}>
                     <SidebarMenuButton
                       asChild
-                      isActive={pathname === item.href}
+                      isActive={isActive}
                       tooltip={item.label}
+                      className={cn(
+                        isActive &&
+                          'bg-ashinaga-teal-50 text-ashinaga-teal-700 hover:bg-ashinaga-teal-100 dark:bg-accent dark:text-accent-foreground dark:hover:bg-accent/80'
+                      )}
                     >
                       <Link href={item.href} onClick={() => setOpenMobile(false)}>
                         <Icon />
@@ -115,20 +98,27 @@ function ScholarSidebar({ onLogout }: { onLogout: () => void }) {
 
 export function ScholarLayout({ children, onLogout }: ScholarLayoutProps) {
   return (
-    <SidebarProvider className="bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:from-background dark:to-background">
-      <ScholarSidebar onLogout={onLogout} />
-      <SidebarInset>
-        <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b bg-background/80 px-3 backdrop-blur-xl sm:px-4">
-          <SidebarTrigger aria-label="Toggle sidebar" className="md:hidden" />
+    <SidebarProvider className="flex-col bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:from-background dark:to-background">
+      <header className="z-30 flex h-14 shrink-0 items-center gap-2 border-b border-ashinaga-teal-100 bg-background px-3 dark:border-sidebar-border sm:px-4">
+        <Link href="/dashboard" className="flex min-w-0 items-center gap-2">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600">
+            <span className="text-sm font-bold text-white">A</span>
+          </div>
           <h1 className="truncate text-sm font-semibold text-foreground">
             Ashinaga Scholar Portal
           </h1>
-          <div className="ml-auto">
-            <ThemeToggle />
-          </div>
-        </header>
-        <div className="flex-1">{children}</div>
-      </SidebarInset>
+        </Link>
+        <SidebarTrigger aria-label="Toggle sidebar" className="shrink-0" />
+        <div className="ml-auto">
+          <ThemeToggle />
+        </div>
+      </header>
+      <div className="flex min-h-0 flex-1">
+        <ScholarSidebar onLogout={onLogout} />
+        <SidebarInset className="bg-transparent">
+          <div className="flex-1">{children}</div>
+        </SidebarInset>
+      </div>
     </SidebarProvider>
   );
 }

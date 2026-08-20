@@ -152,7 +152,7 @@ test.describe('Staff Portal – new features', () => {
   });
 
   test('sidebar trigger collapses and expands navigation on desktop', async ({ page }) => {
-    const sidebarToggle = page.locator('[data-sidebar="sidebar"] [data-sidebar="trigger"]');
+    const sidebarToggle = page.getByRole('button', { name: 'Toggle sidebar' });
 
     await expect(page.getByRole('link', { name: 'Overview', exact: true })).toBeVisible();
     await expect(sidebarToggle).toBeVisible();

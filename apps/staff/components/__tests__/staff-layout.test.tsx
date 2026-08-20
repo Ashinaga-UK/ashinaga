@@ -25,10 +25,8 @@ function getSidebar() {
   return document.querySelector('[data-side="left"]') as HTMLElement;
 }
 
-function getDesktopToggle() {
-  return document.querySelector(
-    '[data-sidebar="sidebar"] [data-sidebar="trigger"]'
-  ) as HTMLButtonElement;
+function getToggle() {
+  return document.querySelector('[data-sidebar="trigger"]') as HTMLButtonElement;
 }
 
 describe('StaffLayout', () => {
@@ -64,31 +62,33 @@ describe('StaffLayout', () => {
     expect(screen.getByText('Staff content')).toBeInTheDocument();
   });
 
-  it('places the collapse toggle on the same header row, opposite the Ashinaga brand', () => {
+  it('places brand then toggle on one top rail, with no second title', () => {
     renderLayout();
 
-    const header = document.querySelector('[data-sidebar="header"]') as HTMLElement;
-    const brand = screen.getByText('Ashinaga');
-    const toggle = getDesktopToggle();
+    const header = screen.getByRole('banner');
+    const brand = screen.getByRole('heading', { name: 'Ashinaga Staff' });
+    const toggle = getToggle();
 
     expect(header).toContainElement(brand);
     expect(header).toContainElement(toggle);
     expect(brand.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(document.querySelectorAll('h1')).toHaveLength(1);
+    expect(document.querySelector('[data-sidebar="header"]')).not.toBeInTheDocument();
   });
 
-  it('collapses to an icon rail while keeping the in-sidebar toggle visible', async () => {
+  it('collapses to an icon rail while keeping the header toggle visible', async () => {
     const user = userEvent.setup();
     renderLayout();
 
     const sidebar = getSidebar();
     expect(sidebar).toHaveAttribute('data-state', 'expanded');
 
-    await user.click(getDesktopToggle());
+    await user.click(getToggle());
     expect(sidebar).toHaveAttribute('data-state', 'collapsed');
     expect(sidebar).toHaveAttribute('data-collapsible', 'icon');
-    expect(getDesktopToggle()).toBeInTheDocument();
+    expect(screen.getByRole('banner')).toContainElement(getToggle());
 
-    await user.click(getDesktopToggle());
+    await user.click(getToggle());
     expect(sidebar).toHaveAttribute('data-state', 'expanded');
   });
 
