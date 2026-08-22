@@ -353,9 +353,7 @@ export function MyProfile() {
                   <Label htmlFor="programStage">Program Stage</Label>
                   <Input
                     id="programStage"
-                    value={
-                      profile.programStage === 'prep_year' ? 'Prep Year Candidate' : 'Scholar'
-                    }
+                    value={profile.programStage === 'prep_year' ? 'Prep Year Candidate' : 'Scholar'}
                     disabled
                     className="bg-muted"
                   />

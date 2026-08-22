@@ -2,8 +2,14 @@
 
 import { FileText, FolderOpen, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '../../../components/ui/card';
 import { getMyProfile, type ScholarProfile } from '../../../lib/api/profile';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
 
 export default function DocumentsPage() {
   const [profile, setProfile] = useState<ScholarProfile | null>(null);

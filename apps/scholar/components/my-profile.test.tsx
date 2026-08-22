@@ -10,7 +10,7 @@ jest.mock('../lib/api/profile', () => ({
 
 jest.mock('next/image', () => ({
   __esModule: true,
-  default: (props: { alt?: string }) => <img alt={props.alt || ''} />,
+  default: (props: { alt?: string }) => <span role="img" aria-label={props.alt || ''} />,
 }));
 
 describe('MyProfile', () => {
@@ -49,7 +49,7 @@ describe('MyProfile', () => {
     expect(screen.getByText('Not yet enrolled at university.')).toBeInTheDocument();
     expect(screen.getByDisplayValue('University of Edinburgh')).toBeInTheDocument();
     expect(screen.queryByText('Academic Information')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('Academic Year')).not.toBeInTheDocument();
+    expect(screen.queryByText('Academic Year')).not.toBeInTheDocument();
   });
 
   it('keeps academic information for confirmed scholars', async () => {
@@ -78,7 +78,7 @@ describe('MyProfile', () => {
     });
     expect(screen.getAllByText('Scholar').length).toBeGreaterThan(0);
     expect(screen.queryByText('Intended Pathway')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Academic Year')).toBeInTheDocument();
+    expect(screen.getByText('Academic Year')).toBeInTheDocument();
     expect(screen.queryByText('Pre-University')).not.toBeInTheDocument();
   });
 });

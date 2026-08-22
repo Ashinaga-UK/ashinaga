@@ -630,9 +630,7 @@ export function ScholarProfilePage({
                     <Label>University</Label>
                     <Select
                       value={enrollForm.university}
-                      onValueChange={(value) =>
-                        setEnrollForm((f) => ({ ...f, university: value }))
-                      }
+                      onValueChange={(value) => setEnrollForm((f) => ({ ...f, university: value }))}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select university" />

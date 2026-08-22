@@ -22,11 +22,7 @@ export default function AnnualReviewPage() {
   }, [router]);
 
   if (!allowed) {
-    return (
-      <div className="p-6 text-muted-foreground">
-        Redirecting...
-      </div>
-    );
+    return <div className="p-6 text-muted-foreground">Redirecting...</div>;
   }
 
   return (
