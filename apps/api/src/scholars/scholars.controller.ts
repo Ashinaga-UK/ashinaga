@@ -89,7 +89,8 @@ export class ScholarsController {
     @Request() req,
     @Body() updateData: UpdateScholarProfileDto
   ): Promise<ScholarProfileDto> {
-    return this.scholarsService.updateScholarProfile(req.user.id, updateData);
+    const { programStage: _ignored, ...selfUpdateData } = updateData;
+    return this.scholarsService.updateScholarProfile(req.user.id, selfUpdateData);
   }
 
   // Specific :id routes must come after all non-parameterized routes

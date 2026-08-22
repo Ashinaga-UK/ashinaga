@@ -4,11 +4,17 @@ import { createElement, Fragment } from 'react';
 
 declare const describe: (name: string, fn: () => void) => void;
 declare const it: (name: string, fn: () => void | Promise<void>) => void;
-declare const expect: (actual: HTMLElement) => {
+declare const beforeEach: (fn: () => void) => void;
+declare const expect: (actual: unknown) => {
   toHaveAttribute: (name: string, value: string) => void;
+  toBeInTheDocument: () => void;
 };
 declare const require: (moduleName: string) => { default: ComponentType };
 declare const jest: {
+  fn: () => {
+    (...args: unknown[]): unknown;
+    mockResolvedValue: (value: unknown) => void;
+  };
   mock: (moduleName: string, factory: () => unknown) => void;
 };
 
@@ -74,13 +80,10 @@ jest.mock('../../../lib/api/goals', () => ({
     ]),
 }));
 
+const mockGetMyProfile = jest.fn();
+
 jest.mock('../../../lib/api/profile', () => ({
-  getMyProfile: () =>
-    Promise.resolve({
-      program: 'Engineering',
-      university: 'University of Manchester',
-      year: '2026',
-    }),
+  getMyProfile: (...args: unknown[]) => mockGetMyProfile(...args),
 }));
 
 jest.mock('../../../components/new-request-dialog', () => ({
@@ -90,6 +93,15 @@ jest.mock('../../../components/new-request-dialog', () => ({
 const DashboardPage = require('./page').default;
 
 describe('DashboardPage', () => {
+  beforeEach(() => {
+    mockGetMyProfile.mockResolvedValue({
+      program: 'Engineering',
+      university: 'University of Manchester',
+      year: '2026',
+      programStage: 'scholar',
+    });
+  });
+
   it('links overview stat cards to the matching scholar pages', async () => {
     render(createElement(DashboardPage));
 
@@ -112,5 +124,26 @@ describe('DashboardPage', () => {
       'href',
       '/announcements'
     );
+  });
+
+  it('shows Prep Year subtitle and intended pathway instead of university/year', async () => {
+    mockGetMyProfile.mockResolvedValue({
+      program: 'Prep',
+      university: 'TBD',
+      year: 'TBD',
+      programStage: 'prep_year',
+      intendedUniversity: 'University of Edinburgh',
+      intendedCourse: 'Computer Science',
+    });
+
+    render(createElement(DashboardPage));
+
+    await waitFor(() => {
+      expect(screen.getByText('Ashinaga · Prep Year')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Intended University')).toBeInTheDocument();
+    expect(screen.getByText('University of Edinburgh')).toBeInTheDocument();
+    expect(screen.getByText('Intended Course')).toBeInTheDocument();
+    expect(screen.queryByText("Here's your overview for today")).not.toBeInTheDocument();
   });
 });

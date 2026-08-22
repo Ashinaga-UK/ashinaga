@@ -133,7 +133,11 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
           Welcome back, {session?.user?.name || 'Scholar'}!
         </h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">Here's your overview for today</p>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">
+          {profile?.programStage === 'prep_year'
+            ? 'Ashinaga · Prep Year'
+            : "Here's your overview for today"}
+        </p>
       </div>
 
       {/* Stats Cards */}
@@ -181,14 +185,29 @@ export default function DashboardPage() {
               <p className="text-sm text-gray-600 dark:text-gray-400">Program</p>
               <p className="font-medium">{profile?.program || 'Not set'}</p>
             </div>
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">University</p>
-              <p className="font-medium">{profile?.university || 'Not set'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Year</p>
-              <p className="font-medium">{profile?.year || 'Not set'}</p>
-            </div>
+            {profile?.programStage === 'prep_year' ? (
+              <>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Intended University</p>
+                  <p className="font-medium">{profile.intendedUniversity || 'Not yet enrolled'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Intended Course</p>
+                  <p className="font-medium">{profile.intendedCourse || 'Not set'}</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">University</p>
+                  <p className="font-medium">{profile?.university || 'Not set'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Year</p>
+                  <p className="font-medium">{profile?.year || 'Not set'}</p>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 

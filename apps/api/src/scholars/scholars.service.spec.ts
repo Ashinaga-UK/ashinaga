@@ -670,6 +670,105 @@ describe('ScholarsService', () => {
       expect(result.intendedUniversity).toBe('University of Edinburgh');
       profileSpy.mockRestore();
     });
+
+    it('should not write programStage when it is omitted', async () => {
+      const mockFrom = jest.fn().mockReturnThis();
+      const mockWhere = jest.fn().mockReturnThis();
+      const mockLimit = jest.fn().mockResolvedValue([{ id: 's1', userId: 'u1' }]);
+
+      mockDatabase.select = jest.fn().mockReturnValue({
+        from: mockFrom,
+        where: mockWhere,
+        limit: mockLimit,
+      });
+
+      const mockSet = jest.fn().mockReturnThis();
+      const mockUpdateWhere = jest.fn().mockResolvedValue(undefined);
+      mockDatabase.update = jest.fn().mockReturnValue({
+        set: mockSet,
+        where: mockUpdateWhere,
+      });
+
+      const profileSpy = jest.spyOn(service, 'getScholarProfileByUserId').mockResolvedValueOnce({
+        id: 's1',
+        userId: 'u1',
+        name: 'Test Scholar',
+        email: 't@x.com',
+        program: 'CS',
+        year: 'Year 1',
+        university: 'MIT',
+        status: 'active',
+        programStage: 'scholar',
+        startDate: new Date(),
+        goals: [],
+        tasks: [],
+        documents: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as Awaited<ReturnType<ScholarsService['getScholarProfileByUserId']>>);
+
+      await service.updateScholarProfile('u1', {
+        phone: '+123',
+      });
+
+      const setArg = mockSet.mock.calls[0][0];
+      expect(setArg).toEqual(expect.objectContaining({ phone: '+123' }));
+      expect(setArg).not.toHaveProperty('programStage');
+      profileSpy.mockRestore();
+    });
+
+    it('should transition prep_year to scholar when staff sets programStage', async () => {
+      const mockFrom = jest.fn().mockReturnThis();
+      const mockWhere = jest.fn().mockReturnThis();
+      const mockLimit = jest.fn().mockResolvedValue([{ id: 's1', userId: 'u1' }]);
+
+      mockDatabase.select = jest.fn().mockReturnValue({
+        from: mockFrom,
+        where: mockWhere,
+        limit: mockLimit,
+      });
+
+      const mockSet = jest.fn().mockReturnThis();
+      const mockUpdateWhere = jest.fn().mockResolvedValue(undefined);
+      mockDatabase.update = jest.fn().mockReturnValue({
+        set: mockSet,
+        where: mockUpdateWhere,
+      });
+
+      const profileSpy = jest.spyOn(service, 'getScholarProfileByUserId').mockResolvedValueOnce({
+        id: 's1',
+        userId: 'u1',
+        name: 'Test Scholar',
+        email: 't@x.com',
+        program: 'CS',
+        year: 'Year 1',
+        university: 'MIT',
+        status: 'active',
+        programStage: 'scholar',
+        startDate: new Date(),
+        goals: [],
+        tasks: [],
+        documents: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as Awaited<ReturnType<ScholarsService['getScholarProfileByUserId']>>);
+
+      const result = await service.updateScholarProfile('u1', {
+        programStage: ProgramStage.SCHOLAR,
+        university: 'University of Edinburgh',
+        year: 'Year 1',
+      });
+
+      expect(mockSet).toHaveBeenCalledWith(
+        expect.objectContaining({
+          programStage: 'scholar',
+          university: 'University of Edinburgh',
+          year: 'Year 1',
+        })
+      );
+      expect(result.programStage).toBe('scholar');
+      profileSpy.mockRestore();
+    });
   });
 
   describe('exportAllScholarsCSV', () => {

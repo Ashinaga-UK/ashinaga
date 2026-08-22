@@ -32,6 +32,7 @@ import {
   ACADEMIC_YEAR_OPTIONS,
   COUNTRY_OPTIONS,
   DEFAULT_UNIVERSITY_OPTIONS,
+  DEGREE_PATHWAY_OPTIONS,
   GENDER_OPTIONS,
   type Gender,
   normalizeLocation,
@@ -89,6 +90,8 @@ export function ScholarProfilePage({
   );
   const updateProfile = useUpdateScholarProfile(scholarId);
   const [editOpen, setEditOpen] = useState(false);
+  const [enrollOpen, setEnrollOpen] = useState(false);
+  const [enrollForm, setEnrollForm] = useState({ university: '', year: '' });
   const [editForm, setEditForm] = useState<UpdateScholarProfileData>({});
   const [filterOptions, setFilterOptions] = useState<ScholarFilterOptions>({
     programs: [],
@@ -283,6 +286,10 @@ export function ScholarProfilePage({
                   bio: scholar.bio ?? '',
                   majorCategory: scholar.majorCategory ?? '',
                   fieldOfStudy: scholar.fieldOfStudy ?? '',
+                  programStage: scholar.programStage,
+                  intendedUniversity: scholar.intendedUniversity ?? '',
+                  intendedCourse: scholar.intendedCourse ?? '',
+                  degreePathway: scholar.degreePathway ?? '',
                 });
               }
             }}
@@ -434,7 +441,10 @@ export function ScholarProfilePage({
                               editForm.year,
                               ...filterOptions.years,
                               ...ACADEMIC_YEAR_OPTIONS,
-                            ].filter((x): x is string => typeof x === 'string' && x !== '')
+                            ].filter(
+                              (x): x is string =>
+                                typeof x === 'string' && x !== '' && x !== 'Pre-University'
+                            )
                           ),
                         ].map((year) => (
                           <SelectItem key={year} value={year}>
@@ -489,6 +499,74 @@ export function ScholarProfilePage({
                     />
                   </div>
                   <div className="col-span-2">
+                    <Label>Program stage</Label>
+                    <Select
+                      value={editForm.programStage ?? 'scholar'}
+                      onValueChange={(value) =>
+                        setEditForm((f) => ({
+                          ...f,
+                          programStage: value as 'prep_year' | 'scholar',
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select program stage" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="prep_year">Prep Year</SelectItem>
+                        <SelectItem value="scholar">Scholar</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {editForm.programStage === 'prep_year' && (
+                    <>
+                      <div>
+                        <Label>Intended university</Label>
+                        <Input
+                          value={editForm.intendedUniversity ?? ''}
+                          onChange={(e) =>
+                            setEditForm((f) => ({ ...f, intendedUniversity: e.target.value }))
+                          }
+                          placeholder="Intended university"
+                        />
+                      </div>
+                      <div>
+                        <Label>Intended course</Label>
+                        <Input
+                          value={editForm.intendedCourse ?? ''}
+                          onChange={(e) =>
+                            setEditForm((f) => ({ ...f, intendedCourse: e.target.value }))
+                          }
+                          placeholder="Intended course"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <Label>Degree pathway</Label>
+                        <Select
+                          value={editForm.degreePathway || '_none'}
+                          onValueChange={(value) =>
+                            setEditForm((f) => ({
+                              ...f,
+                              degreePathway: value === '_none' ? '' : value,
+                            }))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select degree pathway" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="_none">Not specified</SelectItem>
+                            {DEGREE_PATHWAY_OPTIONS.map((option) => (
+                              <SelectItem key={option} value={option}>
+                                {option}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </>
+                  )}
+                  <div className="col-span-2">
                     <Label>Bio</Label>
                     <Textarea
                       value={editForm.bio ?? ''}
@@ -522,6 +600,107 @@ export function ScholarProfilePage({
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          {scholar.programStage === 'prep_year' && (
+            <Dialog
+              open={enrollOpen}
+              onOpenChange={(open) => {
+                setEnrollOpen(open);
+                if (open) {
+                  setEnrollForm({
+                    university: scholar.university ?? '',
+                    year:
+                      scholar.year && scholar.year !== 'Pre-University' ? scholar.year : 'Year 1',
+                  });
+                }
+              }}
+            >
+              <DialogTrigger asChild>
+                <Button variant="outline">Flip to scholar</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Mark as enrolled scholar</DialogTitle>
+                  <DialogDescription>
+                    This sets program stage to Scholar. Confirm university and academic year for the
+                    live academic record.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-2">
+                  <div>
+                    <Label>University</Label>
+                    <Select
+                      value={enrollForm.university}
+                      onValueChange={(value) =>
+                        setEnrollForm((f) => ({ ...f, university: value }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select university" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[
+                          ...new Set(
+                            [
+                              enrollForm.university,
+                              scholar.intendedUniversity ?? '',
+                              ...DEFAULT_UNIVERSITY_OPTIONS,
+                            ].filter((x): x is string => typeof x === 'string' && x !== '')
+                          ),
+                        ].map((uni) => (
+                          <SelectItem key={uni} value={uni}>
+                            {uni}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Academic year</Label>
+                    <Select
+                      value={enrollForm.year}
+                      onValueChange={(value) => setEnrollForm((f) => ({ ...f, year: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select academic year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ACADEMIC_YEAR_OPTIONS.map((year) => (
+                          <SelectItem key={year} value={year}>
+                            {year}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setEnrollOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={async () => {
+                      try {
+                        await updateProfile.mutateAsync({
+                          programStage: 'scholar',
+                          university: enrollForm.university,
+                          year: enrollForm.year,
+                        });
+                        setEnrollOpen(false);
+                      } catch (e) {
+                        console.error(e);
+                      }
+                    }}
+                    disabled={updateProfile.isPending || !enrollForm.university || !enrollForm.year}
+                  >
+                    {updateProfile.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : null}
+                    Confirm enrollment
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
           <Button
             onClick={handleDownloadLDF}
             className="bg-ashinaga-teal-600 hover:bg-ashinaga-teal-700"
@@ -728,7 +907,7 @@ export function ScholarProfilePage({
                 <div>
                   <span className="text-muted-foreground">Program Stage</span>
                   <Badge variant={scholar.programStage === 'prep_year' ? 'default' : 'secondary'}>
-                    {scholar.programStage === 'prep_year' ? 'Prep-Year' : 'Scholar'}
+                    {scholar.programStage === 'prep_year' ? 'Prep Year Candidate' : 'Scholar'}
                   </Badge>
                 </div>
                 <div>

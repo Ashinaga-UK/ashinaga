@@ -4,6 +4,7 @@ import type {
   GetScholarsResponseDto,
   ScholarResponseDto,
 } from './dto/get-scholars.dto';
+import { ProgramStage } from './dto/update-scholar-profile.dto';
 import { ScholarsController } from './scholars.controller';
 import { ScholarsService } from './scholars.service';
 
@@ -14,6 +15,8 @@ describe('ScholarsController', () => {
   const mockScholarsService = {
     getScholars: jest.fn(),
     getScholar: jest.fn(),
+    updateScholarProfile: jest.fn(),
+    updateScholarProfileByScholarId: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -122,6 +125,31 @@ describe('ScholarsController', () => {
       expect(service.getScholars).toHaveBeenCalledWith(query);
       expect(service.getScholars).toHaveBeenCalledTimes(1);
     });
+
+    it('should pass programStage filter to the service', async () => {
+      const mockResponse: GetScholarsResponseDto = {
+        data: [],
+        pagination: {
+          page: 1,
+          limit: 20,
+          totalItems: 0,
+          totalPages: 0,
+          hasNext: false,
+          hasPrev: false,
+        },
+      };
+
+      mockScholarsService.getScholars.mockResolvedValue(mockResponse);
+
+      const query: GetScholarsQueryDto = {
+        programStage: 'prep_year',
+      };
+
+      const result = await controller.getScholars(query);
+
+      expect(result).toEqual(mockResponse);
+      expect(service.getScholars).toHaveBeenCalledWith(query);
+    });
   });
 
   describe('getScholar', () => {
@@ -204,6 +232,47 @@ describe('ScholarsController', () => {
 
       expect(result).toEqual(mockScholar);
       expect(service.getScholar).toHaveBeenCalledWith(scholarId);
+    });
+  });
+
+  describe('updateMyProfile', () => {
+    it('should strip programStage before forwarding to the service', async () => {
+      mockScholarsService.updateScholarProfile.mockResolvedValue({
+        id: 's1',
+        programStage: 'prep_year',
+      });
+
+      await controller.updateMyProfile(
+        { user: { id: 'user-1' } },
+        {
+          phone: '+123',
+          programStage: ProgramStage.SCHOLAR,
+        }
+      );
+
+      expect(service.updateScholarProfile).toHaveBeenCalledWith('user-1', {
+        phone: '+123',
+      });
+      expect(mockScholarsService.updateScholarProfile.mock.calls[0][1]).not.toHaveProperty(
+        'programStage'
+      );
+    });
+  });
+
+  describe('updateScholarProfileByStaff', () => {
+    it('should allow staff to set programStage', async () => {
+      mockScholarsService.updateScholarProfileByScholarId.mockResolvedValue({
+        id: 'scholar-1',
+        programStage: 'scholar',
+      });
+
+      await controller.updateScholarProfileByStaff('scholar-1', {
+        programStage: ProgramStage.SCHOLAR,
+      });
+
+      expect(service.updateScholarProfileByScholarId).toHaveBeenCalledWith('scholar-1', {
+        programStage: ProgramStage.SCHOLAR,
+      });
     });
   });
 });

@@ -4,6 +4,7 @@ import {
   CheckSquare,
   ClipboardCheck,
   FileText,
+  FolderOpen,
   Home,
   Library,
   LogOut,
@@ -15,7 +16,8 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { getMyProfile } from '../lib/api/profile';
 import { cn } from '../lib/utils';
 import { ThemeToggle } from './theme-toggle';
 import { Button } from './ui/button';
@@ -25,25 +27,57 @@ interface ScholarLayoutProps {
   onLogout: () => void;
 }
 
+const scholarNavItems = [
+  { id: 'dashboard', href: '/dashboard', label: 'Overview', icon: Home },
+  { id: 'profile', href: '/profile', label: 'My Profile', icon: User },
+  { id: 'goals', href: '/goals', label: 'My LDF', icon: Target },
+  {
+    id: 'annual-review',
+    href: '/annual-review',
+    label: 'My Annual Review',
+    icon: ClipboardCheck,
+  },
+  { id: 'tasks', href: '/tasks', label: 'My Tasks', icon: CheckSquare },
+  { id: 'requests', href: '/requests', label: 'My Requests', icon: FileText },
+  { id: 'announcements', href: '/announcements', label: 'Announcements', icon: MessageSquare },
+  { id: 'resources', href: '/resources', label: 'Resources', icon: Library },
+];
+
+const prepNavItems = [
+  { id: 'dashboard', href: '/dashboard', label: 'Overview', icon: Home },
+  { id: 'profile', href: '/profile', label: 'My Profile', icon: User },
+  { id: 'goals', href: '/goals', label: 'My LDF', icon: Target },
+  { id: 'documents', href: '/documents', label: 'My Documents', icon: FolderOpen },
+  { id: 'tasks', href: '/tasks', label: 'My Tasks', icon: CheckSquare },
+  { id: 'requests', href: '/requests', label: 'My Requests', icon: FileText },
+  { id: 'announcements', href: '/announcements', label: 'Announcements', icon: MessageSquare },
+  { id: 'resources', href: '/resources', label: 'Resources', icon: Library },
+];
+
 export function ScholarLayout({ children, onLogout }: ScholarLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [programStage, setProgramStage] = useState<'prep_year' | 'scholar'>('scholar');
   const pathname = usePathname();
+  const isPrepYear = programStage === 'prep_year';
+  const navItems = isPrepYear ? prepNavItems : scholarNavItems;
 
-  const navItems = [
-    { id: 'dashboard', href: '/dashboard', label: 'Overview', icon: Home },
-    { id: 'profile', href: '/profile', label: 'My Profile', icon: User },
-    { id: 'goals', href: '/goals', label: 'My LDF', icon: Target },
-    {
-      id: 'annual-review',
-      href: '/annual-review',
-      label: 'My Annual Review',
-      icon: ClipboardCheck,
-    },
-    { id: 'tasks', href: '/tasks', label: 'My Tasks', icon: CheckSquare },
-    { id: 'requests', href: '/requests', label: 'My Requests', icon: FileText },
-    { id: 'announcements', href: '/announcements', label: 'Announcements', icon: MessageSquare },
-    { id: 'resources', href: '/resources', label: 'Resources', icon: Library },
-  ];
+  useEffect(() => {
+    let cancelled = false;
+    getMyProfile()
+      .then((profile) => {
+        if (!cancelled && profile.programStage === 'prep_year') {
+          setProgramStage('prep_year');
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setProgramStage('scholar');
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:from-background dark:to-background dark:bg-background">
@@ -53,7 +87,9 @@ export function ScholarLayout({ children, onLogout }: ScholarLayoutProps) {
           <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
             {isSidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
-          <h1 className="text-lg font-semibold text-foreground">Ashinaga Scholar Portal</h1>
+          <h1 className="text-lg font-semibold text-foreground">
+            {isPrepYear ? 'Ashinaga Prep Year' : 'Ashinaga Scholar Portal'}
+          </h1>
         </div>
       </div>
 
@@ -73,7 +109,9 @@ export function ScholarLayout({ children, onLogout }: ScholarLayoutProps) {
               </div>
               <div>
                 <h1 className="font-semibold text-foreground">Ashinaga</h1>
-                <p className="text-xs text-muted-foreground">Scholar Portal</p>
+                <p className="text-xs text-muted-foreground">
+                  {isPrepYear ? 'Prep Year' : 'Scholar Portal'}
+                </p>
               </div>
             </div>
           </div>

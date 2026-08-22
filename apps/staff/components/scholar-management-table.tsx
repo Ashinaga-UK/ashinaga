@@ -639,7 +639,7 @@ export function ScholarManagementTable({
                   <TableCell>{scholar.university}</TableCell>
                   <TableCell>
                     <Badge variant={scholar.programStage === 'prep_year' ? 'default' : 'secondary'}>
-                      {scholar.programStage === 'prep_year' ? 'Prep-Year' : 'Scholar'}
+                      {scholar.programStage === 'prep_year' ? 'Prep Year Candidate' : 'Scholar'}
                     </Badge>
                   </TableCell>
                   <TableCell>

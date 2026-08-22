@@ -13,7 +13,6 @@ export const GENDER_OPTIONS: readonly { value: Gender; label: string }[] = [
 ] as const;
 
 export const ACADEMIC_YEAR_OPTIONS = [
-  'Pre-University',
   'Foundation',
   'Year 1',
   'Year 2',
@@ -21,6 +20,13 @@ export const ACADEMIC_YEAR_OPTIONS = [
   'Year 4',
   'Year 5',
   'Postgraduate',
+] as const;
+
+export const DEGREE_PATHWAY_OPTIONS = [
+  'Foundation Year',
+  'Direct Entry',
+  'Top-up Degree',
+  'Other',
 ] as const;
 
 /** All countries (ISO-style names, A–Z) for nationality and country of study dropdowns. */

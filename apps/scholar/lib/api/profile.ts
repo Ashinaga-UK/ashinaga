@@ -44,7 +44,13 @@ export interface ScholarProfile {
   // Related data
   goals: any[];
   tasks: any[];
-  documents: any[];
+  documents: Array<{
+    id: string;
+    name: string;
+    type: string;
+    size?: string;
+    uploadDate?: string | Date;
+  }>;
   createdAt: string;
   updatedAt: string;
 }

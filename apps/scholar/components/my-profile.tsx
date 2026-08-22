@@ -296,6 +296,9 @@ export function MyProfile() {
               <div>
                 <p className="font-medium text-foreground">{profile.name}</p>
                 <p className="text-sm text-muted-foreground">{profile.email}</p>
+                {profile.programStage === 'prep_year' && (
+                  <p className="text-xs text-muted-foreground mt-1">Ashinaga · Prep Year</p>
+                )}
                 {editing && (
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <Button asChild variant="outline" size="sm">
@@ -351,11 +354,7 @@ export function MyProfile() {
                   <Input
                     id="programStage"
                     value={
-                      profile.programStage === 'prep_year'
-                        ? 'Prep-Year'
-                        : profile.programStage === 'scholar'
-                          ? 'Scholar'
-                          : 'Scholar'
+                      profile.programStage === 'prep_year' ? 'Prep Year Candidate' : 'Scholar'
                     }
                     disabled
                     className="bg-muted"
@@ -369,7 +368,7 @@ export function MyProfile() {
                       : undefined
                   }
                 >
-                  {profile.programStage === 'prep_year' ? 'Prep-Year' : 'Scholar'}
+                  {profile.programStage === 'prep_year' ? 'Prep Year Candidate' : 'Scholar'}
                 </Badge>
               </div>
             </div>
@@ -557,182 +556,199 @@ export function MyProfile() {
           </CardContent>
         </Card>
 
-        {/* Academic Information */}
-        <Card className="border-ashinaga-teal-100 dark:border-border">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-foreground">
-              <GraduationCap className="h-5 w-5" />
-              Academic Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="program">Program of Study</Label>
-              <Input
-                id="program"
-                value={formData.program}
-                onChange={(e) => setFormData({ ...formData, program: e.target.value })}
-                disabled={!editing}
-                placeholder="e.g., Bachelor of Science in Computer Science"
-              />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="university">University</Label>
-                <Select
-                  value={formData.university}
-                  onValueChange={(value) => setFormData({ ...formData, university: value })}
-                  disabled={!editing}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select university" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Imperial College London">Imperial College London</SelectItem>
-                    <SelectItem value="University of Edinburgh">University of Edinburgh</SelectItem>
-                    <SelectItem value="LSE">London School of Economics</SelectItem>
-                    <SelectItem value="Cambridge University">Cambridge University</SelectItem>
-                    <SelectItem value="Oxford University">Oxford University</SelectItem>
-                    <SelectItem value="UCL">University College London</SelectItem>
-                    <SelectItem value="University of York">University of York</SelectItem>
-                    <SelectItem value="University of Warwick">University of Warwick</SelectItem>
-                    <SelectItem value="University of Central Lancashire">
-                      University of Central Lancashire
-                    </SelectItem>
-                    <SelectItem value="University of East Anglia">
-                      University of East Anglia
-                    </SelectItem>
-                    <SelectItem value="University of Manchester">
-                      University of Manchester
-                    </SelectItem>
-                    <SelectItem value="University of Leeds">University of Leeds</SelectItem>
-                  </SelectContent>
-                </Select>
+        {profile.programStage === 'prep_year' ? (
+          <Card className="border-ashinaga-teal-100 dark:border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-foreground">
+                <GraduationCap className="h-5 w-5" />
+                Intended Pathway
+              </CardTitle>
+              <CardDescription>Not yet enrolled at university.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="intendedUniversity">Intended University</Label>
+                  <Input
+                    id="intendedUniversity"
+                    value={formData.intendedUniversity}
+                    onChange={(e) =>
+                      setFormData({ ...formData, intendedUniversity: e.target.value })
+                    }
+                    disabled={!editing}
+                    placeholder="University you intend to attend"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="intendedCourse">Intended Course</Label>
+                  <Input
+                    id="intendedCourse"
+                    value={formData.intendedCourse}
+                    onChange={(e) => setFormData({ ...formData, intendedCourse: e.target.value })}
+                    disabled={!editing}
+                    placeholder="Intended degree or course"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <Label htmlFor="degreePathway">Degree Pathway</Label>
+                  <Input
+                    id="degreePathway"
+                    value={formData.degreePathway}
+                    onChange={(e) => setFormData({ ...formData, degreePathway: e.target.value })}
+                    disabled={!editing}
+                    placeholder="e.g. Foundation Year, Direct Entry"
+                  />
+                </div>
               </div>
-              <div>
-                <Label htmlFor="year">Academic Year</Label>
-                <Select
-                  value={formData.year}
-                  onValueChange={(value) => setFormData({ ...formData, year: value })}
-                  disabled={!editing}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select academic year" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Pre-University">Pre-University</SelectItem>
-                    <SelectItem value="Foundation">Foundation</SelectItem>
-                    <SelectItem value="Year 1">Year 1</SelectItem>
-                    <SelectItem value="Year 2">Year 2</SelectItem>
-                    <SelectItem value="Year 3">Year 3</SelectItem>
-                    <SelectItem value="Year 4">Year 4</SelectItem>
-                    <SelectItem value="Year 5">Year 5</SelectItem>
-                    <SelectItem value="Postgraduate">Postgraduate</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="startDate">Start Date</Label>
-                <Input
-                  id="startDate"
-                  type="date"
-                  value={formData.startDate}
-                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                  disabled={!editing}
-                />
-              </div>
-              <div>
-                <Label htmlFor="graduationDate">Graduation Date</Label>
-                <Input
-                  id="graduationDate"
-                  type="date"
-                  value={formData.graduationDate}
-                  onChange={(e) => setFormData({ ...formData, graduationDate: e.target.value })}
-                  disabled={!editing}
-                />
-              </div>
-              <div>
-                <Label htmlFor="universityId">University ID</Label>
-                <Input
-                  id="universityId"
-                  value={formData.universityId}
-                  onChange={(e) => setFormData({ ...formData, universityId: e.target.value })}
-                  disabled={!editing}
-                  placeholder="Your student ID number"
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            <Card className="border-ashinaga-teal-100 dark:border-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-foreground">
+                  <GraduationCap className="h-5 w-5" />
+                  Academic Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="program">Program of Study</Label>
+                  <Input
+                    id="program"
+                    value={formData.program}
+                    onChange={(e) => setFormData({ ...formData, program: e.target.value })}
+                    disabled={!editing}
+                    placeholder="e.g., Bachelor of Science in Computer Science"
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="university">University</Label>
+                    <Select
+                      value={formData.university}
+                      onValueChange={(value) => setFormData({ ...formData, university: value })}
+                      disabled={!editing}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select university" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Imperial College London">
+                          Imperial College London
+                        </SelectItem>
+                        <SelectItem value="University of Edinburgh">
+                          University of Edinburgh
+                        </SelectItem>
+                        <SelectItem value="LSE">London School of Economics</SelectItem>
+                        <SelectItem value="Cambridge University">Cambridge University</SelectItem>
+                        <SelectItem value="Oxford University">Oxford University</SelectItem>
+                        <SelectItem value="UCL">University College London</SelectItem>
+                        <SelectItem value="University of York">University of York</SelectItem>
+                        <SelectItem value="University of Warwick">University of Warwick</SelectItem>
+                        <SelectItem value="University of Central Lancashire">
+                          University of Central Lancashire
+                        </SelectItem>
+                        <SelectItem value="University of East Anglia">
+                          University of East Anglia
+                        </SelectItem>
+                        <SelectItem value="University of Manchester">
+                          University of Manchester
+                        </SelectItem>
+                        <SelectItem value="University of Leeds">University of Leeds</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="year">Academic Year</Label>
+                    <Select
+                      value={formData.year}
+                      onValueChange={(value) => setFormData({ ...formData, year: value })}
+                      disabled={!editing}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select academic year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Foundation">Foundation</SelectItem>
+                        <SelectItem value="Year 1">Year 1</SelectItem>
+                        <SelectItem value="Year 2">Year 2</SelectItem>
+                        <SelectItem value="Year 3">Year 3</SelectItem>
+                        <SelectItem value="Year 4">Year 4</SelectItem>
+                        <SelectItem value="Year 5">Year 5</SelectItem>
+                        <SelectItem value="Postgraduate">Postgraduate</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="startDate">Start Date</Label>
+                    <Input
+                      id="startDate"
+                      type="date"
+                      value={formData.startDate}
+                      onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                      disabled={!editing}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="graduationDate">Graduation Date</Label>
+                    <Input
+                      id="graduationDate"
+                      type="date"
+                      value={formData.graduationDate}
+                      onChange={(e) => setFormData({ ...formData, graduationDate: e.target.value })}
+                      disabled={!editing}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="universityId">University ID</Label>
+                    <Input
+                      id="universityId"
+                      value={formData.universityId}
+                      onChange={(e) => setFormData({ ...formData, universityId: e.target.value })}
+                      disabled={!editing}
+                      placeholder="Your student ID number"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-        {/* Destination & Pathway */}
-        <Card className="border-ashinaga-teal-100 dark:border-border">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-foreground">
-              <GraduationCap className="h-5 w-5" />
-              Destination & Pathway
-            </CardTitle>
-            <CardDescription>
-              {profile.programStage === 'prep_year'
-                ? 'Details about your intended destination and studies.'
-                : 'Update your study area and destination plans.'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="majorCategory">Major Category</Label>
-                <Input
-                  id="majorCategory"
-                  value={formData.majorCategory}
-                  onChange={(e) => setFormData({ ...formData, majorCategory: e.target.value })}
-                  disabled={!editing}
-                  placeholder="e.g. Engineering and Technology"
-                />
-              </div>
-              <div>
-                <Label htmlFor="fieldOfStudy">Field of Study</Label>
-                <Input
-                  id="fieldOfStudy"
-                  value={formData.fieldOfStudy}
-                  onChange={(e) => setFormData({ ...formData, fieldOfStudy: e.target.value })}
-                  disabled={!editing}
-                  placeholder="e.g. Computer Science"
-                />
-              </div>
-              <div>
-                <Label htmlFor="intendedUniversity">Intended University</Label>
-                <Input
-                  id="intendedUniversity"
-                  value={formData.intendedUniversity}
-                  onChange={(e) => setFormData({ ...formData, intendedUniversity: e.target.value })}
-                  disabled={!editing}
-                  placeholder="University you intend to attend"
-                />
-              </div>
-              <div>
-                <Label htmlFor="intendedCourse">Intended Course</Label>
-                <Input
-                  id="intendedCourse"
-                  value={formData.intendedCourse}
-                  onChange={(e) => setFormData({ ...formData, intendedCourse: e.target.value })}
-                  disabled={!editing}
-                  placeholder="Intended degree or course"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <Label htmlFor="degreePathway">Degree Pathway</Label>
-                <Input
-                  id="degreePathway"
-                  value={formData.degreePathway}
-                  onChange={(e) => setFormData({ ...formData, degreePathway: e.target.value })}
-                  disabled={!editing}
-                  placeholder="e.g. Foundation Year, Direct Entry"
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            <Card className="border-ashinaga-teal-100 dark:border-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-foreground">
+                  <GraduationCap className="h-5 w-5" />
+                  Destination & Pathway
+                </CardTitle>
+                <CardDescription>Update your study area and destination plans.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="majorCategory">Major Category</Label>
+                    <Input
+                      id="majorCategory"
+                      value={formData.majorCategory}
+                      onChange={(e) => setFormData({ ...formData, majorCategory: e.target.value })}
+                      disabled={!editing}
+                      placeholder="e.g. Engineering and Technology"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="fieldOfStudy">Field of Study</Label>
+                    <Input
+                      id="fieldOfStudy"
+                      value={formData.fieldOfStudy}
+                      onChange={(e) => setFormData({ ...formData, fieldOfStudy: e.target.value })}
+                      disabled={!editing}
+                      placeholder="e.g. Computer Science"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
 
         {/* Additional Information */}
         <Card className="border-ashinaga-teal-100 dark:border-border">
