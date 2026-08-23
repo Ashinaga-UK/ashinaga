@@ -3,7 +3,11 @@ import { sql } from 'drizzle-orm';
 import { PgDialect } from 'drizzle-orm/pg-core';
 import { scholars } from '../../db/schema';
 import { audienceValuesEqual, matchesAudienceFilters } from './audience-filter';
-import { buildResourceAudienceVisibilitySql, matchAnyNormalizedValue } from './audience-filter.sql';
+import {
+  buildResourceAudienceVisibilitySql,
+  matchAnyNormalizedValue,
+  normalizedSqlEquals,
+} from './audience-filter.sql';
 
 const scholar = {
   program: ' Medicine ',
