@@ -20,8 +20,9 @@ Welcome to the Ashinaga monorepo! This is a minimal, clean starting point for bu
    ```
 
 This will start:
-- **API**: [http://localhost:3000](http://localhost:3000)
-- **Web App**: [http://localhost:3001](http://localhost:3001)
+- **API**: [http://localhost:4000](http://localhost:4000)
+- **Staff Portal**: [http://localhost:4001](http://localhost:4001)
+- **Scholar Portal**: [http://localhost:4002](http://localhost:4002)
 - **Storybook**: [http://localhost:6006](http://localhost:6006)
 
 ## What's Included

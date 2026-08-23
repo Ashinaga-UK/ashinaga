@@ -2,6 +2,7 @@
 
 import {
   AlertCircle,
+  ClipboardCheck,
   FileText,
   Library,
   Loader2,
@@ -15,6 +16,7 @@ import {
 import { useRouter, useSearchParams } from 'next/navigation';
 import { forwardRef, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { AnnouncementCreator } from '../components/announcement-creator';
+import { AnnualReviewsReport } from '../components/annual-reviews-report';
 import { InvitationsManagement } from '../components/invitations-management';
 import { LoginPage } from '../components/login-page';
 import { MyProfile } from '../components/my-profile';
@@ -64,6 +66,7 @@ type StaffDashboardView =
 const STAFF_NAV_ITEMS = [
   { value: 'overview', label: 'Overview' },
   { value: 'scholars', label: 'Scholars' },
+  { value: 'annual-reviews', label: 'Annual Reviews' },
   { value: 'requests', label: 'Requests' },
   { value: 'announcements', label: 'Announcements' },
   { value: 'resources', label: 'Resources' },
@@ -128,8 +131,11 @@ function StaffDashboardContent() {
   );
   const [selectedScholarId, setSelectedScholarId] = useState<string | null>(scholarIdFromUrl);
   const [scholarProfileTab, setScholarProfileTab] = useState<
-    'profile' | 'goals' | 'tasks' | 'documents'
-  >((scholarTabFromUrl as 'profile' | 'goals' | 'tasks' | 'documents') || 'profile');
+    'profile' | 'goals' | 'annual-reviews' | 'tasks' | 'documents'
+  >(
+    (scholarTabFromUrl as 'profile' | 'goals' | 'annual-reviews' | 'tasks' | 'documents') ||
+      'profile'
+  );
   const [requestCategoryFilter, setRequestCategoryFilter] = useState('all');
   const [requestStatusFilter, setRequestStatusFilter] = useState('all');
   const [announcementYearFilter, setAnnouncementYearFilter] = useState('all');
@@ -212,7 +218,7 @@ function StaffDashboardContent() {
     );
     setSelectedScholarId(newScholarId);
     setScholarProfileTab(
-      (newScholarTab || 'profile') as 'profile' | 'goals' | 'tasks' | 'documents'
+      (newScholarTab || 'profile') as 'profile' | 'goals' | 'annual-reviews' | 'tasks' | 'documents'
     );
   }, [searchParams]);
 
@@ -460,6 +466,7 @@ function StaffDashboardContent() {
                 <h2 className="text-2xl font-semibold tracking-tight text-foreground">
                   {activeTab === 'overview' && 'Overview'}
                   {activeTab === 'scholars' && 'Scholars'}
+                  {activeTab === 'annual-reviews' && 'Annual Reviews'}
                   {activeTab === 'requests' && 'Requests'}
                   {activeTab === 'announcements' && 'Announcements'}
                   {activeTab === 'resources' && 'Resources'}
@@ -468,6 +475,8 @@ function StaffDashboardContent() {
                 <p className="text-sm text-muted-foreground mt-0.5">
                   {activeTab === 'overview' && 'Your dashboard at a glance.'}
                   {activeTab === 'scholars' && 'View and manage your assigned scholars.'}
+                  {activeTab === 'annual-reviews' &&
+                    'Track annual review submissions by scholar and academic year.'}
                   {activeTab === 'requests' && 'Review and respond to scholar submissions.'}
                   {activeTab === 'announcements' && 'Create and manage announcements.'}
                   {activeTab === 'resources' && 'Review scholar-facing handbooks and guides.'}
@@ -492,6 +501,10 @@ function StaffDashboardContent() {
             <TabsList className="hidden h-auto flex-wrap sm:inline-flex">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="scholars">Scholars</TabsTrigger>
+              <TabsTrigger value="annual-reviews" className="gap-1.5">
+                <ClipboardCheck className="h-3.5 w-3.5" />
+                Annual Reviews
+              </TabsTrigger>
               <TabsTrigger value="requests">Requests</TabsTrigger>
               <TabsTrigger value="announcements">Announcements</TabsTrigger>
               <TabsTrigger value="resources" className="gap-1.5">
@@ -649,6 +662,20 @@ function StaffDashboardContent() {
                   </CardContent>
                 </Card>
               )}
+            </TabsContent>
+
+            <TabsContent value="annual-reviews" className="space-y-6">
+              <Card>
+                <CardContent className="p-4 sm:p-5">
+                  <AnnualReviewsReport
+                    onViewScholarAnnualReviews={(scholarId) => {
+                      router.push(
+                        `?tab=scholars&view=scholar-profile&scholarId=${scholarId}&scholarTab=annual-reviews`
+                      );
+                    }}
+                  />
+                </CardContent>
+              </Card>
             </TabsContent>
 
             <TabsContent value="requests" className="space-y-6">

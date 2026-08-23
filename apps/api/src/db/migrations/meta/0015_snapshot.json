@@ -1,5 +1,5 @@
 {
-  "id": "48bc1e22-9846-4cdf-84e5-4f4cc2f8c995",
+  "id": "8116a292-6d9a-4485-acc9-4686e036a0d3",
   "prevId": "3a851a9f-39d8-4c7f-b18c-8ba77bf9c459",
   "version": "7",
   "dialect": "postgresql",
@@ -218,6 +218,192 @@
             "id"
           ],
           "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.annual_updates": {
+      "name": "annual_updates",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "scholar_id": {
+          "name": "scholar_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "academic_year": {
+          "name": "academic_year",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "annual_update_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "highlights": {
+          "name": "highlights",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "part_time_jobs": {
+          "name": "part_time_jobs",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "extracurriculars": {
+          "name": "extracurriculars",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "leadership_roles_description": {
+          "name": "leadership_roles_description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "leadership_roles_count": {
+          "name": "leadership_roles_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pay_it_forward_description": {
+          "name": "pay_it_forward_description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pay_it_forward_count": {
+          "name": "pay_it_forward_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sub_saharan_africa_activities_description": {
+          "name": "sub_saharan_africa_activities_description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sub_saharan_africa_activities_count": {
+          "name": "sub_saharan_africa_activities_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "independent_internships_count": {
+          "name": "independent_internships_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "internships_in_africa_summary": {
+          "name": "internships_in_africa_summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "internships_elsewhere_summary": {
+          "name": "internships_elsewhere_summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completed_ashinaga_africa_internship": {
+          "name": "completed_ashinaga_africa_internship",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "academic_year_average_classification": {
+          "name": "academic_year_average_classification",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "academic_year_weighted_grade": {
+          "name": "academic_year_weighted_grade",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "submitted_at": {
+          "name": "submitted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "annual_updates_scholar_academic_year_unique": {
+          "name": "annual_updates_scholar_academic_year_unique",
+          "columns": [
+            {
+              "expression": "scholar_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "academic_year",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "annual_updates_scholar_id_scholars_id_fk": {
+          "name": "annual_updates_scholar_id_scholars_id_fk",
+          "tableFrom": "annual_updates",
+          "tableTo": "scholars",
+          "columnsFrom": [
+            "scholar_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -1187,185 +1373,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.resource_filters": {
-      "name": "resource_filters",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "resource_id": {
-          "name": "resource_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "filter_type": {
-          "name": "filter_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "filter_value": {
-          "name": "filter_value",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "resource_filters_resource_id_resources_id_fk": {
-          "name": "resource_filters_resource_id_resources_id_fk",
-          "tableFrom": "resource_filters",
-          "tableTo": "resources",
-          "columnsFrom": [
-            "resource_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.resources": {
-      "name": "resources",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "title": {
-          "name": "title",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "type": {
-          "name": "type",
-          "type": "resource_type",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "category": {
-          "name": "category",
-          "type": "resource_category",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "url": {
-          "name": "url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "resource_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'draft'"
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "updated_by": {
-          "name": "updated_by",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "archived": {
-          "name": "archived",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "resources_created_by_user_id_fk": {
-          "name": "resources_created_by_user_id_fk",
-          "tableFrom": "resources",
-          "tableTo": "user",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "resources_updated_by_user_id_fk": {
-          "name": "resources_updated_by_user_id_fk",
-          "tableFrom": "resources",
-          "tableTo": "user",
-          "columnsFrom": [
-            "updated_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.scholars": {
       "name": "scholars",
       "schema": "",
@@ -2280,6 +2287,14 @@
     }
   },
   "enums": {
+    "public.annual_update_status": {
+      "name": "annual_update_status",
+      "schema": "public",
+      "values": [
+        "draft",
+        "submitted"
+      ]
+    },
     "public.goal_category": {
       "name": "goal_category",
       "schema": "public",
@@ -2345,33 +2360,6 @@
         "summer_funding_request",
         "summer_funding_report",
         "requirement_submission"
-      ]
-    },
-    "public.resource_category": {
-      "name": "resource_category",
-      "schema": "public",
-      "values": [
-        "LDF",
-        "Handbook",
-        "Proposal",
-        "Support"
-      ]
-    },
-    "public.resource_status": {
-      "name": "resource_status",
-      "schema": "public",
-      "values": [
-        "draft",
-        "live"
-      ]
-    },
-    "public.resource_type": {
-      "name": "resource_type",
-      "schema": "public",
-      "values": [
-        "Guide",
-        "Handbook",
-        "Template"
       ]
     },
     "public.gender": {
