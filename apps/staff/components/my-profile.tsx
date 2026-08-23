@@ -1,5 +1,6 @@
 'use client';
 
+import { fileToProfileImageDataUrl } from '@workspace/ui/lib/profile-image';
 import { ArrowLeft, Camera, Save, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
@@ -60,36 +61,30 @@ export function MyProfile({ onBack }: MyProfileProps) {
     setIsEditing(false);
   };
 
-  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     setImageError(null);
 
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      setImageError('Please choose an image file.');
-      return;
+    try {
+      const image = await fileToProfileImageDataUrl(file);
+      setProfileData((prev) => ({ ...prev, image }));
+    } catch (error) {
+      setImageError(
+        error instanceof Error
+          ? error.message
+          : 'Could not read that image. Please try another file.'
+      );
     }
-
-    if (file.size > 2 * 1024 * 1024) {
-      setImageError('Please choose an image smaller than 2MB.');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      setProfileData((prev) => ({ ...prev, image: reader.result as string }));
-    };
-    reader.onerror = () => setImageError('Could not read that image. Please try another file.');
-    reader.readAsDataURL(file);
   };
 
   const handleSave = async () => {
     updateUserMutation.mutate(
       {
         name: profileData.name,
-        image: profileData.image,
+        ...(profileData.image !== user?.image ? { image: profileData.image } : {}),
       },
       {
         onSuccess: () => {
@@ -137,7 +132,7 @@ export function MyProfile({ onBack }: MyProfileProps) {
                     aria-label="Open profile picture"
                   >
                     <Avatar className="h-20 w-20 cursor-pointer">
-                      <AvatarImage src={profileImage} alt={profileData.name} />
+                      <AvatarImage key={profileImage} src={profileImage} alt={profileData.name} />
                       <AvatarFallback className="text-lg bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 text-white">
                         {profileData.name
                           ?.split(' ')
@@ -151,6 +146,7 @@ export function MyProfile({ onBack }: MyProfileProps) {
                 <DialogContent className="max-w-xl p-4">
                   <DialogTitle className="sr-only">Profile picture</DialogTitle>
                   <Image
+                    key={profileImage}
                     src={profileImage}
                     alt={profileData.name || 'Profile picture'}
                     width={800}

@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
+import { validateProfileImage } from '../common/profile-image';
 import { database } from '../db/connection';
 import { sessions, staff, users } from '../db/schema';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -22,19 +23,6 @@ export interface StaffListItem {
 
 @Injectable()
 export class UsersService {
-  private validateProfileImage(image: string | null | undefined) {
-    if (!image) return;
-
-    const isSupportedDataUrl = /^data:image\/(jpeg|png|webp|gif);base64,/i.test(image);
-    if (!isSupportedDataUrl) {
-      throw new BadRequestException('Profile image must be a JPEG, PNG, WebP, or GIF data URL');
-    }
-
-    if (image.length > 3_000_000) {
-      throw new BadRequestException('Profile image must be smaller than 2MB');
-    }
-  }
-
   async findById(userId: string) {
     const user = await database.select().from(users).where(eq(users.id, userId)).limit(1);
 
@@ -47,6 +35,10 @@ export class UsersService {
   }
 
   async updateUser(userId: string, updateUserDto: UpdateUserDto) {
+    if (updateUserDto.image !== undefined) {
+      validateProfileImage(updateUserDto.image);
+    }
+
     const updateData: Partial<typeof users.$inferInsert> = { updatedAt: new Date() };
 
     if (updateUserDto.name !== undefined) {
@@ -54,7 +46,6 @@ export class UsersService {
     }
 
     if (updateUserDto.image !== undefined) {
-      this.validateProfileImage(updateUserDto.image);
       updateData.image = updateUserDto.image || null;
     }
 
