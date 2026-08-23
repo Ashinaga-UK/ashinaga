@@ -164,6 +164,7 @@ describe('ResourcesController', () => {
     it('creates a pending upload URL for staff', async () => {
       mockResourcesService.createUploadUrl.mockResolvedValue({
         uploadUrl: 'https://s3.example/upload',
+        fields: { key: 'resources/pending/file.pdf', Policy: 'policy' },
         fileKey: 'resources/pending/file.pdf',
       });
 
@@ -179,6 +180,7 @@ describe('ResourcesController', () => {
         fileSize: 2048,
       });
       expect(result.fileKey).toBe('resources/pending/file.pdf');
+      expect(result.fields).toEqual(expect.objectContaining({ Policy: 'policy' }));
     });
   });
 

@@ -3,13 +3,18 @@ export type ObjectHead = {
   contentLength?: number;
 };
 
+export type PresignedUpload = {
+  url: string;
+  fields: Record<string, string>;
+};
+
 export abstract class ObjectStorageService {
   abstract createUploadUrl(input: {
     key: string;
     contentType: string;
     contentLength: number;
     expiresInSeconds?: number;
-  }): Promise<string>;
+  }): Promise<PresignedUpload>;
 
   abstract createDownloadUrl(input: {
     key: string;

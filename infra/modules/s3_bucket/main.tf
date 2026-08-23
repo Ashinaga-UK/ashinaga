@@ -111,6 +111,19 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
       days = 1
     }
   }
+
+  rule {
+    id     = "expire-archived-resource-uploads"
+    status = "Enabled"
+
+    filter {
+      prefix = "resources/archived/"
+    }
+
+    expiration {
+      days = 30
+    }
+  }
 }
 
 # IAM policy for App Runner access

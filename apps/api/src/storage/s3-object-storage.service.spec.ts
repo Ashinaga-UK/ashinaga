@@ -4,10 +4,10 @@ import { S3ObjectStorageService } from './s3-object-storage.service';
 
 const send = jest.fn();
 const getSignedUrl = jest.fn();
+const createPresignedPost = jest.fn();
 
 jest.mock('@aws-sdk/client-s3', () => ({
   S3Client: jest.fn(() => ({ send })),
-  PutObjectCommand: jest.fn((input) => ({ type: 'put', input })),
   GetObjectCommand: jest.fn((input) => ({ type: 'get', input })),
   HeadObjectCommand: jest.fn((input) => ({ type: 'head', input })),
   CopyObjectCommand: jest.fn((input) => ({ type: 'copy', input })),
@@ -18,13 +18,22 @@ jest.mock('@aws-sdk/s3-request-presigner', () => ({
   getSignedUrl: (...args: unknown[]) => getSignedUrl(...args),
 }));
 
+jest.mock('@aws-sdk/s3-presigned-post', () => ({
+  createPresignedPost: (...args: unknown[]) => createPresignedPost(...args),
+}));
+
 describe('S3ObjectStorageService', () => {
   let service: S3ObjectStorageService;
 
   beforeEach(async () => {
     send.mockReset();
     getSignedUrl.mockReset();
+    createPresignedPost.mockReset();
     getSignedUrl.mockResolvedValue('https://signed.example');
+    createPresignedPost.mockResolvedValue({
+      url: 'https://s3.example/post',
+      fields: { key: 'resources/pending/file.pdf', Policy: 'policy', 'X-Amz-Signature': 'sig' },
+    });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -47,25 +56,30 @@ describe('S3ObjectStorageService', () => {
     service = module.get(S3ObjectStorageService);
   });
 
-  it('signs upload URLs with content type', async () => {
-    const { PutObjectCommand } = jest.requireMock('@aws-sdk/client-s3');
-
-    await service.createUploadUrl({
+  it('creates a presigned POST with content type and exact size conditions', async () => {
+    const result = await service.createUploadUrl({
       key: 'resources/pending/file.pdf',
       contentType: 'application/pdf',
       contentLength: 1024,
     });
 
-    expect(PutObjectCommand).toHaveBeenCalledWith({
-      Bucket: 'test-bucket',
-      Key: 'resources/pending/file.pdf',
-      ContentType: 'application/pdf',
-    });
-    expect(getSignedUrl).toHaveBeenCalledWith(
+    expect(createPresignedPost).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ type: 'put' }),
-      { expiresIn: 300 }
+      expect.objectContaining({
+        Bucket: 'test-bucket',
+        Key: 'resources/pending/file.pdf',
+        Expires: 300,
+        Fields: { 'Content-Type': 'application/pdf' },
+        Conditions: [
+          ['eq', '$Content-Type', 'application/pdf'],
+          ['content-length-range', 1024, 1024],
+        ],
+      })
     );
+    expect(result).toEqual({
+      url: 'https://s3.example/post',
+      fields: expect.objectContaining({ key: 'resources/pending/file.pdf' }),
+    });
   });
 
   it('returns null when the object does not exist', async () => {

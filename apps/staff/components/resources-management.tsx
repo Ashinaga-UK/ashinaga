@@ -111,6 +111,26 @@ function getResourceErrorMessage(error: unknown) {
   return message || 'Please try again.';
 }
 
+const RESOURCE_MIME_BY_EXTENSION: Record<string, string> = {
+  '.pdf': 'application/pdf',
+  '.doc': 'application/msword',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.xls': 'application/vnd.ms-excel',
+  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  '.ppt': 'application/vnd.ms-powerpoint',
+  '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+};
+
+function resolveResourceMimeType(file: File): string | null {
+  if (file.type && Object.values(RESOURCE_MIME_BY_EXTENSION).includes(file.type)) {
+    return file.type;
+  }
+  const extension = file.name.includes('.')
+    ? `.${file.name.split('.').pop()?.toLowerCase() ?? ''}`
+    : '';
+  return RESOURCE_MIME_BY_EXTENSION[extension] ?? null;
+}
+
 function getFilterValues(filterType: string, options: ResourceFilterOptions) {
   switch (filterType) {
     case 'program':
@@ -231,17 +251,29 @@ function ResourceDialog({
   const handleFileChosen = async (file: File) => {
     setUploading(true);
     try {
-      const { uploadUrl, fileKey } = await createResourceUploadUrl({
+      const fileType = resolveResourceMimeType(file);
+      if (!fileType) {
+        throw new Error('Please choose a PDF, Word, Excel, or PowerPoint file.');
+      }
+      if (file.size < 1 || file.size > 10 * 1024 * 1024) {
+        throw new Error('Please choose a file smaller than 10MB.');
+      }
+
+      const { uploadUrl, fields, fileKey } = await createResourceUploadUrl({
         fileName: file.name,
-        fileType: file.type,
+        fileType,
         fileSize: file.size,
       });
+
+      const formData = new FormData();
+      for (const [key, value] of Object.entries(fields)) {
+        formData.append(key, value);
+      }
+      formData.append('file', file);
+
       const uploadResponse = await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': file.type,
-        },
-        body: file,
+        method: 'POST',
+        body: formData,
       });
       if (!uploadResponse.ok) {
         throw new Error('Could not upload the document. Please try again.');
@@ -249,7 +281,7 @@ function ResourceDialog({
       setPendingUpload({
         pendingFileKey: fileKey,
         fileName: file.name,
-        fileMimeType: file.type,
+        fileMimeType: fileType,
         fileSizeBytes: file.size,
       });
     } catch (error) {
@@ -329,6 +361,14 @@ function ResourceDialog({
                     category: formData.category,
                     status: formData.status,
                     filters,
+                    ...(pendingUpload
+                      ? {
+                          pendingFileKey: pendingUpload.pendingFileKey,
+                          fileName: pendingUpload.fileName,
+                          fileMimeType: pendingUpload.fileMimeType,
+                          fileSizeBytes: pendingUpload.fileSizeBytes,
+                        }
+                      : {}),
                   }
                 : {
                     title: formData.title,
@@ -426,31 +466,32 @@ function ResourceDialog({
             {formData.sourceType === 'file' ? (
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="resource-file">Document</Label>
-                {isEditing ? (
-                  <p className="text-sm text-muted-foreground">{resource?.fileName}</p>
-                ) : (
-                  <>
-                    <Input
-                      id="resource-file"
-                      type="file"
-                      accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
-                      disabled={uploading}
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        if (file) {
-                          void handleFileChosen(file);
-                        }
-                      }}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      {uploading
-                        ? 'Uploading…'
-                        : pendingUpload
-                          ? pendingUpload.fileName
-                          : 'PDF, Word, Excel, or PowerPoint. Max 10MB.'}
-                    </p>
-                  </>
-                )}
+                {isEditing && resource?.fileName && !pendingUpload ? (
+                  <p className="text-sm text-muted-foreground">
+                    Current file: {resource.fileName}
+                  </p>
+                ) : null}
+                <Input
+                  id="resource-file"
+                  type="file"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                  disabled={uploading}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) {
+                      void handleFileChosen(file);
+                    }
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {uploading
+                    ? 'Uploading…'
+                    : pendingUpload
+                      ? `${isEditing ? 'Replacement ready: ' : ''}${pendingUpload.fileName}`
+                      : isEditing
+                        ? 'Choose a file to replace the current document. PDF, Word, Excel, or PowerPoint. Max 10MB.'
+                        : 'PDF, Word, Excel, or PowerPoint. Max 10MB.'}
+                </p>
               </div>
             ) : (
               <div className="space-y-2 sm:col-span-2">
@@ -927,10 +968,17 @@ export function ResourcesManagement() {
                             className="text-muted-foreground hover:text-foreground"
                             aria-label={`Download ${resource.title}`}
                             onClick={async () => {
+                              const downloadTab = window.open('about:blank', '_blank');
                               try {
                                 const { downloadUrl } = await getResourceDownloadUrl(resource.id);
-                                window.open(downloadUrl, '_blank', 'noopener,noreferrer');
+                                if (downloadTab) {
+                                  downloadTab.opener = null;
+                                  downloadTab.location.href = downloadUrl;
+                                } else {
+                                  window.location.assign(downloadUrl);
+                                }
                               } catch (downloadError) {
+                                downloadTab?.close();
                                 toast({
                                   title: 'Could not download resource',
                                   description: getResourceErrorMessage(downloadError),

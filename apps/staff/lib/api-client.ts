@@ -912,11 +912,14 @@ export async function createResourceUploadUrl(data: {
   fileName: string;
   fileType: string;
   fileSize: number;
-}): Promise<{ uploadUrl: string; fileKey: string }> {
-  return fetchAPI<{ uploadUrl: string; fileKey: string }>('/api/resources/upload-url', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
+}): Promise<{ uploadUrl: string; fields: Record<string, string>; fileKey: string }> {
+  return fetchAPI<{ uploadUrl: string; fields: Record<string, string>; fileKey: string }>(
+    '/api/resources/upload-url',
+    {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }
+  );
 }
 
 export async function getResourceDownloadUrl(resourceId: string): Promise<{ downloadUrl: string }> {

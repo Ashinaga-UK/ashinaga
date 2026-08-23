@@ -11,8 +11,10 @@ import { CreateResourceDto, ResourceFilterDto } from './dto/create-resource.dto'
 import { UpdateResourceDto } from './dto/update-resource.dto';
 import {
   ALLOWED_RESOURCE_MIME_TYPES,
+  buildArchivedResourceFileKey,
   buildPendingResourceFileKey,
   buildPermanentResourceFileKey,
+  isArchivedResourceFileKey,
   isPendingResourceFileKey,
   RESOURCE_DOWNLOAD_URL_EXPIRES_IN_SECONDS,
   RESOURCE_FILE_MAX_SIZE_BYTES,
@@ -34,14 +36,14 @@ export class ResourcesService {
     this.assertAllowedUpload(input.fileType, input.fileSize);
 
     const fileKey = buildPendingResourceFileKey(randomUUID(), input.fileName);
-    const uploadUrl = await this.objectStorage.createUploadUrl({
+    const upload = await this.objectStorage.createUploadUrl({
       key: fileKey,
       contentType: input.fileType,
       contentLength: input.fileSize,
       expiresInSeconds: RESOURCE_UPLOAD_URL_EXPIRES_IN_SECONDS,
     });
 
-    return { uploadUrl, fileKey };
+    return { uploadUrl: upload.url, fields: upload.fields, fileKey };
   }
 
   async createResource(dto: CreateResourceDto, userId: string) {
@@ -63,7 +65,7 @@ export class ResourcesService {
       }
 
       const resourceId = randomUUID();
-      const fileKey = await this.promotePendingUpload({
+      const { fileKey } = await this.copyPendingUpload({
         pendingFileKey,
         resourceId,
         fileName,
@@ -71,29 +73,35 @@ export class ResourcesService {
         fileSizeBytes,
       });
 
-      const resource = await database.transaction(async (tx) => {
-        const [created] = await tx
-          .insert(resources)
-          .values({
-            id: resourceId,
-            ...resourceData,
-            sourceType: 'file',
-            url: null,
-            fileKey,
-            fileName,
-            fileMimeType,
-            fileSizeBytes,
-            status: resourceData.status ?? 'draft',
-            createdBy: userId,
-            updatedBy: userId,
-          })
-          .returning();
+      try {
+        const resource = await database.transaction(async (tx) => {
+          const [created] = await tx
+            .insert(resources)
+            .values({
+              id: resourceId,
+              ...resourceData,
+              sourceType: 'file',
+              url: null,
+              fileKey,
+              fileName,
+              fileMimeType,
+              fileSizeBytes,
+              status: resourceData.status ?? 'draft',
+              createdBy: userId,
+              updatedBy: userId,
+            })
+            .returning();
 
-        await this.replaceFilters(created.id, filters, tx);
-        return created;
-      });
+          await this.replaceFilters(created.id, filters, tx);
+          return created;
+        });
 
-      return this.formatResource(resource, this.formatFilters(filters));
+        await this.objectStorage.deleteObject(pendingFileKey).catch(() => undefined);
+        return this.formatResource(resource, this.formatFilters(filters));
+      } catch (error) {
+        await this.objectStorage.deleteObject(fileKey).catch(() => undefined);
+        throw error;
+      }
     }
 
     if (!url) {
@@ -143,60 +151,160 @@ export class ResourcesService {
   async updateResource(resourceId: string, dto: UpdateResourceDto, userId: string) {
     const {
       filters: rawFilters,
-      pendingFileKey: _pendingFileKey,
-      fileName: _fileName,
-      fileMimeType: _fileMimeType,
-      fileSizeBytes: _fileSizeBytes,
+      pendingFileKey,
+      fileName,
+      fileMimeType,
+      fileSizeBytes,
       sourceType: _sourceType,
+      url,
       ...resourceData
     } = dto;
     const filters =
       rawFilters === undefined ? undefined : normalizeAudienceFilters(rawFilters ?? []);
-    const updated = await database.transaction(async (tx) => {
-      const [resource] = await tx
-        .update(resources)
-        .set({
-          ...resourceData,
-          updatedBy: userId,
-          updatedAt: new Date(),
-        })
-        .where(and(eq(resources.id, resourceId), eq(resources.archived, false)))
-        .returning();
 
-      if (!resource) {
-        throw new NotFoundException('Resource not found');
-      }
+    const [existing] = await database
+      .select()
+      .from(resources)
+      .where(and(eq(resources.id, resourceId), eq(resources.archived, false)))
+      .limit(1);
 
-      if (filters !== undefined) {
-        await this.replaceFilters(resourceId, filters, tx);
-      }
-
-      return resource;
-    });
-
-    const nextFilters =
-      filters !== undefined
-        ? this.formatFilters(filters)
-        : await this.getResourceFilters(resourceId);
-    return this.formatResource(updated, nextFilters);
-  }
-
-  async archiveResource(resourceId: string, userId: string) {
-    const [updated] = await database
-      .update(resources)
-      .set({
-        archived: true,
-        updatedBy: userId,
-        updatedAt: new Date(),
-      })
-      .where(eq(resources.id, resourceId))
-      .returning();
-
-    if (!updated) {
+    if (!existing) {
       throw new NotFoundException('Resource not found');
     }
 
-    return { success: true };
+    const replacingFile = Boolean(pendingFileKey);
+    if (replacingFile) {
+      if (existing.sourceType !== 'file') {
+        throw new BadRequestException('Only file resources can replace an uploaded document');
+      }
+      if (!pendingFileKey || !fileName || !fileMimeType || fileSizeBytes == null) {
+        throw new BadRequestException('File upload metadata is required');
+      }
+    }
+
+    let nextFileKey: string | undefined;
+    const previousFileKey = existing.fileKey;
+
+    if (replacingFile && pendingFileKey && fileName && fileMimeType && fileSizeBytes != null) {
+      const copied = await this.copyPendingUpload({
+        pendingFileKey,
+        resourceId,
+        fileName,
+        fileMimeType,
+        fileSizeBytes,
+      });
+      nextFileKey = copied.fileKey;
+    }
+
+    try {
+      const updated = await database.transaction(async (tx) => {
+        const [resource] = await tx
+          .update(resources)
+          .set({
+            ...resourceData,
+            ...(url !== undefined && existing.sourceType === 'url' ? { url } : {}),
+            ...(nextFileKey
+              ? {
+                  fileKey: nextFileKey,
+                  fileName,
+                  fileMimeType,
+                  fileSizeBytes,
+                }
+              : {}),
+            updatedBy: userId,
+            updatedAt: new Date(),
+          })
+          .where(and(eq(resources.id, resourceId), eq(resources.archived, false)))
+          .returning();
+
+        if (!resource) {
+          throw new NotFoundException('Resource not found');
+        }
+
+        if (filters !== undefined) {
+          await this.replaceFilters(resourceId, filters, tx);
+        }
+
+        return resource;
+      });
+
+      if (nextFileKey && pendingFileKey) {
+        await this.objectStorage.deleteObject(pendingFileKey).catch(() => undefined);
+        if (previousFileKey && previousFileKey !== nextFileKey) {
+          await this.objectStorage.deleteObject(previousFileKey).catch(() => undefined);
+        }
+      }
+
+      const nextFilters =
+        filters !== undefined
+          ? this.formatFilters(filters)
+          : await this.getResourceFilters(resourceId);
+      return this.formatResource(updated, nextFilters);
+    } catch (error) {
+      if (nextFileKey) {
+        await this.objectStorage.deleteObject(nextFileKey).catch(() => undefined);
+      }
+      throw error;
+    }
+  }
+
+  async archiveResource(resourceId: string, userId: string) {
+    const [existing] = await database
+      .select()
+      .from(resources)
+      .where(eq(resources.id, resourceId))
+      .limit(1);
+
+    if (!existing) {
+      throw new NotFoundException('Resource not found');
+    }
+
+    if (existing.archived) {
+      return { success: true };
+    }
+
+    const previousFileKey = existing.fileKey;
+    let archivedFileKey: string | undefined;
+
+    if (
+      existing.sourceType === 'file' &&
+      previousFileKey &&
+      !isArchivedResourceFileKey(previousFileKey)
+    ) {
+      archivedFileKey = buildArchivedResourceFileKey(
+        resourceId,
+        existing.fileName ?? 'document'
+      );
+      await this.objectStorage.copyObject(previousFileKey, archivedFileKey);
+    }
+
+    try {
+      const [updated] = await database
+        .update(resources)
+        .set({
+          archived: true,
+          ...(archivedFileKey ? { fileKey: archivedFileKey } : {}),
+          updatedBy: userId,
+          updatedAt: new Date(),
+        })
+        .where(eq(resources.id, resourceId))
+        .returning();
+
+      if (!updated) {
+        throw new NotFoundException('Resource not found');
+      }
+
+      if (archivedFileKey && previousFileKey) {
+        await this.objectStorage.deleteObject(previousFileKey).catch(() => undefined);
+      }
+
+      return { success: true };
+    } catch (error) {
+      if (archivedFileKey) {
+        await this.objectStorage.deleteObject(archivedFileKey).catch(() => undefined);
+      }
+      throw error;
+    }
   }
 
   async getResourcesForScholar(userId: string) {
@@ -313,7 +421,7 @@ export class ResourcesService {
     return Boolean(visible);
   }
 
-  private async promotePendingUpload(input: {
+  private async copyPendingUpload(input: {
     pendingFileKey: string;
     resourceId: string;
     fileName: string;
@@ -341,9 +449,7 @@ export class ResourcesService {
 
     const fileKey = buildPermanentResourceFileKey(input.resourceId, input.fileName);
     await this.objectStorage.copyObject(input.pendingFileKey, fileKey);
-    await this.objectStorage.deleteObject(input.pendingFileKey).catch(() => undefined);
-
-    return fileKey;
+    return { fileKey };
   }
 
   private assertAllowedUpload(fileType: string, fileSize: number) {

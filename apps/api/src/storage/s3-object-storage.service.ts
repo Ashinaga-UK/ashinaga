@@ -3,13 +3,17 @@ import {
   DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
-  PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
+import { createPresignedPost } from '@aws-sdk/s3-presigned-post';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { type ObjectHead, ObjectStorageService } from './object-storage';
+import {
+  type ObjectHead,
+  ObjectStorageService,
+  type PresignedUpload,
+} from './object-storage';
 
 @Injectable()
 export class S3ObjectStorageService extends ObjectStorageService {
@@ -21,7 +25,7 @@ export class S3ObjectStorageService extends ObjectStorageService {
     this.bucketName = configService.get<string>('S3_BUCKET_NAME', '');
     this.s3Client = new S3Client({
       region: configService.get<string>('AWS_REGION', 'eu-west-3'),
-      // Avoid checksum headers that break browser PUTs to presigned URLs.
+      // Avoid checksum headers that break browser uploads to signed URLs.
       requestChecksumCalculation: 'WHEN_REQUIRED',
     });
   }
@@ -31,17 +35,22 @@ export class S3ObjectStorageService extends ObjectStorageService {
     contentType: string;
     contentLength: number;
     expiresInSeconds?: number;
-  }): Promise<string> {
-    // Signing ContentLength makes AWS SDK v3 throw during presign.
-    const command = new PutObjectCommand({
+  }): Promise<PresignedUpload> {
+    const { url, fields } = await createPresignedPost(this.s3Client, {
       Bucket: this.bucketName,
       Key: input.key,
-      ContentType: input.contentType,
+      Expires: input.expiresInSeconds ?? 300,
+      Fields: {
+        'Content-Type': input.contentType,
+      },
+      Conditions: [
+        ['eq', '$Content-Type', input.contentType],
+        // Exact size so a client cannot request a small URL then POST a huge body.
+        ['content-length-range', input.contentLength, input.contentLength],
+      ],
     });
 
-    return getSignedUrl(this.s3Client, command, {
-      expiresIn: input.expiresInSeconds ?? 300,
-    });
+    return { url, fields };
   }
 
   async createDownloadUrl(input: {

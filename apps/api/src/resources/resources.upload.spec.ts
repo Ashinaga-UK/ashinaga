@@ -37,8 +37,11 @@ describe('ResourcesService file uploads', () => {
     service = module.get(ResourcesService);
   });
 
-  it('creates a pending upload URL with signed type and size constraints', async () => {
-    objectStorage.createUploadUrl.mockResolvedValue('https://s3.example/upload');
+  it('creates a pending upload POST with signed type and size constraints', async () => {
+    objectStorage.createUploadUrl.mockResolvedValue({
+      url: 'https://s3.example/upload',
+      fields: { key: 'resources/pending/file.pdf', Policy: 'policy' },
+    });
 
     const result = await service.createUploadUrl({
       fileName: 'Handbook.pdf',
@@ -53,6 +56,7 @@ describe('ResourcesService file uploads', () => {
       expiresInSeconds: 300,
     });
     expect(result.uploadUrl).toBe('https://s3.example/upload');
+    expect(result.fields).toEqual(expect.objectContaining({ Policy: 'policy' }));
     expect(result.fileKey).toMatch(/^resources\/pending\//);
   });
 
@@ -79,7 +83,7 @@ describe('ResourcesService file uploads', () => {
     expect(database.transaction).not.toHaveBeenCalled();
   });
 
-  it('promotes a pending upload before saving a file resource', async () => {
+  it('copies the pending upload then deletes it only after the DB save succeeds', async () => {
     objectStorage.headObject.mockResolvedValue({
       contentType: 'application/pdf',
       contentLength: 2048,
@@ -137,8 +141,94 @@ describe('ResourcesService file uploads', () => {
       'resources/pending/upload-1-handbook.pdf',
       expect.stringMatching(/^resources\/.+\/\d+-handbook\.pdf$/)
     );
+    expect(objectStorage.deleteObject).toHaveBeenCalledWith(
+      'resources/pending/upload-1-handbook.pdf'
+    );
     expect(result.sourceType).toBe('file');
     expect(result.url).toBeNull();
     expect(result.fileName).toBe('handbook.pdf');
+  });
+
+  it('deletes the permanent object when the DB insert fails', async () => {
+    objectStorage.headObject.mockResolvedValue({
+      contentType: 'application/pdf',
+      contentLength: 2048,
+    });
+    objectStorage.copyObject.mockResolvedValue(undefined);
+    objectStorage.deleteObject.mockResolvedValue(undefined);
+    (database.transaction as jest.Mock).mockRejectedValue(new Error('db down'));
+
+    await expect(
+      service.createResource(
+        {
+          title: 'Handbook',
+          description: 'Reference',
+          type: 'Handbook',
+          category: 'Handbook',
+          sourceType: 'file',
+          pendingFileKey: 'resources/pending/upload-1-handbook.pdf',
+          fileName: 'handbook.pdf',
+          fileMimeType: 'application/pdf',
+          fileSizeBytes: 2048,
+        },
+        'staff-1'
+      )
+    ).rejects.toThrow('db down');
+
+    expect(objectStorage.deleteObject).toHaveBeenCalledWith(
+      expect.stringMatching(/^resources\/.+\/\d+-handbook\.pdf$/)
+    );
+    expect(objectStorage.deleteObject).not.toHaveBeenCalledWith(
+      'resources/pending/upload-1-handbook.pdf'
+    );
+  });
+
+  it('moves a file resource into the archived prefix on delete', async () => {
+    const existing = {
+      id: 'resource-1',
+      title: 'Handbook',
+      description: 'Reference',
+      type: 'Handbook',
+      category: 'Handbook',
+      sourceType: 'file',
+      url: null,
+      fileKey: 'resources/resource-1/1700000000000-handbook.pdf',
+      fileName: 'handbook.pdf',
+      fileMimeType: 'application/pdf',
+      fileSizeBytes: 2048,
+      status: 'live',
+      archived: false,
+      createdAt: new Date('2026-01-01'),
+      updatedAt: new Date('2026-01-01'),
+    };
+
+    (database.select as jest.Mock).mockReturnValue({
+      from: jest.fn().mockReturnValue({
+        where: jest.fn().mockReturnValue({
+          limit: jest.fn().mockResolvedValue([existing]),
+        }),
+      }),
+    });
+    (database.update as jest.Mock).mockReturnValue({
+      set: jest.fn().mockReturnValue({
+        where: jest.fn().mockReturnValue({
+          returning: jest.fn().mockResolvedValue([{ ...existing, archived: true }]),
+        }),
+      }),
+    });
+    objectStorage.copyObject.mockResolvedValue(undefined);
+    objectStorage.deleteObject.mockResolvedValue(undefined);
+
+    await expect(service.archiveResource('resource-1', 'staff-1')).resolves.toEqual({
+      success: true,
+    });
+
+    expect(objectStorage.copyObject).toHaveBeenCalledWith(
+      'resources/resource-1/1700000000000-handbook.pdf',
+      expect.stringMatching(/^resources\/archived\/resource-1\/\d+-handbook\.pdf$/)
+    );
+    expect(objectStorage.deleteObject).toHaveBeenCalledWith(
+      'resources/resource-1/1700000000000-handbook.pdf'
+    );
   });
 });
