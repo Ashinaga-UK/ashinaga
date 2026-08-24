@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { AnnualUpdate } from '../../lib/api/annual-updates';
 import { MyAnnualReview } from '../my-annual-review';
 
@@ -109,7 +109,34 @@ describe('MyAnnualReview', () => {
     });
 
     expect(screen.queryByText('Year Overview')).not.toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: 'Continue editing' }).length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Continue editing' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save Draft' })).not.toBeInTheDocument();
+  });
+
+  it('dismisses the draft saved message after a few seconds', async () => {
+    jest.useFakeTimers({ advanceTimers: true });
+
+    try {
+      render(<MyAnnualReview />);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Save Draft' })).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Save Draft' }));
+
+      await waitFor(() => {
+        expect(screen.getByText('Draft saved.')).toBeInTheDocument();
+      });
+
+      act(() => {
+        jest.advanceTimersByTime(4000);
+      });
+
+      expect(screen.queryByText('Draft saved.')).not.toBeInTheDocument();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('shows a single submitted confirmation and keeps the form folded', async () => {
@@ -130,6 +157,13 @@ describe('MyAnnualReview', () => {
 
     expect(screen.queryByText('Annual review submitted.')).not.toBeInTheDocument();
     expect(screen.queryByText('Year Overview')).not.toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: 'View responses' }).length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'View responses' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Hide responses' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'View responses' }));
+
+    expect(screen.getByText('Year Overview')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Hide responses' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'View responses' })).not.toBeInTheDocument();
   });
 });

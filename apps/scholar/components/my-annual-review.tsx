@@ -292,6 +292,11 @@ export function MyAnnualReview() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const toggleFormOpen = () => {
+    setIsFormOpen((open) => !open);
+    setMessage(null);
+  };
+
   const loadAnnualUpdate = useCallback(async (academicYear: string) => {
     setLoading(true);
     setError(null);
@@ -325,6 +330,15 @@ export function MyAnnualReview() {
   useEffect(() => {
     loadAnnualUpdate(initialAcademicYear);
   }, [initialAcademicYear, loadAnnualUpdate]);
+
+  useEffect(() => {
+    if (!message) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => setMessage(null), 4000);
+    return () => window.clearTimeout(timeoutId);
+  }, [message]);
 
   const updateField = <K extends keyof FormState>(field: K, value: FormState[K]) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -424,52 +438,27 @@ export function MyAnnualReview() {
               >
                 {isSubmitted ? 'Submitted' : annualUpdate ? 'Draft in progress' : 'Not started'}
               </span>
-              <div className="flex gap-2">
-                {isFormOpen && !isSubmitted ? (
-                  <>
-                    <Button
-                      variant="secondary"
-                      onClick={handleSaveDraft}
-                      disabled={saving}
-                      className="bg-white text-ashinaga-teal-700 hover:bg-white/90"
-                    >
-                      <Save className="h-4 w-4 mr-2" />
-                      Save Draft
-                    </Button>
-                    <Button
-                      onClick={handleSubmit}
-                      disabled={saving}
-                      className="bg-ashinaga-green-900 text-white hover:bg-ashinaga-green-950"
-                    >
-                      <Send className="h-4 w-4 mr-2" />
-                      Submit Final
-                    </Button>
-                  </>
-                ) : (
+              {isFormOpen && !isSubmitted && (
+                <div className="flex gap-2">
                   <Button
                     variant="secondary"
-                    onClick={() => setIsFormOpen((open) => !open)}
+                    onClick={handleSaveDraft}
+                    disabled={saving}
                     className="bg-white text-ashinaga-teal-700 hover:bg-white/90"
                   >
-                    {isFormOpen ? (
-                      <>
-                        <ChevronUp className="h-4 w-4 mr-2" />
-                        Hide responses
-                      </>
-                    ) : isSubmitted ? (
-                      <>
-                        <ChevronDown className="h-4 w-4 mr-2" />
-                        View responses
-                      </>
-                    ) : (
-                      <>
-                        <ChevronDown className="h-4 w-4 mr-2" />
-                        Continue editing
-                      </>
-                    )}
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Draft
                   </Button>
-                )}
-              </div>
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={saving}
+                    className="bg-ashinaga-green-900 text-white hover:bg-ashinaga-green-950"
+                  >
+                    <Send className="h-4 w-4 mr-2" />
+                    Submit Final
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -524,20 +513,29 @@ export function MyAnnualReview() {
         </Alert>
       )}
 
-      {!isFormOpen && (
+      {annualUpdate && (
         <Card className="overflow-hidden border bg-white shadow-sm dark:border-sidebar-border dark:bg-sidebar">
           <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-base font-semibold">{form.academicYear} Annual Review</p>
-              {!isSubmitted && (
+              {!isFormOpen && !isSubmitted && (
                 <p className="mt-1 text-sm leading-6 text-muted-foreground">
                   Your draft is saved. Continue editing whenever you are ready.
                 </p>
               )}
             </div>
-            <Button variant="outline" onClick={() => setIsFormOpen(true)}>
-              <ChevronDown className="h-4 w-4 mr-2" />
-              {isSubmitted ? 'View responses' : 'Continue editing'}
+            <Button variant="outline" onClick={toggleFormOpen}>
+              {isFormOpen ? (
+                <>
+                  <ChevronUp className="h-4 w-4 mr-2" />
+                  {isSubmitted ? 'Hide responses' : 'Hide form'}
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-4 w-4 mr-2" />
+                  {isSubmitted ? 'View responses' : 'Continue editing'}
+                </>
+              )}
             </Button>
           </CardContent>
         </Card>
