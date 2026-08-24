@@ -5,6 +5,8 @@ import {
   BookOpen,
   BriefcaseBusiness,
   CheckCircle,
+  ChevronDown,
+  ChevronUp,
   ClipboardCheck,
   Globe2,
   HandHeart,
@@ -281,8 +283,14 @@ export function MyAnnualReview() {
   const [error, setError] = useState<string | null>(null);
   const [missingFields, setMissingFields] = useState<string[]>([]);
   const [initialAcademicYear] = useState(emptyForm.academicYear);
+  const [isFormOpen, setIsFormOpen] = useState(true);
 
   const isSubmitted = annualUpdate?.status === 'submitted';
+
+  const foldForm = () => {
+    setIsFormOpen(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const loadAnnualUpdate = useCallback(async (academicYear: string) => {
     setLoading(true);
@@ -293,12 +301,14 @@ export function MyAnnualReview() {
         setAnnualUpdate(data);
         setForm(toFormState(data, academicYear));
         setMessage(null);
+        setIsFormOpen(data.status !== 'submitted');
         return;
       }
 
       const draft = await getMyDraftAnnualUpdate();
       setAnnualUpdate(draft);
       setForm(toFormState(draft, draft?.academicYear ?? academicYear));
+      setIsFormOpen(true);
       setMessage(
         draft && draft.academicYear !== academicYear
           ? `Resumed your draft for ${draft.academicYear}.`
@@ -337,6 +347,7 @@ export function MyAnnualReview() {
       const saved = await saveAnnualUpdateDraft(toPayload(form));
       setAnnualUpdate(saved);
       setMessage('Draft saved.');
+      foldForm();
     } catch (saveError) {
       console.error('Failed to save annual review draft:', saveError);
       setError('Could not save this draft.');
@@ -366,7 +377,8 @@ export function MyAnnualReview() {
       const submitted = await submitAnnualUpdate(toPayload(form));
       setAnnualUpdate(submitted);
       setMissingFields([]);
-      setMessage('Annual review submitted.');
+      setMessage(null);
+      foldForm();
     } catch (submitError) {
       console.error('Failed to submit annual review:', submitError);
       setError('Could not submit this annual review.');
@@ -413,23 +425,50 @@ export function MyAnnualReview() {
                 {isSubmitted ? 'Submitted' : annualUpdate ? 'Draft in progress' : 'Not started'}
               </span>
               <div className="flex gap-2">
-                <Button
-                  variant="secondary"
-                  onClick={handleSaveDraft}
-                  disabled={saving || isSubmitted}
-                  className="bg-white text-ashinaga-teal-700 hover:bg-white/90"
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Draft
-                </Button>
-                <Button
-                  onClick={handleSubmit}
-                  disabled={saving || isSubmitted}
-                  className="bg-ashinaga-green-900 text-white hover:bg-ashinaga-green-950"
-                >
-                  <Send className="h-4 w-4 mr-2" />
-                  Submit Final
-                </Button>
+                {isFormOpen && !isSubmitted ? (
+                  <>
+                    <Button
+                      variant="secondary"
+                      onClick={handleSaveDraft}
+                      disabled={saving}
+                      className="bg-white text-ashinaga-teal-700 hover:bg-white/90"
+                    >
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Draft
+                    </Button>
+                    <Button
+                      onClick={handleSubmit}
+                      disabled={saving}
+                      className="bg-ashinaga-green-900 text-white hover:bg-ashinaga-green-950"
+                    >
+                      <Send className="h-4 w-4 mr-2" />
+                      Submit Final
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="secondary"
+                    onClick={() => setIsFormOpen((open) => !open)}
+                    className="bg-white text-ashinaga-teal-700 hover:bg-white/90"
+                  >
+                    {isFormOpen ? (
+                      <>
+                        <ChevronUp className="h-4 w-4 mr-2" />
+                        Hide responses
+                      </>
+                    ) : isSubmitted ? (
+                      <>
+                        <ChevronDown className="h-4 w-4 mr-2" />
+                        View responses
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="h-4 w-4 mr-2" />
+                        Continue editing
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -454,12 +493,12 @@ export function MyAnnualReview() {
         <Alert>
           <CheckCircle className="h-4 w-4" />
           <AlertDescription>
-            This annual review has been submitted and can no longer be edited.
+            Your annual review has been submitted and can no longer be edited.
           </AlertDescription>
         </Alert>
       )}
 
-      {message && (
+      {message && !isSubmitted && (
         <Alert>
           <CheckCircle className="h-4 w-4" />
           <AlertDescription>{message}</AlertDescription>
@@ -485,219 +524,242 @@ export function MyAnnualReview() {
         </Alert>
       )}
 
-      <ReviewSection
-        icon={Sparkles}
-        title="Year Overview"
-        description="Start with the year you are reporting on and the moments you want Ashinaga to know about."
-      >
-        <div className="space-y-6">
-          <div className="grid gap-2">
-            <RequiredLabel htmlFor="academicYear">Academic year</RequiredLabel>
-            <Input
-              id="academicYear"
-              value={form.academicYear}
-              readOnly
-              disabled
-              className="md:max-w-xs bg-muted"
-            />
-          </div>
+      {!isFormOpen && (
+        <Card className="overflow-hidden border bg-white shadow-sm dark:border-sidebar-border dark:bg-sidebar">
+          <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-base font-semibold">{form.academicYear} Annual Review</p>
+              {!isSubmitted && (
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  Your draft is saved. Continue editing whenever you are ready.
+                </p>
+              )}
+            </div>
+            <Button variant="outline" onClick={() => setIsFormOpen(true)}>
+              <ChevronDown className="h-4 w-4 mr-2" />
+              {isSubmitted ? 'View responses' : 'Continue editing'}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
-          <LongTextField
-            id="highlights"
-            label="Please describe any highlights; such as distinctions, awards, accomplishments, projects, or anything you are particularly proud of."
-            required
-            value={form.highlights}
-            disabled={saving || isSubmitted}
-            onChange={(value) => updateField('highlights', value)}
-          />
-        </div>
-      </ReviewSection>
+      {isFormOpen && (
+        <>
+          <ReviewSection
+            icon={Sparkles}
+            title="Year Overview"
+            description="This review is for the academic year shown below. Share important moments you would like Ashinaga to know about."
+          >
+            <div className="space-y-6">
+              <div className="grid gap-2">
+                <RequiredLabel htmlFor="academicYear">Academic year</RequiredLabel>
+                <Input
+                  id="academicYear"
+                  value={form.academicYear}
+                  readOnly
+                  disabled
+                  className="md:max-w-xs bg-muted"
+                />
+              </div>
 
-      <ReviewSection
-        icon={BriefcaseBusiness}
-        title="Work And Activities"
-        description="Share employment, extracurriculars, personal projects, clubs, and other activities from the year."
-      >
-        <div className="space-y-6">
-          <LongTextField
-            id="partTimeJobs"
-            label="Over the last year, have you had any part-time job(s)? Please briefly describe them."
-            required
-            value={form.partTimeJobs}
-            disabled={saving || isSubmitted}
-            onChange={(value) => updateField('partTimeJobs', value)}
-          />
+              <LongTextField
+                id="highlights"
+                label="Please describe any highlights; such as distinctions, awards, accomplishments, projects, or anything you are particularly proud of."
+                required
+                value={form.highlights}
+                disabled={saving || isSubmitted}
+                onChange={(value) => updateField('highlights', value)}
+              />
+            </div>
+          </ReviewSection>
 
-          <LongTextField
-            id="extracurriculars"
-            label="Extracurriculars: What activities did you get involved in, such as hobbies, personal projects, clubs, etc.?"
-            required
-            value={form.extracurriculars}
-            disabled={saving || isSubmitted}
-            onChange={(value) => updateField('extracurriculars', value)}
-          />
-        </div>
-      </ReviewSection>
+          <ReviewSection
+            icon={BriefcaseBusiness}
+            title="Work And Activities"
+            description="Share employment, extracurriculars, personal projects, clubs, and other activities from the year."
+          >
+            <div className="space-y-6">
+              <LongTextField
+                id="partTimeJobs"
+                label="Over the last year, have you had any part-time job(s)? Please briefly describe them."
+                required
+                value={form.partTimeJobs}
+                disabled={saving || isSubmitted}
+                onChange={(value) => updateField('partTimeJobs', value)}
+              />
 
-      <ReviewSection
-        icon={HandHeart}
-        title="Leadership And Pay It Forward"
-        description="Summarise leadership roles and ways you passed kindness forward this year."
-      >
-        <div className="space-y-6">
-          <LongTextField
-            id="leadershipRolesDescription"
-            label="Leadership roles description: Describe the roles, organisations, events, etc."
-            required
-            value={form.leadershipRolesDescription}
-            disabled={saving || isSubmitted}
-            wordLimit={WORD_LIMIT}
-            onChange={(value) => updateField('leadershipRolesDescription', value)}
-          />
+              <LongTextField
+                id="extracurriculars"
+                label="Extracurriculars: What activities did you get involved in, such as hobbies, personal projects, clubs, etc.?"
+                required
+                value={form.extracurriculars}
+                disabled={saving || isSubmitted}
+                onChange={(value) => updateField('extracurriculars', value)}
+              />
+            </div>
+          </ReviewSection>
 
-          <NumberField
-            id="leadershipRolesCount"
-            label="How many leadership roles this year?"
-            required
-            value={form.leadershipRolesCount}
-            disabled={saving || isSubmitted}
-            onChange={(value) => updateField('leadershipRolesCount', value)}
-          />
+          <ReviewSection
+            icon={HandHeart}
+            title="Leadership and Impact"
+            description="Summarise your leadership roles and the ways you have passed kindness forward this year."
+          >
+            <div className="space-y-6">
+              <NumberField
+                id="leadershipRolesCount"
+                label="How many leadership roles have you held this year?"
+                required
+                value={form.leadershipRolesCount}
+                disabled={saving || isSubmitted}
+                onChange={(value) => updateField('leadershipRolesCount', value)}
+              />
 
-          <LongTextField
-            id="payItForwardDescription"
-            label="How have you paid it forward this year? Defined as passing on the kindness you have received, above and beyond everyday kindness, with no expectation of return."
-            required
-            value={form.payItForwardDescription}
-            disabled={saving || isSubmitted}
-            wordLimit={WORD_LIMIT}
-            onChange={(value) => updateField('payItForwardDescription', value)}
-          />
+              <LongTextField
+                id="leadershipRolesDescription"
+                label="Leadership roles description: Describe the roles, organisations, events, etc."
+                required
+                value={form.leadershipRolesDescription}
+                disabled={saving || isSubmitted}
+                wordLimit={WORD_LIMIT}
+                onChange={(value) => updateField('leadershipRolesDescription', value)}
+              />
 
-          <NumberField
-            id="payItForwardCount"
-            label="How many pay-it-forward activities this year?"
-            required
-            value={form.payItForwardCount}
-            disabled={saving || isSubmitted}
-            onChange={(value) => updateField('payItForwardCount', value)}
-          />
-        </div>
-      </ReviewSection>
+              <NumberField
+                id="payItForwardCount"
+                label="How many pay-it-forward activities have you taken part in this year? (Defined as passing on the kindness you have received, above and beyond everyday kindness, with no expectation of return.)"
+                required
+                value={form.payItForwardCount}
+                disabled={saving || isSubmitted}
+                onChange={(value) => updateField('payItForwardCount', value)}
+              />
 
-      <ReviewSection
-        icon={Globe2}
-        title="Africa Engagement And Internships"
-        description="Capture sub-Saharan Africa-related activities and internship experience."
-      >
-        <div className="space-y-6">
-          <LongTextField
-            id="subSaharanAfricaActivitiesDescription"
-            label="What activities connected to sub-Saharan Africa have you been involved in? Describe the role, organisation, event, etc."
-            required
-            value={form.subSaharanAfricaActivitiesDescription}
-            disabled={saving || isSubmitted}
-            wordLimit={WORD_LIMIT}
-            onChange={(value) => updateField('subSaharanAfricaActivitiesDescription', value)}
-          />
+              <LongTextField
+                id="payItForwardDescription"
+                label="How have you paid it forward this year? Describe the activities."
+                required
+                value={form.payItForwardDescription}
+                disabled={saving || isSubmitted}
+                wordLimit={WORD_LIMIT}
+                onChange={(value) => updateField('payItForwardDescription', value)}
+              />
+            </div>
+          </ReviewSection>
 
-          <NumberField
-            id="subSaharanAfricaActivitiesCount"
-            label="How many sub-Saharan Africa-related activities this year?"
-            required
-            value={form.subSaharanAfricaActivitiesCount}
-            disabled={saving || isSubmitted}
-            onChange={(value) => updateField('subSaharanAfricaActivitiesCount', value)}
-          />
+          <ReviewSection
+            icon={Globe2}
+            title="Africa Engagement And Internships"
+            description="Capture sub-Saharan Africa-related activities and internship experience."
+          >
+            <div className="space-y-6">
+              <NumberField
+                id="subSaharanAfricaActivitiesCount"
+                label="How many sub-Saharan Africa-related activities this year?"
+                required
+                value={form.subSaharanAfricaActivitiesCount}
+                disabled={saving || isSubmitted}
+                onChange={(value) => updateField('subSaharanAfricaActivitiesCount', value)}
+              />
 
-          <NumberField
-            id="independentInternshipsCount"
-            label="How many independently secured internships did you complete this year? Total number anywhere in the world."
-            required
-            value={form.independentInternshipsCount}
-            disabled={saving || isSubmitted}
-            onChange={(value) => updateField('independentInternshipsCount', value)}
-          />
+              <LongTextField
+                id="subSaharanAfricaActivitiesDescription"
+                label="What activities connected to sub-Saharan Africa have you been involved in? Describe the role, organisation, event, etc."
+                required
+                value={form.subSaharanAfricaActivitiesDescription}
+                disabled={saving || isSubmitted}
+                wordLimit={WORD_LIMIT}
+                onChange={(value) => updateField('subSaharanAfricaActivitiesDescription', value)}
+              />
 
-          <LongTextField
-            id="internshipsInAfricaSummary"
-            label="Internships in Africa summary: Describe the positions, roles, etc."
-            required
-            value={form.internshipsInAfricaSummary}
-            disabled={saving || isSubmitted}
-            onChange={(value) => updateField('internshipsInAfricaSummary', value)}
-          />
+              <NumberField
+                id="independentInternshipsCount"
+                label="How many independently secured internships did you complete this year? Total number anywhere in the world."
+                required
+                value={form.independentInternshipsCount}
+                disabled={saving || isSubmitted}
+                onChange={(value) => updateField('independentInternshipsCount', value)}
+              />
 
-          <LongTextField
-            id="internshipsElsewhereSummary"
-            label="Internships in UK, or elsewhere except Africa summary: Describe the positions, roles, etc."
-            required
-            value={form.internshipsElsewhereSummary}
-            disabled={saving || isSubmitted}
-            onChange={(value) => updateField('internshipsElsewhereSummary', value)}
-          />
+              <LongTextField
+                id="internshipsInAfricaSummary"
+                label="Internships in Africa summary: Describe the positions, roles, etc."
+                required
+                value={form.internshipsInAfricaSummary}
+                disabled={saving || isSubmitted}
+                onChange={(value) => updateField('internshipsInAfricaSummary', value)}
+              />
 
-          <div className="grid gap-2">
-            <RequiredLabel>
-              Did you complete your Ashinaga 8-week internship in sub-Saharan Africa this year?
-            </RequiredLabel>
-            <Select
-              value={form.completedAshinagaAfricaInternship}
-              onValueChange={(value: FormState['completedAshinagaAfricaInternship']) =>
-                updateField('completedAshinagaAfricaInternship', value)
-              }
-              disabled={saving || isSubmitted}
-            >
-              <SelectTrigger className="md:max-w-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="not_answered">Not answered</SelectItem>
-                <SelectItem value="yes">Yes</SelectItem>
-                <SelectItem value="no">No</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </ReviewSection>
+              <LongTextField
+                id="internshipsElsewhereSummary"
+                label="Internships in UK, or elsewhere except Africa summary: Describe the positions, roles, etc."
+                required
+                value={form.internshipsElsewhereSummary}
+                disabled={saving || isSubmitted}
+                onChange={(value) => updateField('internshipsElsewhereSummary', value)}
+              />
 
-      <ReviewSection
-        icon={BookOpen}
-        title="Academic Results"
-        description="Record your classification and weighted grade for the academic year."
-      >
-        <div className="space-y-6">
-          <div className="grid gap-2">
-            <RequiredLabel htmlFor="academicYearAverageClassification">
-              What was your academic year average? Please input according to classification, e.g.
-              1st, 2:1, 2:2, 3rd.
-            </RequiredLabel>
-            <Input
-              id="academicYearAverageClassification"
-              value={form.academicYearAverageClassification}
-              onChange={(event) =>
-                updateField('academicYearAverageClassification', event.target.value)
-              }
-              disabled={saving || isSubmitted}
-              className="md:max-w-md"
-            />
-          </div>
+              <div className="grid gap-2">
+                <RequiredLabel>
+                  Did you complete your Ashinaga 8-week internship in sub-Saharan Africa this year?
+                </RequiredLabel>
+                <Select
+                  value={form.completedAshinagaAfricaInternship}
+                  onValueChange={(value: FormState['completedAshinagaAfricaInternship']) =>
+                    updateField('completedAshinagaAfricaInternship', value)
+                  }
+                  disabled={saving || isSubmitted}
+                >
+                  <SelectTrigger className="md:max-w-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="not_answered">Not answered</SelectItem>
+                    <SelectItem value="yes">Yes</SelectItem>
+                    <SelectItem value="no">No</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </ReviewSection>
 
-          <div className="grid gap-2">
-            <RequiredLabel htmlFor="academicYearWeightedGrade">
-              What is your year average weighted grade for the academic year? For example, 70% /
-              64%.
-            </RequiredLabel>
-            <Input
-              id="academicYearWeightedGrade"
-              value={form.academicYearWeightedGrade}
-              onChange={(event) => updateField('academicYearWeightedGrade', event.target.value)}
-              disabled={saving || isSubmitted}
-              className="md:max-w-md"
-            />
-          </div>
-        </div>
-      </ReviewSection>
+          <ReviewSection
+            icon={BookOpen}
+            title="Academic Results"
+            description="Record your classification and weighted grade for the academic year."
+          >
+            <div className="space-y-6">
+              <div className="grid gap-2">
+                <RequiredLabel htmlFor="academicYearAverageClassification">
+                  What was your academic year average? Please input according to classification,
+                  e.g. 1st, 2:1, 2:2, 3rd.
+                </RequiredLabel>
+                <Input
+                  id="academicYearAverageClassification"
+                  value={form.academicYearAverageClassification}
+                  onChange={(event) =>
+                    updateField('academicYearAverageClassification', event.target.value)
+                  }
+                  disabled={saving || isSubmitted}
+                  className="md:max-w-md"
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <RequiredLabel htmlFor="academicYearWeightedGrade">
+                  What is your year average weighted grade for the academic year? For example, 70% /
+                  64%.
+                </RequiredLabel>
+                <Input
+                  id="academicYearWeightedGrade"
+                  value={form.academicYearWeightedGrade}
+                  onChange={(event) => updateField('academicYearWeightedGrade', event.target.value)}
+                  disabled={saving || isSubmitted}
+                  className="md:max-w-md"
+                />
+              </div>
+            </div>
+          </ReviewSection>
+        </>
+      )}
     </div>
   );
 }
@@ -809,15 +871,20 @@ function NumberField({
   return (
     <div className="grid gap-2">
       {required ? (
-        <RequiredLabel htmlFor={id}>{label}</RequiredLabel>
+        <RequiredLabel htmlFor={id}>
+          {label} <span className="font-normal text-muted-foreground">(Enter a number)</span>
+        </RequiredLabel>
       ) : (
-        <Label htmlFor={id}>{label}</Label>
+        <Label htmlFor={id}>
+          {label} <span className="font-normal text-muted-foreground">(Enter a number)</span>
+        </Label>
       )}
       <Input
         id={id}
         type="text"
         inputMode="numeric"
         pattern="[0-9]*"
+        placeholder="2"
         value={value}
         onChange={(event) => {
           const nextValue = event.target.value;

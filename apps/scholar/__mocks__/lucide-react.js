@@ -13,8 +13,7 @@ const createMockIcon = (name) => {
   return MockIcon;
 };
 
-// Export commonly used icons
-module.exports = {
+const icons = {
   AlertCircle: createMockIcon('AlertCircle'),
   ArrowRight: createMockIcon('ArrowRight'),
   Bell: createMockIcon('Bell'),
@@ -43,3 +42,16 @@ module.exports = {
   Users: createMockIcon('Users'),
   X: createMockIcon('X'),
 };
+
+module.exports = new Proxy(icons, {
+  get(target, prop) {
+    if (prop in target) {
+      return target[prop];
+    }
+    if (typeof prop === 'string' && prop !== '__esModule') {
+      target[prop] = createMockIcon(prop);
+      return target[prop];
+    }
+    return undefined;
+  },
+});
