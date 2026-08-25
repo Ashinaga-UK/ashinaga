@@ -1,5 +1,6 @@
 'use client';
 
+import { ThemeToggle } from '@workspace/ui';
 import {
   ClipboardCheck,
   FileText,
@@ -11,7 +12,6 @@ import {
   Users,
 } from 'lucide-react';
 import Link from 'next/link';
-import { ThemeToggle } from './theme-toggle';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import {
   Sidebar,

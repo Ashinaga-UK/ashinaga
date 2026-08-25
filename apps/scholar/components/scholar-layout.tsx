@@ -1,5 +1,6 @@
 'use client';
 
+import { ThemeToggle } from '@workspace/ui';
 import {
   CheckSquare,
   ClipboardCheck,
@@ -14,7 +15,6 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '../lib/utils';
-import { ThemeToggle } from './theme-toggle';
 import {
   Sidebar,
   SidebarContent,

@@ -17,7 +17,7 @@ jest.mock('next-themes', () => ({
   useTheme: () => ({ theme: 'light', setTheme: jest.fn() }),
 }));
 
-jest.mock('../theme-toggle', () => ({
+jest.mock('@workspace/ui', () => ({
   ThemeToggle: () => null,
 }));
 

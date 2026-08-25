@@ -2,7 +2,7 @@
 
 import { Slot } from '@radix-ui/react-slot';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { Menu, PanelLeft, X } from 'lucide-react';
+import { Menu, PanelLeft } from 'lucide-react';
 import * as React from 'react';
 
 import { useIsMobile } from '../../hooks/use-mobile';
@@ -271,11 +271,7 @@ const SidebarTrigger = React.forwardRef<
       }}
       {...props}
     >
-      {openMobile ? (
-        <X className="md:hidden" aria-hidden />
-      ) : (
-        <Menu className="md:hidden" aria-hidden />
-      )}
+      <Menu className="md:hidden" aria-hidden />
       <PanelLeft className="hidden md:block" aria-hidden />
     </Button>
   );
