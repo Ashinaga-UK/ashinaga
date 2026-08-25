@@ -208,4 +208,127 @@ describe('AuthController', () => {
       })
     );
   });
+
+  it('prefers invitation intended-destination fields over the signup body', async () => {
+    const { auth } = require('./auth.config');
+    const invitationRow = {
+      userType: 'scholar',
+      scholarData: {
+        programStage: 'prep_year',
+        intendedUniversity: 'University of Edinburgh',
+        intendedCourse: 'Computer Science',
+        degreePathway: 'Foundation Year',
+        program: 'Prep',
+      },
+    };
+
+    mockDb.select.mockReturnValue({
+      from: jest.fn().mockReturnValue({
+        where: jest.fn().mockReturnValue({
+          limit: jest.fn().mockResolvedValue([invitationRow]),
+        }),
+      }),
+    });
+
+    const updateWhere = jest.fn().mockResolvedValue(undefined);
+    mockDb.update.mockReturnValue({
+      set: jest.fn().mockReturnValue({ where: updateWhere }),
+    });
+    const insertValues = jest.fn().mockResolvedValue(undefined);
+    mockDb.insert.mockReturnValue({ values: insertValues });
+
+    auth.handler.mockResolvedValueOnce({
+      status: 200,
+      headers: new Map(),
+      text: jest.fn().mockResolvedValue('{"user":{"id":"user-locked"}}'),
+    });
+
+    const mockRes = {
+      statusCode: 200,
+      status(code: number) {
+        this.statusCode = code;
+        return this;
+      },
+      send: jest.fn(),
+      header: jest.fn(),
+      redirect: jest.fn(),
+    };
+
+    await controller.signUpWithEmail(
+      {
+        url: '/api/auth/sign-up/email',
+        method: 'POST',
+        body: {
+          email: 'prep@example.com',
+          password: 'password123',
+          name: 'Prep Scholar',
+          intendedUniversity: 'Attacker University',
+          intendedCourse: 'Hacking',
+          degreePathway: 'Other',
+        },
+        headers: { 'content-type': 'application/json' },
+        protocol: 'http',
+        hostname: 'localhost',
+      } as never,
+      mockRes as never
+    );
+
+    expect(insertValues).toHaveBeenCalledWith(
+      expect.objectContaining({
+        intendedUniversity: 'University of Edinburgh',
+        intendedCourse: 'Computer Science',
+        degreePathway: 'Foundation Year',
+      })
+    );
+  });
+
+  it('fails signup when invitation scholarData cannot be parsed', async () => {
+    const { auth } = require('./auth.config');
+
+    mockDb.select.mockReturnValue({
+      from: jest.fn().mockReturnValue({
+        where: jest.fn().mockReturnValue({
+          limit: jest.fn().mockResolvedValue([
+            {
+              userType: 'scholar',
+              scholarData: '{not-json',
+            },
+          ]),
+        }),
+      }),
+    });
+
+    const mockRes = {
+      statusCode: 200,
+      status(code: number) {
+        this.statusCode = code;
+        return this;
+      },
+      send: jest.fn(),
+      header: jest.fn(),
+      redirect: jest.fn(),
+    };
+
+    await controller.signUpWithEmail(
+      {
+        url: '/api/auth/sign-up/email',
+        method: 'POST',
+        body: {
+          email: 'prep@example.com',
+          password: 'password123',
+          name: 'Prep Scholar',
+        },
+        headers: { 'content-type': 'application/json' },
+        protocol: 'http',
+        hostname: 'localhost',
+      } as never,
+      mockRes as never
+    );
+
+    expect(auth.handler).not.toHaveBeenCalled();
+    expect(mockRes.statusCode).toBe(500);
+    expect(mockRes.send).toHaveBeenCalledWith({
+      error: 'Invitation data is corrupted. Please contact support.',
+    });
+  });
 });

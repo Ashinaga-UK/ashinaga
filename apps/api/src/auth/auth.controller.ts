@@ -198,14 +198,16 @@ export class AuthController {
             : invitationWithData.scholarData;
       } catch (error) {
         console.error('Failed to parse scholar data from invitation:', error);
-        scholarData = {};
+        return res.status(500).send({
+          error: 'Invitation data is corrupted. Please contact support.',
+        });
       }
     }
 
     const intendedUniversity =
-      body.intendedUniversity?.trim() || scholarData.intendedUniversity?.trim() || '';
-    const intendedCourse = body.intendedCourse?.trim() || scholarData.intendedCourse?.trim() || '';
-    const degreePathway = body.degreePathway?.trim() || scholarData.degreePathway?.trim() || '';
+      scholarData.intendedUniversity?.trim() || body.intendedUniversity?.trim() || '';
+    const intendedCourse = scholarData.intendedCourse?.trim() || body.intendedCourse?.trim() || '';
+    const degreePathway = scholarData.degreePathway?.trim() || body.degreePathway?.trim() || '';
 
     if (scholarData.programStage === 'prep_year') {
       if (!intendedUniversity) {
