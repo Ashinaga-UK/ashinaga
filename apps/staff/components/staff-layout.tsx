@@ -193,7 +193,9 @@ export function StaffLayout({
             aria-label="Open my profile"
           >
             <Avatar className="h-8 w-8 cursor-pointer">
-              {user?.image && <AvatarImage src={user.image} alt={user.name || 'User'} />}
+              {user?.image && (
+                <AvatarImage key={user.image} src={user.image} alt={user.name || 'User'} />
+              )}
               <AvatarFallback className="text-xs">{initials}</AvatarFallback>
             </Avatar>
           </button>
