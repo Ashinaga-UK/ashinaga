@@ -293,7 +293,7 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
           postGraduationPlan: 'Get a job',
           program: 'Computer Science',
           university: 'Imperial College London',
-          year: 'Pre-University',
+          year: 'Foundation',
           startDate: '2025-09-01',
           graduationDate: '2029-06-01',
           bio: 'Computer Science student',
@@ -562,8 +562,8 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
                         <SelectValue placeholder="Select program stage" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="scholar">Uni Student</SelectItem>
-                        <SelectItem value="prep_year">Prep-Year</SelectItem>
+                        <SelectItem value="scholar">Scholar</SelectItem>
+                        <SelectItem value="prep_year">Candidate</SelectItem>
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground mt-1">

@@ -1,3 +1,4 @@
+import { OmitType } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 
 export enum Gender {
@@ -137,3 +138,7 @@ export class UpdateScholarProfileDto {
   @IsString()
   degreePathway?: string | null;
 }
+
+export class UpdateMyScholarProfileDto extends OmitType(UpdateScholarProfileDto, [
+  'programStage',
+] as const) {}

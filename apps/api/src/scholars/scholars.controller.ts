@@ -23,7 +23,10 @@ import {
   ScholarProfileDto,
   ScholarResponseDto,
 } from './dto/get-scholars.dto';
-import { UpdateScholarProfileDto } from './dto/update-scholar-profile.dto';
+import {
+  UpdateMyScholarProfileDto,
+  UpdateScholarProfileDto,
+} from './dto/update-scholar-profile.dto';
 import { ScholarsService } from './scholars.service';
 
 @ApiTags('scholars')
@@ -87,10 +90,9 @@ export class ScholarsController {
   @UseGuards(AuthGuard)
   async updateMyProfile(
     @Request() req,
-    @Body() updateData: UpdateScholarProfileDto
+    @Body() updateData: UpdateMyScholarProfileDto
   ): Promise<ScholarProfileDto> {
-    const { programStage: _ignored, ...selfUpdateData } = updateData;
-    return this.scholarsService.updateScholarProfile(req.user.id, selfUpdateData);
+    return this.scholarsService.updateScholarProfile(req.user.id, updateData);
   }
 
   // Specific :id routes must come after all non-parameterized routes

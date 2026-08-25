@@ -236,26 +236,17 @@ describe('ScholarsController', () => {
   });
 
   describe('updateMyProfile', () => {
-    it('should strip programStage before forwarding to the service', async () => {
+    it('forwards scholar self-updates without programStage on the DTO', async () => {
       mockScholarsService.updateScholarProfile.mockResolvedValue({
         id: 's1',
         programStage: 'prep_year',
       });
 
-      await controller.updateMyProfile(
-        { user: { id: 'user-1' } },
-        {
-          phone: '+123',
-          programStage: ProgramStage.SCHOLAR,
-        }
-      );
+      await controller.updateMyProfile({ user: { id: 'user-1' } }, { phone: '+123' });
 
       expect(service.updateScholarProfile).toHaveBeenCalledWith('user-1', {
         phone: '+123',
       });
-      expect(mockScholarsService.updateScholarProfile.mock.calls[0][1]).not.toHaveProperty(
-        'programStage'
-      );
     });
   });
 

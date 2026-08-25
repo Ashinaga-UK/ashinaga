@@ -35,6 +35,7 @@ import {
   DEGREE_PATHWAY_OPTIONS,
   GENDER_OPTIONS,
   type Gender,
+  isPlaceholderAcademicValue,
   normalizeLocation,
   normalizeNationality,
 } from '../lib/constants';
@@ -443,7 +444,7 @@ export function ScholarProfilePage({
                               ...ACADEMIC_YEAR_OPTIONS,
                             ].filter(
                               (x): x is string =>
-                                typeof x === 'string' && x !== '' && x !== 'Pre-University'
+                                typeof x === 'string' && !isPlaceholderAcademicValue(x)
                             )
                           ),
                         ].map((year) => (
@@ -470,7 +471,10 @@ export function ScholarProfilePage({
                               editForm.university,
                               ...filterOptions.universities,
                               ...DEFAULT_UNIVERSITY_OPTIONS,
-                            ].filter((x): x is string => typeof x === 'string' && x !== '')
+                            ].filter(
+                              (x): x is string =>
+                                typeof x === 'string' && !isPlaceholderAcademicValue(x)
+                            )
                           ),
                         ].map((uni) => (
                           <SelectItem key={uni} value={uni}>
@@ -584,6 +588,17 @@ export function ScholarProfilePage({
                 <Button
                   onClick={async () => {
                     try {
+                      if (
+                        scholar.programStage === 'prep_year' &&
+                        editForm.programStage === 'scholar' &&
+                        (isPlaceholderAcademicValue(editForm.university) ||
+                          isPlaceholderAcademicValue(editForm.year) ||
+                          !(ACADEMIC_YEAR_OPTIONS as readonly string[]).includes(
+                            editForm.year ?? ''
+                          ))
+                      ) {
+                        return;
+                      }
                       await updateProfile.mutateAsync(editForm);
                       setEditOpen(false);
                     } catch (e) {
@@ -606,10 +621,17 @@ export function ScholarProfilePage({
               onOpenChange={(open) => {
                 setEnrollOpen(open);
                 if (open) {
+                  const intended = scholar.intendedUniversity ?? '';
+                  const liveUniversity = scholar.university ?? '';
                   setEnrollForm({
-                    university: scholar.university ?? '',
-                    year:
-                      scholar.year && scholar.year !== 'Pre-University' ? scholar.year : 'Year 1',
+                    university: !isPlaceholderAcademicValue(intended)
+                      ? intended
+                      : !isPlaceholderAcademicValue(liveUniversity)
+                        ? liveUniversity
+                        : '',
+                    year: (ACADEMIC_YEAR_OPTIONS as readonly string[]).includes(scholar.year ?? '')
+                      ? scholar.year
+                      : 'Year 1',
                   });
                 }
               }}
@@ -642,7 +664,10 @@ export function ScholarProfilePage({
                               enrollForm.university,
                               scholar.intendedUniversity ?? '',
                               ...DEFAULT_UNIVERSITY_OPTIONS,
-                            ].filter((x): x is string => typeof x === 'string' && x !== '')
+                            ].filter(
+                              (x): x is string =>
+                                typeof x === 'string' && !isPlaceholderAcademicValue(x)
+                            )
                           ),
                         ].map((uni) => (
                           <SelectItem key={uni} value={uni}>
@@ -688,7 +713,11 @@ export function ScholarProfilePage({
                         console.error(e);
                       }
                     }}
-                    disabled={updateProfile.isPending || !enrollForm.university || !enrollForm.year}
+                    disabled={
+                      updateProfile.isPending ||
+                      isPlaceholderAcademicValue(enrollForm.university) ||
+                      !(ACADEMIC_YEAR_OPTIONS as readonly string[]).includes(enrollForm.year)
+                    }
                   >
                     {updateProfile.isPending ? (
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />

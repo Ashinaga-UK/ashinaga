@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 
 // Mock the database connection before any imports that might use it
@@ -720,7 +720,15 @@ describe('ScholarsService', () => {
     it('should transition prep_year to scholar when staff sets programStage', async () => {
       const mockFrom = jest.fn().mockReturnThis();
       const mockWhere = jest.fn().mockReturnThis();
-      const mockLimit = jest.fn().mockResolvedValue([{ id: 's1', userId: 'u1' }]);
+      const mockLimit = jest.fn().mockResolvedValue([
+        {
+          id: 's1',
+          userId: 'u1',
+          programStage: 'prep_year',
+          university: 'TBD',
+          year: 'TBD',
+        },
+      ]);
 
       mockDatabase.select = jest.fn().mockReturnValue({
         from: mockFrom,
@@ -768,6 +776,33 @@ describe('ScholarsService', () => {
       );
       expect(result.programStage).toBe('scholar');
       profileSpy.mockRestore();
+    });
+
+    it('should reject prep_year to scholar when university or year is a placeholder', async () => {
+      const mockFrom = jest.fn().mockReturnThis();
+      const mockWhere = jest.fn().mockReturnThis();
+      const mockLimit = jest.fn().mockResolvedValue([
+        {
+          id: 's1',
+          userId: 'u1',
+          programStage: 'prep_year',
+          university: 'TBD',
+          year: 'TBD',
+        },
+      ]);
+
+      mockDatabase.select = jest.fn().mockReturnValue({
+        from: mockFrom,
+        where: mockWhere,
+        limit: mockLimit,
+      });
+
+      await expect(
+        service.updateScholarProfile('u1', {
+          programStage: ProgramStage.SCHOLAR,
+        })
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(mockDatabase.update).not.toHaveBeenCalled();
     });
   });
 

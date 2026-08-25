@@ -22,6 +22,16 @@ export const ACADEMIC_YEAR_OPTIONS = [
   'Postgraduate',
 ] as const;
 
+export const PLACEHOLDER_ACADEMIC_VALUES = ['TBD', 'Pre-University'] as const;
+
+export function isPlaceholderAcademicValue(value?: string | null): boolean {
+  const trimmed = value?.trim() ?? '';
+  return (
+    trimmed === '' ||
+    PLACEHOLDER_ACADEMIC_VALUES.includes(trimmed as (typeof PLACEHOLDER_ACADEMIC_VALUES)[number])
+  );
+}
+
 export const DEGREE_PATHWAY_OPTIONS = [
   'Foundation Year',
   'Direct Entry',

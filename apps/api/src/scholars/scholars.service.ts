@@ -21,6 +21,7 @@ import {
 } from '../db/schema';
 import { InvitationsService } from '../invitations/invitations.service';
 import { escapeCsvValue } from '../utils/csv';
+import { isPlaceholderAcademicValue } from './academic-values';
 import { CreateScholarDto } from './dto/create-scholar.dto';
 import {
   DocumentDto,
@@ -800,7 +801,8 @@ export class ScholarsService {
       throw new NotFoundException('Scholar profile not found');
     }
 
-    const scholarId = scholarResult[0].id;
+    const current = scholarResult[0];
+    const scholarId = current.id;
 
     // Prepare update data - remove fields that shouldn't be updated
     const {
@@ -833,6 +835,16 @@ export class ScholarsService {
       intendedCourse,
       degreePathway,
     } = profileUpdateData;
+
+    if (programStage === 'scholar' && current.programStage === 'prep_year') {
+      const nextUniversity = university !== undefined ? university : current.university;
+      const nextYear = year !== undefined ? year : current.year;
+      if (isPlaceholderAcademicValue(nextUniversity) || isPlaceholderAcademicValue(nextYear)) {
+        throw new BadRequestException(
+          'University and academic year are required to mark a candidate as an enrolled scholar'
+        );
+      }
+    }
 
     // Update scholar record - handle empty strings and date conversions properly
     const dbUpdateData: Record<string, unknown> = { updatedAt: new Date() };
