@@ -39,7 +39,7 @@ test.describe('Staff Portal – new features', () => {
     }
 
     // The card header mentions the new 30-day expiry
-    await expect(page.getByText(/expire after 30 days/i)).toBeVisible();
+    await expect(page.getByText(/Manage active staff[\s\S]*expire after 30 days/i)).toBeVisible();
 
     // Invite Staff button is the default action on Active Staff / Staff Invites tabs
     await expect(page.getByRole('button', { name: /Invite Staff/i })).toBeVisible();
@@ -57,9 +57,10 @@ test.describe('Staff Portal – new features', () => {
       .click();
 
     // Dialog opens
-    await expect(page.getByRole('dialog')).toBeVisible();
-    await expect(page.getByText(/Invite a staff member/i)).toBeVisible();
-    await expect(page.getByText(/expire after 30 days/i)).toBeVisible();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('heading', { name: /Invite a staff member/i })).toBeVisible();
+    await expect(dialog.getByText(/expire after 30 days/i)).toBeVisible();
 
     // Form field present
     await expect(page.getByLabel(/Work email/i)).toBeVisible();
@@ -67,16 +68,13 @@ test.describe('Staff Portal – new features', () => {
 
   test('Bulk task assignment dialog opens from the Scholars tab', async ({ page }) => {
     await openStaffSection(page, 'Scholars');
+    await expect(page.getByRole('heading', { name: 'Scholars' })).toBeVisible();
 
-    // Wait for at least one scholar row to render (we just need a checkbox to click)
-    const checkboxes = page.getByRole('checkbox');
-    await expect(checkboxes.first()).toBeVisible({ timeout: 15_000 });
-    // Click the second checkbox (skip the header "select all" if present)
-    const count = await checkboxes.count();
-    if (count === 0) {
-      test.skip();
-    }
-    await checkboxes.nth(count > 1 ? 1 : 0).check();
+    // Desktop table is `lg:block`; card-list checkboxes are `lg:hidden` but still in the DOM.
+    const scholarCheckbox = page.locator('table tbody [role="checkbox"]').first();
+    await expect(scholarCheckbox).toBeVisible({ timeout: 15_000 });
+    await scholarCheckbox.click();
+    await expect(scholarCheckbox).toBeChecked();
 
     // "Assign Task to Selected (n)" button shows up
     const bulkButton = page.getByRole('button', { name: /Assign Task to Selected/i });
@@ -170,8 +168,15 @@ test.describe('Staff Portal – new features', () => {
   }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+    await expect(page.getByRole('button', { name: 'Close menu' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Requests', exact: true })).toBeVisible();
     await page.getByRole('link', { name: 'Requests', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Requests' })).toBeVisible();
+    await expect(page.getByRole('banner').getByRole('heading', { name: 'Requests' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Back to Overview' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Toggle sidebar' })).toBeHidden();
+    await page.getByRole('link', { name: 'Back to Overview' }).click();
+    await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Ashinaga Staff/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Toggle sidebar' })).toBeVisible();
   });
 });

@@ -2,6 +2,7 @@
 
 import { ThemeToggle } from '@workspace/ui';
 import {
+  ChevronLeft,
   ClipboardCheck,
   FileText,
   Home,
@@ -12,6 +13,7 @@ import {
   Users,
 } from 'lucide-react';
 import Link from 'next/link';
+import { cn } from '../lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import {
   Sidebar,
@@ -60,10 +62,23 @@ interface StaffLayoutProps {
 }
 
 function StaffSidebar({ activeTab, onLogout }: Pick<StaffLayoutProps, 'activeTab' | 'onLogout'>) {
-  const { setOpenMobile } = useSidebar();
+  const { isMobile, setOpenMobile } = useSidebar();
 
   return (
     <Sidebar collapsible="icon">
+      {isMobile ? (
+        <div className="flex items-center border-b border-sidebar-border px-2 py-1.5">
+          <button
+            type="button"
+            className="inline-flex h-9 items-center gap-1 rounded-md px-2 text-sm font-medium text-foreground hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Close menu"
+            onClick={() => setOpenMobile(false)}
+          >
+            <ChevronLeft className="size-5" aria-hidden />
+            Close
+          </button>
+        </div>
+      ) : null}
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
@@ -116,26 +131,60 @@ export function StaffLayout({
       .map((n) => n[0])
       .join('')
       .toUpperCase() || 'U';
+  const isHome = activeTab === 'overview';
 
   return (
     <SidebarProvider
       className="flex-col"
       style={{ '--sidebar-header-height': '3.5rem' } as React.CSSProperties}
     >
-      <header className="z-30 flex h-14 shrink-0 items-center gap-2 border-b bg-background/80 px-3 backdrop-blur-xl sm:px-4">
-        <Link href="/" className="flex min-w-0 items-center gap-2">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-brand">
-            <span className="text-sm font-semibold text-brand-foreground">A</span>
-          </div>
-          <div className="flex min-w-0 flex-col leading-tight">
-            <h1 className="truncate text-sm font-medium text-foreground">Ashinaga Staff</h1>
-            <p className="hidden truncate text-[11px] text-muted-foreground sm:block">
-              Supporting Scholar Success
-            </p>
-          </div>
-        </Link>
-        <SidebarTrigger aria-label="Toggle sidebar" className="shrink-0" />
-        <div className="ml-auto flex shrink-0 items-center gap-1">
+      <header
+        className="z-30 grid h-14 w-full shrink-0 items-center border-b bg-background/80 px-3 backdrop-blur-xl sm:px-4 md:flex md:gap-2"
+        style={{ gridTemplateColumns: '1fr auto 1fr' }}
+      >
+        <div className="flex items-center justify-start md:contents">
+          {!isHome ? (
+            <Link
+              href="/"
+              className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
+              aria-label="Back to Overview"
+            >
+              <ChevronLeft className="size-5" aria-hidden />
+              <span className="sr-only">Back to Overview</span>
+            </Link>
+          ) : null}
+          <SidebarTrigger
+            aria-label="Toggle sidebar"
+            className={cn('shrink-0 md:order-2', !isHome && 'hidden md:inline-flex')}
+          />
+        </div>
+        <div className="flex min-w-0 items-center justify-center md:order-1 md:justify-start">
+          {!isHome ? (
+            <h1 className="truncate text-center text-sm font-medium text-foreground md:hidden">
+              {STAFF_NAV_ITEMS.find((item) => item.value === activeTab)?.label ?? 'Ashinaga Staff'}
+            </h1>
+          ) : null}
+          <Link
+            href="/"
+            className={cn(
+              'min-w-0 items-center justify-center gap-2 md:justify-start',
+              isHome ? 'flex' : 'hidden md:flex'
+            )}
+          >
+            <div className="hidden size-8 shrink-0 items-center justify-center rounded-md bg-brand md:flex">
+              <span className="text-sm font-semibold text-brand-foreground">A</span>
+            </div>
+            <div className="flex min-w-0 flex-col leading-tight">
+              <h1 className="truncate text-center text-sm font-medium text-foreground md:text-left">
+                Ashinaga Staff
+              </h1>
+              <p className="hidden truncate text-[11px] text-muted-foreground md:block">
+                Supporting Scholar Success
+              </p>
+            </div>
+          </Link>
+        </div>
+        <div className="flex items-center justify-end gap-1 md:order-3 md:ml-auto">
           <ThemeToggle />
           <button
             type="button"

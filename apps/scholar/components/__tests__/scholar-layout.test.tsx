@@ -33,7 +33,7 @@ describe('ScholarLayout', () => {
     expect(getToggle()).toBeInTheDocument();
   });
 
-  it('places brand then toggle on one top rail, with no second title', () => {
+  it('keeps hamburger, brand, and actions on one top rail', () => {
     render(
       <ScholarLayout onLogout={jest.fn()}>
         <p>Dashboard content</p>
@@ -46,9 +46,12 @@ describe('ScholarLayout', () => {
 
     expect(header).toContainElement(brand);
     expect(header).toContainElement(toggle);
-    expect(brand.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(toggle.compareDocumentPosition(brand) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(document.querySelectorAll('h1')).toHaveLength(1);
+    expect(document.querySelectorAll('[data-sidebar="trigger"]')).toHaveLength(1);
     expect(document.querySelector('[data-sidebar="header"]')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /switch/i })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Back to Overview' })).not.toBeInTheDocument();
   });
 
   it('collapses to an icon rail while keeping the header toggle visible', async () => {

@@ -62,7 +62,7 @@ describe('StaffLayout', () => {
     expect(screen.getByText('Staff content')).toBeInTheDocument();
   });
 
-  it('places brand then toggle on one top rail, with no second title', () => {
+  it('keeps hamburger, brand, and actions on one top rail', () => {
     renderLayout();
 
     const header = screen.getByRole('banner');
@@ -71,9 +71,37 @@ describe('StaffLayout', () => {
 
     expect(header).toContainElement(brand);
     expect(header).toContainElement(toggle);
-    expect(brand.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(toggle.compareDocumentPosition(brand) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(document.querySelectorAll('h1')).toHaveLength(1);
+    expect(document.querySelectorAll('[data-sidebar="trigger"]')).toHaveLength(1);
     expect(document.querySelector('[data-sidebar="header"]')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open my profile' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Back to Overview' })).not.toBeInTheDocument();
+  });
+
+  it('shows a back control away from overview', () => {
+    render(
+      <StaffLayout
+        activeTab="scholars"
+        onLogout={jest.fn()}
+        onOpenProfile={jest.fn()}
+        user={{ name: 'Ada Staff' }}
+      >
+        <p>Staff content</p>
+      </StaffLayout>
+    );
+
+    const header = screen.getByRole('banner');
+    const back = screen.getByRole('link', { name: 'Back to Overview' });
+    const sectionTitle = screen.getByRole('heading', { name: 'Scholars' });
+
+    expect(back).toHaveAttribute('href', '/');
+    expect(header).toContainElement(back);
+    expect(header).toContainElement(sectionTitle);
+    expect(getToggle()).toHaveClass('hidden');
+    expect(
+      back.compareDocumentPosition(sectionTitle) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
   });
 
   it('collapses to an icon rail while keeping the header toggle visible', async () => {

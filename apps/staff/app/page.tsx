@@ -401,7 +401,12 @@ function StaffDashboardContent() {
         ) : (
           <div className="space-y-6">
             <div className="min-w-0">
-              <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+              <h2
+                className={cn(
+                  'text-2xl font-semibold tracking-tight text-foreground',
+                  activeTab !== 'overview' && 'hidden md:block'
+                )}
+              >
                 {activeTab === 'overview' && 'Overview'}
                 {activeTab === 'scholars' && 'Scholars'}
                 {activeTab === 'annual-reviews' && 'Annual Reviews'}
