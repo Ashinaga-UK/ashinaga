@@ -8,12 +8,10 @@ describe('fileToProfileImageDataUrl', () => {
     );
   });
 
-  it('rejects files larger than 2MB', async () => {
-    const file = new File([new Uint8Array(2 * 1024 * 1024 + 1)], 'photo.png', {
-      type: 'image/png',
-    });
+  it('rejects source files larger than 25MB', async () => {
+    const file = { type: 'image/png', size: 25 * 1024 * 1024 + 1 } as File;
     await expect(fileToProfileImageDataUrl(file)).rejects.toThrow(
-      'Please choose an image smaller than 2MB.'
+      'Please choose an image smaller than 25MB.'
     );
   });
 });

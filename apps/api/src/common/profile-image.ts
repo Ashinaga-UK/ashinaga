@@ -13,6 +13,6 @@ export function validateProfileImage(image: string | null | undefined): void {
   }
 
   if (image.length > PROFILE_IMAGE_MAX_DATA_URL_LENGTH) {
-    throw new BadRequestException('Profile image must be smaller than 2MB');
+    throw new BadRequestException('Profile image is too large to save');
   }
 }

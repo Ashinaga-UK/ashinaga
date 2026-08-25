@@ -1,4 +1,7 @@
-export const PROFILE_IMAGE_MAX_FILE_BYTES = 2 * 1024 * 1024;
+/** Loose sanity bound on the *source* file. The real limit is applied to the compressed output. */
+export const PROFILE_IMAGE_MAX_SOURCE_BYTES = 25 * 1024 * 1024;
+/** Keep in sync with PROFILE_IMAGE_MAX_DATA_URL_LENGTH in apps/api/src/common/profile-image.ts */
+export const PROFILE_IMAGE_MAX_DATA_URL_LENGTH = 3_000_000;
 export const PROFILE_IMAGE_MAX_DIMENSION = 800;
 export const PROFILE_IMAGE_JPEG_QUALITY = 0.85;
 
@@ -29,6 +32,8 @@ function compressAsJpeg(dataUrl: string): Promise<string> {
         reject(new Error('Could not process that image. Please try another file.'));
         return;
       }
+      context.fillStyle = '#ffffff';
+      context.fillRect(0, 0, canvas.width, canvas.height);
       context.drawImage(image, 0, 0, canvas.width, canvas.height);
       resolve(canvas.toDataURL('image/jpeg', PROFILE_IMAGE_JPEG_QUALITY));
     };
@@ -43,10 +48,14 @@ export async function fileToProfileImageDataUrl(file: File): Promise<string> {
     throw new Error('Please choose an image file.');
   }
 
-  if (file.size > PROFILE_IMAGE_MAX_FILE_BYTES) {
-    throw new Error('Please choose an image smaller than 2MB.');
+  if (file.size > PROFILE_IMAGE_MAX_SOURCE_BYTES) {
+    throw new Error('Please choose an image smaller than 25MB.');
   }
 
   const dataUrl = await readFileAsDataUrl(file);
-  return compressAsJpeg(dataUrl);
+  const compressed = await compressAsJpeg(dataUrl);
+  if (compressed.length > PROFILE_IMAGE_MAX_DATA_URL_LENGTH) {
+    throw new Error('That image is too large to save. Please try a smaller one.');
+  }
+  return compressed;
 }

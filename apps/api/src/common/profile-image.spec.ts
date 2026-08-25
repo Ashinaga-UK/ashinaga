@@ -24,8 +24,9 @@ describe('validateProfileImage', () => {
     );
   });
 
-  it('rejects data URLs larger than the 2MB limit', () => {
+  it('rejects data URLs over the maximum length', () => {
     const oversized = `data:image/jpeg;base64,${'a'.repeat(3_000_000)}`;
     expect(() => validateProfileImage(oversized)).toThrow(BadRequestException);
+    expect(() => validateProfileImage(oversized)).toThrow('Profile image is too large to save');
   });
 });
