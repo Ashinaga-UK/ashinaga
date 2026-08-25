@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
+import { fileToProfileImageDataUrl } from '@workspace/ui/lib/profile-image';
 import {
   getMyProfile,
   type ScholarProfile,
@@ -95,7 +96,11 @@ export function MyProfile() {
     setSuccess(false);
 
     try {
-      const updatedProfile = await updateMyProfile(formData);
+      const payload: UpdateProfileData = { ...formData };
+      if (payload.image === profile?.image) {
+        delete payload.image;
+      }
+      const updatedProfile = await updateMyProfile(payload);
       setProfile(updatedProfile);
       setSuccess(true);
       setEditing(false);
@@ -141,29 +146,21 @@ export function MyProfile() {
     }
   };
 
-  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     setImageError(null);
 
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      setImageError('Please choose an image file.');
-      return;
+    try {
+      const image = await fileToProfileImageDataUrl(file);
+      setFormData((current) => ({ ...current, image }));
+    } catch (err) {
+      setImageError(
+        err instanceof Error ? err.message : 'Could not read that image. Please try another file.'
+      );
     }
-
-    if (file.size > 2 * 1024 * 1024) {
-      setImageError('Please choose an image smaller than 2MB.');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      setFormData((current) => ({ ...current, image: reader.result as string }));
-    };
-    reader.onerror = () => setImageError('Could not read that image. Please try another file.');
-    reader.readAsDataURL(file);
   };
 
   if (loading) {
@@ -188,7 +185,7 @@ export function MyProfile() {
     );
   }
 
-  const profileImage = formData.image || profile.image;
+  const profileImage = formData.image ?? profile.image;
 
   return (
     <div className="space-y-6">
@@ -248,7 +245,7 @@ export function MyProfile() {
                       aria-label="Open profile picture"
                     >
                       <Avatar className="h-20 w-20 cursor-pointer">
-                        <AvatarImage src={profileImage} alt={profile.name} />
+                        <AvatarImage key={profileImage} src={profileImage} alt={profile.name} />
                         <AvatarFallback className="text-lg bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 text-white">
                           {profile.name
                             ?.split(' ')
@@ -262,6 +259,7 @@ export function MyProfile() {
                   <DialogContent className="max-w-xl p-4">
                     <DialogTitle className="sr-only">Profile picture</DialogTitle>
                     <Image
+                      key={profileImage}
                       src={profileImage}
                       alt={profile.name || 'Profile picture'}
                       width={800}
@@ -293,7 +291,7 @@ export function MyProfile() {
                         Upload Photo
                       </label>
                     </Button>
-                    {(formData.image || profile.image) && (
+                    {profileImage && (
                       <Button
                         type="button"
                         variant="ghost"
