@@ -80,6 +80,8 @@ jobs:
           DB_PASSWORD: postgres
           DB_NAME: ashinaga_integration
           DB_SSL: "false"
+          S3_BUCKET_NAME: test-bucket
+          AWS_REGION: eu-west-3
         run: pnpm test:integration
 
       - name: Upload test coverage
