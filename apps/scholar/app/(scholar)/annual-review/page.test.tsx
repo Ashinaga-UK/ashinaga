@@ -45,4 +45,15 @@ describe('AnnualReviewPage', () => {
     expect(await screen.findByText('Annual review content')).toBeInTheDocument();
     expect(mockReplace).not.toHaveBeenCalled();
   });
+
+  it('redirects to the dashboard if profile loading fails', async () => {
+    mockGetMyProfile.mockRejectedValue(new Error('offline'));
+
+    render(<AnnualReviewPage />);
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/dashboard');
+    });
+    expect(screen.queryByText('Annual review content')).not.toBeInTheDocument();
+  });
 });

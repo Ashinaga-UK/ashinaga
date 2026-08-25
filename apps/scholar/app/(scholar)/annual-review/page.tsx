@@ -18,7 +18,7 @@ export default function AnnualReviewPage() {
         }
         setAllowed(true);
       })
-      .catch(() => setAllowed(true));
+      .catch(() => router.replace('/dashboard'));
   }, [router]);
 
   if (!allowed) {
