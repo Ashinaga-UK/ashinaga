@@ -4,7 +4,6 @@ import {
   CheckSquare,
   ClipboardCheck,
   FileText,
-  FolderOpen,
   Home,
   Library,
   LogOut,
@@ -43,36 +42,25 @@ const scholarNavItems = [
   { id: 'resources', href: '/resources', label: 'Resources', icon: Library },
 ];
 
-const prepNavItems = [
-  { id: 'dashboard', href: '/dashboard', label: 'Overview', icon: Home },
-  { id: 'profile', href: '/profile', label: 'My Profile', icon: User },
-  { id: 'goals', href: '/goals', label: 'My LDF', icon: Target },
-  { id: 'documents', href: '/documents', label: 'My Documents', icon: FolderOpen },
-  { id: 'tasks', href: '/tasks', label: 'My Tasks', icon: CheckSquare },
-  { id: 'requests', href: '/requests', label: 'My Requests', icon: FileText },
-  { id: 'announcements', href: '/announcements', label: 'Announcements', icon: MessageSquare },
-  { id: 'resources', href: '/resources', label: 'Resources', icon: Library },
-];
+const prepNavItems = scholarNavItems.filter((item) => item.id !== 'annual-review');
 
 export function ScholarLayout({ children, onLogout }: ScholarLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [programStage, setProgramStage] = useState<'prep_year' | 'scholar'>('scholar');
+  const [programStage, setProgramStage] = useState<'prep_year' | 'scholar' | null>(null);
   const pathname = usePathname();
   const isPrepYear = programStage === 'prep_year';
-  const navItems = isPrepYear ? prepNavItems : scholarNavItems;
+  const navItems = programStage === 'scholar' ? scholarNavItems : prepNavItems;
 
   useEffect(() => {
     let cancelled = false;
     getMyProfile()
       .then((profile) => {
-        if (!cancelled && profile.programStage === 'prep_year') {
-          setProgramStage('prep_year');
+        if (!cancelled) {
+          setProgramStage(profile.programStage === 'prep_year' ? 'prep_year' : 'scholar');
         }
       })
       .catch(() => {
-        if (!cancelled) {
-          setProgramStage('scholar');
-        }
+        // Fail closed: do not reveal Annual Review until stage is known.
       });
     return () => {
       cancelled = true;

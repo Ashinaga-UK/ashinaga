@@ -43,8 +43,10 @@ describe('MyProfile', () => {
     render(<MyProfile />);
 
     await waitFor(() => {
-      expect(screen.getAllByText('Prep Year Candidate').length).toBeGreaterThan(0);
+      expect(screen.getByText('Prep Year Candidate')).toBeInTheDocument();
     });
+    expect(screen.getByDisplayValue('Prep Year Candidate')).toBeInTheDocument();
+    expect(screen.queryByText('Ashinaga · Prep Year')).not.toBeInTheDocument();
     expect(screen.getByText('Intended Pathway')).toBeInTheDocument();
     expect(screen.getByText('Not yet enrolled at university.')).toBeInTheDocument();
     expect(screen.getByDisplayValue('University of Edinburgh')).toBeInTheDocument();
@@ -76,7 +78,7 @@ describe('MyProfile', () => {
     await waitFor(() => {
       expect(screen.getByText('Academic Information')).toBeInTheDocument();
     });
-    expect(screen.getAllByText('Scholar').length).toBeGreaterThan(0);
+    expect(screen.getByDisplayValue('Scholar')).toBeInTheDocument();
     expect(screen.queryByText('Intended Pathway')).not.toBeInTheDocument();
     expect(screen.getByText('Academic Year')).toBeInTheDocument();
     expect(screen.queryByText('Pre-University')).not.toBeInTheDocument();

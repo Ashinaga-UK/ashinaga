@@ -92,6 +92,7 @@ function SearchableValueField({
   searchPlaceholder,
   emptyText,
   onChange,
+  invalid,
 }: {
   id: string;
   value: string;
@@ -100,6 +101,7 @@ function SearchableValueField({
   searchPlaceholder: string;
   emptyText: string;
   onChange: (value: string) => void;
+  invalid?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState(value);
@@ -133,7 +135,11 @@ function SearchableValueField({
           variant="outline"
           aria-expanded={open}
           aria-haspopup="listbox"
-          className="w-full justify-between font-normal"
+          className={cn(
+            'w-full justify-between font-normal',
+            invalid && 'border-destructive focus-visible:ring-destructive'
+          )}
+          aria-invalid={invalid || undefined}
         >
           <span className={cn('truncate', !value && 'text-muted-foreground')}>
             {value || placeholder}
@@ -202,6 +208,11 @@ export function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<{
+    intendedUniversity?: string;
+    intendedCourse?: string;
+    degreePathway?: string;
+  }>({});
   const [invitationData, setInvitationData] = useState<InvitationData | null>(null);
   const prefilledScholarData = invitationData?.scholarData;
 
@@ -270,6 +281,11 @@ export function SignupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    const nextFieldErrors: {
+      intendedUniversity?: string;
+      intendedCourse?: string;
+      degreePathway?: string;
+    } = {};
 
     // Validation
     if (!formData.name.trim()) {
@@ -299,19 +315,21 @@ export function SignupPage() {
 
     if (prefilledScholarData?.programStage === 'prep_year') {
       if (!formData.intendedUniversity.trim()) {
-        setError('Intended university is required for prep-year invitations');
-        return;
+        nextFieldErrors.intendedUniversity = 'Intended university is required';
       }
 
       if (!formData.intendedCourse.trim()) {
-        setError('Intended course is required for prep-year invitations');
-        return;
+        nextFieldErrors.intendedCourse = 'Intended course is required';
       }
 
       if (!formData.degreePathway.trim()) {
-        setError('Degree pathway is required for prep-year invitations');
-        return;
+        nextFieldErrors.degreePathway = 'Degree pathway is required';
       }
+    }
+
+    setFieldErrors(nextFieldErrors);
+    if (Object.keys(nextFieldErrors).length > 0) {
+      return;
     }
 
     setIsLoading(true);
@@ -491,10 +509,15 @@ export function SignupPage() {
                       placeholder="Select or type a university"
                       searchPlaceholder="Start typing a university..."
                       emptyText="No universities match. Keep typing to enter a custom one."
-                      onChange={(value) =>
-                        setFormData((prev) => ({ ...prev, intendedUniversity: value }))
-                      }
+                      onChange={(value) => {
+                        setFormData((prev) => ({ ...prev, intendedUniversity: value }));
+                        setFieldErrors((prev) => ({ ...prev, intendedUniversity: undefined }));
+                      }}
+                      invalid={Boolean(fieldErrors.intendedUniversity)}
                     />
+                  )}
+                  {fieldErrors.intendedUniversity && (
+                    <p className="text-sm text-destructive">{fieldErrors.intendedUniversity}</p>
                   )}
                 </div>
 
@@ -524,10 +547,15 @@ export function SignupPage() {
                       placeholder="Select or type a course"
                       searchPlaceholder="Start typing a course..."
                       emptyText="No courses match. Keep typing to enter a custom one."
-                      onChange={(value) =>
-                        setFormData((prev) => ({ ...prev, intendedCourse: value }))
-                      }
+                      onChange={(value) => {
+                        setFormData((prev) => ({ ...prev, intendedCourse: value }));
+                        setFieldErrors((prev) => ({ ...prev, intendedCourse: undefined }));
+                      }}
+                      invalid={Boolean(fieldErrors.intendedCourse)}
                     />
+                  )}
+                  {fieldErrors.intendedCourse && (
+                    <p className="text-sm text-destructive">{fieldErrors.intendedCourse}</p>
                   )}
                 </div>
 
@@ -552,11 +580,20 @@ export function SignupPage() {
                   ) : (
                     <Select
                       value={formData.degreePathway}
-                      onValueChange={(value) =>
-                        setFormData((prev) => ({ ...prev, degreePathway: value }))
-                      }
+                      onValueChange={(value) => {
+                        setFormData((prev) => ({ ...prev, degreePathway: value }));
+                        setFieldErrors((prev) => ({ ...prev, degreePathway: undefined }));
+                      }}
                     >
-                      <SelectTrigger id="degreePathway">
+                      <SelectTrigger
+                        id="degreePathway"
+                        aria-invalid={Boolean(fieldErrors.degreePathway) || undefined}
+                        className={
+                          fieldErrors.degreePathway
+                            ? 'border-destructive focus:ring-destructive'
+                            : undefined
+                        }
+                      >
                         <SelectValue placeholder="Select degree pathway" />
                       </SelectTrigger>
                       <SelectContent>
@@ -567,6 +604,9 @@ export function SignupPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                  )}
+                  {fieldErrors.degreePathway && (
+                    <p className="text-sm text-destructive">{fieldErrors.degreePathway}</p>
                   )}
                 </div>
               </div>

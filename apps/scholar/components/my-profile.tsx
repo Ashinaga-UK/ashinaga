@@ -297,7 +297,12 @@ export function MyProfile() {
                 <p className="font-medium text-foreground">{profile.name}</p>
                 <p className="text-sm text-muted-foreground">{profile.email}</p>
                 {profile.programStage === 'prep_year' && (
-                  <p className="text-xs text-muted-foreground mt-1">Ashinaga · Prep Year</p>
+                  <Badge
+                    variant="default"
+                    className="mt-2 bg-ashinaga-green-600 hover:bg-ashinaga-green-700"
+                  >
+                    Prep Year Candidate
+                  </Badge>
                 )}
                 {editing && (
                   <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -348,26 +353,14 @@ export function MyProfile() {
                   className="bg-muted"
                 />
               </div>
-              <div className="flex items-end gap-2">
-                <div className="flex-1">
-                  <Label htmlFor="programStage">Program Stage</Label>
-                  <Input
-                    id="programStage"
-                    value={profile.programStage === 'prep_year' ? 'Prep Year Candidate' : 'Scholar'}
-                    disabled
-                    className="bg-muted"
-                  />
-                </div>
-                <Badge
-                  variant={profile.programStage === 'prep_year' ? 'default' : 'secondary'}
-                  className={
-                    profile.programStage === 'prep_year'
-                      ? 'bg-ashinaga-green-600 hover:bg-ashinaga-green-700'
-                      : undefined
-                  }
-                >
-                  {profile.programStage === 'prep_year' ? 'Prep Year Candidate' : 'Scholar'}
-                </Badge>
+              <div>
+                <Label htmlFor="programStage">Program Stage</Label>
+                <Input
+                  id="programStage"
+                  value={profile.programStage === 'prep_year' ? 'Prep Year Candidate' : 'Scholar'}
+                  disabled
+                  className="bg-muted"
+                />
               </div>
             </div>
           </CardContent>

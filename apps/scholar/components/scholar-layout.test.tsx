@@ -28,7 +28,7 @@ describe('ScholarLayout', () => {
     expect(screen.queryByText('Prep Year')).not.toBeInTheDocument();
   });
 
-  it('hides annual review and shows My Documents for prep-year users', async () => {
+  it('hides annual review for prep-year users and does not add My Documents', async () => {
     mockGetMyProfile.mockResolvedValue({ programStage: 'prep_year' });
 
     render(
@@ -38,10 +38,23 @@ describe('ScholarLayout', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('My Documents')).toBeInTheDocument();
+      expect(screen.getByText('Prep Year')).toBeInTheDocument();
     });
     expect(screen.getByText('My LDF')).toBeInTheDocument();
     expect(screen.queryByText('My Annual Review')).not.toBeInTheDocument();
-    expect(screen.getByText('Prep Year')).toBeInTheDocument();
+    expect(screen.queryByText('My Documents')).not.toBeInTheDocument();
+  });
+
+  it('does not show annual review when profile loading fails', async () => {
+    mockGetMyProfile.mockRejectedValue(new Error('offline'));
+
+    render(
+      <ScholarLayout onLogout={jest.fn()}>
+        <div>content</div>
+      </ScholarLayout>
+    );
+
+    expect(await screen.findByText('My LDF')).toBeInTheDocument();
+    expect(screen.queryByText('My Annual Review')).not.toBeInTheDocument();
   });
 });
