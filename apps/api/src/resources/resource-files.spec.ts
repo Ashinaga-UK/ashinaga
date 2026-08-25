@@ -13,6 +13,7 @@ describe('resource file keys', () => {
     expect(sanitizeResourceFileName('Scholar Handbook (2026).pdf')).toBe(
       'Scholar_Handbook_2026_.pdf'
     );
+    expect(sanitizeResourceFileName('report..final.pdf')).toBe('report.final.pdf');
   });
 
   it('builds pending keys under the pending prefix', () => {
@@ -40,6 +41,9 @@ describe('resource file keys', () => {
     expect(isPendingResourceFileKey('resources/resource-1/abc-Guide.pdf')).toBe(false);
     expect(isPendingResourceFileKey('resources/pending/../secret.pdf')).toBe(false);
     expect(isPendingResourceFileKey('resources/pending/nested/path.pdf')).toBe(false);
+    expect(isPendingResourceFileKey(buildPendingResourceFileKey('upload-1', 'a..b.pdf'))).toBe(
+      true
+    );
   });
 
   it('resolves MIME from extension when the browser type is empty', () => {

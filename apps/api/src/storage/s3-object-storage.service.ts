@@ -22,7 +22,11 @@ export class S3ObjectStorageService extends ObjectStorageService {
 
   constructor(configService: ConfigService) {
     super();
-    this.bucketName = configService.get<string>('S3_BUCKET_NAME', '');
+    const bucketName = configService.get<string>('S3_BUCKET_NAME');
+    if (!bucketName) {
+      throw new Error('S3_BUCKET_NAME must be set for resource document uploads');
+    }
+    this.bucketName = bucketName;
     this.s3Client = new S3Client({
       region: configService.get<string>('AWS_REGION', 'eu-west-3'),
       // Avoid checksum headers that break browser uploads to signed URLs.

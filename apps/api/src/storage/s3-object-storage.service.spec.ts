@@ -101,4 +101,20 @@ describe('S3ObjectStorageService', () => {
       MetadataDirective: 'COPY',
     });
   });
+
+  it('fails to start without S3_BUCKET_NAME', async () => {
+    await expect(
+      Test.createTestingModule({
+        providers: [
+          S3ObjectStorageService,
+          {
+            provide: ConfigService,
+            useValue: {
+              get: jest.fn(() => undefined),
+            },
+          },
+        ],
+      }).compile()
+    ).rejects.toThrow('S3_BUCKET_NAME must be set for resource document uploads');
+  });
 });

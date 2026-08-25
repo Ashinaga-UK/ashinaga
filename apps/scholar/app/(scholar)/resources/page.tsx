@@ -153,18 +153,11 @@ export default function ResourcesPage() {
                       className="ml-auto min-h-8 px-2 text-xs sm:px-3 sm:text-sm"
                       disabled={downloadingId === resource.id}
                       onClick={async () => {
-                        const downloadTab = window.open('about:blank', '_blank');
                         setDownloadingId(resource.id);
                         try {
                           const { downloadUrl } = await getResourceDownloadUrl(resource.id);
-                          if (downloadTab) {
-                            downloadTab.opener = null;
-                            downloadTab.location.href = downloadUrl;
-                          } else {
-                            window.location.assign(downloadUrl);
-                          }
+                          window.location.href = downloadUrl;
                         } catch {
-                          downloadTab?.close();
                           toast({
                             title: 'Could not download resource',
                             description: 'Please try again.',

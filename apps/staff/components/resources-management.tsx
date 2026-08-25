@@ -968,17 +968,10 @@ export function ResourcesManagement() {
                             className="text-muted-foreground hover:text-foreground"
                             aria-label={`Download ${resource.title}`}
                             onClick={async () => {
-                              const downloadTab = window.open('about:blank', '_blank');
                               try {
                                 const { downloadUrl } = await getResourceDownloadUrl(resource.id);
-                                if (downloadTab) {
-                                  downloadTab.opener = null;
-                                  downloadTab.location.href = downloadUrl;
-                                } else {
-                                  window.location.assign(downloadUrl);
-                                }
+                                window.location.href = downloadUrl;
                               } catch (downloadError) {
-                                downloadTab?.close();
                                 toast({
                                   title: 'Could not download resource',
                                   description: getResourceErrorMessage(downloadError),

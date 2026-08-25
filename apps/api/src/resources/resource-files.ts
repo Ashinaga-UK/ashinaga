@@ -1,9 +1,9 @@
 export const RESOURCE_PENDING_PREFIX = 'resources/pending/';
+/** Keep in sync with expire-archived-resource-uploads (30 days) in infra/modules/s3_bucket/main.tf */
 export const RESOURCE_ARCHIVED_PREFIX = 'resources/archived/';
 export const RESOURCE_FILE_MAX_SIZE_BYTES = 10 * 1024 * 1024;
 export const RESOURCE_UPLOAD_URL_EXPIRES_IN_SECONDS = 300;
 export const RESOURCE_DOWNLOAD_URL_EXPIRES_IN_SECONDS = 900;
-export const RESOURCE_ARCHIVED_OBJECT_RETENTION_DAYS = 30;
 
 export const ALLOWED_RESOURCE_MIME_TYPES = [
   'application/pdf',
@@ -44,7 +44,10 @@ export function resolveResourceMimeType(
 }
 
 export function sanitizeResourceFileName(fileName: string): string {
-  const sanitized = fileName.replace(/[^a-zA-Z0-9.-]/g, '_').replace(/_+/g, '_');
+  const sanitized = fileName
+    .replace(/[^a-zA-Z0-9.-]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/\.{2,}/g, '.');
   return sanitized.length > 0 ? sanitized.slice(0, 180) : 'document';
 }
 

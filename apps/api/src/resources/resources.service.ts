@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { normalizeAudienceFilters } from '../common/audience-filters/audience-filter';
 import { buildResourceAudienceVisibilitySql } from '../common/audience-filters/audience-filter.sql';
@@ -30,6 +30,8 @@ type ResourceFilterWriter = Pick<typeof database, 'delete' | 'insert'>;
 
 @Injectable()
 export class ResourcesService {
+  private readonly logger = new Logger(ResourcesService.name);
+
   constructor(private readonly objectStorage: ObjectStorageService) {}
 
   async createUploadUrl(input: { fileName: string; fileType: string; fileSize: number }) {
@@ -96,10 +98,10 @@ export class ResourcesService {
           return created;
         });
 
-        await this.objectStorage.deleteObject(pendingFileKey).catch(() => undefined);
+        await this.deleteStoredObject(pendingFileKey, 'pending resource upload');
         return this.formatResource(resource, this.formatFilters(filters));
       } catch (error) {
-        await this.objectStorage.deleteObject(fileKey).catch(() => undefined);
+        await this.deleteStoredObject(fileKey, 'copied resource file after create failure');
         throw error;
       }
     }
@@ -229,9 +231,9 @@ export class ResourcesService {
       });
 
       if (nextFileKey && pendingFileKey) {
-        await this.objectStorage.deleteObject(pendingFileKey).catch(() => undefined);
+        await this.deleteStoredObject(pendingFileKey, 'pending resource upload');
         if (previousFileKey && previousFileKey !== nextFileKey) {
-          await this.objectStorage.deleteObject(previousFileKey).catch(() => undefined);
+          await this.deleteStoredObject(previousFileKey, 'replaced resource file');
         }
       }
 
@@ -242,7 +244,7 @@ export class ResourcesService {
       return this.formatResource(updated, nextFilters);
     } catch (error) {
       if (nextFileKey) {
-        await this.objectStorage.deleteObject(nextFileKey).catch(() => undefined);
+        await this.deleteStoredObject(nextFileKey, 'copied resource file after update failure');
       }
       throw error;
     }
@@ -295,13 +297,16 @@ export class ResourcesService {
       }
 
       if (archivedFileKey && previousFileKey) {
-        await this.objectStorage.deleteObject(previousFileKey).catch(() => undefined);
+        await this.deleteStoredObject(previousFileKey, 'replaced resource file');
       }
 
       return { success: true };
     } catch (error) {
       if (archivedFileKey) {
-        await this.objectStorage.deleteObject(archivedFileKey).catch(() => undefined);
+        await this.deleteStoredObject(
+          archivedFileKey,
+          'archived resource file after archive failure'
+        );
       }
       throw error;
     }
@@ -522,6 +527,16 @@ export class ResourcesService {
       type: filter.filterType,
       value: filter.filterValue,
     }));
+  }
+
+  private async deleteStoredObject(fileKey: string, label: string): Promise<void> {
+    try {
+      await this.objectStorage.deleteObject(fileKey);
+    } catch (error) {
+      this.logger.warn(
+        `Failed to delete ${label} ${fileKey}: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
   }
 
   private formatResource(resource: typeof resources.$inferSelect, filters: ResourceFilter[]) {
