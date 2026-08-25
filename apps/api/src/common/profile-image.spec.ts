@@ -19,6 +19,9 @@ describe('validateProfileImage', () => {
     expect(() => validateProfileImage('data:image/svg+xml;base64,abc')).toThrow(
       BadRequestException
     );
+    expect(() => validateProfileImage('data:image/pjpeg;base64,abc')).toThrow(
+      BadRequestException
+    );
     expect(() => validateProfileImage('https://example.com/photo.jpg')).toThrow(
       BadRequestException
     );

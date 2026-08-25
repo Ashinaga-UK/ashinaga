@@ -2,8 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 
 export const PROFILE_IMAGE_MAX_DATA_URL_LENGTH = 3_000_000;
 
-const PROFILE_IMAGE_DATA_URL_PATTERN =
-  /^data:image\/(jpeg|jpg|pjpeg|png|webp|gif);base64,/i;
+const PROFILE_IMAGE_DATA_URL_PATTERN = /^data:image\/(jpeg|jpg|png|webp|gif);base64,/i;
 
 export function validateProfileImage(image: string | null | undefined): void {
   if (!image) return;
