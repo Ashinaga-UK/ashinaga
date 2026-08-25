@@ -98,7 +98,10 @@ function ScholarSidebar({ onLogout }: { onLogout: () => void }) {
 
 export function ScholarLayout({ children, onLogout }: ScholarLayoutProps) {
   return (
-    <SidebarProvider className="flex-col bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:from-background dark:to-background">
+    <SidebarProvider
+      className="flex-col bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:from-background dark:to-background"
+      style={{ '--sidebar-header-height': '3.5rem' } as React.CSSProperties}
+    >
       <header className="z-30 flex h-14 shrink-0 items-center gap-2 border-b border-ashinaga-teal-100 bg-background px-3 dark:border-sidebar-border sm:px-4">
         <Link href="/dashboard" className="flex min-w-0 items-center gap-2">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600">

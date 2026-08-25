@@ -128,7 +128,7 @@ const SidebarProvider = React.forwardRef<
               {
                 '--sidebar-width': SIDEBAR_WIDTH,
                 '--sidebar-width-icon': SIDEBAR_WIDTH_ICON,
-                '--sidebar-header-height': '3.5rem',
+                '--sidebar-header-height': '0rem',
                 ...style,
               } as React.CSSProperties
             }
@@ -277,7 +277,6 @@ const SidebarTrigger = React.forwardRef<
         <Menu className="md:hidden" aria-hidden />
       )}
       <PanelLeft className="hidden md:block" aria-hidden />
-      <span className="sr-only">Toggle Sidebar</span>
     </Button>
   );
 });

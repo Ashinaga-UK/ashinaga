@@ -36,7 +36,6 @@ import {
   SelectValue,
 } from '../components/ui/select';
 import { Skeleton } from '../components/ui/skeleton';
-import { Tabs, TabsContent } from '../components/ui/tabs';
 import {
   type AnnouncementFilterOptions,
   deleteAnnouncement,
@@ -348,10 +347,6 @@ function StaffDashboardContent() {
     router.push('?tab=requests');
   };
 
-  const handleTabChange = (tab: string) => {
-    router.push(tab === 'overview' ? '/' : `?tab=${tab}`);
-  };
-
   const handleSignOut = async () => {
     await signOut();
     router.push('/');
@@ -404,7 +399,7 @@ function StaffDashboardContent() {
         ) : currentView === 'my-profile' ? (
           <MyProfile onBack={() => router.push('/')} />
         ) : (
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
+          <div className="space-y-6">
             <div className="min-w-0">
               <h2 className="text-2xl font-semibold tracking-tight text-foreground">
                 {activeTab === 'overview' && 'Overview'}
@@ -427,446 +422,471 @@ function StaffDashboardContent() {
               </p>
             </div>
 
-            <TabsContent value="overview" className="space-y-6">
-              {/* Stats Overview — flatter, tabular numerals, brand chip rather than gradient tile */}
-              <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={navigateToScholars}
-                  className="group text-left rounded-lg border bg-card p-4 transition-colors hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:p-5"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 space-y-1">
-                      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                        Total Scholars
-                      </p>
-                      {scholarStatsLoading ? (
-                        <Skeleton className="h-9 w-20" />
-                      ) : (
-                        <p className="text-3xl font-semibold tracking-tight tabular-nums text-foreground">
-                          {scholarStats?.total || 0}
+            {activeTab === 'overview' && (
+              <div className="space-y-6">
+                {/* Stats Overview — flatter, tabular numerals, brand chip rather than gradient tile */}
+                <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={navigateToScholars}
+                    className="group text-left rounded-lg border bg-card p-4 transition-colors hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:p-5"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 space-y-1">
+                        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                          Total Scholars
                         </p>
-                      )}
+                        {scholarStatsLoading ? (
+                          <Skeleton className="h-9 w-20" />
+                        ) : (
+                          <p className="text-3xl font-semibold tracking-tight tabular-nums text-foreground">
+                            {scholarStats?.total || 0}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[hsl(var(--success))] mr-1.5 align-middle" />
+                          {scholarStats?.active || 0} active
+                        </p>
+                      </div>
+                      <div className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40 transition-colors group-hover:bg-muted min-[430px]:flex sm:h-9 sm:w-9">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={navigateToRequests}
+                    className="group text-left rounded-lg border bg-card p-4 transition-colors hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:p-5"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 space-y-1">
+                        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                          Pending Requests
+                        </p>
+                        {requestStatsLoading ? (
+                          <Skeleton className="h-9 w-20" />
+                        ) : (
+                          <p className="text-3xl font-semibold tracking-tight tabular-nums text-foreground">
+                            {requestStats?.pending || 0}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground tabular-nums">
+                          of {requestStats?.total || 0} total
+                        </p>
+                      </div>
+                      <div className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40 transition-colors group-hover:bg-muted min-[430px]:flex sm:h-9 sm:w-9">
+                        <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    </div>
+                  </button>
+                </div>
+
+                {/* Quick Actions */}
+                <div className="rounded-lg border bg-card">
+                  <div className="flex items-center justify-between p-4 pb-3 sm:p-5 sm:pb-3">
+                    <div className="space-y-0.5">
+                      <h3 className="text-sm font-semibold leading-none tracking-tight">
+                        Quick actions
+                      </h3>
                       <p className="text-xs text-muted-foreground">
-                        <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[hsl(var(--success))] mr-1.5 align-middle" />
-                        {scholarStats?.active || 0} active
+                        Common tasks to keep scholars moving forward.
                       </p>
-                    </div>
-                    <div className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40 transition-colors group-hover:bg-muted min-[430px]:flex sm:h-9 sm:w-9">
-                      <Users className="h-4 w-4 text-muted-foreground" />
                     </div>
                   </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={navigateToRequests}
-                  className="group text-left rounded-lg border bg-card p-4 transition-colors hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:p-5"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 space-y-1">
-                      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                        Pending Requests
-                      </p>
-                      {requestStatsLoading ? (
-                        <Skeleton className="h-9 w-20" />
-                      ) : (
-                        <p className="text-3xl font-semibold tracking-tight tabular-nums text-foreground">
-                          {requestStats?.pending || 0}
-                        </p>
-                      )}
-                      <p className="text-xs text-muted-foreground tabular-nums">
-                        of {requestStats?.total || 0} total
-                      </p>
-                    </div>
-                    <div className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40 transition-colors group-hover:bg-muted min-[430px]:flex sm:h-9 sm:w-9">
-                      <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                  </div>
-                </button>
-              </div>
-
-              {/* Quick Actions */}
-              <div className="rounded-lg border bg-card">
-                <div className="flex items-center justify-between p-4 pb-3 sm:p-5 sm:pb-3">
-                  <div className="space-y-0.5">
-                    <h3 className="text-sm font-semibold leading-none tracking-tight">
-                      Quick actions
-                    </h3>
-                    <p className="text-xs text-muted-foreground">
-                      Common tasks to keep scholars moving forward.
-                    </p>
+                  <div className="grid grid-cols-1 gap-px border-t bg-border min-[520px]:grid-cols-2 lg:grid-cols-6 lg:gap-3 lg:border-t-0 lg:bg-transparent lg:p-5 lg:pt-2">
+                    <QuickActionButton
+                      icon={<Users className="h-4 w-4" />}
+                      label="Onboard Scholar"
+                      description="Create a new scholar profile and invitation."
+                      onClick={() => router.push('?view=onboarding')}
+                      primary
+                    />
+                    <TaskAssignment
+                      trigger={
+                        <QuickActionButton
+                          icon={<FileText className="h-4 w-4" />}
+                          label="Assign Task"
+                          description="Send a task to one or more scholars."
+                        />
+                      }
+                      onSuccess={(scholarId) => {
+                        router.push(
+                          `?tab=scholars&view=scholar-profile&scholarId=${scholarId}&scholarTab=tasks`
+                        );
+                      }}
+                    />
+                    <QuickActionButton
+                      icon={<MessageSquare className="h-4 w-4" />}
+                      label="Create Announcement"
+                      description="Publish an update for filtered scholars."
+                      onClick={() => router.push('?tab=announcements')}
+                    />
+                    <QuickActionButton
+                      icon={<FileText className="h-4 w-4" />}
+                      label="Review Requests"
+                      description="Triage funding and requirement submissions."
+                      onClick={() => router.push('?tab=requests')}
+                    />
+                    <QuickActionButton
+                      icon={<Library className="h-4 w-4" />}
+                      label="View Resources"
+                      description="Check scholar-facing handbooks and guides."
+                      onClick={() => router.push('?tab=resources')}
+                    />
+                    <StaffInviteDialog
+                      trigger={
+                        <QuickActionButton
+                          icon={<UserPlus className="h-4 w-4" />}
+                          label="Invite Staff"
+                          description="Add another staff member to the portal."
+                        />
+                      }
+                    />
                   </div>
                 </div>
-                <div className="grid grid-cols-1 gap-px border-t bg-border min-[520px]:grid-cols-2 lg:grid-cols-6 lg:gap-3 lg:border-t-0 lg:bg-transparent lg:p-5 lg:pt-2">
-                  <QuickActionButton
-                    icon={<Users className="h-4 w-4" />}
-                    label="Onboard Scholar"
-                    description="Create a new scholar profile and invitation."
-                    onClick={() => router.push('?view=onboarding')}
-                    primary
-                  />
-                  <TaskAssignment
-                    trigger={
-                      <QuickActionButton
-                        icon={<FileText className="h-4 w-4" />}
-                        label="Assign Task"
-                        description="Send a task to one or more scholars."
-                      />
-                    }
-                    onSuccess={(scholarId) => {
-                      router.push(
-                        `?tab=scholars&view=scholar-profile&scholarId=${scholarId}&scholarTab=tasks`
-                      );
+              </div>
+            )}
+
+            {activeTab === 'scholars' && (
+              <div className="space-y-6">
+                {currentView === 'scholar-profile' && selectedScholarId ? (
+                  <ScholarProfilePage
+                    scholarId={selectedScholarId}
+                    initialTab={scholarProfileTab}
+                    onBack={() => {
+                      router.push('?tab=scholars&view=dashboard');
                     }}
                   />
-                  <QuickActionButton
-                    icon={<MessageSquare className="h-4 w-4" />}
-                    label="Create Announcement"
-                    description="Publish an update for filtered scholars."
-                    onClick={() => router.push('?tab=announcements')}
-                  />
-                  <QuickActionButton
-                    icon={<FileText className="h-4 w-4" />}
-                    label="Review Requests"
-                    description="Triage funding and requirement submissions."
-                    onClick={() => router.push('?tab=requests')}
-                  />
-                  <QuickActionButton
-                    icon={<Library className="h-4 w-4" />}
-                    label="View Resources"
-                    description="Check scholar-facing handbooks and guides."
-                    onClick={() => router.push('?tab=resources')}
-                  />
-                  <StaffInviteDialog
-                    trigger={
-                      <QuickActionButton
-                        icon={<UserPlus className="h-4 w-4" />}
-                        label="Invite Staff"
-                        description="Add another staff member to the portal."
+                ) : (
+                  <Card>
+                    <CardContent className="p-4 sm:p-5">
+                      <ScholarManagementTable
+                        onViewProfile={(scholarId) => {
+                          router.push(`?tab=scholars&view=scholar-profile&scholarId=${scholarId}`);
+                        }}
+                        onOnboardScholar={() => router.push('?view=onboarding')}
                       />
-                    }
-                  />
-                </div>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
-            </TabsContent>
+            )}
 
-            <TabsContent value="scholars" className="space-y-6">
-              {currentView === 'scholar-profile' && selectedScholarId ? (
-                <ScholarProfilePage
-                  scholarId={selectedScholarId}
-                  initialTab={scholarProfileTab}
-                  onBack={() => {
-                    router.push('?tab=scholars&view=dashboard');
-                  }}
-                />
-              ) : (
+            {activeTab === 'annual-reviews' && (
+              <div className="space-y-6">
                 <Card>
                   <CardContent className="p-4 sm:p-5">
-                    <ScholarManagementTable
-                      onViewProfile={(scholarId) => {
-                        router.push(`?tab=scholars&view=scholar-profile&scholarId=${scholarId}`);
+                    <AnnualReviewsReport
+                      onViewScholarAnnualReviews={(scholarId) => {
+                        router.push(
+                          `?tab=scholars&view=scholar-profile&scholarId=${scholarId}&scholarTab=annual-reviews`
+                        );
                       }}
-                      onOnboardScholar={() => router.push('?view=onboarding')}
                     />
                   </CardContent>
                 </Card>
-              )}
-            </TabsContent>
-
-            <TabsContent value="annual-reviews" className="space-y-6">
-              <Card>
-                <CardContent className="p-4 sm:p-5">
-                  <AnnualReviewsReport
-                    onViewScholarAnnualReviews={(scholarId) => {
-                      router.push(
-                        `?tab=scholars&view=scholar-profile&scholarId=${scholarId}&scholarTab=annual-reviews`
-                      );
-                    }}
-                  />
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="requests" className="space-y-6">
-              <Card>
-                <div className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <Select value={requestCategoryFilter} onValueChange={setRequestCategoryFilter}>
-                      <SelectTrigger className="w-full sm:w-[220px]">
-                        <SelectValue placeholder="All Categories" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Categories</SelectItem>
-                        <SelectItem value="extenuating_circumstances">
-                          Extenuating Circumstances
-                        </SelectItem>
-                        <SelectItem value="summer_funding_request">
-                          Summer Funding Request
-                        </SelectItem>
-                        <SelectItem value="summer_funding_report">Summer Funding Report</SelectItem>
-                        <SelectItem value="requirement_submission">
-                          Requirement Submission
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select value={requestStatusFilter} onValueChange={setRequestStatusFilter}>
-                      <SelectTrigger className="w-full sm:w-[180px]">
-                        <SelectValue placeholder="All Statuses" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Statuses</SelectItem>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="approved">Approved</SelectItem>
-                        <SelectItem value="rejected">Rejected</SelectItem>
-                        <SelectItem value="reviewed">Reviewed</SelectItem>
-                        <SelectItem value="commented">Commented</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <CardContent className="p-4 sm:p-5">
-                  {requestsLoading ? (
-                    <div className="space-y-3">
-                      <Skeleton className="h-24 w-full" />
-                      <Skeleton className="h-24 w-full" />
-                      <Skeleton className="h-24 w-full" />
-                    </div>
-                  ) : requestsError ? (
-                    <div className="flex flex-col items-center justify-center py-16 text-center">
-                      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
-                        <AlertCircle className="h-5 w-5 text-destructive" />
-                      </div>
-                      <p className="text-sm font-medium text-foreground">Couldn't load requests</p>
-                      <p className="mt-1 max-w-sm text-sm text-muted-foreground">{requestsError}</p>
-                    </div>
-                  ) : requests.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16 text-center">
-                      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/40">
-                        <MessageSquare className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <p className="text-sm font-medium text-foreground">No requests</p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Scholar submissions will show up here.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {requests.map((request) => (
-                        <RequestManagement
-                          key={request.id}
-                          request={request}
-                          onStatusUpdate={handleRequestStatusUpdate}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="invitations" className="space-y-6">
-              <InvitationsManagement onOnboardScholar={() => router.push('?view=onboarding')} />
-            </TabsContent>
-
-            <TabsContent value="resources" className="space-y-6">
-              <ResourcesManagement />
-            </TabsContent>
-
-            <TabsContent value="announcements" className="space-y-6">
-              <div className="flex items-center justify-end">
-                <AnnouncementCreator />
               </div>
-              <Card>
-                <CardContent className="p-4 sm:p-5">
-                  <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
+            )}
+
+            {activeTab === 'requests' && (
+              <div className="space-y-6">
+                <Card>
+                  <div className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                       <Select
-                        value={announcementStatusFilter}
-                        onValueChange={(value) =>
-                          setAnnouncementStatusFilter(value as 'active' | 'archived' | 'all')
-                        }
+                        value={requestCategoryFilter}
+                        onValueChange={setRequestCategoryFilter}
                       >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Status" />
+                        <SelectTrigger className="w-full sm:w-[220px]">
+                          <SelectValue placeholder="All Categories" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="active">Active</SelectItem>
-                          <SelectItem value="archived">Archived</SelectItem>
+                          <SelectItem value="all">All Categories</SelectItem>
+                          <SelectItem value="extenuating_circumstances">
+                            Extenuating Circumstances
+                          </SelectItem>
+                          <SelectItem value="summer_funding_request">
+                            Summer Funding Request
+                          </SelectItem>
+                          <SelectItem value="summer_funding_report">
+                            Summer Funding Report
+                          </SelectItem>
+                          <SelectItem value="requirement_submission">
+                            Requirement Submission
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={requestStatusFilter} onValueChange={setRequestStatusFilter}>
+                        <SelectTrigger className="w-full sm:w-[180px]">
+                          <SelectValue placeholder="All Statuses" />
+                        </SelectTrigger>
+                        <SelectContent>
                           <SelectItem value="all">All Statuses</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Select
-                        value={announcementYearFilter}
-                        onValueChange={setAnnouncementYearFilter}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Year" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Years</SelectItem>
-                          {announcementFilterOptions.years.map((year) => (
-                            <SelectItem key={year} value={year}>
-                              {year}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Select
-                        value={announcementProgramFilter}
-                        onValueChange={setAnnouncementProgramFilter}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Program" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Programs</SelectItem>
-                          {announcementFilterOptions.programs.map((program) => (
-                            <SelectItem key={program} value={program}>
-                              {program}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Select
-                        value={announcementUniversityFilter}
-                        onValueChange={setAnnouncementUniversityFilter}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="University" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Universities</SelectItem>
-                          {announcementFilterOptions.universities.map((university) => (
-                            <SelectItem key={university} value={university}>
-                              {university}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Select
-                        value={announcementSortOrder}
-                        onValueChange={(value) => setAnnouncementSortOrder(value as 'asc' | 'desc')}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sort" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="desc">Most Recent</SelectItem>
-                          <SelectItem value="asc">Oldest First</SelectItem>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="approved">Approved</SelectItem>
+                          <SelectItem value="rejected">Rejected</SelectItem>
+                          <SelectItem value="reviewed">Reviewed</SelectItem>
+                          <SelectItem value="commented">Commented</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <Button variant="outline" onClick={clearAnnouncementFilters}>
-                      Reset
-                    </Button>
                   </div>
-                  {announcementsLoading ? (
-                    <div className="space-y-3">
-                      <Skeleton className="h-28 w-full" />
-                      <Skeleton className="h-28 w-full" />
-                      <Skeleton className="h-28 w-full" />
-                    </div>
-                  ) : announcementsError ? (
-                    <div className="flex flex-col items-center justify-center py-16 text-center">
-                      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
-                        <AlertCircle className="h-5 w-5 text-destructive" />
+                  <CardContent className="p-4 sm:p-5">
+                    {requestsLoading ? (
+                      <div className="space-y-3">
+                        <Skeleton className="h-24 w-full" />
+                        <Skeleton className="h-24 w-full" />
+                        <Skeleton className="h-24 w-full" />
                       </div>
-                      <p className="text-sm font-medium text-foreground">
-                        Couldn't load announcements
-                      </p>
-                      <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-                        {announcementsError?.message || 'Please try again.'}
-                      </p>
-                    </div>
-                  ) : announcements.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16 text-center">
-                      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/40">
-                        <MessageSquare className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <p className="text-sm font-medium text-foreground">No announcements</p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Nothing matches the current filters.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="divide-y border-t -mx-5">
-                      {announcements.map((announcement) => (
-                        <div
-                          key={announcement.id}
-                          className="group flex items-start justify-between gap-4 px-5 py-4 transition-colors hover:bg-muted/30"
-                        >
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="text-sm font-semibold text-foreground truncate">
-                                {announcement.title}
-                              </h3>
-                              <Badge
-                                variant={announcement.archived ? 'muted' : 'success'}
-                                className="shrink-0"
-                              >
-                                {announcement.archived ? 'Archived' : 'Active'}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground line-clamp-2 whitespace-pre-wrap mb-2">
-                              {announcement.content}
-                            </p>
-                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                              <span>By {announcement.createdBy}</span>
-                              <span className="text-border">·</span>
-                              <span className="tabular-nums">
-                                {new Date(announcement.createdAt).toLocaleDateString()}
-                              </span>
-                              <span className="text-border">·</span>
-                              <span className="tabular-nums">
-                                {announcement.recipientCount} scholar
-                                {announcement.recipientCount !== 1 ? 's' : ''}
-                              </span>
-                              {announcement.filters.length > 0 && (
-                                <div className="flex gap-1 ml-1">
-                                  {announcement.filters.map((filter, index) => (
-                                    <Badge
-                                      key={`${filter.type}-${filter.value}-${index}`}
-                                      variant="outline"
-                                      className="text-[10px] font-normal"
-                                    >
-                                      {filter.type}: {filter.value}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
-                            onClick={async () => {
-                              if (
-                                window.confirm(
-                                  'Are you sure you want to delete this announcement? This action cannot be undone.'
-                                )
-                              ) {
-                                try {
-                                  await deleteAnnouncement(announcement.id);
-                                  refetchAnnouncements();
-                                } catch (error) {
-                                  console.error('Failed to delete announcement:', error);
-                                  alert('Failed to delete announcement. Please try again.');
-                                }
-                              }
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                    ) : requestsError ? (
+                      <div className="flex flex-col items-center justify-center py-16 text-center">
+                        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
+                          <AlertCircle className="h-5 w-5 text-destructive" />
                         </div>
-                      ))}
+                        <p className="text-sm font-medium text-foreground">
+                          Couldn't load requests
+                        </p>
+                        <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                          {requestsError}
+                        </p>
+                      </div>
+                    ) : requests.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-16 text-center">
+                        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/40">
+                          <MessageSquare className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                        <p className="text-sm font-medium text-foreground">No requests</p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Scholar submissions will show up here.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {requests.map((request) => (
+                          <RequestManagement
+                            key={request.id}
+                            request={request}
+                            onStatusUpdate={handleRequestStatusUpdate}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {activeTab === 'invitations' && (
+              <div className="space-y-6">
+                <InvitationsManagement onOnboardScholar={() => router.push('?view=onboarding')} />
+              </div>
+            )}
+
+            {activeTab === 'resources' && (
+              <div className="space-y-6">
+                <ResourcesManagement />
+              </div>
+            )}
+
+            {activeTab === 'announcements' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-end">
+                  <AnnouncementCreator />
+                </div>
+                <Card>
+                  <CardContent className="p-4 sm:p-5">
+                    <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
+                        <Select
+                          value={announcementStatusFilter}
+                          onValueChange={(value) =>
+                            setAnnouncementStatusFilter(value as 'active' | 'archived' | 'all')
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="archived">Archived</SelectItem>
+                            <SelectItem value="all">All Statuses</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Select
+                          value={announcementYearFilter}
+                          onValueChange={setAnnouncementYearFilter}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Year" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Years</SelectItem>
+                            {announcementFilterOptions.years.map((year) => (
+                              <SelectItem key={year} value={year}>
+                                {year}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Select
+                          value={announcementProgramFilter}
+                          onValueChange={setAnnouncementProgramFilter}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Program" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Programs</SelectItem>
+                            {announcementFilterOptions.programs.map((program) => (
+                              <SelectItem key={program} value={program}>
+                                {program}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Select
+                          value={announcementUniversityFilter}
+                          onValueChange={setAnnouncementUniversityFilter}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="University" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Universities</SelectItem>
+                            {announcementFilterOptions.universities.map((university) => (
+                              <SelectItem key={university} value={university}>
+                                {university}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Select
+                          value={announcementSortOrder}
+                          onValueChange={(value) =>
+                            setAnnouncementSortOrder(value as 'asc' | 'desc')
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Sort" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="desc">Most Recent</SelectItem>
+                            <SelectItem value="asc">Oldest First</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button variant="outline" onClick={clearAnnouncementFilters}>
+                        Reset
+                      </Button>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+                    {announcementsLoading ? (
+                      <div className="space-y-3">
+                        <Skeleton className="h-28 w-full" />
+                        <Skeleton className="h-28 w-full" />
+                        <Skeleton className="h-28 w-full" />
+                      </div>
+                    ) : announcementsError ? (
+                      <div className="flex flex-col items-center justify-center py-16 text-center">
+                        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
+                          <AlertCircle className="h-5 w-5 text-destructive" />
+                        </div>
+                        <p className="text-sm font-medium text-foreground">
+                          Couldn't load announcements
+                        </p>
+                        <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                          {announcementsError?.message || 'Please try again.'}
+                        </p>
+                      </div>
+                    ) : announcements.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-16 text-center">
+                        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/40">
+                          <MessageSquare className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                        <p className="text-sm font-medium text-foreground">No announcements</p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Nothing matches the current filters.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="divide-y border-t -mx-5">
+                        {announcements.map((announcement) => (
+                          <div
+                            key={announcement.id}
+                            className="group flex items-start justify-between gap-4 px-5 py-4 transition-colors hover:bg-muted/30"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h3 className="text-sm font-semibold text-foreground truncate">
+                                  {announcement.title}
+                                </h3>
+                                <Badge
+                                  variant={announcement.archived ? 'muted' : 'success'}
+                                  className="shrink-0"
+                                >
+                                  {announcement.archived ? 'Archived' : 'Active'}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground line-clamp-2 whitespace-pre-wrap mb-2">
+                                {announcement.content}
+                              </p>
+                              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                                <span>By {announcement.createdBy}</span>
+                                <span className="text-border">·</span>
+                                <span className="tabular-nums">
+                                  {new Date(announcement.createdAt).toLocaleDateString()}
+                                </span>
+                                <span className="text-border">·</span>
+                                <span className="tabular-nums">
+                                  {announcement.recipientCount} scholar
+                                  {announcement.recipientCount !== 1 ? 's' : ''}
+                                </span>
+                                {announcement.filters.length > 0 && (
+                                  <div className="flex gap-1 ml-1">
+                                    {announcement.filters.map((filter, index) => (
+                                      <Badge
+                                        key={`${filter.type}-${filter.value}-${index}`}
+                                        variant="outline"
+                                        className="text-[10px] font-normal"
+                                      >
+                                        {filter.type}: {filter.value}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                              onClick={async () => {
+                                if (
+                                  window.confirm(
+                                    'Are you sure you want to delete this announcement? This action cannot be undone.'
+                                  )
+                                ) {
+                                  try {
+                                    await deleteAnnouncement(announcement.id);
+                                    refetchAnnouncements();
+                                  } catch (error) {
+                                    console.error('Failed to delete announcement:', error);
+                                    alert('Failed to delete announcement. Please try again.');
+                                  }
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </StaffLayout>

@@ -118,7 +118,10 @@ export function StaffLayout({
       .toUpperCase() || 'U';
 
   return (
-    <SidebarProvider className="flex-col">
+    <SidebarProvider
+      className="flex-col"
+      style={{ '--sidebar-header-height': '3.5rem' } as React.CSSProperties}
+    >
       <header className="z-30 flex h-14 shrink-0 items-center gap-2 border-b bg-background/80 px-3 backdrop-blur-xl sm:px-4">
         <Link href="/" className="flex min-w-0 items-center gap-2">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-brand">
