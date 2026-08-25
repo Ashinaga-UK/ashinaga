@@ -20,11 +20,19 @@ describe('resource file keys', () => {
     );
   });
 
+  it('keeps the original name in RFC 5987 filename*', () => {
+    const header = buildContentDispositionHeader('Relevé de notes.pdf');
+    expect(header).toContain('filename="Relev_de_notes.pdf"');
+    expect(header).toContain(`filename*=UTF-8''${encodeURIComponent('Relevé de notes.pdf')}`);
+  });
+
   it('builds a Content-Disposition header without CR/LF', () => {
     const header = buildContentDispositionHeader('report.pdf\r\nX-Injected: true');
     expect(header).not.toMatch(/[\r\n]/);
     expect(header).toContain('filename="report.pdf_X-Injected_true"');
-    expect(header).toContain("filename*=UTF-8''report.pdf_X-Injected_true");
+    expect(header).toContain(
+      `filename*=UTF-8''${encodeURIComponent('report.pdfX-Injected: true')}`
+    );
   });
 
   it('builds pending keys under the pending prefix', () => {

@@ -18,7 +18,7 @@ export abstract class ObjectStorageService {
 
   abstract createDownloadUrl(input: {
     key: string;
-    fileName?: string;
+    contentDisposition?: string;
     expiresInSeconds?: number;
   }): Promise<string>;
 

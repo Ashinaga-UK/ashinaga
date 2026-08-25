@@ -102,18 +102,17 @@ describe('S3ObjectStorageService', () => {
     });
   });
 
-  it('signs downloads with a sanitised RFC 5987 Content-Disposition', async () => {
+  it('forwards Content-Disposition on signed downloads', async () => {
     const { GetObjectCommand } = jest.requireMock('@aws-sdk/client-s3');
 
     await service.createDownloadUrl({
       key: 'resources/id/file.pdf',
-      fileName: 'report.pdf\r\nX-Injected: true',
+      contentDisposition: 'attachment; filename="notes.pdf"',
     });
 
     expect(GetObjectCommand).toHaveBeenCalledWith(
       expect.objectContaining({
-        ResponseContentDisposition:
-          'attachment; filename="report.pdf_X-Injected_true"; filename*=UTF-8\'\'report.pdf_X-Injected_true',
+        ResponseContentDisposition: 'attachment; filename="notes.pdf"',
       })
     );
   });

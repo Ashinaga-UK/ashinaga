@@ -149,6 +149,68 @@ describe('ResourcesService file uploads', () => {
     expect(result.fileName).toBe('handbook.pdf');
   });
 
+  it('keeps the original filename for display', async () => {
+    objectStorage.headObject.mockResolvedValue({
+      contentType: 'application/pdf',
+      contentLength: 2048,
+    });
+    objectStorage.copyObject.mockResolvedValue(undefined);
+    objectStorage.deleteObject.mockResolvedValue(undefined);
+
+    let insertedFileName: string | undefined;
+    (database.transaction as jest.Mock).mockImplementation(async (callback) => {
+      const tx = {
+        insert: jest.fn().mockReturnValue({
+          values: jest.fn((values: { fileName: string }) => {
+            insertedFileName = values.fileName;
+            return {
+              returning: jest.fn().mockResolvedValue([
+                {
+                  id: 'resource-1',
+                  title: 'Handbook',
+                  description: 'Reference',
+                  type: 'Handbook',
+                  category: 'Handbook',
+                  sourceType: 'file',
+                  url: null,
+                  fileKey: 'resources/resource-1/notes.pdf',
+                  fileName: values.fileName,
+                  fileMimeType: 'application/pdf',
+                  fileSizeBytes: 2048,
+                  status: 'draft',
+                  createdAt: new Date('2026-01-01'),
+                  updatedAt: new Date('2026-01-01'),
+                },
+              ]),
+            };
+          }),
+        }),
+        delete: jest.fn().mockReturnValue({
+          where: jest.fn().mockResolvedValue(undefined),
+        }),
+      };
+      return callback(tx);
+    });
+
+    const result = await service.createResource(
+      {
+        title: 'Handbook',
+        description: 'Reference',
+        type: 'Handbook',
+        category: 'Handbook',
+        sourceType: 'file',
+        pendingFileKey: 'resources/pending/upload-1-Releve_de_notes.pdf',
+        fileName: 'Relevé de notes.pdf',
+        fileMimeType: 'application/pdf',
+        fileSizeBytes: 2048,
+      },
+      'staff-1'
+    );
+
+    expect(insertedFileName).toBe('Relevé de notes.pdf');
+    expect(result.fileName).toBe('Relevé de notes.pdf');
+  });
+
   it('deletes the permanent object when the DB insert fails', async () => {
     objectStorage.headObject.mockResolvedValue({
       contentType: 'application/pdf',

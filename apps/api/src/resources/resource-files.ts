@@ -51,11 +51,11 @@ export function sanitizeResourceFileName(fileName: string): string {
   return sanitized.length > 0 ? sanitized.slice(0, 180) : 'document';
 }
 
-/** Safe Content-Disposition for signed downloads. Strips CR/LF and adds RFC 5987 filename*. */
+/** Safe Content-Disposition: ASCII fallback plus the real name via RFC 5987. */
 export function buildContentDispositionHeader(fileName: string): string {
-  const sanitized = sanitizeResourceFileName(fileName);
-  const encoded = encodeURIComponent(sanitized);
-  return `attachment; filename="${sanitized}"; filename*=UTF-8''${encoded}`;
+  const asciiFallback = sanitizeResourceFileName(fileName);
+  const encoded = encodeURIComponent(fileName.replace(/[\r\n]/g, ''));
+  return `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encoded}`;
 }
 
 export function buildPendingResourceFileKey(uploadId: string, fileName: string): string {

@@ -9,7 +9,6 @@ import { createPresignedPost } from '@aws-sdk/s3-presigned-post';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { buildContentDispositionHeader } from '../resources/resource-files';
 import { type ObjectHead, ObjectStorageService, type PresignedUpload } from './object-storage';
 
 @Injectable()
@@ -56,15 +55,13 @@ export class S3ObjectStorageService extends ObjectStorageService {
 
   async createDownloadUrl(input: {
     key: string;
-    fileName?: string;
+    contentDisposition?: string;
     expiresInSeconds?: number;
   }): Promise<string> {
     const command = new GetObjectCommand({
       Bucket: this.bucketName,
       Key: input.key,
-      ResponseContentDisposition: input.fileName
-        ? buildContentDispositionHeader(input.fileName)
-        : undefined,
+      ResponseContentDisposition: input.contentDisposition,
     });
 
     return getSignedUrl(this.s3Client, command, {

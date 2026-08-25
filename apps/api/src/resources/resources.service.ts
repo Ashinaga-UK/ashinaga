@@ -12,6 +12,7 @@ import { UpdateResourceDto } from './dto/update-resource.dto';
 import {
   ALLOWED_RESOURCE_MIME_TYPES,
   buildArchivedResourceFileKey,
+  buildContentDispositionHeader,
   buildPendingResourceFileKey,
   buildPermanentResourceFileKey,
   isArchivedResourceFileKey,
@@ -19,7 +20,6 @@ import {
   RESOURCE_DOWNLOAD_URL_EXPIRES_IN_SECONDS,
   RESOURCE_FILE_MAX_SIZE_BYTES,
   RESOURCE_UPLOAD_URL_EXPIRES_IN_SECONDS,
-  sanitizeResourceFileName,
 } from './resource-files';
 
 type ResourceFilter = {
@@ -68,11 +68,10 @@ export class ResourcesService {
       }
 
       const resourceId = randomUUID();
-      const storedFileName = sanitizeResourceFileName(fileName);
       const { fileKey } = await this.copyPendingUpload({
         pendingFileKey,
         resourceId,
-        fileName: storedFileName,
+        fileName,
         fileMimeType,
         fileSizeBytes,
       });
@@ -87,7 +86,7 @@ export class ResourcesService {
               sourceType: 'file',
               url: null,
               fileKey,
-              fileName: storedFileName,
+              fileName,
               fileMimeType,
               fileSizeBytes,
               status: resourceData.status ?? 'draft',
@@ -195,15 +194,13 @@ export class ResourcesService {
     }
 
     let nextFileKey: string | undefined;
-    let storedFileName: string | undefined;
     const previousFileKey = existing.fileKey;
 
     if (replacingFile && pendingFileKey && fileName && fileMimeType && fileSizeBytes != null) {
-      storedFileName = sanitizeResourceFileName(fileName);
       const copied = await this.copyPendingUpload({
         pendingFileKey,
         resourceId,
-        fileName: storedFileName,
+        fileName,
         fileMimeType,
         fileSizeBytes,
       });
@@ -220,7 +217,7 @@ export class ResourcesService {
             ...(nextFileKey
               ? {
                   fileKey: nextFileKey,
-                  fileName: storedFileName,
+                  fileName,
                   fileMimeType,
                   fileSizeBytes,
                 }
@@ -390,7 +387,7 @@ export class ResourcesService {
 
     const downloadUrl = await this.objectStorage.createDownloadUrl({
       key: resource.fileKey,
-      fileName: resource.fileName ?? 'resource',
+      contentDisposition: buildContentDispositionHeader(resource.fileName ?? 'resource'),
       expiresInSeconds: RESOURCE_DOWNLOAD_URL_EXPIRES_IN_SECONDS,
     });
 
