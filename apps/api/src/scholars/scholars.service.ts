@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { and, count, desc, eq, ilike, inArray, isNull, not, or, sql } from 'drizzle-orm';
+import { validateProfileImage } from '../common/profile-image';
 import { database } from '../db/connection';
 import {
   announcementRecipients,
@@ -40,19 +41,6 @@ import { UpdateScholarProfileDto } from './dto/update-scholar-profile.dto';
 @Injectable()
 export class ScholarsService {
   constructor(private readonly invitationsService: InvitationsService) {}
-
-  private validateProfileImage(image: string | null | undefined) {
-    if (!image) return;
-
-    const isSupportedDataUrl = /^data:image\/(jpeg|png|webp|gif);base64,/i.test(image);
-    if (!isSupportedDataUrl) {
-      throw new BadRequestException('Profile image must be a JPEG, PNG, WebP, or GIF data URL');
-    }
-
-    if (image.length > 3_000_000) {
-      throw new BadRequestException('Profile image must be smaller than 2MB');
-    }
-  }
 
   async createScholar(
     createScholarDto: CreateScholarDto,
@@ -790,6 +778,10 @@ export class ScholarsService {
     userId: string,
     profileUpdateData: UpdateScholarProfileDto
   ): Promise<ScholarProfileDto> {
+    if (profileUpdateData.image !== undefined) {
+      validateProfileImage(profileUpdateData.image);
+    }
+
     // First check if the scholar exists
     const scholarResult = await database
       .select()
@@ -904,7 +896,6 @@ export class ScholarsService {
     await database.update(scholars).set(dbUpdateData).where(eq(scholars.id, scholarId));
 
     if (image !== undefined) {
-      this.validateProfileImage(image);
       await database
         .update(users)
         .set({ image: image || null, updatedAt: new Date() })

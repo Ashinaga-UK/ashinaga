@@ -1,5 +1,6 @@
 const React = require('react');
 
+// Mock all lucide-react icons as simple divs
 const createMockIcon = (name) => {
   const MockIcon = React.forwardRef((props, ref) => {
     return React.createElement('div', {
@@ -12,15 +13,45 @@ const createMockIcon = (name) => {
   return MockIcon;
 };
 
-const icons = {};
+const icons = {
+  AlertCircle: createMockIcon('AlertCircle'),
+  ArrowRight: createMockIcon('ArrowRight'),
+  Bell: createMockIcon('Bell'),
+  Calendar: createMockIcon('Calendar'),
+  CheckCircle: createMockIcon('CheckCircle'),
+  CheckSquare: createMockIcon('CheckSquare'),
+  ChevronLeft: createMockIcon('ChevronLeft'),
+  ChevronRight: createMockIcon('ChevronRight'),
+  Download: createMockIcon('Download'),
+  Eye: createMockIcon('Eye'),
+  EyeOff: createMockIcon('EyeOff'),
+  FileText: createMockIcon('FileText'),
+  Home: createMockIcon('Home'),
+  Loader2: createMockIcon('Loader2'),
+  LogOut: createMockIcon('LogOut'),
+  MapPin: createMockIcon('MapPin'),
+  Menu: createMockIcon('Menu'),
+  Paperclip: createMockIcon('Paperclip'),
+  Plus: createMockIcon('Plus'),
+  School: createMockIcon('School'),
+  Search: createMockIcon('Search'),
+  Target: createMockIcon('Target'),
+  Trash2: createMockIcon('Trash2'),
+  Upload: createMockIcon('Upload'),
+  User: createMockIcon('User'),
+  Users: createMockIcon('Users'),
+  X: createMockIcon('X'),
+};
 
 module.exports = new Proxy(icons, {
   get(target, prop) {
-    if (prop === '__esModule') return true;
-    if (typeof prop !== 'string') return undefined;
-    if (!target[prop]) {
-      target[prop] = createMockIcon(prop);
+    if (prop in target) {
+      return target[prop];
     }
-    return target[prop];
+    if (typeof prop === 'string' && !['__esModule', 'then', 'default'].includes(prop)) {
+      target[prop] = createMockIcon(prop);
+      return target[prop];
+    }
+    return undefined;
   },
 });

@@ -12,7 +12,7 @@ import { StaffGuard } from '../../../src/auth/staff.guard';
  * Uses Fastify (same as production) and applies global validation pipe.
  */
 export async function createIntegrationApp(): Promise<NestFastifyApplication> {
-  const adapter = new FastifyAdapter();
+  const adapter = new FastifyAdapter({ bodyLimit: 5 * 1024 * 1024 });
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, adapter, {
     logger: ['error', 'warn'],
   });
@@ -63,7 +63,7 @@ export async function createAuthenticatedIntegrationApp(): Promise<Authenticated
     getUser: () => currentUser,
   };
 
-  const adapter = new FastifyAdapter();
+  const adapter = new FastifyAdapter({ bodyLimit: 5 * 1024 * 1024 });
 
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideGuard(AuthGuard)

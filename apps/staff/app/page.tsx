@@ -440,7 +440,9 @@ function StaffDashboardContent() {
               aria-label="Open my profile"
             >
               <Avatar className="h-8 w-8 cursor-pointer max-[380px]:hidden">
-                {user?.image && <AvatarImage src={user.image} alt={user.name || 'User'} />}
+                {user?.image && (
+                  <AvatarImage key={user.image} src={user.image} alt={user.name || 'User'} />
+                )}
                 <AvatarFallback className="text-xs">
                   {user?.name
                     ?.split(' ')
