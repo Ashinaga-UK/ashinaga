@@ -9,11 +9,8 @@ import { createPresignedPost } from '@aws-sdk/s3-presigned-post';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-  type ObjectHead,
-  ObjectStorageService,
-  type PresignedUpload,
-} from './object-storage';
+import { buildContentDispositionHeader } from '../resources/resource-files';
+import { type ObjectHead, ObjectStorageService, type PresignedUpload } from './object-storage';
 
 @Injectable()
 export class S3ObjectStorageService extends ObjectStorageService {
@@ -66,7 +63,7 @@ export class S3ObjectStorageService extends ObjectStorageService {
       Bucket: this.bucketName,
       Key: input.key,
       ResponseContentDisposition: input.fileName
-        ? `attachment; filename="${input.fileName.replace(/"/g, '')}"`
+        ? buildContentDispositionHeader(input.fileName)
         : undefined,
     });
 

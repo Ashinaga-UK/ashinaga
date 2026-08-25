@@ -231,4 +231,41 @@ describe('ResourcesService file uploads', () => {
       'resources/resource-1/1700000000000-handbook.pdf'
     );
   });
+
+  it('rejects changing a file resource into a URL', async () => {
+    const existing = {
+      id: 'resource-1',
+      title: 'Handbook',
+      description: 'Reference',
+      type: 'Handbook',
+      category: 'Handbook',
+      sourceType: 'file',
+      url: null,
+      fileKey: 'resources/resource-1/handbook.pdf',
+      fileName: 'handbook.pdf',
+      fileMimeType: 'application/pdf',
+      fileSizeBytes: 2048,
+      status: 'live',
+      archived: false,
+    };
+
+    (database.select as jest.Mock).mockReturnValue({
+      from: jest.fn().mockReturnValue({
+        where: jest.fn().mockReturnValue({
+          limit: jest.fn().mockResolvedValue([existing]),
+        }),
+      }),
+    });
+
+    await expect(
+      service.updateResource(
+        'resource-1',
+        {
+          sourceType: 'url',
+          url: 'https://example.com/handbook',
+        },
+        'staff-1'
+      )
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
 });

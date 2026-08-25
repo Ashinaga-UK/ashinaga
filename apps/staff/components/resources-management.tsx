@@ -467,9 +467,7 @@ function ResourceDialog({
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="resource-file">Document</Label>
                 {isEditing && resource?.fileName && !pendingUpload ? (
-                  <p className="text-sm text-muted-foreground">
-                    Current file: {resource.fileName}
-                  </p>
+                  <p className="text-sm text-muted-foreground">Current file: {resource.fileName}</p>
                 ) : null}
                 <Input
                   id="resource-file"

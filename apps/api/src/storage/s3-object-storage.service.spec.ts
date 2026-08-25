@@ -102,6 +102,22 @@ describe('S3ObjectStorageService', () => {
     });
   });
 
+  it('signs downloads with a sanitised RFC 5987 Content-Disposition', async () => {
+    const { GetObjectCommand } = jest.requireMock('@aws-sdk/client-s3');
+
+    await service.createDownloadUrl({
+      key: 'resources/id/file.pdf',
+      fileName: 'report.pdf\r\nX-Injected: true',
+    });
+
+    expect(GetObjectCommand).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ResponseContentDisposition:
+          'attachment; filename="report.pdf_X-Injected_true"; filename*=UTF-8\'\'report.pdf_X-Injected_true',
+      })
+    );
+  });
+
   it('fails to start without S3_BUCKET_NAME', async () => {
     await expect(
       Test.createTestingModule({

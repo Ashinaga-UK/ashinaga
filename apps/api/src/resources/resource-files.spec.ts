@@ -1,5 +1,6 @@
 import {
   buildArchivedResourceFileKey,
+  buildContentDispositionHeader,
   buildPendingResourceFileKey,
   buildPermanentResourceFileKey,
   isArchivedResourceFileKey,
@@ -14,6 +15,16 @@ describe('resource file keys', () => {
       'Scholar_Handbook_2026_.pdf'
     );
     expect(sanitizeResourceFileName('report..final.pdf')).toBe('report.final.pdf');
+    expect(sanitizeResourceFileName('report.pdf\r\nX-Injected: true')).toBe(
+      'report.pdf_X-Injected_true'
+    );
+  });
+
+  it('builds a Content-Disposition header without CR/LF', () => {
+    const header = buildContentDispositionHeader('report.pdf\r\nX-Injected: true');
+    expect(header).not.toMatch(/[\r\n]/);
+    expect(header).toContain('filename="report.pdf_X-Injected_true"');
+    expect(header).toContain("filename*=UTF-8''report.pdf_X-Injected_true");
   });
 
   it('builds pending keys under the pending prefix', () => {

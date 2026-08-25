@@ -51,6 +51,13 @@ export function sanitizeResourceFileName(fileName: string): string {
   return sanitized.length > 0 ? sanitized.slice(0, 180) : 'document';
 }
 
+/** Safe Content-Disposition for signed downloads. Strips CR/LF and adds RFC 5987 filename*. */
+export function buildContentDispositionHeader(fileName: string): string {
+  const sanitized = sanitizeResourceFileName(fileName);
+  const encoded = encodeURIComponent(sanitized);
+  return `attachment; filename="${sanitized}"; filename*=UTF-8''${encoded}`;
+}
+
 export function buildPendingResourceFileKey(uploadId: string, fileName: string): string {
   return `${RESOURCE_PENDING_PREFIX}${uploadId}-${sanitizeResourceFileName(fileName)}`;
 }

@@ -19,6 +19,7 @@ import {
   RESOURCE_DOWNLOAD_URL_EXPIRES_IN_SECONDS,
   RESOURCE_FILE_MAX_SIZE_BYTES,
   RESOURCE_UPLOAD_URL_EXPIRES_IN_SECONDS,
+  sanitizeResourceFileName,
 } from './resource-files';
 
 type ResourceFilter = {
@@ -67,10 +68,11 @@ export class ResourcesService {
       }
 
       const resourceId = randomUUID();
+      const storedFileName = sanitizeResourceFileName(fileName);
       const { fileKey } = await this.copyPendingUpload({
         pendingFileKey,
         resourceId,
-        fileName,
+        fileName: storedFileName,
         fileMimeType,
         fileSizeBytes,
       });
@@ -85,7 +87,7 @@ export class ResourcesService {
               sourceType: 'file',
               url: null,
               fileKey,
-              fileName,
+              fileName: storedFileName,
               fileMimeType,
               fileSizeBytes,
               status: resourceData.status ?? 'draft',
@@ -157,7 +159,7 @@ export class ResourcesService {
       fileName,
       fileMimeType,
       fileSizeBytes,
-      sourceType: _sourceType,
+      sourceType,
       url,
       ...resourceData
     } = dto;
@@ -174,6 +176,14 @@ export class ResourcesService {
       throw new NotFoundException('Resource not found');
     }
 
+    if (sourceType !== undefined && sourceType !== existing.sourceType) {
+      throw new BadRequestException('Resource source type cannot be changed');
+    }
+
+    if (existing.sourceType === 'file' && url !== undefined) {
+      throw new BadRequestException('File resources cannot be updated with a URL');
+    }
+
     const replacingFile = Boolean(pendingFileKey);
     if (replacingFile) {
       if (existing.sourceType !== 'file') {
@@ -185,13 +195,15 @@ export class ResourcesService {
     }
 
     let nextFileKey: string | undefined;
+    let storedFileName: string | undefined;
     const previousFileKey = existing.fileKey;
 
     if (replacingFile && pendingFileKey && fileName && fileMimeType && fileSizeBytes != null) {
+      storedFileName = sanitizeResourceFileName(fileName);
       const copied = await this.copyPendingUpload({
         pendingFileKey,
         resourceId,
-        fileName,
+        fileName: storedFileName,
         fileMimeType,
         fileSizeBytes,
       });
@@ -208,7 +220,7 @@ export class ResourcesService {
             ...(nextFileKey
               ? {
                   fileKey: nextFileKey,
-                  fileName,
+                  fileName: storedFileName,
                   fileMimeType,
                   fileSizeBytes,
                 }
@@ -273,10 +285,7 @@ export class ResourcesService {
       previousFileKey &&
       !isArchivedResourceFileKey(previousFileKey)
     ) {
-      archivedFileKey = buildArchivedResourceFileKey(
-        resourceId,
-        existing.fileName ?? 'document'
-      );
+      archivedFileKey = buildArchivedResourceFileKey(resourceId, existing.fileName ?? 'document');
       await this.objectStorage.copyObject(previousFileKey, archivedFileKey);
     }
 
