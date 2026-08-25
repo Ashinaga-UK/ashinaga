@@ -48,7 +48,7 @@ module.exports = new Proxy(icons, {
     if (prop in target) {
       return target[prop];
     }
-    if (typeof prop === 'string' && prop !== '__esModule') {
+    if (typeof prop === 'string' && !['__esModule', 'then', 'default'].includes(prop)) {
       target[prop] = createMockIcon(prop);
       return target[prop];
     }

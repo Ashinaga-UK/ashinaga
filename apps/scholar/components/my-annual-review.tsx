@@ -306,14 +306,14 @@ export function MyAnnualReview() {
         setAnnualUpdate(data);
         setForm(toFormState(data, academicYear));
         setMessage(null);
-        setIsFormOpen(data.status !== 'submitted');
+        setIsFormOpen(false);
         return;
       }
 
       const draft = await getMyDraftAnnualUpdate();
       setAnnualUpdate(draft);
       setForm(toFormState(draft, draft?.academicYear ?? academicYear));
-      setIsFormOpen(true);
+      setIsFormOpen(!draft);
       setMessage(
         draft && draft.academicYear !== academicYear
           ? `Resumed your draft for ${draft.academicYear}.`
@@ -628,6 +628,7 @@ export function MyAnnualReview() {
                 required
                 value={form.payItForwardCount}
                 disabled={saving || isSubmitted}
+                showEnterNumberHint={false}
                 onChange={(value) => updateField('payItForwardCount', value)}
               />
 
@@ -858,6 +859,7 @@ function NumberField({
   value,
   disabled,
   onChange,
+  showEnterNumberHint = true,
 }: {
   id: string;
   label: string;
@@ -865,16 +867,21 @@ function NumberField({
   value: string;
   disabled: boolean;
   onChange: (value: string) => void;
+  showEnterNumberHint?: boolean;
 }) {
+  const hint = showEnterNumberHint ? (
+    <span className="font-normal text-muted-foreground">(Enter a number)</span>
+  ) : null;
+
   return (
     <div className="grid gap-2">
       {required ? (
         <RequiredLabel htmlFor={id}>
-          {label} <span className="font-normal text-muted-foreground">(Enter a number)</span>
+          {label} {hint}
         </RequiredLabel>
       ) : (
         <Label htmlFor={id}>
-          {label} <span className="font-normal text-muted-foreground">(Enter a number)</span>
+          {label} {hint}
         </Label>
       )}
       <Input
@@ -882,7 +889,7 @@ function NumberField({
         type="text"
         inputMode="numeric"
         pattern="[0-9]*"
-        placeholder="2"
+        placeholder="e.g. 2"
         value={value}
         onChange={(event) => {
           const nextValue = event.target.value;

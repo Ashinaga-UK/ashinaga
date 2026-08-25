@@ -91,8 +91,27 @@ describe('MyAnnualReview', () => {
         Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
 
-    expect(screen.getAllByPlaceholderText('2').length).toBeGreaterThan(0);
+    expect(screen.getAllByPlaceholderText('e.g. 2').length).toBeGreaterThan(0);
     expect(screen.getAllByText('(Enter a number)').length).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/How many pay-it-forward activities have you taken part in this year/)
+        .textContent
+    ).not.toContain('(Enter a number)');
+  });
+
+  it('loads an existing draft folded', async () => {
+    mockGetMyDraftAnnualUpdate.mockResolvedValue(createAnnualUpdate({ status: 'draft' }));
+
+    render(<MyAnnualReview />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Continue editing' })).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('Year Overview')).not.toBeInTheDocument();
+    expect(
+      screen.getByText('Your draft is saved. Continue editing whenever you are ready.')
+    ).toBeInTheDocument();
   });
 
   it('folds the form after a draft is saved', async () => {
