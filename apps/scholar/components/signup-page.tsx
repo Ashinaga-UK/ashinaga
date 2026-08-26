@@ -1,5 +1,6 @@
 'use client';
 
+import { DEGREE_PATHWAY_OPTIONS } from '@workspace/ui';
 import {
   AlertCircle,
   Check,
@@ -52,13 +53,6 @@ const COURSE_OPTIONS = [
   'Environmental Science',
   'Mathematics',
   'International Relations',
-] as const;
-
-const DEGREE_PATHWAY_OPTIONS = [
-  'Foundation Year',
-  'Direct Entry',
-  'Top-up Degree',
-  'Other',
 ] as const;
 
 interface ScholarData {

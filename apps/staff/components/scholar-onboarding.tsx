@@ -14,7 +14,7 @@ import {
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { type CreateScholarData, createScholar } from '../lib/api-client';
-import { DEFAULT_UNIVERSITY_OPTIONS, type Gender } from '../lib/constants';
+import { DEFAULT_UNIVERSITY_OPTIONS, DEGREE_PATHWAY_OPTIONS, type Gender } from '../lib/constants';
 import { cn } from '../lib/utils';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -31,7 +31,6 @@ interface ScholarOnboardingProps {
   onBack: () => void;
 }
 
-const DEGREE_PATHWAY_OPTIONS = ['Foundation Year', 'Direct Entry', 'Top-up Degree', 'Other'];
 const COURSE_OPTIONS = [
   'Computer Science',
   'Medicine',

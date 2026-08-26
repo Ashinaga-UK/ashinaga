@@ -3,4 +3,5 @@ ALTER TABLE "scholars" ADD COLUMN "program_stage" "program_stage" DEFAULT 'schol
 ALTER TABLE "scholars" ADD COLUMN "intended_university" text;--> statement-breakpoint
 ALTER TABLE "scholars" ADD COLUMN "intended_course" text;--> statement-breakpoint
 ALTER TABLE "scholars" ADD COLUMN "degree_pathway" text;--> statement-breakpoint
-UPDATE "scholars" SET "program_stage" = 'prep_year' WHERE "year" = 'Pre-University';
+UPDATE "scholars" SET "program_stage" = 'prep_year' WHERE "year" = 'Pre-University';--> statement-breakpoint
+UPDATE "scholars" SET "year" = 'Foundation' WHERE "year" = 'Pre-University';

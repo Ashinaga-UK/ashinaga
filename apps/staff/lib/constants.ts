@@ -32,12 +32,7 @@ export function isPlaceholderAcademicValue(value?: string | null): boolean {
   );
 }
 
-export const DEGREE_PATHWAY_OPTIONS = [
-  'Foundation Year',
-  'Direct Entry',
-  'Top-up Degree',
-  'Other',
-] as const;
+export { DEGREE_PATHWAY_OPTIONS } from '@workspace/ui';
 
 /** All countries (ISO-style names, A–Z) for nationality and country of study dropdowns. */
 export const COUNTRY_OPTIONS: readonly string[] = [
