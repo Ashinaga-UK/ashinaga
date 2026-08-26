@@ -1,6 +1,7 @@
 'use client';
 
 import { useQueryClient } from '@tanstack/react-query';
+import { getFormDataDisplayItems } from '@workspace/ui/lib/form-data-labels';
 import { Calendar, ChevronDown, ChevronUp, Download, Loader2, Paperclip, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import type { Request } from '../lib/api-client';
@@ -66,49 +67,22 @@ export function RequestCard({ request }: RequestCardProps) {
       .join(' ');
   };
 
-  const formatFormDataLabel = (key: string) => {
-    return key
-      .replace(/([A-Z])/g, ' $1')
-      .replace(/^./, (str) => str.toUpperCase())
-      .replace(/_/g, ' ');
-  };
-
-  const formatFormDataValue = (value: any) => {
-    if (typeof value === 'boolean') {
-      return value ? 'Yes' : 'No';
-    }
-    if (typeof value === 'string') {
-      // Format enum-like values
-      return value
-        .split('_')
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
-    }
-    return String(value);
-  };
+  const formDataItems = getFormDataDisplayItems(request.type, request.formData);
 
   const renderFormData = () => {
-    if (!request.formData) return null;
-
-    const entries = Object.entries(request.formData).filter(
-      ([, value]) => value !== undefined && value !== null && value !== ''
-    );
-
-    if (entries.length === 0) return null;
+    if (formDataItems.length === 0) return null;
 
     return (
       <div className="space-y-3">
         <h4 className="font-medium text-sm text-foreground">Form Details</h4>
-        <div className="grid gap-2">
-          {entries.map(([key, value]) => (
-            <div key={key} className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2">
-              <span className="text-sm font-medium text-muted-foreground sm:min-w-[180px]">
-                {formatFormDataLabel(key)}:
-              </span>
-              <span className="text-sm text-foreground">{formatFormDataValue(value)}</span>
+        <dl className="grid grid-cols-1 gap-y-3 sm:grid-cols-[minmax(10rem,18rem)_minmax(0,1fr)] sm:gap-x-6 sm:gap-y-2">
+          {formDataItems.map((item, index) => (
+            <div key={`${item.label}-${index}`} className="contents">
+              <dt className="text-sm font-medium text-muted-foreground">{item.label}</dt>
+              <dd className="m-0 text-sm text-foreground">{item.value}</dd>
             </div>
           ))}
-        </div>
+        </dl>
       </div>
     );
   };
@@ -167,6 +141,11 @@ export function RequestCard({ request }: RequestCardProps) {
     }
   };
 
+  const formDetails = renderFormData();
+  const attachments = request.attachments ?? [];
+  const hasAttachments = attachments.length > 0;
+  const hasExpandedDetails = Boolean(formDetails) || hasAttachments;
+
   return (
     <Card className="border-ashinaga-teal-100 dark:border-border">
       <CardHeader>
@@ -180,14 +159,18 @@ export function RequestCard({ request }: RequestCardProps) {
               <Badge className={getStatusColor(request.status)}>{request.status}</Badge>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="ml-2"
-          >
-            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </Button>
+          {hasExpandedDetails && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="ml-2"
+              aria-expanded={isExpanded}
+              aria-label={isExpanded ? 'Hide extra details' : 'Show extra details'}
+            >
+              {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -209,22 +192,19 @@ export function RequestCard({ request }: RequestCardProps) {
         </div>
 
         {/* Expanded details */}
-        {isExpanded && (
+        {isExpanded && hasExpandedDetails && (
           <div className="space-y-4 pt-2 border-t">
-            {/* Form Data */}
-            {renderFormData()}
-
-            {/* Attachments with download links */}
-            {request.attachments && request.attachments.length > 0 && (
+            {formDetails}
+            {hasAttachments && (
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Paperclip className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium text-foreground">
-                    Attachments ({request.attachments.length})
+                    Attachments ({attachments.length})
                   </span>
                 </div>
                 <div className="flex flex-col gap-2">
-                  {request.attachments.map((attachment) => (
+                  {attachments.map((attachment) => (
                     <a
                       key={attachment.id}
                       href={attachment.url}
@@ -246,11 +226,11 @@ export function RequestCard({ request }: RequestCardProps) {
         )}
 
         {/* Collapsed view: just show attachment count */}
-        {!isExpanded && request.attachments && request.attachments.length > 0 && (
+        {!isExpanded && hasAttachments && (
           <div className="flex items-center gap-2">
             <Paperclip className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">
-              {request.attachments.length} attachment{request.attachments.length > 1 ? 's' : ''}
+              {attachments.length} attachment{attachments.length > 1 ? 's' : ''}
             </span>
           </div>
         )}
