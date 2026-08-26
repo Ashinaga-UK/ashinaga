@@ -60,10 +60,9 @@ export class IsReasonableAgeConstraint implements ValidatorConstraintInterface {
 
 export class CreateScholarDto {
   // Basic required information
-  // name is now captured by the scholar at signup (minimal-invite flow) — optional here.
-  @IsOptional()
+  @IsNotEmpty()
   @IsString()
-  name?: string;
+  name: string;
 
   @IsNotEmpty()
   @IsEmail()
