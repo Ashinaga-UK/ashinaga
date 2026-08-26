@@ -4,10 +4,15 @@
  *  - Bulk task assignment dialog (issue #3)
  *  - Task title autocomplete suggestion dropdown (issue #5)
  *  - Soft-delete task confirmation dialog (issue #4)
+ *  - Collapsible sidebar (ASH-9)
  *
  * Auth is handled by ./auth.setup.ts via the 'setup' Playwright project.
  */
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
+
+async function openStaffSection(page: Page, name: string) {
+  await page.getByRole('link', { name, exact: true }).click();
+}
 
 test.describe('Staff Portal – new features', () => {
   test.beforeEach(async ({ page }) => {
@@ -19,8 +24,7 @@ test.describe('Staff Portal – new features', () => {
   test('Invitations tab is visible and renders Active Staff / Staff Invites / Scholar Invites sub-tabs', async ({
     page,
   }) => {
-    const invitationsTab = page.getByRole('tab', { name: /Invitations/i });
-    await expect(invitationsTab).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Invitations', exact: true })).toBeVisible();
     await page.goto('/?tab=invitations');
     await expect(page.getByText('Staff & Invitations')).toBeVisible();
 
@@ -35,7 +39,7 @@ test.describe('Staff Portal – new features', () => {
     }
 
     // The card header mentions the new 30-day expiry
-    await expect(page.getByText(/expire after 30 days/i)).toBeVisible();
+    await expect(page.getByText(/Manage active staff[\s\S]*expire after 30 days/i)).toBeVisible();
 
     // Invite Staff button is the default action on Active Staff / Staff Invites tabs
     await expect(page.getByRole('button', { name: /Invite Staff/i })).toBeVisible();
@@ -46,33 +50,31 @@ test.describe('Staff Portal – new features', () => {
   });
 
   test('Invite Staff dialog opens with the 30-day expiry copy', async ({ page }) => {
-    await page.getByRole('tab', { name: /Invitations/i }).click();
+    await openStaffSection(page, 'Invitations');
     await page
       .getByRole('button', { name: /Invite Staff/i })
       .first()
       .click();
 
     // Dialog opens
-    await expect(page.getByRole('dialog')).toBeVisible();
-    await expect(page.getByText(/Invite a staff member/i)).toBeVisible();
-    await expect(page.getByText(/expire after 30 days/i)).toBeVisible();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('heading', { name: /Invite a staff member/i })).toBeVisible();
+    await expect(dialog.getByText(/expire after 30 days/i)).toBeVisible();
 
     // Form field present
     await expect(page.getByLabel(/Work email/i)).toBeVisible();
   });
 
   test('Bulk task assignment dialog opens from the Scholars tab', async ({ page }) => {
-    await page.getByRole('tab', { name: /Scholars/i }).click();
+    await openStaffSection(page, 'Scholars');
+    await expect(page.getByRole('heading', { name: 'Scholars' })).toBeVisible();
 
-    // Wait for at least one scholar row to render (we just need a checkbox to click)
-    const checkboxes = page.getByRole('checkbox');
-    await expect(checkboxes.first()).toBeVisible({ timeout: 15_000 });
-    // Click the second checkbox (skip the header "select all" if present)
-    const count = await checkboxes.count();
-    if (count === 0) {
-      test.skip();
-    }
-    await checkboxes.nth(count > 1 ? 1 : 0).check();
+    // Desktop table is `lg:block`; card-list checkboxes are `lg:hidden` but still in the DOM.
+    const scholarCheckbox = page.locator('table tbody [role="checkbox"]').first();
+    await expect(scholarCheckbox).toBeVisible({ timeout: 15_000 });
+    await scholarCheckbox.click();
+    await expect(scholarCheckbox).toBeChecked();
 
     // "Assign Task to Selected (n)" button shows up
     const bulkButton = page.getByRole('button', { name: /Assign Task to Selected/i });
@@ -114,7 +116,7 @@ test.describe('Staff Portal – new features', () => {
   test('Soft-delete trash button + confirm dialog appear on a scholar profile with tasks', async ({
     page,
   }) => {
-    await page.getByRole('tab', { name: /Scholars/i }).click();
+    await openStaffSection(page, 'Scholars');
 
     // Open the first scholar profile via "View" button (or row click)
     const viewButton = page.getByRole('button', { name: /View Profile/i }).first();
@@ -145,5 +147,36 @@ test.describe('Staff Portal – new features', () => {
 
     // Don't actually click Delete; cancel out
     await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  });
+
+  test('sidebar trigger collapses and expands navigation on desktop', async ({ page }) => {
+    const sidebarToggle = page.getByRole('button', { name: 'Toggle sidebar' });
+
+    await expect(page.getByRole('link', { name: 'Overview', exact: true })).toBeVisible();
+    await expect(sidebarToggle).toBeVisible();
+
+    await sidebarToggle.click();
+    await expect(page.locator('[data-collapsible="icon"]')).toBeVisible();
+    await expect(sidebarToggle).toBeVisible();
+
+    await sidebarToggle.click();
+    await expect(page.getByRole('link', { name: 'Invitations', exact: true })).toBeVisible();
+  });
+
+  test('sidebar trigger opens mobile navigation and a section can be selected', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+    await expect(page.getByRole('button', { name: 'Close menu' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Requests', exact: true })).toBeVisible();
+    await page.getByRole('link', { name: 'Requests', exact: true }).click();
+    await expect(page.getByRole('banner').getByRole('heading', { name: 'Requests' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Back to Overview' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Toggle sidebar' })).toBeHidden();
+    await page.getByRole('link', { name: 'Back to Overview' }).click();
+    await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Ashinaga Staff/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Toggle sidebar' })).toBeVisible();
   });
 });
