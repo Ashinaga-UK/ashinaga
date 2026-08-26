@@ -199,8 +199,12 @@ export async function getMyResources(): Promise<Resource[]> {
   return fetchAPI<Resource[]>('/api/resources/my-resources');
 }
 
-export async function getResourceDownloadUrl(resourceId: string): Promise<{ downloadUrl: string }> {
-  return fetchAPI<{ downloadUrl: string }>(`/api/resources/${resourceId}/download`);
+export async function getResourceDownloadUrl(
+  resourceId: string,
+  disposition: 'attachment' | 'inline' = 'attachment'
+): Promise<{ downloadUrl: string }> {
+  const query = disposition === 'inline' ? '?disposition=inline' : '';
+  return fetchAPI<{ downloadUrl: string }>(`/api/resources/${resourceId}/download${query}`);
 }
 
 // Export the fetchAPI function and any other API functions as needed

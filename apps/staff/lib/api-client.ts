@@ -1016,8 +1016,12 @@ export async function createResourceUploadUrl(data: {
   );
 }
 
-export async function getResourceDownloadUrl(resourceId: string): Promise<{ downloadUrl: string }> {
-  return fetchAPI<{ downloadUrl: string }>(`/api/resources/${resourceId}/download`);
+export async function getResourceDownloadUrl(
+  resourceId: string,
+  disposition: 'attachment' | 'inline' = 'attachment'
+): Promise<{ downloadUrl: string }> {
+  const query = disposition === 'inline' ? '?disposition=inline' : '';
+  return fetchAPI<{ downloadUrl: string }>(`/api/resources/${resourceId}/download${query}`);
 }
 
 // Staff management

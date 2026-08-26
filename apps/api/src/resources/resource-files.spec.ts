@@ -22,8 +22,13 @@ describe('resource file keys', () => {
 
   it('keeps the original name in RFC 5987 filename*', () => {
     const header = buildContentDispositionHeader('Relevé de notes.pdf');
+    expect(header).toMatch(/^attachment;/);
     expect(header).toContain('filename="Relev_de_notes.pdf"');
     expect(header).toContain(`filename*=UTF-8''${encodeURIComponent('Relevé de notes.pdf')}`);
+  });
+
+  it('builds an inline Content-Disposition header for in-browser viewing', () => {
+    expect(buildContentDispositionHeader('notes.pdf', 'inline')).toMatch(/^inline;/);
   });
 
   it('builds a Content-Disposition header without CR/LF', () => {

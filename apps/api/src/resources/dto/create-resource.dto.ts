@@ -20,7 +20,11 @@ import {
   resourceStatusEnum,
   resourceTypeEnum,
 } from '../../db/schema/resources';
-import { ALLOWED_RESOURCE_MIME_TYPES, RESOURCE_FILE_MAX_SIZE_BYTES } from '../resource-files';
+import {
+  ALLOWED_RESOURCE_MIME_TYPES,
+  RESOURCE_DOWNLOAD_DISPOSITIONS,
+  RESOURCE_FILE_MAX_SIZE_BYTES,
+} from '../resource-files';
 
 const resourceTypes = resourceTypeEnum.enumValues;
 const resourceCategories = resourceCategoryEnum.enumValues;
@@ -99,4 +103,10 @@ export class CreateResourceDto {
   @Transform(({ value }) => (value === null ? [] : value))
   @IsOptional()
   filters?: ResourceFilterDto[];
+}
+
+export class ResourceDownloadQueryDto {
+  @IsOptional()
+  @IsIn(RESOURCE_DOWNLOAD_DISPOSITIONS)
+  disposition?: (typeof RESOURCE_DOWNLOAD_DISPOSITIONS)[number];
 }

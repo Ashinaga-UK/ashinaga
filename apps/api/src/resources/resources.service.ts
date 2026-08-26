@@ -20,6 +20,7 @@ import {
   RESOURCE_DOWNLOAD_URL_EXPIRES_IN_SECONDS,
   RESOURCE_FILE_MAX_SIZE_BYTES,
   RESOURCE_UPLOAD_URL_EXPIRES_IN_SECONDS,
+  type ResourceDownloadDisposition,
 } from './resource-files';
 
 type ResourceFilter = {
@@ -357,7 +358,11 @@ export class ResourcesService {
     );
   }
 
-  async getDownloadUrl(resourceId: string, userId: string) {
+  async getDownloadUrl(
+    resourceId: string,
+    userId: string,
+    disposition: ResourceDownloadDisposition = 'attachment'
+  ) {
     const [user] = await database
       .select({ userType: users.userType })
       .from(users)
@@ -387,7 +392,10 @@ export class ResourcesService {
 
     const downloadUrl = await this.objectStorage.createDownloadUrl({
       key: resource.fileKey,
-      contentDisposition: buildContentDispositionHeader(resource.fileName ?? 'resource'),
+      contentDisposition: buildContentDispositionHeader(
+        resource.fileName ?? 'resource',
+        disposition
+      ),
       expiresInSeconds: RESOURCE_DOWNLOAD_URL_EXPIRES_IN_SECONDS,
     });
 

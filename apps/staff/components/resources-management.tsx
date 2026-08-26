@@ -6,6 +6,7 @@ import {
   Download,
   Edit,
   ExternalLink,
+  Eye,
   FileText,
   GraduationCap,
   Library,
@@ -109,6 +110,29 @@ function getResourceErrorMessage(error: unknown) {
   }
 
   return message || 'Please try again.';
+}
+
+async function openResourceFile(resourceId: string, disposition: 'attachment' | 'inline') {
+  if (disposition === 'inline') {
+    const viewTab = window.open('about:blank', '_blank');
+    if (viewTab) {
+      viewTab.opener = null;
+    }
+    try {
+      const { downloadUrl } = await getResourceDownloadUrl(resourceId, 'inline');
+      if (!viewTab) {
+        throw new Error('Allow pop-ups to view this file, or download it instead.');
+      }
+      viewTab.location.href = downloadUrl;
+    } catch (error) {
+      viewTab?.close();
+      throw error;
+    }
+    return;
+  }
+
+  const { downloadUrl } = await getResourceDownloadUrl(resourceId, 'attachment');
+  window.location.href = downloadUrl;
 }
 
 const RESOURCE_MIME_BY_EXTENSION: Record<string, string> = {
@@ -961,25 +985,44 @@ export function ResourcesManagement() {
                       <div className="flex flex-wrap items-center gap-2">
                         <h4 className="text-sm font-semibold text-foreground">{resource.title}</h4>
                         {resource.sourceType === 'file' ? (
-                          <button
-                            type="button"
-                            className="text-muted-foreground hover:text-foreground"
-                            aria-label={`Download ${resource.title}`}
-                            onClick={async () => {
-                              try {
-                                const { downloadUrl } = await getResourceDownloadUrl(resource.id);
-                                window.location.href = downloadUrl;
-                              } catch (downloadError) {
-                                toast({
-                                  title: 'Could not download resource',
-                                  description: getResourceErrorMessage(downloadError),
-                                  variant: 'destructive',
-                                });
-                              }
-                            }}
-                          >
-                            <Download className="h-3.5 w-3.5" />
-                          </button>
+                          <span className="inline-flex items-center gap-1">
+                            <button
+                              type="button"
+                              className="text-muted-foreground hover:text-foreground"
+                              aria-label={`View ${resource.title}`}
+                              onClick={async () => {
+                                try {
+                                  await openResourceFile(resource.id, 'inline');
+                                } catch (viewError) {
+                                  toast({
+                                    title: 'Could not open resource',
+                                    description: getResourceErrorMessage(viewError),
+                                    variant: 'destructive',
+                                  });
+                                }
+                              }}
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              className="text-muted-foreground hover:text-foreground"
+                              aria-label={`Download ${resource.title}`}
+                              onClick={async () => {
+                                try {
+                                  await openResourceFile(resource.id, 'attachment');
+                                } catch (downloadError) {
+                                  toast({
+                                    title: 'Could not download resource',
+                                    description: getResourceErrorMessage(downloadError),
+                                    variant: 'destructive',
+                                  });
+                                }
+                              }}
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                            </button>
+                          </span>
                         ) : (
                           <a
                             href={resource.url ?? undefined}

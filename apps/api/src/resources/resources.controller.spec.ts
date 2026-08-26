@@ -191,10 +191,25 @@ describe('ResourcesController', () => {
         downloadUrl: 'https://s3.example/download',
       });
 
-      const result = await controller.getDownloadUrl('resource-1', request);
+      const result = await controller.getDownloadUrl('resource-1', request, {});
 
-      expect(service.getDownloadUrl).toHaveBeenCalledWith('resource-1', 'scholar-user-1');
+      expect(service.getDownloadUrl).toHaveBeenCalledWith(
+        'resource-1',
+        'scholar-user-1',
+        'attachment'
+      );
       expect(result).toEqual({ downloadUrl: 'https://s3.example/download' });
+    });
+
+    it('requests an inline URL when viewing in the browser', async () => {
+      const request = makeRequest('scholar-user-1');
+      mockResourcesService.getDownloadUrl.mockResolvedValue({
+        downloadUrl: 'https://s3.example/view',
+      });
+
+      await controller.getDownloadUrl('resource-1', request, { disposition: 'inline' });
+
+      expect(service.getDownloadUrl).toHaveBeenCalledWith('resource-1', 'scholar-user-1', 'inline');
     });
   });
 });

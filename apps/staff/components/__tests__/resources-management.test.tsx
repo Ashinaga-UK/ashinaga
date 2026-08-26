@@ -20,6 +20,7 @@ jest.mock('lucide-react', () => {
     Download: Icon,
     Edit: Icon,
     ExternalLink: Icon,
+    Eye: Icon,
     FileText: Icon,
     GraduationCap: Icon,
     Library: Icon,
@@ -33,6 +34,7 @@ jest.mock('lucide-react', () => {
 jest.mock('../../lib/api-client', () => ({
   getResources: (...args: unknown[]) => mockGetResources(...args),
   getResourceFilterOptions: (...args: unknown[]) => mockGetResourceFilterOptions(...args),
+  getResourceDownloadUrl: jest.fn(),
   updateResource: (...args: unknown[]) => mockUpdateResource(...args),
   createResource: (...args: unknown[]) => mockCreateResource(...args),
   deleteResource: (...args: unknown[]) => mockDeleteResource(...args),

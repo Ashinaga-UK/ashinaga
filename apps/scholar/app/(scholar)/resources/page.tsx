@@ -5,6 +5,7 @@ import {
   BookOpen,
   Download,
   ExternalLink,
+  Eye,
   FileText,
   GraduationCap,
   Library,
@@ -40,9 +41,34 @@ const resourceIcons: Record<ResourceType, typeof BookOpen> = {
 
 const resourceTypeFilters: Array<ResourceType | 'All'> = ['All', 'Guide', 'Handbook', 'Template'];
 
+async function openResourceFile(resourceId: string, disposition: 'attachment' | 'inline') {
+  if (disposition === 'inline') {
+    const viewTab = window.open('about:blank', '_blank');
+    if (viewTab) {
+      viewTab.opener = null;
+    }
+    try {
+      const { downloadUrl } = await getResourceDownloadUrl(resourceId, 'inline');
+      if (!viewTab) {
+        throw new Error('Allow pop-ups to view this file, or download it instead.');
+      }
+      viewTab.location.href = downloadUrl;
+    } catch (error) {
+      viewTab?.close();
+      throw error;
+    }
+    return;
+  }
+
+  const { downloadUrl } = await getResourceDownloadUrl(resourceId, 'attachment');
+  window.location.href = downloadUrl;
+}
+
 export default function ResourcesPage() {
   const [selectedType, setSelectedType] = useState<ResourceType | 'All'>('All');
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [busyAction, setBusyAction] = useState<{ id: string; kind: 'view' | 'download' } | null>(
+    null
+  );
   const { data: resources = [], isLoading, error } = useMyResources();
   const { toast } = useToast();
 
@@ -146,35 +172,67 @@ export default function ResourcesPage() {
                 <div className="flex-1" />
                 <div className="mt-3 flex items-center justify-end gap-2">
                   {resource.sourceType === 'file' ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="ml-auto min-h-8 px-2 text-xs sm:px-3 sm:text-sm"
-                      disabled={downloadingId === resource.id}
-                      onClick={async () => {
-                        setDownloadingId(resource.id);
-                        try {
-                          const { downloadUrl } = await getResourceDownloadUrl(resource.id);
-                          window.location.href = downloadUrl;
-                        } catch {
-                          toast({
-                            title: 'Could not download resource',
-                            description: 'Please try again.',
-                            variant: 'destructive',
-                          });
-                        } finally {
-                          setDownloadingId(null);
-                        }
-                      }}
-                    >
-                      {downloadingId === resource.id ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Download className="mr-2 h-4 w-4" />
-                      )}
-                      Download
-                    </Button>
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="min-h-8 px-2 text-xs sm:px-3 sm:text-sm"
+                        disabled={busyAction?.id === resource.id}
+                        onClick={async () => {
+                          setBusyAction({ id: resource.id, kind: 'view' });
+                          try {
+                            await openResourceFile(resource.id, 'inline');
+                          } catch (error) {
+                            toast({
+                              title: 'Could not open resource',
+                              description:
+                                error instanceof Error && error.message.includes('pop-ups')
+                                  ? error.message
+                                  : 'Please try again.',
+                              variant: 'destructive',
+                            });
+                          } finally {
+                            setBusyAction(null);
+                          }
+                        }}
+                      >
+                        {busyAction?.id === resource.id && busyAction.kind === 'view' ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Eye className="mr-2 h-4 w-4" />
+                        )}
+                        View
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="min-h-8 px-2 text-xs sm:px-3 sm:text-sm"
+                        disabled={busyAction?.id === resource.id}
+                        onClick={async () => {
+                          setBusyAction({ id: resource.id, kind: 'download' });
+                          try {
+                            await openResourceFile(resource.id, 'attachment');
+                          } catch {
+                            toast({
+                              title: 'Could not download resource',
+                              description: 'Please try again.',
+                              variant: 'destructive',
+                            });
+                          } finally {
+                            setBusyAction(null);
+                          }
+                        }}
+                      >
+                        {busyAction?.id === resource.id && busyAction.kind === 'download' ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Download className="mr-2 h-4 w-4" />
+                        )}
+                        Download
+                      </Button>
+                    </>
                   ) : (
                     <Button
                       asChild

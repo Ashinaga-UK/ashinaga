@@ -4,6 +4,8 @@ export const RESOURCE_ARCHIVED_PREFIX = 'resources/archived/';
 export const RESOURCE_FILE_MAX_SIZE_BYTES = 10 * 1024 * 1024;
 export const RESOURCE_UPLOAD_URL_EXPIRES_IN_SECONDS = 300;
 export const RESOURCE_DOWNLOAD_URL_EXPIRES_IN_SECONDS = 900;
+export const RESOURCE_DOWNLOAD_DISPOSITIONS = ['attachment', 'inline'] as const;
+export type ResourceDownloadDisposition = (typeof RESOURCE_DOWNLOAD_DISPOSITIONS)[number];
 
 export const ALLOWED_RESOURCE_MIME_TYPES = [
   'application/pdf',
@@ -52,10 +54,13 @@ export function sanitizeResourceFileName(fileName: string): string {
 }
 
 /** Safe Content-Disposition: ASCII fallback plus the real name via RFC 5987. */
-export function buildContentDispositionHeader(fileName: string): string {
+export function buildContentDispositionHeader(
+  fileName: string,
+  disposition: ResourceDownloadDisposition = 'attachment'
+): string {
   const asciiFallback = sanitizeResourceFileName(fileName);
   const encoded = encodeURIComponent(fileName.replace(/[\r\n]/g, ''));
-  return `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encoded}`;
+  return `${disposition}; filename="${asciiFallback}"; filename*=UTF-8''${encoded}`;
 }
 
 export function buildPendingResourceFileKey(uploadId: string, fileName: string): string {

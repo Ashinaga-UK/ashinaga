@@ -7,6 +7,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
   ValidationPipe,
@@ -15,7 +16,11 @@ import { ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
 import { StaffGuard } from '../auth/staff.guard';
-import { CreateResourceDto, CreateResourceUploadUrlDto } from './dto/create-resource.dto';
+import {
+  CreateResourceDto,
+  CreateResourceUploadUrlDto,
+  ResourceDownloadQueryDto,
+} from './dto/create-resource.dto';
 import { UpdateResourceDto } from './dto/update-resource.dto';
 import { ResourcesService } from './resources.service';
 
@@ -69,8 +74,16 @@ export class ResourcesController {
 
   @Get(':id/download')
   @UseGuards(AuthGuard)
-  async getDownloadUrl(@Param('id', ParseUUIDPipe) id: string, @Req() req: AuthenticatedRequest) {
-    return this.resourcesService.getDownloadUrl(id, req.user?.id || '');
+  async getDownloadUrl(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: AuthenticatedRequest,
+    @Query(new ValidationPipe({ transform: true, whitelist: true })) query: ResourceDownloadQueryDto
+  ) {
+    return this.resourcesService.getDownloadUrl(
+      id,
+      req.user?.id || '',
+      query.disposition ?? 'attachment'
+    );
   }
 
   @Patch(':id')

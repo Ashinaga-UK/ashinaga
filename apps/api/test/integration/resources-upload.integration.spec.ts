@@ -133,6 +133,21 @@ describe('Resources API – file uploads (integration)', () => {
       .get(`/api/resources/${createdResourceId}/download`)
       .expect(200);
     expect(downloadResponse.body.downloadUrl).toBe('https://s3.example/signed-get');
+    expect(objectStorage.createDownloadUrl).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        contentDisposition: expect.stringMatching(/^attachment;/),
+      })
+    );
+
+    const viewResponse = await request(app.getHttpServer())
+      .get(`/api/resources/${createdResourceId}/download?disposition=inline`)
+      .expect(200);
+    expect(viewResponse.body.downloadUrl).toBe('https://s3.example/signed-get');
+    expect(objectStorage.createDownloadUrl).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        contentDisposition: expect.stringMatching(/^inline;/),
+      })
+    );
 
     auth.setUser({
       id: outsider.userId,
