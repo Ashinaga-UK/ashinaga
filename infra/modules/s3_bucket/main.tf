@@ -20,6 +20,11 @@ variable "lifecycle_days" {
   default     = 90
 }
 
+variable "cors_allowed_origins" {
+  description = "Browser origins allowed to upload to this bucket (presigned POST). Match the staff/scholar app URLs for this environment."
+  type        = list(string)
+}
+
 # S3 Bucket
 resource "aws_s3_bucket" "this" {
   bucket = var.bucket_name
@@ -68,12 +73,7 @@ resource "aws_s3_bucket_cors_configuration" "this" {
   cors_rule {
     allowed_headers = ["*"]
     allowed_methods = ["GET", "PUT", "POST", "HEAD"]
-    allowed_origins = [
-      "http://localhost:*",
-      "https://www.ashinaga-uk.org",
-      "https://*.ashinaga-uk.org",
-      "https://*.amazonaws.com" # For App Runner URLs
-    ]
+    allowed_origins = var.cors_allowed_origins
     expose_headers  = ["ETag", "x-amz-request-id", "x-amz-id-2"]
     max_age_seconds = 3000
   }

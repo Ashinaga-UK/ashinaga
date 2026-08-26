@@ -63,6 +63,11 @@ module "scholar_data_bucket" {
   environment       = var.environment
   enable_versioning = true
   lifecycle_days    = 90
+  cors_allowed_origins = [
+    "https://staff-test.ashinaga-uk.org",
+    "https://scholar-test.ashinaga-uk.org",
+    "http://localhost:*",
+  ]
 }
 
 # VPC and networking
