@@ -1,5 +1,5 @@
 export const RESOURCE_PENDING_PREFIX = 'resources/pending/';
-/** Keep in sync with expire-archived-resource-uploads (30 days) in infra/modules/s3_bucket/main.tf */
+/** Archived objects expire after 365 days. Keep in sync with expire-archived-resource-uploads in infra/modules/s3_bucket/main.tf */
 export const RESOURCE_ARCHIVED_PREFIX = 'resources/archived/';
 export const RESOURCE_FILE_MAX_SIZE_BYTES = 10 * 1024 * 1024;
 export const RESOURCE_UPLOAD_URL_EXPIRES_IN_SECONDS = 300;
