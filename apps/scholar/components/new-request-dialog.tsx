@@ -251,7 +251,9 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
 
   const fieldError = (field: keyof TypeSpecificErrors) =>
     typeSpecificErrors[field] ? (
-      <p className="text-sm font-medium text-destructive">{typeSpecificErrors[field]}</p>
+      <p className="text-sm font-medium text-red-600 dark:text-red-400">
+        {typeSpecificErrors[field]}
+      </p>
     ) : null;
 
   const validateTypeSpecificData = () => {
