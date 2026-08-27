@@ -32,6 +32,22 @@ export function isPlaceholderAcademicValue(value?: string | null): boolean {
   );
 }
 
+export function mergeUniqueOptions(
+  ...lists: Array<readonly string[] | string[] | undefined>
+): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const list of lists) {
+    for (const value of list ?? []) {
+      const trimmed = value.trim();
+      if (!trimmed || seen.has(trimmed) || isPlaceholderAcademicValue(trimmed)) continue;
+      seen.add(trimmed);
+      result.push(trimmed);
+    }
+  }
+  return result;
+}
+
 export { DEGREE_PATHWAY_OPTIONS } from '@workspace/ui';
 
 /** All countries (ISO-style names, A–Z) for nationality and country of study dropdowns. */
@@ -338,6 +354,19 @@ export function normalizeLocation(
   }
   return '';
 }
+
+export const DEFAULT_COURSE_OPTIONS = [
+  'Computer Science',
+  'Medicine',
+  'Engineering',
+  'Economics',
+  'Law',
+  'Business',
+  'Psychology',
+  'Environmental Science',
+  'Mathematics',
+  'International Relations',
+] as const;
 
 /** University options used when API filter options are empty (e.g. scholar app list). */
 export const DEFAULT_UNIVERSITY_OPTIONS = [

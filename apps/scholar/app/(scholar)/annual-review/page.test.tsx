@@ -19,7 +19,16 @@ jest.mock('../../../components/my-annual-review', () => ({
   MyAnnualReview: () => <div>Annual review content</div>,
 }));
 
+import { ScholarSessionProvider } from '../../../lib/scholar-session';
 import AnnualReviewPage from './page';
+
+function renderPage() {
+  return render(
+    <ScholarSessionProvider>
+      <AnnualReviewPage />
+    </ScholarSessionProvider>
+  );
+}
 
 describe('AnnualReviewPage', () => {
   beforeEach(() => {
@@ -29,7 +38,7 @@ describe('AnnualReviewPage', () => {
   it('redirects prep-year users to the dashboard', async () => {
     mockGetMyProfile.mockResolvedValue({ programStage: 'prep_year' });
 
-    render(<AnnualReviewPage />);
+    renderPage();
 
     await waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith('/dashboard');
@@ -40,7 +49,7 @@ describe('AnnualReviewPage', () => {
   it('renders annual review for confirmed scholars', async () => {
     mockGetMyProfile.mockResolvedValue({ programStage: 'scholar' });
 
-    render(<AnnualReviewPage />);
+    renderPage();
 
     expect(await screen.findByText('Annual review content')).toBeInTheDocument();
     expect(mockReplace).not.toHaveBeenCalled();
@@ -49,7 +58,7 @@ describe('AnnualReviewPage', () => {
   it('redirects to the dashboard if profile loading fails', async () => {
     mockGetMyProfile.mockRejectedValue(new Error('offline'));
 
-    render(<AnnualReviewPage />);
+    renderPage();
 
     await waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith('/dashboard');

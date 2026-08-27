@@ -90,7 +90,12 @@ jest.mock('../../../components/new-request-dialog', () => ({
   NewRequestDialog: ({ trigger }: { trigger: ReactNode }) => createElement(Fragment, null, trigger),
 }));
 
+const { ScholarSessionProvider } = require('../../../lib/scholar-session');
 const DashboardPage = require('./page').default;
+
+function renderDashboard() {
+  return render(createElement(ScholarSessionProvider, null, createElement(DashboardPage)));
+}
 
 describe('DashboardPage', () => {
   beforeEach(() => {
@@ -103,7 +108,7 @@ describe('DashboardPage', () => {
   });
 
   it('links overview stat cards to the matching scholar pages', async () => {
-    render(createElement(DashboardPage));
+    renderDashboard();
 
     await waitFor(() => {
       expect(screen.getByRole('link', { name: /Pending Tasks/i })).toHaveAttribute(
@@ -136,7 +141,7 @@ describe('DashboardPage', () => {
       intendedCourse: 'Computer Science',
     });
 
-    render(createElement(DashboardPage));
+    renderDashboard();
 
     await waitFor(() => {
       expect(screen.getByText('Ashinaga · Prep Year')).toBeInTheDocument();

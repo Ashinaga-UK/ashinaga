@@ -15,8 +15,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { getMyProfile } from '../lib/api/profile';
+import { ScholarSessionProvider, useScholarSession } from '../lib/scholar-session';
 import { cn } from '../lib/utils';
 import {
   Sidebar,
@@ -202,23 +201,15 @@ function ScholarHeader({ programStage }: { programStage: ProgramStage | null }) 
 }
 
 export function ScholarLayout({ children, onLogout }: ScholarLayoutProps) {
-  const [programStage, setProgramStage] = useState<ProgramStage | null>(null);
+  return (
+    <ScholarSessionProvider>
+      <ScholarLayoutChrome onLogout={onLogout}>{children}</ScholarLayoutChrome>
+    </ScholarSessionProvider>
+  );
+}
 
-  useEffect(() => {
-    let cancelled = false;
-    getMyProfile()
-      .then((profile) => {
-        if (!cancelled) {
-          setProgramStage(profile.programStage === 'prep_year' ? 'prep_year' : 'scholar');
-        }
-      })
-      .catch(() => {
-        // Fail closed: do not reveal Annual Review until stage is known.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+function ScholarLayoutChrome({ children, onLogout }: ScholarLayoutProps) {
+  const { programStage } = useScholarSession();
 
   return (
     <SidebarProvider

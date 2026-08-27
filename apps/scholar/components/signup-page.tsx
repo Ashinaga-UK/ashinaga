@@ -17,6 +17,7 @@ import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { fetchAPI } from '../lib/api-client';
 import { signIn } from '../lib/auth-client';
+import { mergeUniqueOptions } from '../lib/merge-options';
 import { cn } from '../lib/utils';
 import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
@@ -152,7 +153,7 @@ function SearchableValueField({
             }}
           />
           <CommandList>
-            <CommandEmpty>{search.trim() ? `Use "${search.trim()}"` : emptyText}</CommandEmpty>
+            <CommandEmpty>{search.trim() ? `Using "${search.trim()}"` : emptyText}</CommandEmpty>
             {filteredOptions.map((option) => (
               <CommandItem
                 key={option}
@@ -209,6 +210,34 @@ export function SignupPage() {
   }>({});
   const [invitationData, setInvitationData] = useState<InvitationData | null>(null);
   const prefilledScholarData = invitationData?.scholarData;
+  const [universityOptions, setUniversityOptions] = useState<readonly string[]>(
+    DEFAULT_UNIVERSITY_OPTIONS
+  );
+  const [courseOptions, setCourseOptions] = useState<readonly string[]>(COURSE_OPTIONS);
+
+  useEffect(() => {
+    fetchAPI<{
+      programs: string[];
+      universities: string[];
+      intendedUniversities: string[];
+      intendedCourses: string[];
+    }>('/api/scholars/filters')
+      .then((filters) => {
+        setUniversityOptions(
+          mergeUniqueOptions(
+            DEFAULT_UNIVERSITY_OPTIONS,
+            filters.universities,
+            filters.intendedUniversities
+          )
+        );
+        setCourseOptions(
+          mergeUniqueOptions(COURSE_OPTIONS, filters.programs, filters.intendedCourses)
+        );
+      })
+      .catch(() => {
+        // Keep the local fallbacks if the catalog is unavailable during signup.
+      });
+  }, []);
 
   // Validate token and pre-fill form on mount
   useEffect(() => {
@@ -499,7 +528,7 @@ export function SignupPage() {
                     <SearchableValueField
                       id="intendedUniversity"
                       value={formData.intendedUniversity}
-                      options={DEFAULT_UNIVERSITY_OPTIONS}
+                      options={universityOptions}
                       placeholder="Select or type a university"
                       searchPlaceholder="Start typing a university..."
                       emptyText="No universities match. Keep typing to enter a custom one."
@@ -537,7 +566,7 @@ export function SignupPage() {
                     <SearchableValueField
                       id="intendedCourse"
                       value={formData.intendedCourse}
-                      options={COURSE_OPTIONS}
+                      options={courseOptions}
                       placeholder="Select or type a course"
                       searchPlaceholder="Start typing a course..."
                       emptyText="No courses match. Keep typing to enter a custom one."

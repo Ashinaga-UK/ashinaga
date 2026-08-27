@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import { ScholarSessionProvider } from '../lib/scholar-session';
 import { MyProfile } from './my-profile';
 
 const mockGetMyProfile = jest.fn();
@@ -40,7 +41,11 @@ describe('MyProfile', () => {
       updatedAt: '2026-01-01',
     });
 
-    render(<MyProfile />);
+    render(
+      <ScholarSessionProvider>
+        <MyProfile />
+      </ScholarSessionProvider>
+    );
 
     await waitFor(() => {
       expect(screen.getByText('Prep Year Candidate')).toBeInTheDocument();
@@ -73,7 +78,11 @@ describe('MyProfile', () => {
       updatedAt: '2026-01-01',
     });
 
-    render(<MyProfile />);
+    render(
+      <ScholarSessionProvider>
+        <MyProfile />
+      </ScholarSessionProvider>
+    );
 
     await waitFor(() => {
       expect(screen.getByText('Academic Information')).toBeInTheDocument();

@@ -819,6 +819,10 @@ describe('ScholarsService', () => {
             program: 'CS',
             year: 'Y1',
             university: 'MIT',
+            programStage: 'prep_year',
+            intendedUniversity: 'Oxford',
+            intendedCourse: 'Medicine',
+            degreePathway: 'Undergraduate',
             location: 'Boston',
             aaiScholarId: null,
             dateOfBirth: null,
@@ -862,6 +866,10 @@ describe('ScholarsService', () => {
       expect(result).toContain('"Name"');
       expect(result).toContain('"Email"');
       expect(result).toContain('"Status"');
+      expect(result).toContain('"University"');
+      expect(result).toContain('"Program Stage"');
+      expect(result).toContain('prep_year');
+      expect(result).toContain('Oxford');
       expect(result).toContain('Alice');
       expect(result).toContain('alice@example.com');
       expect(result).toContain('"ID"');

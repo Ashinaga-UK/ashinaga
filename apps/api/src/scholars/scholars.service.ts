@@ -38,6 +38,18 @@ import {
 } from './dto/get-scholars.dto';
 import { UpdateScholarProfileDto } from './dto/update-scholar-profile.dto';
 
+function uniqueFilterValues(values: Array<string | null | undefined>): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of values) {
+    const trimmed = value?.trim();
+    if (!trimmed || isPlaceholderAcademicValue(trimmed) || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    result.push(trimmed);
+  }
+  return result;
+}
+
 @Injectable()
 export class ScholarsService {
   constructor(private readonly invitationsService: InvitationsService) {}
@@ -572,29 +584,38 @@ export class ScholarsService {
     programs: string[];
     years: string[];
     universities: string[];
+    intendedUniversities: string[];
+    intendedCourses: string[];
   }> {
-    // Get unique programs
-    const programsResult = await database
-      .selectDistinct({ value: scholars.program })
-      .from(scholars)
-      .orderBy(scholars.program);
-
-    // Get unique years
-    const yearsResult = await database
-      .selectDistinct({ value: scholars.year })
-      .from(scholars)
-      .orderBy(scholars.year);
-
-    // Get unique universities
-    const universitiesResult = await database
-      .selectDistinct({ value: scholars.university })
-      .from(scholars)
-      .orderBy(scholars.university);
+    const [
+      programsResult,
+      yearsResult,
+      universitiesResult,
+      intendedUniversitiesResult,
+      intendedCoursesResult,
+    ] = await Promise.all([
+      database.selectDistinct({ value: scholars.program }).from(scholars).orderBy(scholars.program),
+      database.selectDistinct({ value: scholars.year }).from(scholars).orderBy(scholars.year),
+      database
+        .selectDistinct({ value: scholars.university })
+        .from(scholars)
+        .orderBy(scholars.university),
+      database
+        .selectDistinct({ value: scholars.intendedUniversity })
+        .from(scholars)
+        .orderBy(scholars.intendedUniversity),
+      database
+        .selectDistinct({ value: scholars.intendedCourse })
+        .from(scholars)
+        .orderBy(scholars.intendedCourse),
+    ]);
 
     return {
-      programs: programsResult.map((r) => r.value).filter(Boolean),
-      years: yearsResult.map((r) => r.value).filter(Boolean),
-      universities: universitiesResult.map((r) => r.value).filter(Boolean),
+      programs: uniqueFilterValues(programsResult.map((r) => r.value)),
+      years: uniqueFilterValues(yearsResult.map((r) => r.value)),
+      universities: uniqueFilterValues(universitiesResult.map((r) => r.value)),
+      intendedUniversities: uniqueFilterValues(intendedUniversitiesResult.map((r) => r.value)),
+      intendedCourses: uniqueFilterValues(intendedCoursesResult.map((r) => r.value)),
     };
   }
 
@@ -1052,6 +1073,10 @@ export class ScholarsService {
       'Program',
       'Year',
       'University',
+      'Program Stage',
+      'Intended University',
+      'Intended Course',
+      'Degree Pathway',
       'University ID',
       'Location',
       'Address (Home Country)',
@@ -1087,6 +1112,10 @@ export class ScholarsService {
         s.program,
         s.year,
         s.university,
+        s.programStage,
+        s.intendedUniversity ?? '',
+        s.intendedCourse ?? '',
+        s.degreePathway ?? '',
         s.universityId ?? '',
         s.location ?? '',
         s.addressHomeCountry ?? '',

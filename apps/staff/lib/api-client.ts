@@ -678,6 +678,8 @@ export interface ScholarFilterOptions {
   programs: string[];
   years: string[];
   universities: string[];
+  intendedUniversities: string[];
+  intendedCourses: string[];
 }
 
 export async function getFilterOptions(): Promise<ScholarFilterOptions> {

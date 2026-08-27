@@ -13,8 +13,14 @@ import {
 } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { type CreateScholarData, createScholar } from '../lib/api-client';
-import { DEFAULT_UNIVERSITY_OPTIONS, DEGREE_PATHWAY_OPTIONS, type Gender } from '../lib/constants';
+import { type CreateScholarData, createScholar, getFilterOptions } from '../lib/api-client';
+import {
+  DEFAULT_COURSE_OPTIONS,
+  DEFAULT_UNIVERSITY_OPTIONS,
+  DEGREE_PATHWAY_OPTIONS,
+  type Gender,
+  mergeUniqueOptions,
+} from '../lib/constants';
 import { cn } from '../lib/utils';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -30,19 +36,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 interface ScholarOnboardingProps {
   onBack: () => void;
 }
-
-const COURSE_OPTIONS = [
-  'Computer Science',
-  'Medicine',
-  'Engineering',
-  'Economics',
-  'Law',
-  'Business',
-  'Psychology',
-  'Environmental Science',
-  'Mathematics',
-  'International Relations',
-];
 
 function SearchableValueField({
   id,
@@ -112,7 +105,7 @@ function SearchableValueField({
             }}
           />
           <CommandList>
-            <CommandEmpty>{search.trim() ? `Use "${search.trim()}"` : emptyText}</CommandEmpty>
+            <CommandEmpty>{search.trim() ? `Using "${search.trim()}"` : emptyText}</CommandEmpty>
             {filteredOptions.map((option) => (
               <CommandItem
                 key={option}
@@ -244,6 +237,27 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [universityOptions, setUniversityOptions] = useState<string[]>([
+    ...DEFAULT_UNIVERSITY_OPTIONS,
+  ]);
+  const [courseOptions, setCourseOptions] = useState<string[]>([...DEFAULT_COURSE_OPTIONS]);
+
+  useEffect(() => {
+    getFilterOptions()
+      .then((filters) => {
+        setUniversityOptions(
+          mergeUniqueOptions(
+            DEFAULT_UNIVERSITY_OPTIONS,
+            filters.universities,
+            filters.intendedUniversities
+          )
+        );
+        setCourseOptions(
+          mergeUniqueOptions(DEFAULT_COURSE_OPTIONS, filters.programs, filters.intendedCourses)
+        );
+      })
+      .catch(() => {});
+  }, []);
 
   const handleInputChange = (field: keyof ScholarData, value: string) => {
     setScholarData((prev) => ({ ...prev, [field]: value }));
@@ -576,7 +590,7 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
                         <SearchableValueField
                           id="intendedUniversity"
                           value={scholarData.intendedUniversity}
-                          options={DEFAULT_UNIVERSITY_OPTIONS}
+                          options={universityOptions}
                           placeholder="Select or type a university"
                           searchPlaceholder="Start typing a university..."
                           emptyText="No universities match. Keep typing to enter a custom one."
@@ -588,7 +602,7 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
                         <SearchableValueField
                           id="intendedCourse"
                           value={scholarData.intendedCourse}
-                          options={COURSE_OPTIONS}
+                          options={courseOptions}
                           placeholder="Select or type a course"
                           searchPlaceholder="Start typing a course..."
                           emptyText="No courses match. Keep typing to enter a custom one."

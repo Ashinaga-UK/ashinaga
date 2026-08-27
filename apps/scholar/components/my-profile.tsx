@@ -18,13 +18,9 @@ import {
   X,
 } from 'lucide-react';
 import Image from 'next/image';
-import { useCallback, useEffect, useState } from 'react';
-import {
-  getMyProfile,
-  type ScholarProfile,
-  type UpdateProfileData,
-  updateMyProfile,
-} from '../lib/api/profile';
+import { useEffect, useState } from 'react';
+import { type ScholarProfile, type UpdateProfileData, updateMyProfile } from '../lib/api/profile';
+import { useScholarSession } from '../lib/scholar-session';
 import { Alert, AlertDescription } from './ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
@@ -36,63 +32,61 @@ import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Textarea } from './ui/textarea';
 
+function toFormData(data: ScholarProfile): UpdateProfileData {
+  return {
+    image: data.image || null,
+    phone: data.phone || '',
+    dateOfBirth: data.dateOfBirth || '',
+    gender: data.gender || undefined,
+    nationality: data.nationality || '',
+    location: data.location || '',
+    addressHomeCountry: data.addressHomeCountry || '',
+    passportExpirationDate: data.passportExpirationDate || '',
+    visaExpirationDate: data.visaExpirationDate || '',
+    emergencyContactCountryOfStudy: data.emergencyContactCountryOfStudy || '',
+    emergencyContactHomeCountry: data.emergencyContactHomeCountry || '',
+    program: data.program || '',
+    university: data.university || '',
+    year: data.year || '',
+    startDate: data.startDate ? new Date(data.startDate).toISOString().split('T')[0] : '',
+    graduationDate: data.graduationDate
+      ? new Date(data.graduationDate).toISOString().split('T')[0]
+      : '',
+    universityId: data.universityId || '',
+    dietaryInformation: data.dietaryInformation || '',
+    kokorozashi: data.kokorozashi || '',
+    longTermCareerPlan: data.longTermCareerPlan || '',
+    postGraduationPlan: data.postGraduationPlan || '',
+    bio: data.bio || '',
+    intendedUniversity: data.intendedUniversity || '',
+    intendedCourse: data.intendedCourse || '',
+    degreePathway: data.degreePathway || '',
+    majorCategory: data.majorCategory || '',
+    fieldOfStudy: data.fieldOfStudy || '',
+  };
+}
+
 export function MyProfile() {
-  const [profile, setProfile] = useState<ScholarProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { profile, profileStatus, applyProfile } = useScholarSession();
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [formData, setFormData] = useState<UpdateProfileData>({});
-
-  const loadProfile = useCallback(async () => {
-    try {
-      const data = await getMyProfile();
-      setProfile(data);
-      // Initialize form data with current profile values
-      setFormData({
-        image: data.image || null,
-        phone: data.phone || '',
-        dateOfBirth: data.dateOfBirth || '',
-        gender: data.gender || undefined,
-        nationality: data.nationality || '',
-        location: data.location || '',
-        addressHomeCountry: data.addressHomeCountry || '',
-        passportExpirationDate: data.passportExpirationDate || '',
-        visaExpirationDate: data.visaExpirationDate || '',
-        emergencyContactCountryOfStudy: data.emergencyContactCountryOfStudy || '',
-        emergencyContactHomeCountry: data.emergencyContactHomeCountry || '',
-        program: data.program || '',
-        university: data.university || '',
-        year: data.year || '',
-        startDate: data.startDate ? new Date(data.startDate).toISOString().split('T')[0] : '',
-        graduationDate: data.graduationDate
-          ? new Date(data.graduationDate).toISOString().split('T')[0]
-          : '',
-        universityId: data.universityId || '',
-        dietaryInformation: data.dietaryInformation || '',
-        kokorozashi: data.kokorozashi || '',
-        longTermCareerPlan: data.longTermCareerPlan || '',
-        postGraduationPlan: data.postGraduationPlan || '',
-        bio: data.bio || '',
-        intendedUniversity: data.intendedUniversity || '',
-        intendedCourse: data.intendedCourse || '',
-        degreePathway: data.degreePathway || '',
-        majorCategory: data.majorCategory || '',
-        fieldOfStudy: data.fieldOfStudy || '',
-      });
-    } catch (err) {
-      setError('Failed to load profile. Please try again.');
-      console.error('Error loading profile:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const [formHydrated, setFormHydrated] = useState(false);
+  const loading = profileStatus === 'loading' || !formHydrated;
 
   useEffect(() => {
-    loadProfile();
-  }, [loadProfile]);
+    if (profile && !editing) {
+      setFormData(toFormData(profile));
+      setFormHydrated(true);
+    }
+    if (profileStatus === 'error') {
+      setError('Failed to load profile. Please try again.');
+      setFormHydrated(true);
+    }
+  }, [profile, profileStatus, editing]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,7 +101,7 @@ export function MyProfile() {
         delete payload.image;
       }
       const updatedProfile = await updateMyProfile(payload);
-      setProfile(updatedProfile);
+      applyProfile(updatedProfile);
       setSuccess(true);
       setEditing(false);
       setTimeout(() => setSuccess(false), 3000);
@@ -121,39 +115,8 @@ export function MyProfile() {
 
   const handleCancel = () => {
     setEditing(false);
-    // Reset form data to current profile values
     if (profile) {
-      setFormData({
-        image: profile.image || null,
-        phone: profile.phone || '',
-        dateOfBirth: profile.dateOfBirth || '',
-        gender: profile.gender || undefined,
-        nationality: profile.nationality || '',
-        location: profile.location || '',
-        addressHomeCountry: profile.addressHomeCountry || '',
-        passportExpirationDate: profile.passportExpirationDate || '',
-        visaExpirationDate: profile.visaExpirationDate || '',
-        emergencyContactCountryOfStudy: profile.emergencyContactCountryOfStudy || '',
-        emergencyContactHomeCountry: profile.emergencyContactHomeCountry || '',
-        program: profile.program || '',
-        university: profile.university || '',
-        year: profile.year || '',
-        startDate: profile.startDate ? new Date(profile.startDate).toISOString().split('T')[0] : '',
-        graduationDate: profile.graduationDate
-          ? new Date(profile.graduationDate).toISOString().split('T')[0]
-          : '',
-        universityId: profile.universityId || '',
-        dietaryInformation: profile.dietaryInformation || '',
-        kokorozashi: profile.kokorozashi || '',
-        longTermCareerPlan: profile.longTermCareerPlan || '',
-        postGraduationPlan: profile.postGraduationPlan || '',
-        bio: profile.bio || '',
-        intendedUniversity: profile.intendedUniversity || '',
-        intendedCourse: profile.intendedCourse || '',
-        degreePathway: profile.degreePathway || '',
-        majorCategory: profile.majorCategory || '',
-        fieldOfStudy: profile.fieldOfStudy || '',
-      });
+      setFormData(toFormData(profile));
     }
   };
 

@@ -98,6 +98,8 @@ export function ScholarProfilePage({
     programs: [],
     years: [],
     universities: [],
+    intendedUniversities: [],
+    intendedCourses: [],
   });
 
   useEffect(() => {
@@ -470,6 +472,7 @@ export function ScholarProfilePage({
                             [
                               editForm.university,
                               ...filterOptions.universities,
+                              ...filterOptions.intendedUniversities,
                               ...DEFAULT_UNIVERSITY_OPTIONS,
                             ].filter(
                               (x): x is string =>
@@ -663,6 +666,8 @@ export function ScholarProfilePage({
                             [
                               enrollForm.university,
                               scholar.intendedUniversity ?? '',
+                              ...filterOptions.universities,
+                              ...filterOptions.intendedUniversities,
                               ...DEFAULT_UNIVERSITY_OPTIONS,
                             ].filter(
                               (x): x is string =>

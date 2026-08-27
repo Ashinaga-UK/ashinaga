@@ -56,6 +56,8 @@ export class ScholarsController {
     programs: string[];
     years: string[];
     universities: string[];
+    intendedUniversities: string[];
+    intendedCourses: string[];
   }> {
     return this.scholarsService.getFilterOptions();
   }
@@ -97,6 +99,7 @@ export class ScholarsController {
 
   // Specific :id routes must come after all non-parameterized routes
   @Get(':id/profile')
+  @UseGuards(StaffGuard)
   async getScholarProfile(@Param('id', ParseUUIDPipe) id: string): Promise<ScholarProfileDto> {
     return this.scholarsService.getScholarProfile(id);
   }

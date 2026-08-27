@@ -3,23 +3,21 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { MyAnnualReview } from '../../../components/my-annual-review';
-import { getMyProfile } from '../../../lib/api/profile';
+import { useScholarSession } from '../../../lib/scholar-session';
 
 export default function AnnualReviewPage() {
   const router = useRouter();
+  const { programStage, profileStatus } = useScholarSession();
   const [allowed, setAllowed] = useState(false);
 
   useEffect(() => {
-    getMyProfile()
-      .then((profile) => {
-        if (profile.programStage === 'prep_year') {
-          router.replace('/dashboard');
-          return;
-        }
-        setAllowed(true);
-      })
-      .catch(() => router.replace('/dashboard'));
-  }, [router]);
+    if (profileStatus === 'loading') return;
+    if (profileStatus === 'error' || programStage !== 'scholar') {
+      router.replace('/dashboard');
+      return;
+    }
+    setAllowed(true);
+  }, [profileStatus, programStage, router]);
 
   if (!allowed) {
     return <div className="p-6 text-muted-foreground">Redirecting...</div>;

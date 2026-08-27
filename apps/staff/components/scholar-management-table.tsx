@@ -78,6 +78,8 @@ export function ScholarManagementTable({
     programs: [],
     years: [],
     universities: [],
+    intendedUniversities: [],
+    intendedCourses: [],
   });
 
   // Debounce search to avoid too many API calls
