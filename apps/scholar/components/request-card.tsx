@@ -3,7 +3,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { getFormDataDisplayItems } from '@workspace/ui/lib/form-data-labels';
 import { Calendar, ChevronDown, ChevronUp, Download, Loader2, Paperclip, X } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { Fragment, useRef, useState } from 'react';
 import type { Request } from '../lib/api-client';
 import { respondToRequest } from '../lib/api-client';
 import { useFileUpload } from '../lib/hooks/use-file-upload';
@@ -77,10 +77,10 @@ export function RequestCard({ request }: RequestCardProps) {
         <h4 className="font-medium text-sm text-foreground">Form Details</h4>
         <dl className="grid grid-cols-1 gap-y-3 sm:grid-cols-[minmax(10rem,18rem)_minmax(0,1fr)] sm:gap-x-6 sm:gap-y-2">
           {formDataItems.map((item, index) => (
-            <div key={`${item.label}-${index}`} className="contents">
+            <Fragment key={`${item.label}-${index}`}>
               <dt className="text-sm font-medium text-muted-foreground">{item.label}</dt>
               <dd className="m-0 text-sm text-foreground">{item.value}</dd>
-            </div>
+            </Fragment>
           ))}
         </dl>
       </div>
