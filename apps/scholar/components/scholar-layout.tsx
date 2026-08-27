@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { ScholarSessionProvider, useScholarSession } from '../lib/scholar-session';
 import { cn } from '../lib/utils';
 import {
   Sidebar,
@@ -36,6 +37,8 @@ interface ScholarLayoutProps {
   onLogout: () => void;
 }
 
+type ProgramStage = 'prep_year' | 'scholar';
+
 const NAV_ITEMS = [
   { id: 'dashboard', href: '/dashboard', label: 'Overview', icon: Home },
   { id: 'profile', href: '/profile', label: 'My Profile', icon: User },
@@ -47,20 +50,39 @@ const NAV_ITEMS = [
   { id: 'resources', href: '/resources', label: 'Resources', icon: Library },
 ] as const;
 
+type NavItem = (typeof NAV_ITEMS)[number];
+
 const HOME_HREF = '/dashboard';
 
-function getScholarSection(pathname: string) {
+function getVisibleNavItems(programStage: ProgramStage | null): readonly NavItem[] {
+  // Fail closed: hide Annual Review until we know the user is an enrolled scholar.
+  if (programStage === 'scholar') {
+    return NAV_ITEMS;
+  }
+  return NAV_ITEMS.filter((item) => item.id !== 'annual-review');
+}
+
+function getScholarSection(pathname: string, navItems: readonly NavItem[]) {
   return (
-    NAV_ITEMS.find(
+    navItems.find(
       (item) =>
         pathname === item.href || (item.href !== HOME_HREF && pathname.startsWith(`${item.href}/`))
-    ) ?? NAV_ITEMS[0]
+    ) ??
+    navItems[0] ??
+    NAV_ITEMS[0]
   );
 }
 
-function ScholarSidebar({ onLogout }: { onLogout: () => void }) {
+function ScholarSidebar({
+  onLogout,
+  programStage,
+}: {
+  onLogout: () => void;
+  programStage: ProgramStage | null;
+}) {
   const pathname = usePathname();
   const { isMobile, setOpenMobile } = useSidebar();
+  const navItems = getVisibleNavItems(programStage);
 
   return (
     <Sidebar collapsible="icon" className="border-ashinaga-teal-100 dark:border-sidebar-border">
@@ -81,7 +103,7 @@ function ScholarSidebar({ onLogout }: { onLogout: () => void }) {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {NAV_ITEMS.map((item) => {
+              {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = pathname === item.href;
                 return (
@@ -121,10 +143,13 @@ function ScholarSidebar({ onLogout }: { onLogout: () => void }) {
   );
 }
 
-function ScholarHeader() {
+function ScholarHeader({ programStage }: { programStage: ProgramStage | null }) {
   const pathname = usePathname();
-  const section = getScholarSection(pathname);
+  const navItems = getVisibleNavItems(programStage);
+  const section = getScholarSection(pathname, navItems);
   const isHome = section.href === HOME_HREF;
+  const brandTitle =
+    programStage === 'prep_year' ? 'Ashinaga Prep Year' : 'Ashinaga Scholar Portal';
 
   return (
     <header
@@ -164,7 +189,7 @@ function ScholarHeader() {
             <span className="text-sm font-bold text-white">A</span>
           </div>
           <h1 className="truncate text-center text-sm font-semibold text-foreground">
-            Ashinaga Scholar Portal
+            {brandTitle}
           </h1>
         </Link>
       </div>
@@ -177,13 +202,23 @@ function ScholarHeader() {
 
 export function ScholarLayout({ children, onLogout }: ScholarLayoutProps) {
   return (
+    <ScholarSessionProvider>
+      <ScholarLayoutChrome onLogout={onLogout}>{children}</ScholarLayoutChrome>
+    </ScholarSessionProvider>
+  );
+}
+
+function ScholarLayoutChrome({ children, onLogout }: ScholarLayoutProps) {
+  const { programStage } = useScholarSession();
+
+  return (
     <SidebarProvider
       className="flex-col bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:from-background dark:to-background"
       style={{ '--sidebar-header-height': '3.5rem' } as React.CSSProperties}
     >
-      <ScholarHeader />
+      <ScholarHeader programStage={programStage} />
       <div className="flex min-h-0 flex-1">
-        <ScholarSidebar onLogout={onLogout} />
+        <ScholarSidebar onLogout={onLogout} programStage={programStage} />
         <SidebarInset className="bg-transparent">
           <div className="flex-1">{children}</div>
         </SidebarInset>

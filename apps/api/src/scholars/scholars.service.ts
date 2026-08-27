@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { and, count, desc, eq, ilike, inArray, isNull, not, or, sql } from 'drizzle-orm';
 import { validateProfileImage } from '../common/profile-image';
 import { database } from '../db/connection';
@@ -17,6 +22,7 @@ import {
 } from '../db/schema';
 import { InvitationsService } from '../invitations/invitations.service';
 import { escapeCsvValue } from '../utils/csv';
+import { isPlaceholderAcademicValue } from './academic-values';
 import { CreateScholarDto } from './dto/create-scholar.dto';
 import {
   DocumentDto,
@@ -32,6 +38,18 @@ import {
 } from './dto/get-scholars.dto';
 import { UpdateScholarProfileDto } from './dto/update-scholar-profile.dto';
 
+function uniqueFilterValues(values: Array<string | null | undefined>): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of values) {
+    const trimmed = value?.trim();
+    if (!trimmed || isPlaceholderAcademicValue(trimmed) || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    result.push(trimmed);
+  }
+  return result;
+}
+
 @Injectable()
 export class ScholarsService {
   constructor(private readonly invitationsService: InvitationsService) {}
@@ -39,7 +57,7 @@ export class ScholarsService {
   async createScholar(
     createScholarDto: CreateScholarDto,
     createdBy: string
-  ): Promise<{ success: boolean; message: string; scholar?: any }> {
+  ): Promise<{ success: boolean; message: string; scholar?: unknown }> {
     // Match invitation + auth flows (always lowercase in `invitations`; users may differ by case from signup)
     const emailNormalized = createScholarDto.email.trim().toLowerCase();
 
@@ -95,6 +113,10 @@ export class ScholarsService {
         graduationDate: createScholarDto.graduationDate,
         majorCategory: createScholarDto.majorCategory,
         fieldOfStudy: createScholarDto.fieldOfStudy,
+        programStage: createScholarDto.programStage,
+        intendedUniversity: createScholarDto.intendedUniversity,
+        intendedCourse: createScholarDto.intendedCourse,
+        degreePathway: createScholarDto.degreePathway,
       },
     };
 
@@ -117,6 +139,7 @@ export class ScholarsService {
       year,
       university,
       status,
+      programStage,
       sortBy = 'createdAt',
       sortOrder = 'desc',
     } = query;
@@ -153,6 +176,10 @@ export class ScholarsService {
     } else {
       // Exclude archived by default so they don't appear in main list
       whereConditions.push(not(eq(scholars.status, 'archived')));
+    }
+
+    if (programStage) {
+      whereConditions.push(eq(scholars.programStage, programStage));
     }
 
     const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
@@ -205,6 +232,10 @@ export class ScholarsService {
       location: row.scholar.location,
       bio: row.scholar.bio,
       status: row.scholar.status as 'active' | 'inactive' | 'on_hold' | 'archived',
+      programStage: row.scholar.programStage as 'prep_year' | 'scholar',
+      intendedUniversity: row.scholar.intendedUniversity,
+      intendedCourse: row.scholar.intendedCourse,
+      degreePathway: row.scholar.degreePathway,
       startDate: row.scholar.startDate,
       lastActivity: row.scholar.lastActivity,
       goals: goalsStats[row.scholar.id] || { total: 0, completed: 0, inProgress: 0, pending: 0 },
@@ -260,6 +291,10 @@ export class ScholarsService {
       location: row.scholar.location,
       bio: row.scholar.bio,
       status: row.scholar.status as 'active' | 'inactive' | 'on_hold' | 'archived',
+      programStage: row.scholar.programStage as 'prep_year' | 'scholar',
+      intendedUniversity: row.scholar.intendedUniversity,
+      intendedCourse: row.scholar.intendedCourse,
+      degreePathway: row.scholar.degreePathway,
       startDate: row.scholar.startDate,
       lastActivity: row.scholar.lastActivity,
       goals: goalsStats[row.scholar.id] || { total: 0, completed: 0, inProgress: 0, pending: 0 },
@@ -448,7 +483,7 @@ export class ScholarsService {
 
     // Create maps for easy lookup
     const responseMap = new Map(responsesData.map((r) => [r.taskId, r]));
-    const attachmentMap = new Map<string, any[]>();
+    const attachmentMap = new Map<string, (typeof attachmentsData)[number][]>();
     attachmentsData.forEach((a) => {
       const existing = attachmentMap.get(a.taskResponseId) || [];
       attachmentMap.set(a.taskResponseId, [...existing, a]);
@@ -514,6 +549,10 @@ export class ScholarsService {
       location: row.scholar.location,
       bio: row.scholar.bio,
       status: row.scholar.status as 'active' | 'inactive' | 'on_hold' | 'archived',
+      programStage: row.scholar.programStage as 'prep_year' | 'scholar',
+      intendedUniversity: row.scholar.intendedUniversity,
+      intendedCourse: row.scholar.intendedCourse,
+      degreePathway: row.scholar.degreePathway,
       startDate: row.scholar.startDate,
       lastActivity: row.scholar.lastActivity,
       aaiScholarId: row.scholar.aaiScholarId,
@@ -545,29 +584,38 @@ export class ScholarsService {
     programs: string[];
     years: string[];
     universities: string[];
+    intendedUniversities: string[];
+    intendedCourses: string[];
   }> {
-    // Get unique programs
-    const programsResult = await database
-      .selectDistinct({ value: scholars.program })
-      .from(scholars)
-      .orderBy(scholars.program);
-
-    // Get unique years
-    const yearsResult = await database
-      .selectDistinct({ value: scholars.year })
-      .from(scholars)
-      .orderBy(scholars.year);
-
-    // Get unique universities
-    const universitiesResult = await database
-      .selectDistinct({ value: scholars.university })
-      .from(scholars)
-      .orderBy(scholars.university);
+    const [
+      programsResult,
+      yearsResult,
+      universitiesResult,
+      intendedUniversitiesResult,
+      intendedCoursesResult,
+    ] = await Promise.all([
+      database.selectDistinct({ value: scholars.program }).from(scholars).orderBy(scholars.program),
+      database.selectDistinct({ value: scholars.year }).from(scholars).orderBy(scholars.year),
+      database
+        .selectDistinct({ value: scholars.university })
+        .from(scholars)
+        .orderBy(scholars.university),
+      database
+        .selectDistinct({ value: scholars.intendedUniversity })
+        .from(scholars)
+        .orderBy(scholars.intendedUniversity),
+      database
+        .selectDistinct({ value: scholars.intendedCourse })
+        .from(scholars)
+        .orderBy(scholars.intendedCourse),
+    ]);
 
     return {
-      programs: programsResult.map((r) => r.value).filter(Boolean),
-      years: yearsResult.map((r) => r.value).filter(Boolean),
-      universities: universitiesResult.map((r) => r.value).filter(Boolean),
+      programs: uniqueFilterValues(programsResult.map((r) => r.value)),
+      years: uniqueFilterValues(yearsResult.map((r) => r.value)),
+      universities: uniqueFilterValues(universitiesResult.map((r) => r.value)),
+      intendedUniversities: uniqueFilterValues(intendedUniversitiesResult.map((r) => r.value)),
+      intendedCourses: uniqueFilterValues(intendedCoursesResult.map((r) => r.value)),
     };
   }
 
@@ -716,6 +764,10 @@ export class ScholarsService {
       location: row.scholar.location,
       bio: row.scholar.bio,
       status: row.scholar.status as 'active' | 'inactive' | 'on_hold' | 'archived',
+      programStage: row.scholar.programStage as 'prep_year' | 'scholar',
+      intendedUniversity: row.scholar.intendedUniversity,
+      intendedCourse: row.scholar.intendedCourse,
+      degreePathway: row.scholar.degreePathway,
       startDate: row.scholar.startDate,
       lastActivity: row.scholar.lastActivity,
       // New fields
@@ -762,7 +814,8 @@ export class ScholarsService {
       throw new NotFoundException('Scholar profile not found');
     }
 
-    const scholarId = scholarResult[0].id;
+    const current = scholarResult[0];
+    const scholarId = current.id;
 
     // Prepare update data - remove fields that shouldn't be updated
     const {
@@ -790,10 +843,24 @@ export class ScholarsService {
       majorCategory,
       fieldOfStudy,
       image,
+      programStage,
+      intendedUniversity,
+      intendedCourse,
+      degreePathway,
     } = profileUpdateData;
 
+    if (programStage === 'scholar' && current.programStage === 'prep_year') {
+      const nextUniversity = university !== undefined ? university : current.university;
+      const nextYear = year !== undefined ? year : current.year;
+      if (isPlaceholderAcademicValue(nextUniversity) || isPlaceholderAcademicValue(nextYear)) {
+        throw new BadRequestException(
+          'University and academic year are required to mark a candidate as an enrolled scholar'
+        );
+      }
+    }
+
     // Update scholar record - handle empty strings and date conversions properly
-    const dbUpdateData: any = { updatedAt: new Date() };
+    const dbUpdateData: Record<string, unknown> = { updatedAt: new Date() };
 
     // Handle date fields - only set if not empty string
     if (dateOfBirth && dateOfBirth !== '') dbUpdateData.dateOfBirth = dateOfBirth;
@@ -839,6 +906,13 @@ export class ScholarsService {
     if (bio !== undefined) dbUpdateData.bio = bio || null;
     if (majorCategory !== undefined) dbUpdateData.majorCategory = majorCategory || null;
     if (fieldOfStudy !== undefined) dbUpdateData.fieldOfStudy = fieldOfStudy || null;
+
+    // Prep Year programme stage (ASH-79)
+    if (programStage !== undefined) dbUpdateData.programStage = programStage;
+    if (intendedUniversity !== undefined)
+      dbUpdateData.intendedUniversity = intendedUniversity || null;
+    if (intendedCourse !== undefined) dbUpdateData.intendedCourse = intendedCourse || null;
+    if (degreePathway !== undefined) dbUpdateData.degreePathway = degreePathway || null;
 
     await database.update(scholars).set(dbUpdateData).where(eq(scholars.id, scholarId));
 
@@ -910,7 +984,7 @@ export class ScholarsService {
         : [];
 
     // Group comments by goalId
-    const commentsByGoal = new Map<string, any[]>();
+    const commentsByGoal = new Map<string, (typeof commentsData)[number][]>();
     for (const comment of commentsData) {
       if (!commentsByGoal.has(comment.goalId)) {
         commentsByGoal.set(comment.goalId, []);
@@ -999,6 +1073,10 @@ export class ScholarsService {
       'Program',
       'Year',
       'University',
+      'Program Stage',
+      'Intended University',
+      'Intended Course',
+      'Degree Pathway',
       'University ID',
       'Location',
       'Address (Home Country)',
@@ -1034,6 +1112,10 @@ export class ScholarsService {
         s.program,
         s.year,
         s.university,
+        s.programStage,
+        s.intendedUniversity ?? '',
+        s.intendedCourse ?? '',
+        s.degreePathway ?? '',
         s.universityId ?? '',
         s.location ?? '',
         s.addressHomeCountry ?? '',

@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -216,6 +217,7 @@ export class AnnualUpdatesService {
 
   async saveDraft(userId: string, dto: UpsertAnnualUpdateDto) {
     const scholar = await this.getScholarForUser(userId);
+    this.assertCanWriteAnnualUpdate(scholar);
     this.validateWordLimits(dto);
 
     return this.upsertAnnualUpdate(scholar.id, dto, 'draft');
@@ -223,6 +225,7 @@ export class AnnualUpdatesService {
 
   async submit(userId: string, dto: UpsertAnnualUpdateDto) {
     const scholar = await this.getScholarForUser(userId);
+    this.assertCanWriteAnnualUpdate(scholar);
     this.validateRequiredFields(dto);
     this.validateWordLimits(dto);
 
@@ -269,6 +272,14 @@ export class AnnualUpdatesService {
     }
 
     return scholar;
+  }
+
+  private assertCanWriteAnnualUpdate(scholar: typeof scholars.$inferSelect) {
+    if (scholar.programStage === 'prep_year') {
+      throw new ForbiddenException(
+        'Prep Year candidates cannot submit an annual review until enrolled as a scholar'
+      );
+    }
   }
 
   private toAnnualUpdateValues(dto: UpsertAnnualUpdateDto) {

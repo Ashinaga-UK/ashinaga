@@ -36,6 +36,10 @@ export class GetScholarsQueryDto {
   status?: 'active' | 'inactive' | 'on_hold' | 'archived';
 
   @IsOptional()
+  @IsEnum(['prep_year', 'scholar'])
+  programStage?: 'prep_year' | 'scholar';
+
+  @IsOptional()
   @IsEnum(['name', 'lastActivity', 'createdAt'])
   sortBy?: string = 'createdAt';
 
@@ -140,6 +144,10 @@ export class ScholarResponseDto {
   location?: string | null;
   bio?: string | null;
   status: 'active' | 'inactive' | 'on_hold' | 'archived';
+  programStage: 'prep_year' | 'scholar';
+  intendedUniversity?: string | null;
+  intendedCourse?: string | null;
+  degreePathway?: string | null;
   startDate: Date;
   lastActivity?: Date | null;
   goals: ScholarGoalsStatsDto;
@@ -162,6 +170,10 @@ export class ScholarProfileDto {
   location?: string | null;
   bio?: string | null;
   status: 'active' | 'inactive' | 'on_hold' | 'archived';
+  programStage: 'prep_year' | 'scholar';
+  intendedUniversity?: string | null;
+  intendedCourse?: string | null;
+  degreePathway?: string | null;
   startDate: Date;
   lastActivity?: Date | null;
 

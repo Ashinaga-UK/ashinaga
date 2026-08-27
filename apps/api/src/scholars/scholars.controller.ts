@@ -23,7 +23,10 @@ import {
   ScholarProfileDto,
   ScholarResponseDto,
 } from './dto/get-scholars.dto';
-import { UpdateScholarProfileDto } from './dto/update-scholar-profile.dto';
+import {
+  UpdateMyScholarProfileDto,
+  UpdateScholarProfileDto,
+} from './dto/update-scholar-profile.dto';
 import { ScholarsService } from './scholars.service';
 
 @ApiTags('scholars')
@@ -53,6 +56,8 @@ export class ScholarsController {
     programs: string[];
     years: string[];
     universities: string[];
+    intendedUniversities: string[];
+    intendedCourses: string[];
   }> {
     return this.scholarsService.getFilterOptions();
   }
@@ -87,13 +92,14 @@ export class ScholarsController {
   @UseGuards(AuthGuard)
   async updateMyProfile(
     @Request() req,
-    @Body() updateData: UpdateScholarProfileDto
+    @Body() updateData: UpdateMyScholarProfileDto
   ): Promise<ScholarProfileDto> {
     return this.scholarsService.updateScholarProfile(req.user.id, updateData);
   }
 
   // Specific :id routes must come after all non-parameterized routes
   @Get(':id/profile')
+  @UseGuards(StaffGuard)
   async getScholarProfile(@Param('id', ParseUUIDPipe) id: string): Promise<ScholarProfileDto> {
     return this.scholarsService.getScholarProfile(id);
   }

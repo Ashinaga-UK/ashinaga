@@ -659,7 +659,7 @@ async function populateDevData() {
       'Environmental Science',
       'Mathematics',
     ];
-    const years = ['Pre-University', 'Year 1', 'Year 2', 'Year 3', 'Year 4', 'Masters', 'PhD'];
+    const years = ['Foundation', 'Year 1', 'Year 2', 'Year 3', 'Year 4', 'Masters', 'PhD'];
     const statuses: Array<'active' | 'inactive' | 'on_hold'> = ['active', 'inactive', 'on_hold'];
     const locations = [
       'London, UK',

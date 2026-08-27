@@ -1,3 +1,4 @@
+import { OmitType } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 
 export enum Gender {
@@ -5,6 +6,11 @@ export enum Gender {
   FEMALE = 'female',
   OTHER = 'other',
   PREFER_NOT_TO_SAY = 'prefer_not_to_say',
+}
+
+export enum ProgramStage {
+  PREP_YEAR = 'prep_year',
+  SCHOLAR = 'scholar',
 }
 
 export class UpdateScholarProfileDto {
@@ -114,4 +120,25 @@ export class UpdateScholarProfileDto {
   @IsOptional()
   @IsString()
   fieldOfStudy?: string;
+
+  // Prep Year programme stage (ASH-79)
+  @IsOptional()
+  @IsEnum(ProgramStage)
+  programStage?: ProgramStage;
+
+  @IsOptional()
+  @IsString()
+  intendedUniversity?: string | null;
+
+  @IsOptional()
+  @IsString()
+  intendedCourse?: string | null;
+
+  @IsOptional()
+  @IsString()
+  degreePathway?: string | null;
 }
+
+export class UpdateMyScholarProfileDto extends OmitType(UpdateScholarProfileDto, [
+  'programStage',
+] as const) {}

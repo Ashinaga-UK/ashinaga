@@ -16,32 +16,27 @@ import {
 } from '../../../components/ui/card';
 import { Progress } from '../../../components/ui/progress';
 import { type Goal, getMyGoals } from '../../../lib/api/goals';
-import { getMyProfile, type ScholarProfile } from '../../../lib/api/profile';
 import { getMyTasks, type Task } from '../../../lib/api/tasks';
 import { useSession } from '../../../lib/auth-client';
 import { useMyAnnouncements, useMyRequests } from '../../../lib/hooks/use-queries';
+import { useScholarSession } from '../../../lib/scholar-session';
 
 export default function DashboardPage() {
   const router = useRouter();
   const { data: session } = useSession();
   const { data: requests } = useMyRequests();
   const { data: announcements } = useMyAnnouncements();
+  const { profile, profileStatus } = useScholarSession();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
-  const [profile, setProfile] = useState<ScholarProfile | null>(null);
   const [loadingData, setLoadingData] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [tasksData, goalsData, profileData] = await Promise.all([
-          getMyTasks(),
-          getMyGoals(),
-          getMyProfile(),
-        ]);
+        const [tasksData, goalsData] = await Promise.all([getMyTasks(), getMyGoals()]);
         setTasks(tasksData);
         setGoals(goalsData);
-        setProfile(profileData);
       } catch (error) {
         console.error('Failed to load data:', error);
       } finally {
@@ -133,7 +128,11 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
           Welcome back, {session?.user?.name || 'Scholar'}!
         </h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">Here's your overview for today</p>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">
+          {profile?.programStage === 'prep_year'
+            ? 'Ashinaga · Prep Year'
+            : "Here's your overview for today"}
+        </p>
       </div>
 
       {/* Stats Cards */}
@@ -181,14 +180,29 @@ export default function DashboardPage() {
               <p className="text-sm text-gray-600 dark:text-gray-400">Program</p>
               <p className="font-medium">{profile?.program || 'Not set'}</p>
             </div>
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">University</p>
-              <p className="font-medium">{profile?.university || 'Not set'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Year</p>
-              <p className="font-medium">{profile?.year || 'Not set'}</p>
-            </div>
+            {profile?.programStage === 'prep_year' ? (
+              <>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Intended University</p>
+                  <p className="font-medium">{profile.intendedUniversity || 'Not yet enrolled'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Intended Course</p>
+                  <p className="font-medium">{profile.intendedCourse || 'Not set'}</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">University</p>
+                  <p className="font-medium">{profile?.university || 'Not set'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Year</p>
+                  <p className="font-medium">{profile?.year || 'Not set'}</p>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -211,7 +225,7 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {loadingData ? (
+            {loadingData || profileStatus === 'loading' ? (
               <div className="text-center py-4">
                 <p className="text-sm text-gray-500 dark:text-gray-400">Loading LDF...</p>
               </div>

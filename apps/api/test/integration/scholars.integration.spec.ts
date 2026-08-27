@@ -10,7 +10,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import request from 'supertest';
 import { scholars, users } from '../../src/db/schema';
-import { createIntegrationApp } from './helpers/create-app';
+import { createAuthenticatedIntegrationApp, createIntegrationApp } from './helpers/create-app';
 
 describe('Scholars API (integration)', () => {
   let app: INestApplication;
@@ -141,9 +141,13 @@ describe('Scholars API (integration)', () => {
       expect(res.body).toHaveProperty('programs');
       expect(res.body).toHaveProperty('years');
       expect(res.body).toHaveProperty('universities');
+      expect(res.body).toHaveProperty('intendedUniversities');
+      expect(res.body).toHaveProperty('intendedCourses');
       expect(Array.isArray(res.body.programs)).toBe(true);
       expect(Array.isArray(res.body.years)).toBe(true);
       expect(Array.isArray(res.body.universities)).toBe(true);
+      expect(Array.isArray(res.body.intendedUniversities)).toBe(true);
+      expect(Array.isArray(res.body.intendedCourses)).toBe(true);
     });
   });
 
@@ -183,8 +187,32 @@ describe('Scholars API (integration)', () => {
   });
 
   describe('GET /api/scholars/:id/profile', () => {
+    let authedApp: INestApplication;
+
+    beforeAll(async () => {
+      const authed = await createAuthenticatedIntegrationApp();
+      authedApp = authed.app;
+      authed.auth.setUser({
+        id: 'staff-integration',
+        email: 'staff-integration@example.com',
+        userType: 'staff',
+      });
+    });
+
+    afterAll(async () => {
+      if (authedApp) await authedApp.close();
+    });
+
+    it('rejects unauthenticated callers', async () => {
+      const unauthenticated = await createAuthenticatedIntegrationApp();
+      await request(unauthenticated.app.getHttpServer())
+        .get(`/api/scholars/${seededScholarId}/profile`)
+        .expect(403);
+      await unauthenticated.app.close();
+    });
+
     it('returns 200 and full profile when id exists', async () => {
-      const res = await request(app.getHttpServer())
+      const res = await request(authedApp.getHttpServer())
         .get(`/api/scholars/${seededScholarId}/profile`)
         .expect(200);
 
@@ -214,7 +242,7 @@ describe('Scholars API (integration)', () => {
     });
 
     it('returns 404 for non-existent scholar id', async () => {
-      await request(app.getHttpServer())
+      await request(authedApp.getHttpServer())
         .get('/api/scholars/00000000-0000-0000-0000-000000000000/profile')
         .expect(404);
     });

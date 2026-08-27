@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { AnnualUpdatesService } from './annual-updates.service';
 import type { UpsertAnnualUpdateDto } from './dto/upsert-annual-update.dto';
 
@@ -49,6 +49,34 @@ describe('AnnualUpdatesService', () => {
       expect(csv).toContain('"draft"');
       expect(csv).not.toContain('Private draft highlight');
       expect(csv).not.toContain('"3"');
+    });
+  });
+
+  describe('prep-year write access', () => {
+    it('rejects saveDraft for prep-year scholars', async () => {
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockResolvedValue([{ id: 's1', programStage: 'prep_year' }]),
+        }),
+      });
+
+      await expect(service.saveDraft('user-1', createCompletePayload())).rejects.toBeInstanceOf(
+        ForbiddenException
+      );
+      expect(mockDb.insert).not.toHaveBeenCalled();
+    });
+
+    it('rejects submit for prep-year scholars', async () => {
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockResolvedValue([{ id: 's1', programStage: 'prep_year' }]),
+        }),
+      });
+
+      await expect(service.submit('user-1', createCompletePayload())).rejects.toBeInstanceOf(
+        ForbiddenException
+      );
+      expect(mockDb.insert).not.toHaveBeenCalled();
     });
   });
 
