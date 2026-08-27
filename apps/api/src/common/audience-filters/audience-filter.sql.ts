@@ -1,9 +1,22 @@
-import { type SQL, type SQLWrapper, sql } from 'drizzle-orm';
+import { or, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
 import { resourceFilters, resources } from '../../db/schema';
 import type { ScholarAudience } from './audience-filter';
 
 export function normalizedSqlEquals(column: SQLWrapper, value: string | null | undefined): SQL {
   return sql`LOWER(TRIM(${column}::text)) = LOWER(TRIM(${value}))`;
+}
+
+export function matchAnyNormalizedValue(column: SQLWrapper, values: string[]): SQL {
+  if (values.length === 0) {
+    return sql`FALSE`;
+  }
+
+  const conditions = values.map((value) => normalizedSqlEquals(column, value));
+  if (conditions.length === 1) {
+    return conditions[0]!;
+  }
+
+  return or(...conditions) ?? sql`FALSE`;
 }
 
 export function buildResourceAudienceVisibilitySql(scholar: ScholarAudience): SQL {

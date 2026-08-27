@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { and, asc, count, desc, eq, inArray, or, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, sql } from 'drizzle-orm';
 import {
   audienceValuesEqual,
   normalizeAudienceFilters,
 } from '../common/audience-filters/audience-filter';
-import { normalizedSqlEquals } from '../common/audience-filters/audience-filter.sql';
+import { matchAnyNormalizedValue } from '../common/audience-filters/audience-filter.sql';
 import { getScholarAudienceFilterOptions } from '../common/audience-filters/audience-filter-options';
 import { database } from '../db/connection';
 import {
@@ -261,7 +261,7 @@ export class AnnouncementsService {
     const whereConditions = Array.from(filtersByType.entries()).map(([type, values]) => {
       const column = scholarColumns[type as keyof typeof scholarColumns];
       if (!column) return sql`FALSE`;
-      return or(...values.map((value) => normalizedSqlEquals(column, value))) ?? sql`FALSE`;
+      return matchAnyNormalizedValue(column, values);
     });
 
     const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;

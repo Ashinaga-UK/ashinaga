@@ -19,10 +19,12 @@ describe('ResourcesController', () => {
   const mockResourcesService = {
     listResources: jest.fn(),
     createResource: jest.fn(),
+    createUploadUrl: jest.fn(),
     updateResource: jest.fn(),
     archiveResource: jest.fn(),
     getFilterOptions: jest.fn(),
     getResourcesForScholar: jest.fn(),
+    getDownloadUrl: jest.fn(),
   };
 
   const makeRequest = (userId: string) =>
@@ -38,7 +40,11 @@ describe('ResourcesController', () => {
     description: 'Reference material for scholars.',
     type: 'Handbook',
     category: 'Handbook',
+    sourceType: 'url',
     url: 'https://docs.example/handbook',
+    fileName: null,
+    fileMimeType: null,
+    fileSizeBytes: null,
     status: 'live',
     filters: [],
     createdAt: new Date('2026-01-01'),
@@ -151,6 +157,59 @@ describe('ResourcesController', () => {
 
       expect(service.getResourcesForScholar).toHaveBeenCalledWith('scholar-user-1');
       expect(result).toEqual([mockResource]);
+    });
+  });
+
+  describe('createUploadUrl', () => {
+    it('creates a pending upload URL for staff', async () => {
+      mockResourcesService.createUploadUrl.mockResolvedValue({
+        uploadUrl: 'https://s3.example/upload',
+        fields: { key: 'resources/pending/file.pdf', Policy: 'policy' },
+        fileKey: 'resources/pending/file.pdf',
+      });
+
+      const result = await controller.createUploadUrl({
+        fileName: 'handbook.pdf',
+        fileType: 'application/pdf',
+        fileSize: 2048,
+      });
+
+      expect(service.createUploadUrl).toHaveBeenCalledWith({
+        fileName: 'handbook.pdf',
+        fileType: 'application/pdf',
+        fileSize: 2048,
+      });
+      expect(result.fileKey).toBe('resources/pending/file.pdf');
+      expect(result.fields).toEqual(expect.objectContaining({ Policy: 'policy' }));
+    });
+  });
+
+  describe('getDownloadUrl', () => {
+    it('returns a download URL for the authenticated user', async () => {
+      const request = makeRequest('scholar-user-1');
+      mockResourcesService.getDownloadUrl.mockResolvedValue({
+        downloadUrl: 'https://s3.example/download',
+      });
+
+      const result = await controller.getDownloadUrl('resource-1', request, {});
+
+      expect(service.getDownloadUrl).toHaveBeenCalledWith(
+        'resource-1',
+        'scholar-user-1',
+        'attachment'
+      );
+      expect(result).toEqual({ downloadUrl: 'https://s3.example/download' });
+    });
+
+    it('requests an inline URL when viewing in the browser', async () => {
+      const request = makeRequest('scholar-user-1');
+      mockResourcesService.getDownloadUrl.mockResolvedValue({
+        downloadUrl: 'https://s3.example/view',
+      });
+
+      await controller.getDownloadUrl('resource-1', request, { disposition: 'inline' });
+
+      expect(service.getDownloadUrl).toHaveBeenCalledWith('resource-1', 'scholar-user-1', 'inline');
     });
   });
 });

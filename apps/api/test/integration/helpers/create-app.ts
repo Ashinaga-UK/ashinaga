@@ -6,6 +6,7 @@ import { Test } from '@nestjs/testing';
 import { AppModule } from '../../../src/app.module';
 import { AuthGuard } from '../../../src/auth/auth.guard';
 import { StaffGuard } from '../../../src/auth/staff.guard';
+import { ObjectStorageService } from '../../../src/storage/object-storage';
 
 /**
  * Create a Nest application instance for integration tests.
@@ -54,7 +55,9 @@ interface AuthenticatedApp {
  * Create a Nest app for integration tests with AuthGuard and StaffGuard overridden so
  * test code can set the "current user" without going through Better Auth.
  */
-export async function createAuthenticatedIntegrationApp(): Promise<AuthenticatedApp> {
+export async function createAuthenticatedIntegrationApp(options?: {
+  objectStorage?: Partial<ObjectStorageService>;
+}): Promise<AuthenticatedApp> {
   let currentUser: TestUser | null = null;
   const auth: AuthContext = {
     setUser: (user) => {
@@ -65,7 +68,7 @@ export async function createAuthenticatedIntegrationApp(): Promise<Authenticated
 
   const adapter = new FastifyAdapter({ bodyLimit: 5 * 1024 * 1024 });
 
-  const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+  const moduleBuilder = Test.createTestingModule({ imports: [AppModule] })
     .overrideGuard(AuthGuard)
     .useValue({
       canActivate: (context: {
@@ -88,8 +91,13 @@ export async function createAuthenticatedIntegrationApp(): Promise<Authenticated
         req.user = { ...currentUser };
         return true;
       },
-    })
-    .compile();
+    });
+
+  if (options?.objectStorage) {
+    moduleBuilder.overrideProvider(ObjectStorageService).useValue(options.objectStorage);
+  }
+
+  const moduleRef = await moduleBuilder.compile();
 
   const app = moduleRef.createNestApplication<NestFastifyApplication>(adapter, {
     logger: ['error', 'warn'],
