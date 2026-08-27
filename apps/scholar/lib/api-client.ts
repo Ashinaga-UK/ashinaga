@@ -178,13 +178,17 @@ export async function getStaffList(): Promise<StaffMember[]> {
 export type ResourceType = 'Guide' | 'Handbook' | 'Template';
 export type ResourceCategory = 'LDF' | 'Handbook' | 'Proposal' | 'Support';
 
+export type ResourceSourceType = 'url' | 'file';
+
 export interface Resource {
   id: string;
   title: string;
   description: string;
   type: ResourceType;
   category: ResourceCategory;
-  url: string;
+  sourceType: ResourceSourceType;
+  url: string | null;
+  fileName: string | null;
   status: 'live';
   filters: Array<{ type: string; value: string }>;
   createdAt: string;
@@ -193,6 +197,14 @@ export interface Resource {
 
 export async function getMyResources(): Promise<Resource[]> {
   return fetchAPI<Resource[]>('/api/resources/my-resources');
+}
+
+export async function getResourceDownloadUrl(
+  resourceId: string,
+  disposition: 'attachment' | 'inline' = 'attachment'
+): Promise<{ downloadUrl: string }> {
+  const query = disposition === 'inline' ? '?disposition=inline' : '';
+  return fetchAPI<{ downloadUrl: string }>(`/api/resources/${resourceId}/download${query}`);
 }
 
 // Export the fetchAPI function and any other API functions as needed

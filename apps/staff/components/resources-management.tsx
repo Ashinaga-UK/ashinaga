@@ -3,8 +3,10 @@
 import { useQueryClient } from '@tanstack/react-query';
 import {
   BookOpen,
+  Download,
   Edit,
   ExternalLink,
+  Eye,
   FileText,
   GraduationCap,
   Library,
@@ -16,10 +18,13 @@ import type React from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   createResource,
+  createResourceUploadUrl,
   deleteResource,
+  getResourceDownloadUrl,
   type Resource,
   type ResourceCategory,
   type ResourceFilterOptions,
+  type ResourceSourceType,
   type ResourceStatus,
   type ResourceType,
   updateResource,
@@ -62,6 +67,7 @@ type ResourceFilterDraft = {
 type ResourceFormData = {
   title: string;
   description: string;
+  sourceType: ResourceSourceType;
   url: string;
   type: ResourceType;
   category: ResourceCategory;
@@ -106,6 +112,49 @@ function getResourceErrorMessage(error: unknown) {
   return message || 'Please try again.';
 }
 
+async function openResourceFile(resourceId: string, disposition: 'attachment' | 'inline') {
+  if (disposition === 'inline') {
+    const viewTab = window.open('about:blank', '_blank');
+    if (viewTab) {
+      viewTab.opener = null;
+    }
+    try {
+      const { downloadUrl } = await getResourceDownloadUrl(resourceId, 'inline');
+      if (!viewTab) {
+        throw new Error('Allow pop-ups to view this file, or download it instead.');
+      }
+      viewTab.location.href = downloadUrl;
+    } catch (error) {
+      viewTab?.close();
+      throw error;
+    }
+    return;
+  }
+
+  const { downloadUrl } = await getResourceDownloadUrl(resourceId, 'attachment');
+  window.location.href = downloadUrl;
+}
+
+const RESOURCE_MIME_BY_EXTENSION: Record<string, string> = {
+  '.pdf': 'application/pdf',
+  '.doc': 'application/msword',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.xls': 'application/vnd.ms-excel',
+  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  '.ppt': 'application/vnd.ms-powerpoint',
+  '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+};
+
+function resolveResourceMimeType(file: File): string | null {
+  if (file.type && Object.values(RESOURCE_MIME_BY_EXTENSION).includes(file.type)) {
+    return file.type;
+  }
+  const extension = file.name.includes('.')
+    ? `.${file.name.split('.').pop()?.toLowerCase() ?? ''}`
+    : '';
+  return RESOURCE_MIME_BY_EXTENSION[extension] ?? null;
+}
+
 function getFilterValues(filterType: string, options: ResourceFilterOptions) {
   switch (filterType) {
     case 'program':
@@ -128,6 +177,7 @@ function getFilterValues(filterType: string, options: ResourceFilterOptions) {
 const emptyResourceFormData: ResourceFormData = {
   title: '',
   description: '',
+  sourceType: 'url',
   url: '',
   type: 'Guide',
   category: 'LDF',
@@ -140,7 +190,8 @@ function getResourceFormData(resource?: Resource): ResourceFormData {
   return {
     title: resource.title,
     description: resource.description,
-    url: resource.url,
+    sourceType: resource.sourceType,
+    url: resource.url ?? '',
     type: resource.type,
     category: resource.category,
     status: resource.status,
@@ -183,6 +234,13 @@ function ResourceDialog({
     getResourceFormFilters(resource)
   );
   const [formData, setFormData] = useState<ResourceFormData>(() => getResourceFormData(resource));
+  const [uploading, setUploading] = useState(false);
+  const [pendingUpload, setPendingUpload] = useState<{
+    pendingFileKey: string;
+    fileName: string;
+    fileMimeType: string;
+    fileSizeBytes: number;
+  } | null>(null);
   const resourceRef = useRef(resource);
   resourceRef.current = resource;
   const resourceId = resource?.id;
@@ -203,6 +261,7 @@ function ResourceDialog({
     setFilters(getResourceFormFilters(resourceRef.current));
     setFilterType('program');
     setFilterValue('');
+    setPendingUpload(null);
   }, [open, resourceId]);
 
   const reset = () => {
@@ -210,6 +269,55 @@ function ResourceDialog({
     setFilters(getResourceFormFilters(resource));
     setFilterType('program');
     setFilterValue('');
+    setPendingUpload(null);
+  };
+
+  const handleFileChosen = async (file: File) => {
+    setUploading(true);
+    try {
+      const fileType = resolveResourceMimeType(file);
+      if (!fileType) {
+        throw new Error('Please choose a PDF, Word, Excel, or PowerPoint file.');
+      }
+      if (file.size < 1 || file.size > 10 * 1024 * 1024) {
+        throw new Error('Please choose a file smaller than 10MB.');
+      }
+
+      const { uploadUrl, fields, fileKey } = await createResourceUploadUrl({
+        fileName: file.name,
+        fileType,
+        fileSize: file.size,
+      });
+
+      const formData = new FormData();
+      for (const [key, value] of Object.entries(fields)) {
+        formData.append(key, value);
+      }
+      formData.append('file', file);
+
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'POST',
+        body: formData,
+      });
+      if (!uploadResponse.ok) {
+        throw new Error('Could not upload the document. Please try again.');
+      }
+      setPendingUpload({
+        pendingFileKey: fileKey,
+        fileName: file.name,
+        fileMimeType: fileType,
+        fileSizeBytes: file.size,
+      });
+    } catch (error) {
+      setPendingUpload(null);
+      toast({
+        title: 'Could not upload document',
+        description: getResourceErrorMessage(error),
+        variant: 'destructive',
+      });
+    } finally {
+      setUploading(false);
+    }
   };
 
   const addFilter = () => {
@@ -228,19 +336,74 @@ function ResourceDialog({
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!isEditing && formData.sourceType === 'file' && !pendingUpload) {
+      toast({
+        title: 'Upload a document first',
+        description: 'Choose a file before saving this resource.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setSubmitting(true);
 
     try {
       const savedResource =
         resource === undefined
-          ? await createResource({
-              ...formData,
-              filters,
-            })
-          : await updateResource(resource.id, {
-              ...formData,
-              filters,
-            });
+          ? await createResource(
+              formData.sourceType === 'file'
+                ? {
+                    title: formData.title,
+                    description: formData.description,
+                    type: formData.type,
+                    category: formData.category,
+                    status: formData.status,
+                    filters,
+                    sourceType: 'file',
+                    pendingFileKey: pendingUpload?.pendingFileKey,
+                    fileName: pendingUpload?.fileName,
+                    fileMimeType: pendingUpload?.fileMimeType,
+                    fileSizeBytes: pendingUpload?.fileSizeBytes,
+                  }
+                : {
+                    title: formData.title,
+                    description: formData.description,
+                    type: formData.type,
+                    category: formData.category,
+                    status: formData.status,
+                    filters,
+                    sourceType: 'url',
+                    url: formData.url,
+                  }
+            )
+          : await updateResource(
+              resource.id,
+              resource.sourceType === 'file'
+                ? {
+                    title: formData.title,
+                    description: formData.description,
+                    type: formData.type,
+                    category: formData.category,
+                    status: formData.status,
+                    filters,
+                    ...(pendingUpload
+                      ? {
+                          pendingFileKey: pendingUpload.pendingFileKey,
+                          fileName: pendingUpload.fileName,
+                          fileMimeType: pendingUpload.fileMimeType,
+                          fileSizeBytes: pendingUpload.fileSizeBytes,
+                        }
+                      : {}),
+                  }
+                : {
+                    title: formData.title,
+                    description: formData.description,
+                    type: formData.type,
+                    category: formData.category,
+                    status: formData.status,
+                    filters,
+                    url: formData.url,
+                  }
+            );
       toast({ title: isEditing ? 'Resource updated' : 'Resource created' });
       reset();
       setOpen(false);
@@ -271,8 +434,8 @@ function ResourceDialog({
           <DialogTitle>{isEditing ? 'Edit resource' : 'Add resource'}</DialogTitle>
           <DialogDescription>
             {isEditing
-              ? 'Update this URL-based resource and who should see it.'
-              : 'Add a URL-based resource and choose which scholars should see it.'}
+              ? 'Update this resource and who should see it.'
+              : 'Add a URL or uploaded document and choose which scholars should see it.'}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -300,18 +463,73 @@ function ResourceDialog({
               />
             </div>
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="resource-url">URL</Label>
-              <Input
-                id="resource-url"
-                type="url"
-                placeholder="https://..."
-                value={formData.url}
-                onChange={(event) =>
-                  setFormData((current) => ({ ...current, url: event.target.value }))
-                }
-                required
-              />
+              <Label>Source</Label>
+              {isEditing ? (
+                <p className="text-sm text-muted-foreground">
+                  {formData.sourceType === 'file' ? 'Uploaded document' : 'External URL'}
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant={formData.sourceType === 'url' ? 'default' : 'outline'}
+                    onClick={() => setFormData((current) => ({ ...current, sourceType: 'url' }))}
+                  >
+                    External URL
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={formData.sourceType === 'file' ? 'default' : 'outline'}
+                    onClick={() => setFormData((current) => ({ ...current, sourceType: 'file' }))}
+                  >
+                    Upload document
+                  </Button>
+                </div>
+              )}
             </div>
+            {formData.sourceType === 'file' ? (
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="resource-file">Document</Label>
+                {isEditing && resource?.fileName && !pendingUpload ? (
+                  <p className="text-sm text-muted-foreground">Current file: {resource.fileName}</p>
+                ) : null}
+                <Input
+                  id="resource-file"
+                  type="file"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                  disabled={uploading}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) {
+                      void handleFileChosen(file);
+                    }
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {uploading
+                    ? 'Uploading…'
+                    : pendingUpload
+                      ? `${isEditing ? 'Replacement ready: ' : ''}${pendingUpload.fileName}`
+                      : isEditing
+                        ? 'Choose a file to replace the current document. PDF, Word, Excel, or PowerPoint. Max 10MB.'
+                        : 'PDF, Word, Excel, or PowerPoint. Max 10MB.'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="resource-url">URL</Label>
+                <Input
+                  id="resource-url"
+                  type="url"
+                  placeholder="https://..."
+                  value={formData.url}
+                  onChange={(event) =>
+                    setFormData((current) => ({ ...current, url: event.target.value }))
+                  }
+                  required
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Type</Label>
               <Select
@@ -464,7 +682,7 @@ function ResourceDialog({
           </div>
 
           <DialogFooter>
-            <Button type="submit" disabled={submitting}>
+            <Button type="submit" disabled={submitting || uploading}>
               {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
               {isEditing ? 'Update resource' : 'Save resource'}
             </Button>
@@ -653,7 +871,7 @@ export function ResourcesManagement() {
             <div className="min-w-0">
               <h3 className="text-sm font-semibold text-foreground">Resource library</h3>
               <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-                Create URL-based resources, publish them, and assign them to scholar groups.
+                Create URL or document resources, publish them, and assign them to scholar groups.
               </p>
             </div>
           </div>
@@ -766,15 +984,56 @@ export function ResourcesManagement() {
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <h4 className="text-sm font-semibold text-foreground">{resource.title}</h4>
-                        <a
-                          href={resource.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-muted-foreground hover:text-foreground"
-                          aria-label={`Open ${resource.title}`}
-                        >
-                          <ExternalLink className="h-3.5 w-3.5" />
-                        </a>
+                        {resource.sourceType === 'file' ? (
+                          <span className="inline-flex items-center gap-1">
+                            <button
+                              type="button"
+                              className="text-muted-foreground hover:text-foreground"
+                              aria-label={`View ${resource.title}`}
+                              onClick={async () => {
+                                try {
+                                  await openResourceFile(resource.id, 'inline');
+                                } catch (viewError) {
+                                  toast({
+                                    title: 'Could not open resource',
+                                    description: getResourceErrorMessage(viewError),
+                                    variant: 'destructive',
+                                  });
+                                }
+                              }}
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              className="text-muted-foreground hover:text-foreground"
+                              aria-label={`Download ${resource.title}`}
+                              onClick={async () => {
+                                try {
+                                  await openResourceFile(resource.id, 'attachment');
+                                } catch (downloadError) {
+                                  toast({
+                                    title: 'Could not download resource',
+                                    description: getResourceErrorMessage(downloadError),
+                                    variant: 'destructive',
+                                  });
+                                }
+                              }}
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                            </button>
+                          </span>
+                        ) : (
+                          <a
+                            href={resource.url ?? undefined}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-muted-foreground hover:text-foreground"
+                            aria-label={`Open ${resource.title}`}
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                        )}
                       </div>
                       <p className="mt-1 line-clamp-2 text-sm leading-6 text-muted-foreground">
                         {resource.description}
