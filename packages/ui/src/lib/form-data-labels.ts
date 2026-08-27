@@ -123,6 +123,13 @@ export interface FormDataDisplayItem {
   value: string;
 }
 
+const toDisplayString = (value: unknown): string =>
+  Array.isArray(value)
+    ? value.map(toDisplayString).join(', ')
+    : typeof value === 'object' && value !== null
+      ? JSON.stringify(value)
+      : String(value);
+
 export function getFormDataDisplayItems(
   requestType: string,
   formData: Record<string, any> | null | undefined
@@ -143,9 +150,9 @@ export function getFormDataDisplayItems(
       if (config.type === 'boolean') {
         displayValue = rawValue ? 'Yes' : 'No';
       } else if (config.type === 'enum' && config.enumLabels) {
-        displayValue = config.enumLabels[rawValue] || String(rawValue);
+        displayValue = config.enumLabels[rawValue] ?? toDisplayString(rawValue);
       } else {
-        displayValue = String(rawValue);
+        displayValue = toDisplayString(rawValue);
       }
 
       items.push({ label: config.label, value: displayValue });
@@ -164,7 +171,7 @@ export function getFormDataDisplayItems(
 
     items.push({
       label,
-      value: typeof rawValue === 'boolean' ? (rawValue ? 'Yes' : 'No') : String(rawValue),
+      value: typeof rawValue === 'boolean' ? (rawValue ? 'Yes' : 'No') : toDisplayString(rawValue),
     });
   }
 
