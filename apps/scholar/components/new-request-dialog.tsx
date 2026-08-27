@@ -1037,7 +1037,9 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
                               <Progress value={progress.progress} className="mt-1 h-1" />
                             )}
                             {progress && progress.status === 'error' && (
-                              <p className="mt-1 text-xs text-destructive">{progress.error}</p>
+                              <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                                {progress.error}
+                              </p>
                             )}
                           </div>
                         </div>
