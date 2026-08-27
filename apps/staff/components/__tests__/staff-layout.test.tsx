@@ -47,6 +47,10 @@ describe('StaffLayout', () => {
 
     expect(screen.getByRole('heading', { name: 'Ashinaga Staff' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: 'Prep documents' })).toHaveAttribute(
+      'href',
+      '/?tab=prep-documents'
+    );
     expect(screen.getByRole('link', { name: 'Annual Reviews' })).toHaveAttribute(
       'href',
       '/?tab=annual-reviews'

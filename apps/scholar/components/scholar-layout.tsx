@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   ClipboardCheck,
   FileText,
+  FolderOpen,
   Home,
   Library,
   LogOut,
@@ -42,6 +43,7 @@ type ProgramStage = 'prep_year' | 'scholar';
 const NAV_ITEMS = [
   { id: 'dashboard', href: '/dashboard', label: 'Overview', icon: Home },
   { id: 'profile', href: '/profile', label: 'My Profile', icon: User },
+  { id: 'documents', href: '/documents', label: 'My Documents', icon: FolderOpen },
   { id: 'goals', href: '/goals', label: 'My LDF', icon: Target },
   { id: 'annual-review', href: '/annual-review', label: 'My Annual Review', icon: ClipboardCheck },
   { id: 'tasks', href: '/tasks', label: 'My Tasks', icon: CheckSquare },
@@ -55,11 +57,11 @@ type NavItem = (typeof NAV_ITEMS)[number];
 const HOME_HREF = '/dashboard';
 
 function getVisibleNavItems(programStage: ProgramStage | null): readonly NavItem[] {
-  // Fail closed: hide Annual Review until we know the user is an enrolled scholar.
-  if (programStage === 'scholar') {
-    return NAV_ITEMS;
-  }
-  return NAV_ITEMS.filter((item) => item.id !== 'annual-review');
+  return NAV_ITEMS.filter((item) => {
+    if (item.id === 'annual-review') return programStage === 'scholar';
+    if (item.id === 'documents') return programStage === 'prep_year';
+    return true;
+  });
 }
 
 function getScholarSection(pathname: string, navItems: readonly NavItem[]) {

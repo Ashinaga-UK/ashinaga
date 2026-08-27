@@ -24,6 +24,7 @@ import {
   downloadScholarAnnualReviewsCSV,
   getFileDownloadUrl,
   getFilterOptions,
+  getRequiredDocumentDownloadUrl,
   type ScholarFilterOptions,
   type UpdateScholarProfileData,
 } from '../lib/api-client';
@@ -43,6 +44,7 @@ import {
   useDeleteTask,
   useScholarAnnualUpdates,
   useScholarProfile,
+  useScholarRequiredDocuments,
   useUpdateScholarProfile,
 } from '../lib/hooks/use-queries';
 import { CommentThread } from './comment-thread';
@@ -89,6 +91,8 @@ export function ScholarProfilePage({
     scholarId,
     activeTab === 'annual-reviews'
   );
+  const { data: requiredDocuments, isLoading: requiredDocumentsLoading } =
+    useScholarRequiredDocuments(scholarId, scholar?.programStage === 'prep_year');
   const updateProfile = useUpdateScholarProfile(scholarId);
   const [editOpen, setEditOpen] = useState(false);
   const [enrollOpen, setEnrollOpen] = useState(false);
@@ -1248,38 +1252,88 @@ export function ScholarProfilePage({
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Documents</h3>
           </div>
-          <div className="space-y-4">
-            {scholar.documents.length === 0 ? (
-              <Card>
-                <CardContent className="pt-4">
-                  <p className="text-muted-foreground text-center py-4">
-                    No documents uploaded yet
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              scholar.documents.map((doc) => (
-                <Card key={doc.id}>
-                  <CardContent className="pt-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <FileText className="h-8 w-8 text-muted-foreground" />
-                        <div>
-                          <h4 className="font-medium">{doc.name}</h4>
-                          <p className="text-sm text-muted-foreground">
-                            Uploaded {new Date(doc.uploadDate).toLocaleDateString()} • {doc.type}
-                          </p>
-                        </div>
-                      </div>
-                      <Button size="sm" variant="outline">
-                        Download
-                      </Button>
-                    </div>
+          {scholar.programStage === 'prep_year' ? (
+            <div className="space-y-3">
+              {requiredDocumentsLoading ? (
+                <Card>
+                  <CardContent className="flex items-center justify-center py-8 text-muted-foreground">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Loading required documents...
                   </CardContent>
                 </Card>
-              ))
-            )}
-          </div>
+              ) : (
+                (requiredDocuments?.items ?? []).map((item) => (
+                  <Card key={item.type.id}>
+                    <CardContent className="pt-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <FileText className="h-8 w-8 shrink-0 text-muted-foreground" />
+                          <div className="min-w-0">
+                            <h4 className="font-medium">{item.type.label}</h4>
+                            <p className="text-sm text-muted-foreground">
+                              {item.status === 'submitted' && item.file
+                                ? `${item.file.fileName} · ${new Date(item.file.uploadedAt).toLocaleDateString()}`
+                                : 'Missing'}
+                            </p>
+                          </div>
+                        </div>
+                        {item.file ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={async () => {
+                              const { downloadUrl } = await getRequiredDocumentDownloadUrl(
+                                item.file!.id
+                              );
+                              window.location.href = downloadUrl;
+                            }}
+                          >
+                            <Download className="mr-1 h-4 w-4" />
+                            Download
+                          </Button>
+                        ) : (
+                          <Badge variant="secondary">Missing</Badge>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {scholar.documents.length === 0 ? (
+                <Card>
+                  <CardContent className="pt-4">
+                    <p className="text-muted-foreground text-center py-4">
+                      No documents uploaded yet
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                scholar.documents.map((doc) => (
+                  <Card key={doc.id}>
+                    <CardContent className="pt-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <FileText className="h-8 w-8 text-muted-foreground" />
+                          <div>
+                            <h4 className="font-medium">{doc.name}</h4>
+                            <p className="text-sm text-muted-foreground">
+                              Uploaded {new Date(doc.uploadDate).toLocaleDateString()} • {doc.type}
+                            </p>
+                          </div>
+                        </div>
+                        <Button size="sm" variant="outline">
+                          Download
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

@@ -20,6 +20,7 @@ import {
   tasks,
   users,
 } from '../db/schema';
+import { DocumentsService } from '../documents/documents.service';
 import { InvitationsService } from '../invitations/invitations.service';
 import { escapeCsvValue } from '../utils/csv';
 import { isPlaceholderAcademicValue } from './academic-values';
@@ -52,7 +53,10 @@ function uniqueFilterValues(values: Array<string | null | undefined>): string[] 
 
 @Injectable()
 export class ScholarsService {
-  constructor(private readonly invitationsService: InvitationsService) {}
+  constructor(
+    private readonly invitationsService: InvitationsService,
+    private readonly documentsService: DocumentsService
+  ) {}
 
   async createScholar(
     createScholarDto: CreateScholarDto,
@@ -1161,6 +1165,7 @@ export class ScholarsService {
     if (!row) {
       throw new NotFoundException('Scholar not found');
     }
+    await this.documentsService.deleteStoredFilesForScholar(scholarId);
     const goalRows = await database
       .select({ id: goals.id })
       .from(goals)

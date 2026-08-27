@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   ClipboardCheck,
   FileText,
+  FolderOpen,
   Home,
   Library,
   LogOut,
@@ -33,6 +34,12 @@ import {
 export const STAFF_NAV_ITEMS = [
   { href: '/', value: 'overview', label: 'Overview', icon: Home },
   { href: '/?tab=scholars', value: 'scholars', label: 'Scholars', icon: Users },
+  {
+    href: '/?tab=prep-documents',
+    value: 'prep-documents',
+    label: 'Prep documents',
+    icon: FolderOpen,
+  },
   {
     href: '/?tab=annual-reviews',
     value: 'annual-reviews',

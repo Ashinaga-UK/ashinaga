@@ -92,7 +92,13 @@ export async function seedStaffUser(
 
 export async function seedScholarUser(
   db: NodePgDatabase,
-  opts: { name?: string; program?: string; year?: string; university?: string } = {}
+  opts: {
+    name?: string;
+    program?: string;
+    year?: string;
+    university?: string;
+    programStage?: 'prep_year' | 'scholar';
+  } = {}
 ): Promise<SeededScholar> {
   const id = nextTag('itest-scholar-user');
   const email = `${id}@example.com`;
@@ -119,6 +125,7 @@ export async function seedScholarUser(
       university: opts.university ?? 'Test University',
       startDate: new Date('2024-09-01'),
       status: 'active',
+      programStage: opts.programStage ?? 'scholar',
     })
     .returning({ id: scholars.id });
 

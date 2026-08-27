@@ -1079,6 +1079,102 @@ export async function getResourceDownloadUrl(
   return fetchAPI<{ downloadUrl: string }>(`/api/resources/${resourceId}/download${query}`);
 }
 
+export interface RequiredDocumentType {
+  id: string;
+  slug: string;
+  label: string;
+  description: string | null;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+export interface RequiredDocumentFileSummary {
+  id: string;
+  fileName: string;
+  uploadedAt: string;
+}
+
+export interface RequiredDocumentCohortItem {
+  typeId: string;
+  status: 'submitted' | 'missing';
+  file: RequiredDocumentFileSummary | null;
+}
+
+export interface RequiredDocumentCohortScholar {
+  scholarId: string;
+  name: string;
+  email: string;
+  items: RequiredDocumentCohortItem[];
+}
+
+export interface RequiredDocumentCohort {
+  types: RequiredDocumentType[];
+  scholars: RequiredDocumentCohortScholar[];
+}
+
+export interface RequiredDocumentChecklistItem {
+  type: RequiredDocumentType;
+  status: 'submitted' | 'missing';
+  file: {
+    id: string;
+    typeId: string;
+    fileName: string;
+    fileMimeType: string;
+    fileSizeBytes: number;
+    uploadedAt: string;
+  } | null;
+}
+
+export interface RequiredDocumentChecklist {
+  scholarId: string;
+  items: RequiredDocumentChecklistItem[];
+}
+
+export async function getRequiredDocumentTypes(): Promise<RequiredDocumentType[]> {
+  return fetchAPI<RequiredDocumentType[]>('/api/documents/types');
+}
+
+export async function createRequiredDocumentType(data: {
+  label: string;
+  description?: string;
+}): Promise<RequiredDocumentType> {
+  return fetchAPI<RequiredDocumentType>('/api/documents/types', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateRequiredDocumentType(
+  typeId: string,
+  data: { label?: string; description?: string; isActive?: boolean; sortOrder?: number }
+): Promise<RequiredDocumentType> {
+  return fetchAPI<RequiredDocumentType>(`/api/documents/types/${typeId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getRequiredDocumentCohort(
+  missingTypeId?: string
+): Promise<RequiredDocumentCohort> {
+  const query = missingTypeId ? `?missingTypeId=${encodeURIComponent(missingTypeId)}` : '';
+  return fetchAPI<RequiredDocumentCohort>(`/api/documents/cohort${query}`);
+}
+
+export async function getScholarRequiredDocuments(
+  scholarId: string
+): Promise<RequiredDocumentChecklist> {
+  return fetchAPI<RequiredDocumentChecklist>(`/api/documents/scholar/${scholarId}`);
+}
+
+export async function getRequiredDocumentDownloadUrl(
+  fileId: string,
+  disposition: 'attachment' | 'inline' = 'attachment'
+): Promise<{ downloadUrl: string }> {
+  const query = disposition === 'inline' ? '?disposition=inline' : '';
+  return fetchAPI<{ downloadUrl: string }>(`/api/documents/${fileId}/download${query}`);
+}
+
 // Staff management
 export interface StaffMember {
   id: string;
