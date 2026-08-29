@@ -271,8 +271,18 @@ jobs:
         
         # Run the migration
         pnpm db:migrate
+
+        JOURNAL_WHEN=$(node -e "const j=require('./src/db/migrations/meta/_journal.json'); console.log(j.entries.at(-1).when)")
+        JOURNAL_TAG=$(node -e "const j=require('./src/db/migrations/meta/_journal.json'); console.log(j.entries.at(-1).tag)")
+        DB_WHEN=$(PGPASSWORD="$DB_PASSWORD" PGSSLMODE=require psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc "SELECT created_at FROM drizzle.__drizzle_migrations ORDER BY created_at DESC LIMIT 1")
+
+        if [ "$DB_WHEN" != "$JOURNAL_WHEN" ]; then
+          echo "ERROR: last journal entry ${JOURNAL_TAG} when=${JOURNAL_WHEN} but drizzle.__drizzle_migrations max(created_at)=${DB_WHEN:-<empty>}"
+          echo "A skipped Drizzle migration looks like success unless we compare these."
+          exit 1
+        fi
         
-        echo "Database migrations completed successfully!"
+        echo "Database migrations completed successfully (${JOURNAL_TAG})."
 
     - name: Update App Runner service
       run: |
