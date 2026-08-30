@@ -198,6 +198,8 @@ export class DocumentsService {
       await this.deleteStoredObject(dto.pendingFileKey, 'pending document upload');
       return this.formatFile(created, documentType);
     } catch (error) {
+      // Deletes this request's newly copied key, not the winning row's, except a
+      // same-millisecond key collision on the concurrent double-submit path.
       await this.deleteStoredObject(fileKey, 'copied document file after save failure');
       if (error instanceof Error && error.message.includes('unique')) {
         throw new ConflictException('A file already exists for this document type');
@@ -478,13 +480,16 @@ export class DocumentsService {
     if (
       !ALLOWED_DOCUMENT_MIME_TYPES.includes(
         normalized as (typeof ALLOWED_DOCUMENT_MIME_TYPES)[number]
-      ) &&
-      fileType !== 'image/jpg'
+      )
     ) {
       throw new BadRequestException(`File type ${fileType} is not allowed`);
     }
 
-    if (fileSize < 1 || fileSize > DOCUMENT_FILE_MAX_SIZE_BYTES) {
+    if (fileSize < 1) {
+      throw new BadRequestException('File must not be empty');
+    }
+
+    if (fileSize > DOCUMENT_FILE_MAX_SIZE_BYTES) {
       throw new BadRequestException('File size exceeds 10MB limit');
     }
   }

@@ -41,7 +41,7 @@ export function PrepDocumentsTracker({
   const handleDownload = async (fileId: string) => {
     try {
       const { downloadUrl } = await getRequiredDocumentDownloadUrl(fileId);
-      window.location.href = downloadUrl;
+      window.open(downloadUrl, '_blank');
     } catch (downloadError) {
       toast({
         title: 'Could not download file',
@@ -164,6 +164,9 @@ export function PrepDocumentsTracker({
                             <Badge>Submitted</Badge>
                             <span className="max-w-[140px] truncate text-xs text-muted-foreground">
                               {cell.file?.fileName}
+                              {cell.file?.uploadedAt
+                                ? ` · ${new Date(cell.file.uploadedAt).toLocaleDateString()}`
+                                : ''}
                             </span>
                             <Button
                               size="sm"

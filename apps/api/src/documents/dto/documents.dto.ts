@@ -77,7 +77,18 @@ export class UpdateRequiredDocumentTypeDto {
   description?: string;
 
   @IsOptional()
-  @Transform(({ value }) => value === true || value === 'true')
+  @Transform(({ value }) => {
+    if (value === undefined) {
+      return undefined;
+    }
+    if (value === true || value === 'true') {
+      return true;
+    }
+    if (value === false || value === 'false') {
+      return false;
+    }
+    return value;
+  })
   @IsBoolean()
   isActive?: boolean;
 

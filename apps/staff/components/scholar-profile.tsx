@@ -1285,7 +1285,7 @@ export function ScholarProfilePage({
                               const { downloadUrl } = await getRequiredDocumentDownloadUrl(
                                 item.file!.id
                               );
-                              window.location.href = downloadUrl;
+                              window.open(downloadUrl, '_blank');
                             }}
                           >
                             <Download className="mr-1 h-4 w-4" />

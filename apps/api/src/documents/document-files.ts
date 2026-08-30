@@ -13,33 +13,6 @@ export const ALLOWED_DOCUMENT_MIME_TYPES = [
   'image/webp',
 ] as const;
 
-const DOCUMENT_MIME_BY_EXTENSION: Record<string, (typeof ALLOWED_DOCUMENT_MIME_TYPES)[number]> = {
-  '.pdf': 'application/pdf',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.png': 'image/png',
-  '.webp': 'image/webp',
-};
-
-export function resolveDocumentMimeType(
-  fileName: string,
-  fileType?: string | null
-): (typeof ALLOWED_DOCUMENT_MIME_TYPES)[number] | null {
-  if (
-    fileType &&
-    ALLOWED_DOCUMENT_MIME_TYPES.includes(fileType as (typeof ALLOWED_DOCUMENT_MIME_TYPES)[number])
-  ) {
-    return fileType === 'image/jpg'
-      ? 'image/jpeg'
-      : (fileType as (typeof ALLOWED_DOCUMENT_MIME_TYPES)[number]);
-  }
-
-  const extension = fileName.includes('.')
-    ? `.${fileName.split('.').pop()?.toLowerCase() ?? ''}`
-    : '';
-  return DOCUMENT_MIME_BY_EXTENSION[extension] ?? null;
-}
-
 export function sanitizeDocumentFileName(fileName: string): string {
   const sanitized = fileName
     .replace(/[^a-zA-Z0-9.-]/g, '_')

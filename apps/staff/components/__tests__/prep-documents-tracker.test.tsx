@@ -90,6 +90,10 @@ describe('PrepDocumentsTracker', () => {
     expect(screen.getByText('Ben Candidate')).toBeInTheDocument();
     expect(screen.getAllByText('Missing').length).toBeGreaterThan(0);
     expect(screen.getByText('Submitted')).toBeInTheDocument();
-    expect(screen.getByText('passport.pdf')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        `passport.pdf · ${new Date('2026-08-01T00:00:00.000Z').toLocaleDateString()}`
+      )
+    ).toBeInTheDocument();
   });
 });
