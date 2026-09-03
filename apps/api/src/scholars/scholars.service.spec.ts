@@ -9,7 +9,7 @@ jest.mock('../db/connection', () => {
     insert: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
-    execute: jest.fn(),
+    execute: jest.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
     transaction: jest.fn(),
   };
   database.transaction.mockImplementation(async (callback: (tx: typeof database) => unknown) =>
@@ -1211,21 +1211,56 @@ describe('ScholarsService', () => {
   });
 
   describe('updatePlatformSetup', () => {
+    const pgExecuteShape = {
+      rows: [{ id: 'scholar-1', program_stage: 'prep_year' }],
+      rowCount: 1,
+    };
+
+    function mockLockThenPlatform(
+      scholarRows: Array<{ id: string; programStage: string }>,
+      platformRows: Array<{ id: string }>
+    ) {
+      const mockFor = jest.fn();
+      let selectCallCount = 0;
+      mockDatabase.execute = jest.fn().mockResolvedValue(pgExecuteShape);
+      mockDatabase.select = jest.fn().mockImplementation(() => {
+        selectCallCount++;
+        if (selectCallCount === 1) {
+          const chain = {
+            from: jest.fn(),
+            where: jest.fn(),
+            for: mockFor,
+          };
+          chain.from.mockReturnValue(chain);
+          chain.where.mockReturnValue(chain);
+          // Row is only available after .for('update').limit() — not from execute()[0]
+          mockFor.mockImplementation((strength: string) => {
+            expect(strength).toBe('update');
+            return {
+              limit: jest.fn().mockResolvedValue(scholarRows),
+            };
+          });
+          return chain;
+        }
+        const platformChain = {
+          from: jest.fn(),
+          where: jest.fn(),
+          limit: jest.fn().mockResolvedValue(platformRows),
+        };
+        platformChain.from.mockReturnValue(platformChain);
+        platformChain.where.mockReturnValue(platformChain);
+        return platformChain;
+      });
+      return { mockFor };
+    }
+
     it('should upsert platform setup for a prep-year scholar', async () => {
-      const mockFrom = jest.fn().mockReturnThis();
-      const mockWhere = jest.fn().mockReturnThis();
-      const mockLimit = jest.fn().mockResolvedValue([{ id: 'platform-coursera' }]);
       const mockOnConflict = jest.fn().mockResolvedValue(undefined);
       const mockValues = jest.fn().mockReturnValue({ onConflictDoUpdate: mockOnConflict });
-
-      mockDatabase.execute = jest
-        .fn()
-        .mockResolvedValue([{ id: 'scholar-1', program_stage: 'prep_year' }]);
-      mockDatabase.select = jest.fn().mockReturnValue({
-        from: mockFrom,
-        where: mockWhere,
-        limit: mockLimit,
-      });
+      const { mockFor } = mockLockThenPlatform(
+        [{ id: 'scholar-1', programStage: 'prep_year' }],
+        [{ id: 'platform-coursera' }]
+      );
       mockDatabase.insert = jest.fn().mockReturnValue({ values: mockValues });
 
       const profileSpy = jest.spyOn(service, 'getScholarProfile').mockResolvedValueOnce({
@@ -1240,7 +1275,9 @@ describe('ScholarsService', () => {
       );
 
       expect(mockDatabase.transaction).toHaveBeenCalled();
-      expect(mockDatabase.execute).toHaveBeenCalled();
+      expect(mockFor).toHaveBeenCalledWith('update');
+      // node-postgres execute() is { rows }, so [0] must not be how we read the lock
+      expect(pgExecuteShape[0]).toBeUndefined();
       expect(mockDatabase.insert).toHaveBeenCalled();
       expect(mockOnConflict).toHaveBeenCalled();
       expect(result.id).toBe('scholar-1');
@@ -1248,9 +1285,7 @@ describe('ScholarsService', () => {
     });
 
     it('should reject confirmed scholars', async () => {
-      mockDatabase.execute = jest
-        .fn()
-        .mockResolvedValue([{ id: 'scholar-1', program_stage: 'scholar' }]);
+      mockLockThenPlatform([{ id: 'scholar-1', programStage: 'scholar' }], []);
 
       await expect(
         service.updatePlatformSetup(
@@ -1263,23 +1298,24 @@ describe('ScholarsService', () => {
     });
 
     it('should 404 unknown platform slugs', async () => {
-      const mockFrom = jest.fn().mockReturnThis();
-      const mockWhere = jest.fn().mockReturnThis();
-      const mockLimit = jest.fn().mockResolvedValue([]);
-
-      mockDatabase.execute = jest
-        .fn()
-        .mockResolvedValue([{ id: 'scholar-1', program_stage: 'prep_year' }]);
-      mockDatabase.select = jest.fn().mockReturnValue({
-        from: mockFrom,
-        where: mockWhere,
-        limit: mockLimit,
-      });
+      mockLockThenPlatform([{ id: 'scholar-1', programStage: 'prep_year' }], []);
 
       await expect(
         service.updatePlatformSetup(
           'scholar-1',
           { slug: 'unknown', status: PlatformSetupStatus.YES },
+          'staff-1'
+        )
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should 404 when the locked scholar row is missing', async () => {
+      mockLockThenPlatform([], []);
+
+      await expect(
+        service.updatePlatformSetup(
+          'missing',
+          { slug: 'coursera', status: PlatformSetupStatus.YES },
           'staff-1'
         )
       ).rejects.toThrow(NotFoundException);

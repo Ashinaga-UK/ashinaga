@@ -1057,17 +1057,17 @@ export class ScholarsService {
     await database.transaction(async (tx) => {
       // Lock the scholar row so enroll (programStage → scholar) on the same
       // profile cannot race past the prep_year check and leave a setup row.
-      const locked = await tx.execute<{ id: string; program_stage: string }>(sql`
-        SELECT id, program_stage
-        FROM scholars
-        WHERE id = ${scholarId}
-        FOR UPDATE
-      `);
-      const scholar = locked[0];
+      // Query builder returns rows; raw tx.execute() is a pg QueryResult ({ rows }).
+      const [scholar] = await tx
+        .select({ id: scholars.id, programStage: scholars.programStage })
+        .from(scholars)
+        .where(eq(scholars.id, scholarId))
+        .for('update')
+        .limit(1);
       if (!scholar) {
         throw new NotFoundException(`Scholar with ID ${scholarId} not found`);
       }
-      if (scholar.program_stage !== 'prep_year') {
+      if (scholar.programStage !== 'prep_year') {
         throw new BadRequestException('Platform setup is only tracked for Prep Year candidates');
       }
 
