@@ -5,6 +5,7 @@ import { AnnualUpdatesModule } from './annual-updates/annual-updates.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { CoordinatorNotesModule } from './coordinator-notes/coordinator-notes.module';
 import { DocumentsModule } from './documents/documents.module';
 import { EmailModule } from './email/email.module';
 import { FilesModule } from './files/files.module';
@@ -35,6 +36,7 @@ import { UsersModule } from './users/users.module';
     GoalsModule,
     ResourcesModule,
     DocumentsModule,
+    CoordinatorNotesModule,
     AnnualUpdatesModule,
   ],
   controllers: [AppController],

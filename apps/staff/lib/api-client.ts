@@ -1286,6 +1286,112 @@ export async function getRequiredDocumentDownloadUrl(
   return fetchAPI<{ downloadUrl: string }>(`/api/documents/${fileId}/download${query}`);
 }
 
+export interface CoordinatorNote {
+  id: string;
+  scholarId: string;
+  body: string;
+  createdBy: string;
+  authorName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CoordinatorMeetingUpdate {
+  id: string;
+  scholarId: string;
+  meetingDate: string;
+  notes: string | null;
+  concern: string | null;
+  furtherAction: string | null;
+  createdBy: string;
+  authorName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getCoordinatorNotes(scholarId: string): Promise<CoordinatorNote[]> {
+  return fetchAPI<CoordinatorNote[]>(`/api/scholars/${scholarId}/coordinator-notes`);
+}
+
+export async function createCoordinatorNote(
+  scholarId: string,
+  data: { body: string }
+): Promise<CoordinatorNote> {
+  return fetchAPI<CoordinatorNote>(`/api/scholars/${scholarId}/coordinator-notes`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateCoordinatorNote(
+  scholarId: string,
+  noteId: string,
+  data: { body: string }
+): Promise<CoordinatorNote> {
+  return fetchAPI<CoordinatorNote>(`/api/scholars/${scholarId}/coordinator-notes/${noteId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteCoordinatorNote(
+  scholarId: string,
+  noteId: string
+): Promise<{ success: boolean }> {
+  return fetchAPI<{ success: boolean }>(`/api/scholars/${scholarId}/coordinator-notes/${noteId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function getCoordinatorMeetingUpdates(
+  scholarId: string
+): Promise<CoordinatorMeetingUpdate[]> {
+  return fetchAPI<CoordinatorMeetingUpdate[]>(`/api/scholars/${scholarId}/meeting-updates`);
+}
+
+export async function createCoordinatorMeetingUpdate(
+  scholarId: string,
+  data: {
+    meetingDate: string;
+    notes?: string;
+    concern?: string;
+    furtherAction?: string;
+  }
+): Promise<CoordinatorMeetingUpdate> {
+  return fetchAPI<CoordinatorMeetingUpdate>(`/api/scholars/${scholarId}/meeting-updates`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateCoordinatorMeetingUpdate(
+  scholarId: string,
+  updateId: string,
+  data: {
+    meetingDate?: string;
+    notes?: string;
+    concern?: string;
+    furtherAction?: string;
+  }
+): Promise<CoordinatorMeetingUpdate> {
+  return fetchAPI<CoordinatorMeetingUpdate>(
+    `/api/scholars/${scholarId}/meeting-updates/${updateId}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+export async function deleteCoordinatorMeetingUpdate(
+  scholarId: string,
+  updateId: string
+): Promise<{ success: boolean }> {
+  return fetchAPI<{ success: boolean }>(`/api/scholars/${scholarId}/meeting-updates/${updateId}`, {
+    method: 'DELETE',
+  });
+}
+
 // Staff management
 export interface StaffMember {
   id: string;

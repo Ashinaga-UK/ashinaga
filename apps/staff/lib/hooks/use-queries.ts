@@ -3,12 +3,18 @@ import {
   archiveScholar,
   type CreateTaskData,
   createAnnouncement,
+  createCoordinatorMeetingUpdate,
+  createCoordinatorNote,
   createTask,
+  deleteCoordinatorMeetingUpdate,
+  deleteCoordinatorNote,
   deleteScholar,
   deleteTask,
   type GetAnnouncementsParams,
   getAnnouncements,
   getAnnualUpdatesByScholar,
+  getCoordinatorMeetingUpdates,
+  getCoordinatorNotes,
   getPrepTaskCohort,
   getRequiredDocumentCohort,
   getRequiredDocumentTypes,
@@ -23,6 +29,8 @@ import {
   type Task,
   type UpdateScholarProfileData,
   type UpdateTaskData,
+  updateCoordinatorMeetingUpdate,
+  updateCoordinatorNote,
   updateScholarPlatformSetup,
   updateScholarProfile,
   updateTask,
@@ -44,6 +52,8 @@ export const queryKeys = {
   scholarRequiredDocuments: (id: string) => ['scholar', id, 'required-documents'] as const,
   prepTaskCohort: (filters: PrepTaskCohortFilters = {}) =>
     ['prep-tasks', 'cohort', filters] as const,
+  scholarCoordinatorNotes: (id: string) => ['scholar', id, 'coordinator-notes'] as const,
+  scholarMeetingUpdates: (id: string) => ['scholar', id, 'meeting-updates'] as const,
 };
 
 // Scholar profile query
@@ -165,6 +175,99 @@ export function useScholarRequiredDocuments(scholarId: string, enabled = true) {
     queryKey: queryKeys.scholarRequiredDocuments(scholarId),
     queryFn: () => getScholarRequiredDocuments(scholarId),
     enabled: !!scholarId && enabled,
+  });
+}
+
+export function useCoordinatorNotes(scholarId: string, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.scholarCoordinatorNotes(scholarId),
+    queryFn: () => getCoordinatorNotes(scholarId),
+    enabled: !!scholarId && enabled,
+  });
+}
+
+export function useCoordinatorMeetingUpdates(scholarId: string, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.scholarMeetingUpdates(scholarId),
+    queryFn: () => getCoordinatorMeetingUpdates(scholarId),
+    enabled: !!scholarId && enabled,
+  });
+}
+
+export function useCreateCoordinatorNote(scholarId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { body: string }) => createCoordinatorNote(scholarId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.scholarCoordinatorNotes(scholarId) });
+    },
+  });
+}
+
+export function useUpdateCoordinatorNote(scholarId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ noteId, body }: { noteId: string; body: string }) =>
+      updateCoordinatorNote(scholarId, noteId, { body }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.scholarCoordinatorNotes(scholarId) });
+    },
+  });
+}
+
+export function useDeleteCoordinatorNote(scholarId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (noteId: string) => deleteCoordinatorNote(scholarId, noteId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.scholarCoordinatorNotes(scholarId) });
+    },
+  });
+}
+
+export function useCreateCoordinatorMeetingUpdate(scholarId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      meetingDate: string;
+      notes?: string;
+      concern?: string;
+      furtherAction?: string;
+    }) => createCoordinatorMeetingUpdate(scholarId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.scholarMeetingUpdates(scholarId) });
+    },
+  });
+}
+
+export function useUpdateCoordinatorMeetingUpdate(scholarId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      updateId,
+      data,
+    }: {
+      updateId: string;
+      data: {
+        meetingDate?: string;
+        notes?: string;
+        concern?: string;
+        furtherAction?: string;
+      };
+    }) => updateCoordinatorMeetingUpdate(scholarId, updateId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.scholarMeetingUpdates(scholarId) });
+    },
+  });
+}
+
+export function useDeleteCoordinatorMeetingUpdate(scholarId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (updateId: string) => deleteCoordinatorMeetingUpdate(scholarId, updateId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.scholarMeetingUpdates(scholarId) });
+    },
   });
 }
 

@@ -51,6 +51,7 @@ import {
 } from '../lib/hooks/use-queries';
 import { isTaskOverdue } from '../lib/task-due';
 import { CommentThread } from './comment-thread';
+import { CoordinatorPanel } from './coordinator-panel';
 import { PlatformSetupCard } from './platform-setup-card';
 import { TaskAssignment } from './task-assignment';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
@@ -75,7 +76,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Textarea } from './ui/textarea';
 
-type ScholarProfileTab = 'goals' | 'tasks' | 'documents' | 'profile' | 'annual-reviews';
+export type ScholarProfileTab =
+  | 'goals'
+  | 'tasks'
+  | 'documents'
+  | 'profile'
+  | 'annual-reviews'
+  | 'coordinator';
+
+export function isScholarProfileTab(value: string): value is ScholarProfileTab {
+  return (
+    value === 'goals' ||
+    value === 'tasks' ||
+    value === 'documents' ||
+    value === 'profile' ||
+    value === 'annual-reviews' ||
+    value === 'coordinator'
+  );
+}
 
 interface ScholarProfileProps {
   scholarId: string;
@@ -831,7 +849,11 @@ export function ScholarProfilePage({
       {/* Tabs */}
       <Tabs
         value={activeTab}
-        onValueChange={(value) => setActiveTab(value as ScholarProfileTab)}
+        onValueChange={(value) => {
+          if (isScholarProfileTab(value)) {
+            setActiveTab(value);
+          }
+        }}
         className="space-y-4"
       >
         <div className="-mx-3 overflow-x-auto px-3 sm:mx-0 sm:px-0">
@@ -841,6 +863,7 @@ export function ScholarProfilePage({
             <TabsTrigger value="annual-reviews">Annual Reviews</TabsTrigger>
             <TabsTrigger value="tasks">Tasks</TabsTrigger>
             <TabsTrigger value="documents">Documents</TabsTrigger>
+            <TabsTrigger value="coordinator">Coordinator</TabsTrigger>
           </TabsList>
         </div>
 
@@ -1386,6 +1409,10 @@ export function ScholarProfilePage({
               )}
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="coordinator" className="space-y-4">
+          <CoordinatorPanel scholarId={scholarId} />
         </TabsContent>
       </Tabs>
     </div>
