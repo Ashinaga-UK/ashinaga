@@ -23,6 +23,7 @@ import {
   ScholarProfileDto,
   ScholarResponseDto,
 } from './dto/get-scholars.dto';
+import { UpdatePlatformSetupDto } from './dto/update-platform-setup.dto';
 import {
   UpdateMyScholarProfileDto,
   UpdateScholarProfileDto,
@@ -111,6 +112,16 @@ export class ScholarsController {
     @Body() updateData: UpdateScholarProfileDto
   ): Promise<ScholarProfileDto> {
     return this.scholarsService.updateScholarProfileByScholarId(id, updateData);
+  }
+
+  @Patch(':id/platform-setup')
+  @UseGuards(StaffGuard)
+  async updatePlatformSetup(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdatePlatformSetupDto,
+    @Request() req
+  ): Promise<ScholarProfileDto> {
+    return this.scholarsService.updatePlatformSetup(id, dto, req.user.id);
   }
 
   @Get(':id/export-ldf')

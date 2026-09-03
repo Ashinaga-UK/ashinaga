@@ -142,7 +142,7 @@ export function StaffLayout({
 
   return (
     <SidebarProvider
-      className="flex-col"
+      className="flex h-svh flex-col overflow-hidden"
       style={{ '--sidebar-header-height': '3.5rem' } as React.CSSProperties}
     >
       <header
@@ -208,10 +208,10 @@ export function StaffLayout({
           </button>
         </div>
       </header>
-      <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         <StaffSidebar activeTab={activeTab} onLogout={onLogout} />
-        <SidebarInset>
-          <div className="flex-1">{children}</div>
+        <SidebarInset className="min-h-0 min-w-0 overflow-y-auto">
+          <div className="min-w-0 flex-1">{children}</div>
         </SidebarInset>
       </div>
     </SidebarProvider>

@@ -394,7 +394,7 @@ function StaffDashboardContent() {
       onOpenProfile={() => router.push('?view=my-profile')}
       user={user}
     >
-      <div className="mx-auto max-w-7xl px-3 py-5 animate-fade-in sm:px-6 sm:py-8">
+      <div className="mx-auto min-w-0 max-w-7xl px-3 py-5 animate-fade-in sm:px-6 sm:py-8">
         {currentView === 'onboarding' ? (
           <ScholarOnboarding onBack={() => router.push('/')} />
         ) : currentView === 'my-profile' ? (

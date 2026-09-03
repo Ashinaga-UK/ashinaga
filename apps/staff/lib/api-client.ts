@@ -37,6 +37,7 @@ export interface Scholar {
   lastActivity?: string | null;
   goals: ScholarGoalsStats;
   tasks: ScholarTasksStats;
+  platformSetupIncomplete?: boolean | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -105,6 +106,17 @@ export interface Document {
   uploadDate: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export type PlatformSetupStatus = 'yes' | 'no' | 'pending';
+
+export interface PlatformSetup {
+  platformId: string;
+  slug: string;
+  name: string;
+  signpostingUrl?: string | null;
+  sortOrder: number;
+  status: PlatformSetupStatus;
 }
 
 export interface AnnualUpdate {
@@ -185,6 +197,7 @@ export interface ScholarProfile {
   goals: Goal[];
   tasks: Task[];
   documents: Document[];
+  platformSetups?: PlatformSetup[];
   createdAt: string;
   updatedAt: string;
 }
@@ -242,6 +255,7 @@ export interface GetScholarsParams {
   university?: string;
   status?: 'active' | 'inactive' | 'on_hold' | 'archived';
   programStage?: 'prep_year' | 'scholar';
+  platformSetup?: 'incomplete' | 'complete';
   sortBy?: 'name' | 'lastActivity' | 'createdAt';
   sortOrder?: 'asc' | 'desc';
 }
@@ -332,6 +346,19 @@ export async function getScholar(id: string): Promise<Scholar> {
 
 export async function getScholarProfile(id: string): Promise<ScholarProfile> {
   return fetchAPI<ScholarProfile>(`/api/scholars/${id}/profile`);
+}
+
+export async function updateScholarPlatformSetup(
+  scholarId: string,
+  data: { slug: string; status: PlatformSetupStatus }
+): Promise<ScholarProfile> {
+  return fetchAPI<ScholarProfile>(`/api/scholars/${scholarId}/platform-setup`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
 }
 
 export async function getAnnualUpdatesByScholar(scholarId: string): Promise<AnnualUpdate[]> {

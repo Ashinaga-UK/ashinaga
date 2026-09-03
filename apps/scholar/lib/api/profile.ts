@@ -41,6 +41,15 @@ export interface ScholarProfile {
   majorCategory?: string | null;
   fieldOfStudy?: string | null;
 
+  platformSetups?: Array<{
+    platformId: string;
+    slug: string;
+    name: string;
+    signpostingUrl?: string | null;
+    sortOrder: number;
+    status: 'yes' | 'no' | 'pending';
+  }>;
+
   // Related data
   goals: any[];
   tasks: any[];

@@ -45,9 +45,11 @@ import {
   useScholarAnnualUpdates,
   useScholarProfile,
   useScholarRequiredDocuments,
+  useUpdateScholarPlatformSetup,
   useUpdateScholarProfile,
 } from '../lib/hooks/use-queries';
 import { CommentThread } from './comment-thread';
+import { PlatformSetupCard } from './platform-setup-card';
 import { TaskAssignment } from './task-assignment';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { Alert, AlertDescription } from './ui/alert';
@@ -94,6 +96,7 @@ export function ScholarProfilePage({
   const { data: requiredDocuments, isLoading: requiredDocumentsLoading } =
     useScholarRequiredDocuments(scholarId, scholar?.programStage === 'prep_year');
   const updateProfile = useUpdateScholarProfile(scholarId);
+  const updatePlatformSetup = useUpdateScholarPlatformSetup(scholarId);
   const [editOpen, setEditOpen] = useState(false);
   const [enrollOpen, setEnrollOpen] = useState(false);
   const [enrollForm, setEnrollForm] = useState({ university: '', year: '' });
@@ -977,6 +980,17 @@ export function ScholarProfilePage({
               )}
             </CardContent>
           </Card>
+          {scholar.programStage === 'prep_year' && (scholar.platformSetups?.length ?? 0) > 0 && (
+            <PlatformSetupCard
+              setups={scholar.platformSetups ?? []}
+              updatingSlug={
+                updatePlatformSetup.isPending ? (updatePlatformSetup.variables?.slug ?? null) : null
+              }
+              onStatusChange={(slug, status) => {
+                updatePlatformSetup.mutate({ slug, status });
+              }}
+            />
+          )}
           <Card>
             <CardHeader>
               <CardTitle>Additional information</CardTitle>

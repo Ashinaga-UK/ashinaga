@@ -16,7 +16,6 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import {
   downloadAllScholarsCSV,
-  downloadAnnualReviewsCSV,
   type GetScholarsParams,
   getFilterOptions,
   getScholars,
@@ -68,8 +67,10 @@ export function ScholarManagementTable({
   const [programStageFilter, setProgramStageFilter] = useState<'all' | 'prep_year' | 'scholar'>(
     'all'
   );
+  const [platformSetupFilter, setPlatformSetupFilter] = useState<'all' | 'incomplete' | 'complete'>(
+    'all'
+  );
   const [exportingCsv, setExportingCsv] = useState(false);
-  const [exportingAnnualReviewsCsv, setExportingAnnualReviewsCsv] = useState(false);
   const archiveScholar = useArchiveScholar();
   const deleteScholar = useDeleteScholar();
 
@@ -94,7 +95,7 @@ export function ScholarManagementTable({
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const scholarListFilterKey = `${programFilter}|${yearFilter}|${universityFilter}|${statusFilter}|${programStageFilter}`;
+  const scholarListFilterKey = `${programFilter}|${yearFilter}|${universityFilter}|${statusFilter}|${programStageFilter}|${platformSetupFilter}`;
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset pagination when program/year/university/status filters change
   useEffect(() => {
     setCurrentPage(1);
@@ -114,6 +115,7 @@ export function ScholarManagementTable({
         university: universityFilter !== 'all' ? universityFilter : undefined,
         status: statusFilter !== 'all' ? statusFilter : undefined,
         programStage: programStageFilter !== 'all' ? programStageFilter : undefined,
+        platformSetup: platformSetupFilter !== 'all' ? platformSetupFilter : undefined,
         sortBy: 'createdAt',
         sortOrder: 'desc',
       };
@@ -135,6 +137,7 @@ export function ScholarManagementTable({
     universityFilter,
     statusFilter,
     programStageFilter,
+    platformSetupFilter,
   ]);
 
   useEffect(() => {
@@ -178,18 +181,6 @@ export function ScholarManagementTable({
       alert('Failed to download CSV. Please try again.');
     } finally {
       setExportingCsv(false);
-    }
-  };
-
-  const handleExportAnnualReviewsCsv = async () => {
-    setExportingAnnualReviewsCsv(true);
-    try {
-      await downloadAnnualReviewsCSV();
-    } catch (e) {
-      console.error(e);
-      alert('Failed to download annual reviews CSV. Please try again.');
-    } finally {
-      setExportingAnnualReviewsCsv(false);
     }
   };
 
@@ -249,8 +240,19 @@ export function ScholarManagementTable({
     });
   };
 
+  const platformSetupBadge = (scholar: Scholar) => {
+    if (scholar.programStage !== 'prep_year') {
+      return <span className="text-muted-foreground">—</span>;
+    }
+    return (
+      <Badge variant={scholar.platformSetupIncomplete ? 'outline' : 'secondary'}>
+        {scholar.platformSetupIncomplete ? 'Incomplete' : 'Complete'}
+      </Badge>
+    );
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       {/* Search Bar */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="relative w-full lg:max-w-sm">
@@ -299,19 +301,6 @@ export function ScholarManagementTable({
             Export all (CSV)
           </Button>
           <Button
-            variant="outline"
-            className="w-full sm:w-auto"
-            onClick={handleExportAnnualReviewsCsv}
-            disabled={exportingAnnualReviewsCsv}
-          >
-            {exportingAnnualReviewsCsv ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Download className="h-4 w-4 mr-2" />
-            )}
-            Export annual reviews
-          </Button>
-          <Button
             className="w-full bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700 sm:w-auto"
             onClick={onOnboardScholar}
           >
@@ -321,7 +310,7 @@ export function ScholarManagementTable({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
         <Select
           value={statusFilter}
           onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}
@@ -393,21 +382,37 @@ export function ScholarManagementTable({
           </SelectContent>
         </Select>
 
+        <Select
+          value={platformSetupFilter}
+          onValueChange={(v) => setPlatformSetupFilter(v as typeof platformSetupFilter)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Platform setup" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All platform setup</SelectItem>
+            <SelectItem value="incomplete">Incomplete setup</SelectItem>
+            <SelectItem value="complete">Complete setup</SelectItem>
+          </SelectContent>
+        </Select>
+
         {(programFilter !== 'all' ||
           yearFilter !== 'all' ||
           universityFilter !== 'all' ||
           statusFilter !== 'all' ||
-          programStageFilter !== 'all') && (
+          programStageFilter !== 'all' ||
+          platformSetupFilter !== 'all') && (
           <Button
             variant="outline"
             size="sm"
-            className="sm:col-span-2 lg:col-span-5 lg:w-fit"
+            className="sm:col-span-2 lg:col-span-3 lg:w-fit"
             onClick={() => {
               setProgramFilter('all');
               setYearFilter('all');
               setUniversityFilter('all');
               setStatusFilter('all');
               setProgramStageFilter('all');
+              setPlatformSetupFilter('all');
             }}
           >
             Clear Filters
@@ -525,6 +530,14 @@ export function ScholarManagementTable({
                     <Badge className={getStatusColor(scholar.status)}>{scholar.status}</Badge>
                   </dd>
                 </div>
+                {scholar.programStage === 'prep_year' && (
+                  <div className="min-w-0">
+                    <dt className="text-xs uppercase tracking-wider text-muted-foreground">
+                      Platform setup
+                    </dt>
+                    <dd>{platformSetupBadge(scholar)}</dd>
+                  </div>
+                )}
                 <div>
                   <dt className="text-xs uppercase tracking-wider text-muted-foreground">Goals</dt>
                   <dd className="font-medium">
@@ -556,7 +569,7 @@ export function ScholarManagementTable({
       </div>
 
       {/* Students Table */}
-      <div className="hidden rounded-lg border border-border lg:block">
+      <div className="hidden min-w-0 overflow-x-auto rounded-lg border border-border lg:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -575,6 +588,7 @@ export function ScholarManagementTable({
               <TableHead>Program</TableHead>
               <TableHead>University</TableHead>
               <TableHead>Program Stage</TableHead>
+              <TableHead>Platform setup</TableHead>
               <TableHead>Year</TableHead>
               <TableHead>Goals Progress</TableHead>
               <TableHead>Status</TableHead>
@@ -585,14 +599,14 @@ export function ScholarManagementTable({
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center py-8">
+                <TableCell colSpan={11} className="text-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
                   <div className="text-sm text-muted-foreground">Loading scholars...</div>
                 </TableCell>
               </TableRow>
             ) : error ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center py-8">
+                <TableCell colSpan={11} className="text-center py-8">
                   <Alert className="mx-auto max-w-md">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>{error}</AlertDescription>
@@ -601,7 +615,7 @@ export function ScholarManagementTable({
               </TableRow>
             ) : scholars.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                   No scholars found
                 </TableCell>
               </TableRow>
@@ -641,9 +655,10 @@ export function ScholarManagementTable({
                   <TableCell>{scholar.university}</TableCell>
                   <TableCell>
                     <Badge variant={scholar.programStage === 'prep_year' ? 'default' : 'secondary'}>
-                      {scholar.programStage === 'prep_year' ? 'Prep Year Candidate' : 'Scholar'}
+                      {scholar.programStage === 'prep_year' ? 'Candidate' : 'Scholar'}
                     </Badge>
                   </TableCell>
+                  <TableCell>{platformSetupBadge(scholar)}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{scholar.year}</Badge>
                   </TableCell>
