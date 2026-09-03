@@ -113,6 +113,19 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
   }
 
   rule {
+    id     = "expire-pending-document-uploads"
+    status = "Enabled"
+
+    filter {
+      prefix = "documents/pending/"
+    }
+
+    expiration {
+      days = 1
+    }
+  }
+
+  rule {
     id     = "expire-archived-resource-uploads"
     status = "Enabled"
 

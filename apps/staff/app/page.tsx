@@ -17,6 +17,7 @@ import { AnnualReviewsReport } from '../components/annual-reviews-report';
 import { InvitationsManagement } from '../components/invitations-management';
 import { LoginPage } from '../components/login-page';
 import { MyProfile } from '../components/my-profile';
+import { PrepDocumentsTracker } from '../components/prep-documents-tracker';
 import { RequestManagement } from '../components/request-management';
 import { ResourcesManagement } from '../components/resources-management';
 import { ScholarManagementTable } from '../components/scholar-management-table';
@@ -409,6 +410,7 @@ function StaffDashboardContent() {
               >
                 {activeTab === 'overview' && 'Overview'}
                 {activeTab === 'scholars' && 'Scholars'}
+                {activeTab === 'prep-documents' && 'Prep documents'}
                 {activeTab === 'annual-reviews' && 'Annual Reviews'}
                 {activeTab === 'requests' && 'Requests'}
                 {activeTab === 'announcements' && 'Announcements'}
@@ -418,6 +420,8 @@ function StaffDashboardContent() {
               <p className="text-sm text-muted-foreground mt-0.5">
                 {activeTab === 'overview' && 'Your dashboard at a glance.'}
                 {activeTab === 'scholars' && 'View and manage your assigned scholars.'}
+                {activeTab === 'prep-documents' &&
+                  'See submitted and missing Prep Year documents without opening each profile.'}
                 {activeTab === 'annual-reviews' &&
                   'Track annual review submissions by scholar and academic year.'}
                 {activeTab === 'requests' && 'Review and respond to scholar submissions.'}
@@ -575,6 +579,22 @@ function StaffDashboardContent() {
                     </CardContent>
                   </Card>
                 )}
+              </div>
+            )}
+
+            {activeTab === 'prep-documents' && (
+              <div className="space-y-6">
+                <Card>
+                  <CardContent className="p-4 sm:p-5">
+                    <PrepDocumentsTracker
+                      onViewScholar={(scholarId) => {
+                        router.push(
+                          `?tab=scholars&view=scholar-profile&scholarId=${scholarId}&scholarTab=documents`
+                        );
+                      }}
+                    />
+                  </CardContent>
+                </Card>
               </div>
             )}
 

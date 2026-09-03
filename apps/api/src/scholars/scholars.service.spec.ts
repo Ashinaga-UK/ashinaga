@@ -30,6 +30,7 @@ jest.mock('../auth/auth.config', () => ({
   },
 }));
 
+import { DocumentsService } from '../documents/documents.service';
 import { InvitationsService } from '../invitations/invitations.service';
 import type { CreateScholarDto } from './dto/create-scholar.dto';
 import { Gender, ProgramStage } from './dto/update-scholar-profile.dto';
@@ -44,6 +45,9 @@ describe('ScholarsService', () => {
     mockInvitationsService = {
       createInvitation: jest.fn(),
     };
+    const mockDocumentsService = {
+      deleteStoredFilesForScholar: jest.fn().mockResolvedValue(undefined),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -51,6 +55,10 @@ describe('ScholarsService', () => {
         {
           provide: InvitationsService,
           useValue: mockInvitationsService,
+        },
+        {
+          provide: DocumentsService,
+          useValue: mockDocumentsService,
         },
       ],
     }).compile();

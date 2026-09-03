@@ -111,7 +111,7 @@ describe('ScholarLayout', () => {
     expect(screen.queryByRole('heading', { name: 'Ashinaga Prep Year' })).not.toBeInTheDocument();
   });
 
-  it('hides annual review for prep-year users and does not add My Documents', async () => {
+  it('shows My Documents for prep-year users and hides annual review', async () => {
     mockGetMyProfile.mockResolvedValue({ programStage: 'prep_year' });
 
     await renderLayout(<div>content</div>);
@@ -119,7 +119,10 @@ describe('ScholarLayout', () => {
     expect(screen.getByRole('heading', { name: 'Ashinaga Prep Year' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'My LDF' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'My Annual Review' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'My Documents' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'My Documents' })).toHaveAttribute(
+      'href',
+      '/documents'
+    );
   });
 
   it('does not show annual review when profile loading fails', async () => {
@@ -129,5 +132,6 @@ describe('ScholarLayout', () => {
 
     expect(screen.getByRole('link', { name: 'My LDF' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'My Annual Review' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'My Documents' })).not.toBeInTheDocument();
   });
 });

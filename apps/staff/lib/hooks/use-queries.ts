@@ -9,9 +9,12 @@ import {
   type GetAnnouncementsParams,
   getAnnouncements,
   getAnnualUpdatesByScholar,
+  getRequiredDocumentCohort,
+  getRequiredDocumentTypes,
   getResourceFilterOptions,
   getResources,
   getScholarProfile,
+  getScholarRequiredDocuments,
   getTasksByScholar,
   type ResourceFilterOptions,
   type Task,
@@ -31,6 +34,10 @@ export const queryKeys = {
   announcements: (params?: GetAnnouncementsParams) => ['announcements', params] as const,
   resources: ['resources'] as const,
   resourceFilterOptions: ['resources', 'filter-options'] as const,
+  requiredDocumentCohort: (missingTypeId?: string) =>
+    ['required-documents', 'cohort', missingTypeId ?? 'all'] as const,
+  requiredDocumentTypes: ['required-documents', 'types'] as const,
+  scholarRequiredDocuments: (id: string) => ['scholar', id, 'required-documents'] as const,
 };
 
 // Scholar profile query
@@ -122,6 +129,28 @@ export function useResourceFilterOptions() {
     queryKey: queryKeys.resourceFilterOptions,
     queryFn: getResourceFilterOptions,
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useRequiredDocumentCohort(missingTypeId?: string) {
+  return useQuery({
+    queryKey: queryKeys.requiredDocumentCohort(missingTypeId),
+    queryFn: () => getRequiredDocumentCohort(missingTypeId),
+  });
+}
+
+export function useRequiredDocumentTypes() {
+  return useQuery({
+    queryKey: queryKeys.requiredDocumentTypes,
+    queryFn: getRequiredDocumentTypes,
+  });
+}
+
+export function useScholarRequiredDocuments(scholarId: string, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.scholarRequiredDocuments(scholarId),
+    queryFn: () => getScholarRequiredDocuments(scholarId),
+    enabled: !!scholarId && enabled,
   });
 }
 
