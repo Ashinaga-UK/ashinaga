@@ -391,8 +391,8 @@ export function ScholarManagementTable({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All platform setup</SelectItem>
-            <SelectItem value="incomplete">Incomplete setup</SelectItem>
-            <SelectItem value="complete">Complete setup</SelectItem>
+            <SelectItem value="incomplete">Incomplete setup (Prep Year)</SelectItem>
+            <SelectItem value="complete">Complete setup (Prep Year)</SelectItem>
           </SelectContent>
         </Select>
 

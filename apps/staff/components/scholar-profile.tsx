@@ -946,7 +946,7 @@ export function ScholarProfilePage({
                 <div>
                   <span className="text-muted-foreground">Program Stage</span>
                   <Badge variant={scholar.programStage === 'prep_year' ? 'default' : 'secondary'}>
-                    {scholar.programStage === 'prep_year' ? 'Prep Year Candidate' : 'Scholar'}
+                    {scholar.programStage === 'prep_year' ? 'Candidate' : 'Scholar'}
                   </Badge>
                 </div>
                 <div>
