@@ -43,7 +43,7 @@ After Docker is up: `pnpm dev:db` (or `docker compose up -d postgres`). Postgres
 - Seeded users have **no password** — Better Auth sets passwords only at signup. To get a usable staff login you must first insert a `pending` staff `invitation` row for the email, then sign up (invitation → signup → login is the real onboarding flow; `/api/auth/sign-up/email` rejects emails without an invitation).
 
 ### Lint caveat
-- CI's authoritative lint is `pnpm lint` (runs `check:skills` + `turbo run check`). The packages don't define a `check` task, so Biome linting of source is effectively driven by the root `pnpm check` (`biome check .`), and the per-app `lint` scripts use `biome check --write` to auto-fix. Running `pnpm check` on a fresh checkout reports pre-existing warnings/errors that are not from your changes.
+- CI's authoritative lint is `pnpm lint` (runs `check:skills` + `check:migrations` + `test:migrations` + `turbo run check`). `pnpm check` is Biome only and does **not** run the Drizzle journal guard. The packages don't define a `check` task, so Biome linting of source is effectively driven by the root `pnpm check` (`biome check .`), and the per-app `lint` scripts use `biome check --write` to auto-fix. Running `pnpm check` on a fresh checkout reports pre-existing warnings/errors that are not from your changes.
 - `.claude/settings.json` registers a `PostToolUse` hook that runs `pnpm format` (Biome) after edits.
 
 ### Tests / build

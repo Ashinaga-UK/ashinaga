@@ -269,10 +269,16 @@ jobs:
         # Set SSL to production mode for RDS connection
         export NODE_ENV="production"
         
-        # Run the migration
+        echo "Checking journal timestamps before migrate..."
+        node "${GITHUB_WORKSPACE}/scripts/check-migration-journal.mjs"
+
         pnpm db:migrate
-        
-        echo "Database migrations completed successfully!"
+
+        echo "Verifying every journaled migration was recorded..."
+        APPLIED=$(PGPASSWORD="$DB_PASSWORD" PGSSLMODE=require psql \
+          -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
+          -tAc "SELECT created_at FROM drizzle.__drizzle_migrations")
+        printf '%s\n' "$APPLIED" | node "${GITHUB_WORKSPACE}/scripts/assert-applied-migrations.mjs"
 
     - name: Update App Runner service
       run: |
