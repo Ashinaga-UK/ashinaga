@@ -2,21 +2,24 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 
 // Mock the database connection before any imports that might use it
-jest.mock('../db/connection', () => ({
-  database: {
+jest.mock('../db/connection', () => {
+  const database = {
     select: jest.fn(),
     selectDistinct: jest.fn(),
     insert: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
-  },
-  getDatabase: jest.fn(() => ({
-    select: jest.fn(),
-    insert: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
-  })),
-}));
+    execute: jest.fn(),
+    transaction: jest.fn(),
+  };
+  database.transaction.mockImplementation(async (callback: (tx: typeof database) => unknown) =>
+    callback(database)
+  );
+  return {
+    database,
+    getDatabase: jest.fn(() => database),
+  };
+});
 
 // Mock task-responses schema used dynamically in getScholarProfile
 jest.mock('../db/schema/task-responses', () => ({
@@ -40,7 +43,13 @@ import { ScholarsService } from './scholars.service';
 
 describe('ScholarsService', () => {
   let service: ScholarsService;
-  let mockDatabase: { select: jest.Mock; insert: jest.Mock; delete: jest.Mock };
+  let mockDatabase: {
+    select: jest.Mock;
+    insert: jest.Mock;
+    delete: jest.Mock;
+    execute: jest.Mock;
+    transaction: jest.Mock;
+  };
   let mockInvitationsService: { createInvitation: jest.Mock };
 
   beforeEach(async () => {
@@ -297,6 +306,38 @@ describe('ScholarsService', () => {
       mockLimit.mockReturnThis();
 
       const result = await service.getScholars({ platformSetup: 'incomplete' });
+
+      expect(result.data).toEqual([]);
+      expect(mockWhere).toHaveBeenCalled();
+      // SQL shape / map semantics are locked in platform-setup.spec.ts
+    });
+
+    it('should apply complete platform setup filter', async () => {
+      const mockFrom = jest.fn().mockReturnThis();
+      const mockInnerJoin = jest.fn().mockReturnThis();
+      const mockWhere = jest.fn().mockReturnThis();
+      const mockOrderBy = jest.fn().mockReturnThis();
+      const mockLimit = jest.fn().mockReturnThis();
+      const mockOffset = jest.fn().mockResolvedValue([]);
+      const mockGroupBy = jest.fn().mockResolvedValue([]);
+
+      mockDatabase.select = jest.fn().mockReturnValue({
+        from: mockFrom,
+        innerJoin: mockInnerJoin,
+        where: mockWhere,
+        orderBy: mockOrderBy,
+        limit: mockLimit,
+        offset: mockOffset,
+        groupBy: mockGroupBy,
+      });
+
+      mockFrom.mockReturnThis();
+      mockInnerJoin.mockReturnThis();
+      mockWhere.mockReturnThis();
+      mockOrderBy.mockReturnThis();
+      mockLimit.mockReturnThis();
+
+      const result = await service.getScholars({ platformSetup: 'complete' });
 
       expect(result.data).toEqual([]);
       expect(mockWhere).toHaveBeenCalled();
@@ -1173,23 +1214,17 @@ describe('ScholarsService', () => {
     it('should upsert platform setup for a prep-year scholar', async () => {
       const mockFrom = jest.fn().mockReturnThis();
       const mockWhere = jest.fn().mockReturnThis();
-      const mockLimit = jest.fn().mockReturnThis();
+      const mockLimit = jest.fn().mockResolvedValue([{ id: 'platform-coursera' }]);
       const mockOnConflict = jest.fn().mockResolvedValue(undefined);
       const mockValues = jest.fn().mockReturnValue({ onConflictDoUpdate: mockOnConflict });
 
-      let selectCallCount = 0;
-      mockDatabase.select = jest.fn().mockImplementation(() => {
-        selectCallCount++;
-        if (selectCallCount === 1) {
-          mockLimit.mockResolvedValueOnce([{ id: 'scholar-1', programStage: 'prep_year' }]);
-        } else if (selectCallCount === 2) {
-          mockLimit.mockResolvedValueOnce([{ id: 'platform-coursera' }]);
-        }
-        return {
-          from: mockFrom,
-          where: mockWhere,
-          limit: mockLimit,
-        };
+      mockDatabase.execute = jest
+        .fn()
+        .mockResolvedValue([{ id: 'scholar-1', program_stage: 'prep_year' }]);
+      mockDatabase.select = jest.fn().mockReturnValue({
+        from: mockFrom,
+        where: mockWhere,
+        limit: mockLimit,
       });
       mockDatabase.insert = jest.fn().mockReturnValue({ values: mockValues });
 
@@ -1204,6 +1239,8 @@ describe('ScholarsService', () => {
         'staff-1'
       );
 
+      expect(mockDatabase.transaction).toHaveBeenCalled();
+      expect(mockDatabase.execute).toHaveBeenCalled();
       expect(mockDatabase.insert).toHaveBeenCalled();
       expect(mockOnConflict).toHaveBeenCalled();
       expect(result.id).toBe('scholar-1');
@@ -1211,15 +1248,9 @@ describe('ScholarsService', () => {
     });
 
     it('should reject confirmed scholars', async () => {
-      const mockFrom = jest.fn().mockReturnThis();
-      const mockWhere = jest.fn().mockReturnThis();
-      const mockLimit = jest.fn().mockResolvedValue([{ id: 'scholar-1', programStage: 'scholar' }]);
-
-      mockDatabase.select = jest.fn().mockReturnValue({
-        from: mockFrom,
-        where: mockWhere,
-        limit: mockLimit,
-      });
+      mockDatabase.execute = jest
+        .fn()
+        .mockResolvedValue([{ id: 'scholar-1', program_stage: 'scholar' }]);
 
       await expect(
         service.updatePlatformSetup(
@@ -1228,26 +1259,21 @@ describe('ScholarsService', () => {
           'staff-1'
         )
       ).rejects.toThrow(BadRequestException);
+      expect(mockDatabase.insert).not.toHaveBeenCalled();
     });
 
     it('should 404 unknown platform slugs', async () => {
       const mockFrom = jest.fn().mockReturnThis();
       const mockWhere = jest.fn().mockReturnThis();
-      const mockLimit = jest.fn().mockReturnThis();
+      const mockLimit = jest.fn().mockResolvedValue([]);
 
-      let selectCallCount = 0;
-      mockDatabase.select = jest.fn().mockImplementation(() => {
-        selectCallCount++;
-        if (selectCallCount === 1) {
-          mockLimit.mockResolvedValueOnce([{ id: 'scholar-1', programStage: 'prep_year' }]);
-        } else {
-          mockLimit.mockResolvedValueOnce([]);
-        }
-        return {
-          from: mockFrom,
-          where: mockWhere,
-          limit: mockLimit,
-        };
+      mockDatabase.execute = jest
+        .fn()
+        .mockResolvedValue([{ id: 'scholar-1', program_stage: 'prep_year' }]);
+      mockDatabase.select = jest.fn().mockReturnValue({
+        from: mockFrom,
+        where: mockWhere,
+        limit: mockLimit,
       });
 
       await expect(

@@ -1,6 +1,7 @@
 'use client';
 
 import { fileToProfileImageDataUrl } from '@workspace/ui/lib/profile-image';
+import { toSafeHttpUrl } from '@workspace/ui/lib/safe-href';
 import {
   AlertTriangle,
   Calendar,
@@ -564,37 +565,44 @@ export function MyProfile() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {profile.platformSetups?.map((setup) => (
-                    <div
-                      key={setup.platformId}
-                      className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <div className="min-w-0">
-                        <p className="font-medium text-foreground">{setup.name}</p>
-                        {setup.signpostingUrl ? (
-                          <a
-                            href={setup.signpostingUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-ashinaga-teal-700 underline-offset-2 hover:underline dark:text-ashinaga-teal-400"
-                          >
-                            {setup.signpostingUrl}
-                          </a>
-                        ) : null}
-                      </div>
-                      <Badge
-                        variant={
-                          setup.status === 'yes'
-                            ? 'default'
-                            : setup.status === 'no'
-                              ? 'outline'
-                              : 'secondary'
-                        }
+                  {profile.platformSetups?.map((setup) => {
+                    const safeUrl = toSafeHttpUrl(setup.signpostingUrl);
+                    return (
+                      <div
+                        key={setup.platformId}
+                        className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"
                       >
-                        {setup.status === 'yes' ? 'Yes' : setup.status === 'no' ? 'No' : 'Pending'}
-                      </Badge>
-                    </div>
-                  ))}
+                        <div className="min-w-0">
+                          <p className="font-medium text-foreground">{setup.name}</p>
+                          {safeUrl ? (
+                            <a
+                              href={safeUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-ashinaga-teal-700 underline-offset-2 hover:underline dark:text-ashinaga-teal-400"
+                            >
+                              {setup.signpostingUrl}
+                            </a>
+                          ) : setup.signpostingUrl ? (
+                            <p className="text-sm text-muted-foreground truncate">
+                              {setup.signpostingUrl}
+                            </p>
+                          ) : null}
+                        </div>
+                        <Badge
+                          variant={
+                            setup.status === 'yes'
+                              ? 'default'
+                              : setup.status === 'no'
+                                ? 'outline'
+                                : 'secondary'
+                          }
+                        >
+                          {setup.status === 'yes' ? 'Yes' : setup.status === 'no' ? 'No' : 'Pending'}
+                        </Badge>
+                      </div>
+                    );
+                  })}
                 </CardContent>
               </Card>
             )}

@@ -986,8 +986,13 @@ export function ScholarProfilePage({
               updatingSlug={
                 updatePlatformSetup.isPending ? (updatePlatformSetup.variables?.slug ?? null) : null
               }
-              onStatusChange={(slug, status) => {
-                updatePlatformSetup.mutate({ slug, status });
+              onStatusChange={async (slug, status) => {
+                try {
+                  await updatePlatformSetup.mutateAsync({ slug, status });
+                } catch (e) {
+                  console.error(e);
+                  alert('Failed to update platform setup. Please try again.');
+                }
               }}
             />
           )}

@@ -42,6 +42,10 @@ import {
 } from './dto/get-scholars.dto';
 import { UpdatePlatformSetupDto } from './dto/update-platform-setup.dto';
 import { UpdateScholarProfileDto } from './dto/update-scholar-profile.dto';
+import {
+  buildPlatformSetupIncompleteMap,
+  platformSetupFilterSql,
+} from './platform-setup';
 
 function uniqueFilterValues(values: Array<string | null | undefined>): string[] {
   const seen = new Set<string>();
@@ -192,9 +196,9 @@ export class ScholarsService {
     }
 
     if (platformSetup === 'incomplete') {
-      whereConditions.push(this.platformSetupFilterSql(true));
+      whereConditions.push(platformSetupFilterSql(true));
     } else if (platformSetup === 'complete') {
-      whereConditions.push(this.platformSetupFilterSql(false));
+      whereConditions.push(platformSetupFilterSql(false));
     }
 
     const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
@@ -426,25 +430,6 @@ export class ScholarsService {
     return stats;
   }
 
-  private platformSetupFilterSql(incomplete: boolean) {
-    const existsKeyword = incomplete ? sql`EXISTS` : sql`NOT EXISTS`;
-    return sql`(
-      ${scholars.programStage} = 'prep_year'
-      AND ${existsKeyword} (
-        SELECT 1
-        FROM platforms p
-        WHERE p.is_active = true
-          AND NOT EXISTS (
-            SELECT 1
-            FROM scholar_platform_setups s
-            WHERE s.scholar_id = ${scholars.id}
-              AND s.platform_id = p.id
-              AND s.status = 'yes'
-          )
-      )
-    )`;
-  }
-
   private async getPlatformSetupIncompleteMap(
     scholarIds: string[]
   ): Promise<Record<string, boolean>> {
@@ -454,33 +439,31 @@ export class ScholarsService {
       .select({ id: platforms.id })
       .from(platforms)
       .where(eq(platforms.isActive, true));
-    const total = activePlatforms.length;
-    if (total === 0) {
-      return Object.fromEntries(scholarIds.map((id) => [id, false]));
-    }
 
-    const yesRows = await database
-      .select({
-        scholarId: scholarPlatformSetups.scholarId,
-        complete: count(),
-      })
-      .from(scholarPlatformSetups)
-      .innerJoin(platforms, eq(scholarPlatformSetups.platformId, platforms.id))
-      .where(
-        and(
-          inArray(scholarPlatformSetups.scholarId, scholarIds),
-          eq(scholarPlatformSetups.status, 'yes'),
-          eq(platforms.isActive, true)
-        )
-      )
-      .groupBy(scholarPlatformSetups.scholarId);
+    const yesRows =
+      activePlatforms.length === 0
+        ? []
+        : await database
+            .select({
+              scholarId: scholarPlatformSetups.scholarId,
+              complete: count(),
+            })
+            .from(scholarPlatformSetups)
+            .innerJoin(platforms, eq(scholarPlatformSetups.platformId, platforms.id))
+            .where(
+              and(
+                inArray(scholarPlatformSetups.scholarId, scholarIds),
+                eq(scholarPlatformSetups.status, 'yes'),
+                eq(platforms.isActive, true)
+              )
+            )
+            .groupBy(scholarPlatformSetups.scholarId);
 
-    const yesByScholar = new Map(yesRows.map((row) => [row.scholarId, Number(row.complete)]));
-    const result: Record<string, boolean> = {};
-    for (const id of scholarIds) {
-      result[id] = (yesByScholar.get(id) ?? 0) < total;
-    }
-    return result;
+    return buildPlatformSetupIncompleteMap(
+      scholarIds,
+      activePlatforms.length,
+      new Map(yesRows.map((row) => [row.scholarId, Number(row.complete)]))
+    );
   }
 
   private async getPlatformSetupsForScholar(
@@ -1071,48 +1054,53 @@ export class ScholarsService {
     dto: UpdatePlatformSetupDto,
     staffUserId: string
   ): Promise<ScholarProfileDto> {
-    const scholarRows = await database
-      .select({ id: scholars.id, programStage: scholars.programStage })
-      .from(scholars)
-      .where(eq(scholars.id, scholarId))
-      .limit(1);
-    const scholar = scholarRows[0];
-    if (!scholar) {
-      throw new NotFoundException(`Scholar with ID ${scholarId} not found`);
-    }
-    if (scholar.programStage !== 'prep_year') {
-      throw new BadRequestException('Platform setup is only tracked for Prep Year candidates');
-    }
+    await database.transaction(async (tx) => {
+      // Lock the scholar row so enroll (programStage → scholar) on the same
+      // profile cannot race past the prep_year check and leave a setup row.
+      const locked = await tx.execute<{ id: string; program_stage: string }>(sql`
+        SELECT id, program_stage
+        FROM scholars
+        WHERE id = ${scholarId}
+        FOR UPDATE
+      `);
+      const scholar = locked[0];
+      if (!scholar) {
+        throw new NotFoundException(`Scholar with ID ${scholarId} not found`);
+      }
+      if (scholar.program_stage !== 'prep_year') {
+        throw new BadRequestException('Platform setup is only tracked for Prep Year candidates');
+      }
 
-    const platformRows = await database
-      .select({ id: platforms.id })
-      .from(platforms)
-      .where(and(eq(platforms.slug, dto.slug), eq(platforms.isActive, true)))
-      .limit(1);
-    const platform = platformRows[0];
-    if (!platform) {
-      throw new NotFoundException(`Unknown platform: ${dto.slug}`);
-    }
+      const platformRows = await tx
+        .select({ id: platforms.id })
+        .from(platforms)
+        .where(and(eq(platforms.slug, dto.slug), eq(platforms.isActive, true)))
+        .limit(1);
+      const platform = platformRows[0];
+      if (!platform) {
+        throw new NotFoundException(`Unknown platform: ${dto.slug}`);
+      }
 
-    const now = new Date();
-    await database
-      .insert(scholarPlatformSetups)
-      .values({
-        scholarId,
-        platformId: platform.id,
-        status: dto.status,
-        updatedBy: staffUserId,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .onConflictDoUpdate({
-        target: [scholarPlatformSetups.scholarId, scholarPlatformSetups.platformId],
-        set: {
+      const now = new Date();
+      await tx
+        .insert(scholarPlatformSetups)
+        .values({
+          scholarId,
+          platformId: platform.id,
           status: dto.status,
           updatedBy: staffUserId,
+          createdAt: now,
           updatedAt: now,
-        },
-      });
+        })
+        .onConflictDoUpdate({
+          target: [scholarPlatformSetups.scholarId, scholarPlatformSetups.platformId],
+          set: {
+            status: dto.status,
+            updatedBy: staffUserId,
+            updatedAt: now,
+          },
+        });
+    });
 
     return this.getScholarProfile(scholarId);
   }
