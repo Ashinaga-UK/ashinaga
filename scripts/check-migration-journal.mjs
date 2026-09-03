@@ -26,6 +26,8 @@ export function checkMigrationJournal(entries, { allowlistedTags = SKIPPED_JOURN
     return { failures: ['Migration journal has no entries.'] };
   }
 
+  let maxWhen = Number.NEGATIVE_INFINITY;
+
   for (let i = 0; i < entries.length; i++) {
     const current = entries[i];
     const tag = current?.tag ?? `<idx ${i}>`;
@@ -39,13 +41,11 @@ export function checkMigrationJournal(entries, { allowlistedTags = SKIPPED_JOURN
       continue;
     }
 
-    if (i === 0) continue;
-    const previous = entries[i - 1];
-    if (!isFiniteNumber(previous.when)) continue;
-
-    if (current.when <= previous.when && !allowlistedTags.has(current.tag)) {
-      failures.push(`${tag} when=${current.when} <= ${previous.tag} when=${previous.when}`);
+    if (i > 0 && current.when <= maxWhen && !allowlistedTags.has(current.tag)) {
+      failures.push(`${tag} when=${current.when} <= max(previous)=${maxWhen}`);
     }
+
+    maxWhen = Math.max(maxWhen, current.when);
   }
 
   return { failures };

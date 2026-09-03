@@ -22,7 +22,7 @@ describe('checkMigrationJournal', () => {
       { idx: 0, tag: '0000_a', when: 200 },
       { idx: 1, tag: '0001_b', when: 100 },
     ]);
-    assert.match(failures[0], /0001_b when=100 <= 0000_a when=200/);
+    assert.match(failures[0], /0001_b when=100 <= max\(previous\)=200/);
   });
 
   it('rejects equal timestamps (Drizzle would skip the later file)', () => {
@@ -30,7 +30,17 @@ describe('checkMigrationJournal', () => {
       { idx: 0, tag: '0000_a', when: 100 },
       { idx: 1, tag: '0001_b', when: 100 },
     ]);
-    assert.match(failures[0], /0001_b when=100 <= 0000_a when=100/);
+    assert.match(failures[0], /0001_b when=100 <= max\(previous\)=100/);
+  });
+
+  it('rejects a non-allowlisted entry in the gap after an allowlisted inversion', () => {
+    const { failures } = checkMigrationJournal([
+      { idx: 0, tag: '0016_married_thing', when: 300 },
+      { idx: 1, tag: '0017_new_redwing', when: 100 },
+      { idx: 2, tag: '0018_gap_entry', when: 250 },
+    ]);
+    assert.equal(failures.length, 1);
+    assert.match(failures[0], /0018_gap_entry when=250 <= max\(previous\)=300/);
   });
 
   it('rejects missing or non-finite when', () => {
