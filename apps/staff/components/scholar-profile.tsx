@@ -1,5 +1,6 @@
 'use client';
 
+import { toSafeHttpUrl } from '@workspace/ui/lib/safe-href';
 import {
   ArrowLeft,
   Calendar,
@@ -48,6 +49,7 @@ import {
   useUpdateScholarPlatformSetup,
   useUpdateScholarProfile,
 } from '../lib/hooks/use-queries';
+import { isTaskOverdue } from '../lib/task-due';
 import { CommentThread } from './comment-thread';
 import { PlatformSetupCard } from './platform-setup-card';
 import { TaskAssignment } from './task-assignment';
@@ -1190,6 +1192,10 @@ export function ScholarProfilePage({
                         </p>
                         <div className="flex items-center gap-4 text-sm text-muted-foreground">
                           <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
+                          {isTaskOverdue(task) && (
+                            <span className="text-red-600 dark:text-red-400">Overdue</span>
+                          )}
+                          {task.phase && <span>Phase: {task.phase}</span>}
                           <span className={getStatusColor(task.status)}>
                             Status: {task.status.replace('_', ' ')}
                           </span>
@@ -1205,6 +1211,29 @@ export function ScholarProfilePage({
                                 </span>
                               </div>
                             )}
+                            {task.response.linkUrl &&
+                              (() => {
+                                const safeUrl = toSafeHttpUrl(task.response.linkUrl);
+                                return (
+                                  <div className="mb-2">
+                                    <span className="text-sm font-medium">Link: </span>
+                                    {safeUrl ? (
+                                      <a
+                                        href={safeUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-sm text-ashinaga-teal-700 underline"
+                                      >
+                                        {task.response.linkUrl}
+                                      </a>
+                                    ) : (
+                                      <span className="text-sm text-muted-foreground">
+                                        {task.response.linkUrl}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             {task.response.attachments && task.response.attachments.length > 0 && (
                               <div>
                                 <span className="text-sm font-medium">Attachments: </span>
@@ -1251,6 +1280,10 @@ export function ScholarProfilePage({
                             priority: task.priority,
                             dueDate: task.dueDate,
                             status: task.status,
+                            phase: task.phase,
+                            requiresResponse: task.requiresResponse,
+                            requiresAttachment: task.requiresAttachment,
+                            requiresLink: task.requiresLink,
                           }}
                           mode="edit"
                           onSuccess={() => {

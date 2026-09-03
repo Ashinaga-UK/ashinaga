@@ -1,11 +1,35 @@
-import { IsArray, IsOptional, IsString, ValidateIf } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUrl,
+  IsUUID,
+  ValidateIf,
+  ValidateNested,
+} from 'class-validator';
 
 export class AttachmentDto {
-  attachmentId: string;
-  fileName?: string;
+  @IsOptional()
+  @IsUUID('4')
+  attachmentId?: string;
+
+  @IsNotEmpty()
+  @IsString()
+  fileName: string;
+
+  @IsNotEmpty()
+  @IsString()
+  fileKey: string;
+
+  @IsOptional()
+  @IsString()
   fileSize?: string;
+
+  @IsOptional()
+  @IsString()
   mimeType?: string;
-  fileKey?: string;
 }
 
 export class CompleteTaskDto {
@@ -13,7 +37,13 @@ export class CompleteTaskDto {
   @IsString()
   responseText?: string;
 
-  @ValidateIf((o) => o.attachmentIds !== undefined)
+  @ValidateIf((dto: CompleteTaskDto) => dto.linkUrl != null && dto.linkUrl !== '')
+  @IsUrl({ require_protocol: true, protocols: ['http', 'https'], require_tld: false })
+  linkUrl?: string;
+
+  @IsOptional()
   @IsArray()
-  attachmentIds?: (string | AttachmentDto)[]; // Array of file IDs or attachment objects
+  @ValidateNested({ each: true })
+  @Type(() => AttachmentDto)
+  attachmentIds?: AttachmentDto[];
 }

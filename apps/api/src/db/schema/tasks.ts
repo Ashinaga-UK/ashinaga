@@ -1,4 +1,4 @@
-import { pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { boolean, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { scholars } from './scholars';
 import { users } from './users';
 
@@ -21,6 +21,11 @@ export const tasks = pgTable('tasks', {
   type: taskTypeEnum('type').notNull(),
   priority: taskPriorityEnum('priority').notNull().default('medium'),
   dueDate: timestamp('due_date', { withTimezone: true }).notNull(),
+  phase: text('phase'),
+  assignmentGroupId: uuid('assignment_group_id'),
+  requiresResponse: boolean('requires_response').notNull().default(false),
+  requiresAttachment: boolean('requires_attachment').notNull().default(false),
+  requiresLink: boolean('requires_link').notNull().default(false),
   status: taskStatusEnum('status').notNull().default('pending'),
   scholarId: uuid('scholar_id')
     .notNull()

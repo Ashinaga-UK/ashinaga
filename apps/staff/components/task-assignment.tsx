@@ -12,6 +12,8 @@ import {
   type UpdateTaskData,
 } from '../lib/api-client';
 import { useCreateTask, useUpdateTask } from '../lib/hooks/use-queries';
+import { evidenceDefaultsForType } from '../lib/task-evidence';
+import { TaskEvidenceFields } from './task-evidence-fields';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -38,6 +40,10 @@ interface ExistingTask {
   priority: 'high' | 'medium' | 'low';
   dueDate: string;
   status: string;
+  phase?: string | null;
+  requiresResponse?: boolean;
+  requiresAttachment?: boolean;
+  requiresLink?: boolean;
 }
 
 interface TaskAssignmentProps {
@@ -67,6 +73,11 @@ export function TaskAssignment({
   const [dueDate, setDueDate] = useState('');
   const [priority, setPriority] = useState<'high' | 'medium' | 'low'>('medium');
   const [taskType, setTaskType] = useState<CreateTaskData['type']>('other');
+  const otherDefaults = evidenceDefaultsForType('other');
+  const [phase, setPhase] = useState('');
+  const [requiresResponse, setRequiresResponse] = useState(otherDefaults.requiresResponse);
+  const [requiresAttachment, setRequiresAttachment] = useState(otherDefaults.requiresAttachment);
+  const [requiresLink, setRequiresLink] = useState(otherDefaults.requiresLink);
   const [suggestions, setSuggestions] = useState<TaskTitleSuggestion[]>([]);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const titleInputRef = useRef<HTMLInputElement | null>(null);
@@ -79,6 +90,11 @@ export function TaskAssignment({
       setTaskDescription(existingTask.description ?? '');
       setTaskType(existingTask.type);
       setPriority(existingTask.priority);
+      setPhase(existingTask.phase ?? '');
+      const defaults = evidenceDefaultsForType(existingTask.type);
+      setRequiresResponse(existingTask.requiresResponse ?? defaults.requiresResponse);
+      setRequiresAttachment(existingTask.requiresAttachment ?? defaults.requiresAttachment);
+      setRequiresLink(existingTask.requiresLink ?? defaults.requiresLink);
       // Format date for input field (YYYY-MM-DD)
       const date = new Date(existingTask.dueDate);
       const formattedDate = date.toISOString().split('T')[0];
@@ -116,6 +132,11 @@ export function TaskAssignment({
     if (s.description) setTaskDescription(s.description);
     setTaskType(s.type);
     setPriority(s.priority);
+    setPhase(s.phase ?? '');
+    const defaults = evidenceDefaultsForType(s.type);
+    setRequiresResponse(s.requiresResponse ?? defaults.requiresResponse);
+    setRequiresAttachment(s.requiresAttachment ?? defaults.requiresAttachment);
+    setRequiresLink(s.requiresLink ?? defaults.requiresLink);
     setSuggestionsOpen(false);
   };
 
@@ -155,6 +176,10 @@ export function TaskAssignment({
       priority: priority || 'medium',
       dueDate,
       scholarId: selectedScholarId,
+      phase: phase.trim() || undefined,
+      requiresResponse,
+      requiresAttachment,
+      requiresLink,
     };
 
     if (mode === 'edit' && existingTask) {
@@ -164,6 +189,10 @@ export function TaskAssignment({
         type: taskType,
         priority: priority,
         dueDate,
+        phase: phase.trim() || null,
+        requiresResponse,
+        requiresAttachment,
+        requiresLink,
       };
 
       updateTaskMutation.mutate(
@@ -211,6 +240,11 @@ export function TaskAssignment({
           setDueDate('');
           setPriority('medium');
           setTaskType('other');
+          setPhase('');
+          const resetDefaults = evidenceDefaultsForType('other');
+          setRequiresResponse(resetDefaults.requiresResponse);
+          setRequiresAttachment(resetDefaults.requiresAttachment);
+          setRequiresLink(resetDefaults.requiresLink);
           if (!preselectedScholarId) {
             setSelectedScholarId('');
           }
@@ -352,7 +386,14 @@ export function TaskAssignment({
                 <Label htmlFor="taskType">Task Type</Label>
                 <Select
                   value={taskType}
-                  onValueChange={(value) => setTaskType(value as CreateTaskData['type'])}
+                  onValueChange={(value) => {
+                    const nextType = value as CreateTaskData['type'];
+                    setTaskType(nextType);
+                    const defaults = evidenceDefaultsForType(nextType);
+                    setRequiresResponse(defaults.requiresResponse);
+                    setRequiresAttachment(defaults.requiresAttachment);
+                    setRequiresLink(defaults.requiresLink);
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select task type" />
@@ -407,6 +448,17 @@ export function TaskAssignment({
               </div>
             </div>
           </div>
+
+          <TaskEvidenceFields
+            phase={phase}
+            onPhaseChange={setPhase}
+            requiresResponse={requiresResponse}
+            requiresAttachment={requiresAttachment}
+            requiresLink={requiresLink}
+            onRequiresResponseChange={setRequiresResponse}
+            onRequiresAttachmentChange={setRequiresAttachment}
+            onRequiresLinkChange={setRequiresLink}
+          />
         </div>
 
         <DialogFooter>

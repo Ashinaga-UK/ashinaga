@@ -13,11 +13,17 @@ export interface Task {
     | 'other';
   priority: 'high' | 'medium' | 'low';
   dueDate: string;
+  phase?: string | null;
+  assignmentGroupId?: string | null;
+  requiresResponse?: boolean;
+  requiresAttachment?: boolean;
+  requiresLink?: boolean;
   status: 'pending' | 'in_progress' | 'completed';
   assignedBy: string;
   assignedByName: string | null;
   createdAt: string;
   completedAt: string | null;
+  overdue?: boolean;
 }
 
 export async function getMyTasks(): Promise<Task[]> {
@@ -36,11 +42,14 @@ export async function updateTaskStatus(
 
 export async function completeTask(
   taskId: string,
-  responseText: string,
-  attachmentIds: any[]
-): Promise<any> {
+  payload: {
+    responseText?: string;
+    attachmentIds?: unknown[];
+    linkUrl?: string;
+  }
+): Promise<unknown> {
   return fetchAPI(`/api/tasks/${taskId}/complete`, {
     method: 'POST',
-    body: JSON.stringify({ responseText, attachmentIds }),
+    body: JSON.stringify(payload),
   });
 }

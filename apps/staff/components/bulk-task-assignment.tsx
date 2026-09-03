@@ -2,8 +2,10 @@
 
 import { Plus, Send } from 'lucide-react';
 import type React from 'react';
-import { useState } from 'react';
-import { type CreateTaskData, createBulkTasks } from '../lib/api-client';
+import { useEffect, useState } from 'react';
+import { type CreateTaskData, createBulkTasks, getScholars } from '../lib/api-client';
+import { evidenceDefaultsForType } from '../lib/task-evidence';
+import { TaskEvidenceFields } from './task-evidence-fields';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -35,6 +37,7 @@ interface BulkTaskAssignmentProps {
   trigger?: React.ReactNode;
   selectedScholarIds?: string[];
   filteredScholars?: Scholar[];
+  assignToProgramStage?: 'prep_year';
   onSuccess?: () => void;
 }
 
@@ -45,6 +48,7 @@ export function BulkTaskAssignment({
   trigger,
   selectedScholarIds,
   filteredScholars,
+  assignToProgramStage,
   onSuccess,
 }: BulkTaskAssignmentProps) {
   const { toast } = useToast();
@@ -54,13 +58,35 @@ export function BulkTaskAssignment({
   const [dueDate, setDueDate] = useState('');
   const [priority, setPriority] = useState<Priority>('medium');
   const [taskType, setTaskType] = useState<TaskType>('other');
+  const otherDefaults = evidenceDefaultsForType('other');
+  const [phase, setPhase] = useState('');
+  const [requiresResponse, setRequiresResponse] = useState(otherDefaults.requiresResponse);
+  const [requiresAttachment, setRequiresAttachment] = useState(otherDefaults.requiresAttachment);
+  const [requiresLink, setRequiresLink] = useState(otherDefaults.requiresLink);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [cohortCount, setCohortCount] = useState<number | null>(null);
 
   const resolvedScholarIds: string[] =
     selectedScholarIds && selectedScholarIds.length > 0
       ? selectedScholarIds
       : (filteredScholars?.map((s) => s.id) ?? []);
-  const targetCount = resolvedScholarIds.length;
+  const isPrepCohort = assignToProgramStage === 'prep_year';
+  const targetCount = isPrepCohort ? (cohortCount ?? 0) : resolvedScholarIds.length;
+
+  useEffect(() => {
+    if (!open || !isPrepCohort) return;
+    let cancelled = false;
+    void getScholars({ programStage: 'prep_year', status: 'active', limit: 1 })
+      .then((response) => {
+        if (!cancelled) setCohortCount(response.pagination.totalItems);
+      })
+      .catch(() => {
+        if (!cancelled) setCohortCount(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, isPrepCohort]);
 
   const resetForm = () => {
     setTaskTitle('');
@@ -68,10 +94,15 @@ export function BulkTaskAssignment({
     setDueDate('');
     setPriority('medium');
     setTaskType('other');
+    setPhase('');
+    const resetDefaults = evidenceDefaultsForType('other');
+    setRequiresResponse(resetDefaults.requiresResponse);
+    setRequiresAttachment(resetDefaults.requiresAttachment);
+    setRequiresLink(resetDefaults.requiresLink);
   };
 
   const handleSubmit = async () => {
-    if (targetCount === 0) {
+    if (!isPrepCohort && targetCount === 0) {
       toast({
         title: 'No scholars selected',
         description: 'Select at least one scholar before assigning a task.',
@@ -95,7 +126,13 @@ export function BulkTaskAssignment({
         type: taskType,
         priority,
         dueDate,
-        scholarIds: resolvedScholarIds,
+        phase: phase.trim() || undefined,
+        requiresResponse,
+        requiresAttachment,
+        requiresLink,
+        ...(isPrepCohort
+          ? { programStage: 'prep_year' as const }
+          : { scholarIds: resolvedScholarIds }),
       });
       toast({
         title: 'Tasks assigned',
@@ -128,13 +165,17 @@ export function BulkTaskAssignment({
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Assign Task to Multiple Scholars</DialogTitle>
+          <DialogTitle>
+            {isPrepCohort ? 'Assign Task to Prep Year cohort' : 'Assign Task to Multiple Scholars'}
+          </DialogTitle>
           <DialogDescription>
-            Create and assign the same task to {targetCount}{' '}
-            {selectedScholarIds && selectedScholarIds.length > 0
-              ? 'selected scholars'
-              : 'filtered scholars'}
-            .
+            {isPrepCohort
+              ? 'Create and assign the same task to all active Prep Year candidates.'
+              : `Create and assign the same task to ${targetCount} ${
+                  selectedScholarIds && selectedScholarIds.length > 0
+                    ? 'selected scholars'
+                    : 'filtered scholars'
+                }.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -144,18 +185,24 @@ export function BulkTaskAssignment({
             <CardHeader>
               <CardTitle className="text-lg">Assignment Target</CardTitle>
               <CardDescription>
-                This task will be assigned to {targetCount} scholar{targetCount === 1 ? '' : 's'}
+                {isPrepCohort
+                  ? 'This task will be assigned to every active Prep Year candidate.'
+                  : `This task will be assigned to ${targetCount} scholar${targetCount === 1 ? '' : 's'}`}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2">
                 <Badge variant="secondary" className="text-lg px-3 py-1">
-                  {targetCount} Scholar{targetCount === 1 ? '' : 's'}
+                  {isPrepCohort && cohortCount == null
+                    ? 'Prep Year cohort'
+                    : `${targetCount} ${isPrepCohort ? 'Candidate' : 'Scholar'}${targetCount === 1 ? '' : 's'}`}
                 </Badge>
                 <span className="text-sm text-muted-foreground">
-                  {selectedScholarIds && selectedScholarIds.length > 0
-                    ? 'Selected from table'
-                    : 'All currently filtered scholars'}
+                  {isPrepCohort
+                    ? 'All active candidates with programStage = prep_year'
+                    : selectedScholarIds && selectedScholarIds.length > 0
+                      ? 'Selected from table'
+                      : 'All currently filtered scholars'}
                 </span>
               </div>
             </CardContent>
@@ -175,7 +222,17 @@ export function BulkTaskAssignment({
               </div>
               <div>
                 <Label htmlFor="taskType">Task Type</Label>
-                <Select value={taskType} onValueChange={(v) => setTaskType(v as TaskType)}>
+                <Select
+                  value={taskType}
+                  onValueChange={(v) => {
+                    const nextType = v as TaskType;
+                    setTaskType(nextType);
+                    const defaults = evidenceDefaultsForType(nextType);
+                    setRequiresResponse(defaults.requiresResponse);
+                    setRequiresAttachment(defaults.requiresAttachment);
+                    setRequiresLink(defaults.requiresLink);
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select task type" />
                   </SelectTrigger>
@@ -226,6 +283,17 @@ export function BulkTaskAssignment({
               </div>
             </div>
           </div>
+
+          <TaskEvidenceFields
+            phase={phase}
+            onPhaseChange={setPhase}
+            requiresResponse={requiresResponse}
+            requiresAttachment={requiresAttachment}
+            requiresLink={requiresLink}
+            onRequiresResponseChange={setRequiresResponse}
+            onRequiresAttachmentChange={setRequiresAttachment}
+            onRequiresLinkChange={setRequiresLink}
+          />
         </div>
 
         <DialogFooter>
@@ -235,14 +303,20 @@ export function BulkTaskAssignment({
           <Button
             onClick={handleSubmit}
             disabled={
-              targetCount === 0 || !taskTitle || !taskDescription || !dueDate || isSubmitting
+              (!isPrepCohort && targetCount === 0) ||
+              !taskTitle ||
+              !taskDescription ||
+              !dueDate ||
+              isSubmitting
             }
             className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
           >
             <Send className="h-4 w-4 mr-2" />
             {isSubmitting
               ? 'Assigning...'
-              : `Assign to ${targetCount} Scholar${targetCount === 1 ? '' : 's'}`}
+              : isPrepCohort
+                ? 'Assign to Prep Year cohort'
+                : `Assign to ${targetCount} Scholar${targetCount === 1 ? '' : 's'}`}
           </Button>
         </DialogFooter>
       </DialogContent>
