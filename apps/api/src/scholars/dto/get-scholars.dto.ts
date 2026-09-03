@@ -39,6 +39,11 @@ export class GetScholarsQueryDto {
   @IsEnum(['prep_year', 'scholar'])
   programStage?: 'prep_year' | 'scholar';
 
+  /** Prep-year candidates whose required platforms are not all Yes. */
+  @IsOptional()
+  @IsEnum(['incomplete', 'complete'])
+  platformSetup?: 'incomplete' | 'complete';
+
   @IsOptional()
   @IsEnum(['name', 'lastActivity', 'createdAt'])
   sortBy?: string = 'createdAt';
@@ -152,11 +157,22 @@ export class ScholarResponseDto {
   lastActivity?: Date | null;
   goals: ScholarGoalsStatsDto;
   tasks: ScholarTasksStatsDto;
+  /** True when a prep-year candidate still has platforms that are not Yes. Null for confirmed scholars. */
+  platformSetupIncomplete: boolean | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
 // New DTO for detailed scholar profile
+export class PlatformSetupDto {
+  platformId: string;
+  slug: string;
+  name: string;
+  signpostingUrl?: string | null;
+  sortOrder: number;
+  status: 'yes' | 'no' | 'pending';
+}
+
 export class ScholarProfileDto {
   id: string;
   userId: string;
@@ -200,6 +216,7 @@ export class ScholarProfileDto {
   goals: GoalDto[];
   tasks: TaskDto[];
   documents: DocumentDto[];
+  platformSetups: PlatformSetupDto[];
   createdAt: Date;
   updatedAt: Date;
 }

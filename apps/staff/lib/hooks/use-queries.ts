@@ -16,10 +16,12 @@ import {
   getScholarProfile,
   getScholarRequiredDocuments,
   getTasksByScholar,
+  type PlatformSetupStatus,
   type ResourceFilterOptions,
   type Task,
   type UpdateScholarProfileData,
   type UpdateTaskData,
+  updateScholarPlatformSetup,
   updateScholarProfile,
   updateTask,
   updateUser,
@@ -208,6 +210,17 @@ export function useUpdateScholarProfile(scholarId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: UpdateScholarProfileData) => updateScholarProfile(scholarId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.scholarProfile(scholarId) });
+    },
+  });
+}
+
+export function useUpdateScholarPlatformSetup(scholarId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { slug: string; status: PlatformSetupStatus }) =>
+      updateScholarPlatformSetup(scholarId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.scholarProfile(scholarId) });
     },

@@ -13,7 +13,9 @@ import {
   goalComments,
   goals,
   invitations,
+  platforms,
   requests,
+  scholarPlatformSetups,
   scholars,
   taskAttachments,
   taskResponses,
@@ -31,13 +33,19 @@ import {
   GetScholarsResponseDto,
   GoalDto,
   PaginationMetaDto,
+  PlatformSetupDto,
   ScholarGoalsStatsDto,
   ScholarProfileDto,
   ScholarResponseDto,
   ScholarTasksStatsDto,
   TaskDto,
 } from './dto/get-scholars.dto';
+import { UpdatePlatformSetupDto } from './dto/update-platform-setup.dto';
 import { UpdateScholarProfileDto } from './dto/update-scholar-profile.dto';
+import {
+  buildPlatformSetupIncompleteMap,
+  platformSetupFilterSql,
+} from './platform-setup';
 
 function uniqueFilterValues(values: Array<string | null | undefined>): string[] {
   const seen = new Set<string>();
@@ -144,6 +152,7 @@ export class ScholarsService {
       university,
       status,
       programStage,
+      platformSetup,
       sortBy = 'createdAt',
       sortOrder = 'desc',
     } = query;
@@ -186,6 +195,12 @@ export class ScholarsService {
       whereConditions.push(eq(scholars.programStage, programStage));
     }
 
+    if (platformSetup === 'incomplete') {
+      whereConditions.push(platformSetupFilterSql(true));
+    } else if (platformSetup === 'complete') {
+      whereConditions.push(platformSetupFilterSql(false));
+    }
+
     const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
 
     const orderByColumn =
@@ -222,6 +237,7 @@ export class ScholarsService {
 
     const goalsStats = await this.getGoalsStats(scholarIds);
     const tasksStats = await this.getTasksStats(scholarIds);
+    const incompleteMap = await this.getPlatformSetupIncompleteMap(scholarIds);
 
     const data: ScholarResponseDto[] = scholarsWithUsers.map((row) => ({
       id: row.scholar.id,
@@ -244,6 +260,8 @@ export class ScholarsService {
       lastActivity: row.scholar.lastActivity,
       goals: goalsStats[row.scholar.id] || { total: 0, completed: 0, inProgress: 0, pending: 0 },
       tasks: tasksStats[row.scholar.id] || { total: 0, completed: 0, overdue: 0 },
+      platformSetupIncomplete:
+        row.scholar.programStage === 'prep_year' ? incompleteMap[row.scholar.id] : null,
       createdAt: row.scholar.createdAt,
       updatedAt: row.scholar.updatedAt,
     }));
@@ -281,6 +299,7 @@ export class ScholarsService {
     const row = result[0];
     const goalsStats = await this.getGoalsStats([row.scholar.id]);
     const tasksStats = await this.getTasksStats([row.scholar.id]);
+    const incompleteMap = await this.getPlatformSetupIncompleteMap([row.scholar.id]);
 
     return {
       id: row.scholar.id,
@@ -303,6 +322,8 @@ export class ScholarsService {
       lastActivity: row.scholar.lastActivity,
       goals: goalsStats[row.scholar.id] || { total: 0, completed: 0, inProgress: 0, pending: 0 },
       tasks: tasksStats[row.scholar.id] || { total: 0, completed: 0, overdue: 0 },
+      platformSetupIncomplete:
+        row.scholar.programStage === 'prep_year' ? incompleteMap[row.scholar.id] : null,
       createdAt: row.scholar.createdAt,
       updatedAt: row.scholar.updatedAt,
     };
@@ -407,6 +428,80 @@ export class ScholarsService {
     }
 
     return stats;
+  }
+
+  private async getPlatformSetupIncompleteMap(
+    scholarIds: string[]
+  ): Promise<Record<string, boolean>> {
+    if (scholarIds.length === 0) return {};
+
+    const activePlatforms = await database
+      .select({ id: platforms.id })
+      .from(platforms)
+      .where(eq(platforms.isActive, true));
+
+    const yesRows =
+      activePlatforms.length === 0
+        ? []
+        : await database
+            .select({
+              scholarId: scholarPlatformSetups.scholarId,
+              complete: count(),
+            })
+            .from(scholarPlatformSetups)
+            .innerJoin(platforms, eq(scholarPlatformSetups.platformId, platforms.id))
+            .where(
+              and(
+                inArray(scholarPlatformSetups.scholarId, scholarIds),
+                eq(scholarPlatformSetups.status, 'yes'),
+                eq(platforms.isActive, true)
+              )
+            )
+            .groupBy(scholarPlatformSetups.scholarId);
+
+    return buildPlatformSetupIncompleteMap(
+      scholarIds,
+      activePlatforms.length,
+      new Map(yesRows.map((row) => [row.scholarId, Number(row.complete)]))
+    );
+  }
+
+  private async getPlatformSetupsForScholar(
+    scholarId: string,
+    programStage: 'prep_year' | 'scholar'
+  ): Promise<PlatformSetupDto[]> {
+    if (programStage !== 'prep_year') {
+      return [];
+    }
+
+    const rows = await database
+      .select({
+        platformId: platforms.id,
+        slug: platforms.slug,
+        name: platforms.name,
+        signpostingUrl: platforms.signpostingUrl,
+        sortOrder: platforms.sortOrder,
+        status: scholarPlatformSetups.status,
+      })
+      .from(platforms)
+      .leftJoin(
+        scholarPlatformSetups,
+        and(
+          eq(scholarPlatformSetups.platformId, platforms.id),
+          eq(scholarPlatformSetups.scholarId, scholarId)
+        )
+      )
+      .where(eq(platforms.isActive, true))
+      .orderBy(platforms.sortOrder);
+
+    return rows.map((row) => ({
+      platformId: row.platformId,
+      slug: row.slug,
+      name: row.name,
+      signpostingUrl: row.signpostingUrl,
+      sortOrder: row.sortOrder,
+      status: row.status ?? 'pending',
+    }));
   }
 
   async getScholarProfile(id: string): Promise<ScholarProfileDto> {
@@ -579,6 +674,10 @@ export class ScholarsService {
       goals: goalsList,
       tasks: tasksList,
       documents: documentsList,
+      platformSetups: await this.getPlatformSetupsForScholar(
+        id,
+        row.scholar.programStage as 'prep_year' | 'scholar'
+      ),
       createdAt: row.scholar.createdAt,
       updatedAt: row.scholar.updatedAt,
     };
@@ -794,6 +893,10 @@ export class ScholarsService {
       goals: goalsList,
       tasks: tasksList,
       documents: documentsList,
+      platformSetups: await this.getPlatformSetupsForScholar(
+        row.scholar.id,
+        row.scholar.programStage as 'prep_year' | 'scholar'
+      ),
       createdAt: row.scholar.createdAt,
       updatedAt: row.scholar.updatedAt,
     };
@@ -944,6 +1047,62 @@ export class ScholarsService {
       throw new NotFoundException('Scholar not found');
     }
     return this.updateScholarProfile(row.userId, profileUpdateData);
+  }
+
+  async updatePlatformSetup(
+    scholarId: string,
+    dto: UpdatePlatformSetupDto,
+    staffUserId: string
+  ): Promise<ScholarProfileDto> {
+    await database.transaction(async (tx) => {
+      // Lock the scholar row so enroll (programStage → scholar) on the same
+      // profile cannot race past the prep_year check and leave a setup row.
+      // Query builder returns rows; raw tx.execute() is a pg QueryResult ({ rows }).
+      const [scholar] = await tx
+        .select({ id: scholars.id, programStage: scholars.programStage })
+        .from(scholars)
+        .where(eq(scholars.id, scholarId))
+        .for('update')
+        .limit(1);
+      if (!scholar) {
+        throw new NotFoundException(`Scholar with ID ${scholarId} not found`);
+      }
+      if (scholar.programStage !== 'prep_year') {
+        throw new BadRequestException('Platform setup is only tracked for Prep Year candidates');
+      }
+
+      const platformRows = await tx
+        .select({ id: platforms.id })
+        .from(platforms)
+        .where(and(eq(platforms.slug, dto.slug), eq(platforms.isActive, true)))
+        .limit(1);
+      const platform = platformRows[0];
+      if (!platform) {
+        throw new NotFoundException(`Unknown platform: ${dto.slug}`);
+      }
+
+      const now = new Date();
+      await tx
+        .insert(scholarPlatformSetups)
+        .values({
+          scholarId,
+          platformId: platform.id,
+          status: dto.status,
+          updatedBy: staffUserId,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: [scholarPlatformSetups.scholarId, scholarPlatformSetups.platformId],
+          set: {
+            status: dto.status,
+            updatedBy: staffUserId,
+            updatedAt: now,
+          },
+        });
+    });
+
+    return this.getScholarProfile(scholarId);
   }
 
   async exportScholarLDF(scholarId: string): Promise<string> {
@@ -1195,6 +1354,9 @@ export class ScholarsService {
     }
     await database.delete(tasks).where(eq(tasks.scholarId, scholarId));
     await database.delete(documents).where(eq(documents.scholarId, scholarId));
+    await database
+      .delete(scholarPlatformSetups)
+      .where(eq(scholarPlatformSetups.scholarId, scholarId));
     await database.delete(requests).where(eq(requests.scholarId, scholarId));
     await database
       .delete(announcementRecipients)

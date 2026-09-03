@@ -17,6 +17,7 @@ describe('ScholarsController', () => {
     getScholar: jest.fn(),
     updateScholarProfile: jest.fn(),
     updateScholarProfileByScholarId: jest.fn(),
+    updatePlatformSetup: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -126,7 +127,7 @@ describe('ScholarsController', () => {
       expect(service.getScholars).toHaveBeenCalledTimes(1);
     });
 
-    it('should pass programStage filter to the service', async () => {
+    it('should pass platformSetup filter to the service', async () => {
       const mockResponse: GetScholarsResponseDto = {
         data: [],
         pagination: {
@@ -143,6 +144,7 @@ describe('ScholarsController', () => {
 
       const query: GetScholarsQueryDto = {
         programStage: 'prep_year',
+        platformSetup: 'incomplete',
       };
 
       const result = await controller.getScholars(query);
@@ -264,6 +266,27 @@ describe('ScholarsController', () => {
       expect(service.updateScholarProfileByScholarId).toHaveBeenCalledWith('scholar-1', {
         programStage: ProgramStage.SCHOLAR,
       });
+    });
+  });
+
+  describe('updatePlatformSetup', () => {
+    it('should forward staff platform setup updates', async () => {
+      mockScholarsService.updatePlatformSetup.mockResolvedValue({
+        id: 'scholar-1',
+        programStage: 'prep_year',
+      });
+
+      await controller.updatePlatformSetup(
+        'scholar-1',
+        { slug: 'coursera', status: 'yes' as const },
+        { user: { id: 'staff-1' } }
+      );
+
+      expect(service.updatePlatformSetup).toHaveBeenCalledWith(
+        'scholar-1',
+        { slug: 'coursera', status: 'yes' },
+        'staff-1'
+      );
     });
   });
 });

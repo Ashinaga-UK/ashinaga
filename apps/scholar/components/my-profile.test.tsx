@@ -34,6 +34,32 @@ describe('MyProfile', () => {
       intendedUniversity: 'University of Edinburgh',
       intendedCourse: 'Computer Science',
       degreePathway: 'Foundation Year',
+      platformSetups: [
+        {
+          platformId: 'p1',
+          slug: 'coursera',
+          name: 'Coursera',
+          signpostingUrl: 'https://www.coursera.org',
+          sortOrder: 2,
+          status: 'pending' as const,
+        },
+        {
+          platformId: 'p2',
+          slug: 'duolingo',
+          name: 'Duolingo',
+          signpostingUrl: null,
+          sortOrder: 3,
+          status: 'yes' as const,
+        },
+        {
+          platformId: 'p3',
+          slug: 'ashinaga_connect',
+          name: 'Ashinaga Connect',
+          signpostingUrl: 'javascript:alert(1)',
+          sortOrder: 4,
+          status: 'no' as const,
+        },
+      ],
       goals: [],
       tasks: [],
       documents: [],
@@ -55,6 +81,18 @@ describe('MyProfile', () => {
     expect(screen.getByText('Intended Pathway')).toBeInTheDocument();
     expect(screen.getByText('Not yet enrolled at university.')).toBeInTheDocument();
     expect(screen.getByDisplayValue('University of Edinburgh')).toBeInTheDocument();
+    expect(screen.getByText('Platform setup')).toBeInTheDocument();
+    expect(screen.getByText('Coursera')).toBeInTheDocument();
+    expect(screen.getByText('Pending')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'https://www.coursera.org' })).toHaveAttribute(
+      'href',
+      'https://www.coursera.org/'
+    );
+    expect(screen.getByText('Duolingo')).toBeInTheDocument();
+    expect(screen.getByText('Yes')).toBeInTheDocument();
+    expect(screen.getByText('Ashinaga Connect')).toBeInTheDocument();
+    expect(screen.getByText('javascript:alert(1)')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'javascript:alert(1)' })).not.toBeInTheDocument();
     expect(screen.queryByText('Academic Information')).not.toBeInTheDocument();
     expect(screen.queryByText('Academic Year')).not.toBeInTheDocument();
   });
@@ -89,6 +127,7 @@ describe('MyProfile', () => {
     });
     expect(screen.getByDisplayValue('Scholar')).toBeInTheDocument();
     expect(screen.queryByText('Intended Pathway')).not.toBeInTheDocument();
+    expect(screen.queryByText('Platform setup')).not.toBeInTheDocument();
     expect(screen.getByText('Academic Year')).toBeInTheDocument();
     expect(screen.queryByText('Pre-University')).not.toBeInTheDocument();
   });

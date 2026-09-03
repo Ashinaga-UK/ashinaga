@@ -1,6 +1,7 @@
 'use client';
 
 import { fileToProfileImageDataUrl } from '@workspace/ui/lib/profile-image';
+import { toSafeHttpUrl } from '@workspace/ui/lib/safe-href';
 import {
   AlertTriangle,
   Calendar,
@@ -509,51 +510,103 @@ export function MyProfile() {
         </Card>
 
         {profile.programStage === 'prep_year' ? (
-          <Card className="border-ashinaga-teal-100 dark:border-border">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-foreground">
-                <GraduationCap className="h-5 w-5" />
-                Intended Pathway
-              </CardTitle>
-              <CardDescription>Not yet enrolled at university.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="intendedUniversity">Intended University</Label>
-                  <Input
-                    id="intendedUniversity"
-                    value={formData.intendedUniversity}
-                    onChange={(e) =>
-                      setFormData({ ...formData, intendedUniversity: e.target.value })
-                    }
-                    disabled={!editing}
-                    placeholder="University you intend to attend"
-                  />
+          <>
+            <Card className="border-ashinaga-teal-100 dark:border-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-foreground">
+                  <GraduationCap className="h-5 w-5" />
+                  Intended Pathway
+                </CardTitle>
+                <CardDescription>Not yet enrolled at university.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="intendedUniversity">Intended University</Label>
+                    <Input
+                      id="intendedUniversity"
+                      value={formData.intendedUniversity}
+                      onChange={(e) =>
+                        setFormData({ ...formData, intendedUniversity: e.target.value })
+                      }
+                      disabled={!editing}
+                      placeholder="University you intend to attend"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="intendedCourse">Intended Course</Label>
+                    <Input
+                      id="intendedCourse"
+                      value={formData.intendedCourse}
+                      onChange={(e) => setFormData({ ...formData, intendedCourse: e.target.value })}
+                      disabled={!editing}
+                      placeholder="Intended degree or course"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label htmlFor="degreePathway">Degree Pathway</Label>
+                    <Input
+                      id="degreePathway"
+                      value={formData.degreePathway}
+                      onChange={(e) => setFormData({ ...formData, degreePathway: e.target.value })}
+                      disabled={!editing}
+                      placeholder="e.g. Foundation Year, Direct Entry"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="intendedCourse">Intended Course</Label>
-                  <Input
-                    id="intendedCourse"
-                    value={formData.intendedCourse}
-                    onChange={(e) => setFormData({ ...formData, intendedCourse: e.target.value })}
-                    disabled={!editing}
-                    placeholder="Intended degree or course"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <Label htmlFor="degreePathway">Degree Pathway</Label>
-                  <Input
-                    id="degreePathway"
-                    value={formData.degreePathway}
-                    onChange={(e) => setFormData({ ...formData, degreePathway: e.target.value })}
-                    disabled={!editing}
-                    placeholder="e.g. Foundation Year, Direct Entry"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+            {(profile.platformSetups?.length ?? 0) > 0 && (
+              <Card className="border-ashinaga-teal-100 dark:border-border">
+                <CardHeader>
+                  <CardTitle className="text-foreground">Platform setup</CardTitle>
+                  <CardDescription>
+                    Status of your required platform accounts. Staff update these on your behalf.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {profile.platformSetups?.map((setup) => {
+                    const safeUrl = toSafeHttpUrl(setup.signpostingUrl);
+                    return (
+                      <div
+                        key={setup.platformId}
+                        className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-medium text-foreground">{setup.name}</p>
+                          {safeUrl ? (
+                            <a
+                              href={safeUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-ashinaga-teal-700 underline-offset-2 hover:underline dark:text-ashinaga-teal-400"
+                            >
+                              {setup.signpostingUrl}
+                            </a>
+                          ) : setup.signpostingUrl ? (
+                            <p className="text-sm text-muted-foreground truncate">
+                              {setup.signpostingUrl}
+                            </p>
+                          ) : null}
+                        </div>
+                        <Badge
+                          variant={
+                            setup.status === 'yes'
+                              ? 'default'
+                              : setup.status === 'no'
+                                ? 'outline'
+                                : 'secondary'
+                          }
+                        >
+                          {setup.status === 'yes' ? 'Yes' : setup.status === 'no' ? 'No' : 'Pending'}
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            )}
+          </>
         ) : (
           <>
             <Card className="border-ashinaga-teal-100 dark:border-border">
