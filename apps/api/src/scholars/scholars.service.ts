@@ -55,10 +55,6 @@ function uniqueFilterValues(values: Array<string | null | undefined>): string[] 
   return result;
 }
 
-function asRows<T>(value: unknown): T[] {
-  return Array.isArray(value) ? (value as T[]) : [];
-}
-
 @Injectable()
 export class ScholarsService {
   constructor(
@@ -196,9 +192,9 @@ export class ScholarsService {
     }
 
     if (platformSetup === 'incomplete') {
-      whereConditions.push(this.incompletePlatformSetupSql());
+      whereConditions.push(this.platformSetupFilterSql(true));
     } else if (platformSetup === 'complete') {
-      whereConditions.push(this.completePlatformSetupSql());
+      whereConditions.push(this.platformSetupFilterSql(false));
     }
 
     const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
@@ -261,7 +257,7 @@ export class ScholarsService {
       goals: goalsStats[row.scholar.id] || { total: 0, completed: 0, inProgress: 0, pending: 0 },
       tasks: tasksStats[row.scholar.id] || { total: 0, completed: 0, overdue: 0 },
       platformSetupIncomplete:
-        row.scholar.programStage === 'prep_year' ? (incompleteMap[row.scholar.id] ?? true) : null,
+        row.scholar.programStage === 'prep_year' ? incompleteMap[row.scholar.id] : null,
       createdAt: row.scholar.createdAt,
       updatedAt: row.scholar.updatedAt,
     }));
@@ -323,7 +319,7 @@ export class ScholarsService {
       goals: goalsStats[row.scholar.id] || { total: 0, completed: 0, inProgress: 0, pending: 0 },
       tasks: tasksStats[row.scholar.id] || { total: 0, completed: 0, overdue: 0 },
       platformSetupIncomplete:
-        row.scholar.programStage === 'prep_year' ? (incompleteMap[row.scholar.id] ?? true) : null,
+        row.scholar.programStage === 'prep_year' ? incompleteMap[row.scholar.id] : null,
       createdAt: row.scholar.createdAt,
       updatedAt: row.scholar.updatedAt,
     };
@@ -430,28 +426,11 @@ export class ScholarsService {
     return stats;
   }
 
-  private incompletePlatformSetupSql() {
+  private platformSetupFilterSql(incomplete: boolean) {
+    const existsKeyword = incomplete ? sql`EXISTS` : sql`NOT EXISTS`;
     return sql`(
       ${scholars.programStage} = 'prep_year'
-      AND EXISTS (
-        SELECT 1
-        FROM platforms p
-        WHERE p.is_active = true
-          AND NOT EXISTS (
-            SELECT 1
-            FROM scholar_platform_setups s
-            WHERE s.scholar_id = ${scholars.id}
-              AND s.platform_id = p.id
-              AND s.status = 'yes'
-          )
-      )
-    )`;
-  }
-
-  private completePlatformSetupSql() {
-    return sql`(
-      ${scholars.programStage} = 'prep_year'
-      AND NOT EXISTS (
+      AND ${existsKeyword} (
         SELECT 1
         FROM platforms p
         WHERE p.is_active = true
@@ -471,34 +450,30 @@ export class ScholarsService {
   ): Promise<Record<string, boolean>> {
     if (scholarIds.length === 0) return {};
 
-    const activePlatforms = asRows<{ id: string }>(
-      await database
-        .select({ id: platforms.id })
-        .from(platforms)
-        .where(eq(platforms.isActive, true))
-    );
+    const activePlatforms = await database
+      .select({ id: platforms.id })
+      .from(platforms)
+      .where(eq(platforms.isActive, true));
     const total = activePlatforms.length;
     if (total === 0) {
       return Object.fromEntries(scholarIds.map((id) => [id, false]));
     }
 
-    const yesRows = asRows<{ scholarId: string; complete: number }>(
-      await database
-        .select({
-          scholarId: scholarPlatformSetups.scholarId,
-          complete: count(),
-        })
-        .from(scholarPlatformSetups)
-        .innerJoin(platforms, eq(scholarPlatformSetups.platformId, platforms.id))
-        .where(
-          and(
-            inArray(scholarPlatformSetups.scholarId, scholarIds),
-            eq(scholarPlatformSetups.status, 'yes'),
-            eq(platforms.isActive, true)
-          )
+    const yesRows = await database
+      .select({
+        scholarId: scholarPlatformSetups.scholarId,
+        complete: count(),
+      })
+      .from(scholarPlatformSetups)
+      .innerJoin(platforms, eq(scholarPlatformSetups.platformId, platforms.id))
+      .where(
+        and(
+          inArray(scholarPlatformSetups.scholarId, scholarIds),
+          eq(scholarPlatformSetups.status, 'yes'),
+          eq(platforms.isActive, true)
         )
-        .groupBy(scholarPlatformSetups.scholarId)
-    );
+      )
+      .groupBy(scholarPlatformSetups.scholarId);
 
     const yesByScholar = new Map(yesRows.map((row) => [row.scholarId, Number(row.complete)]));
     const result: Record<string, boolean> = {};
@@ -516,34 +491,25 @@ export class ScholarsService {
       return [];
     }
 
-    const rows = asRows<{
-      platformId: string;
-      slug: string;
-      name: string;
-      signpostingUrl: string | null;
-      sortOrder: number;
-      status: 'yes' | 'no' | 'pending' | null;
-    }>(
-      await database
-        .select({
-          platformId: platforms.id,
-          slug: platforms.slug,
-          name: platforms.name,
-          signpostingUrl: platforms.signpostingUrl,
-          sortOrder: platforms.sortOrder,
-          status: scholarPlatformSetups.status,
-        })
-        .from(platforms)
-        .leftJoin(
-          scholarPlatformSetups,
-          and(
-            eq(scholarPlatformSetups.platformId, platforms.id),
-            eq(scholarPlatformSetups.scholarId, scholarId)
-          )
+    const rows = await database
+      .select({
+        platformId: platforms.id,
+        slug: platforms.slug,
+        name: platforms.name,
+        signpostingUrl: platforms.signpostingUrl,
+        sortOrder: platforms.sortOrder,
+        status: scholarPlatformSetups.status,
+      })
+      .from(platforms)
+      .leftJoin(
+        scholarPlatformSetups,
+        and(
+          eq(scholarPlatformSetups.platformId, platforms.id),
+          eq(scholarPlatformSetups.scholarId, scholarId)
         )
-        .where(eq(platforms.isActive, true))
-        .orderBy(platforms.sortOrder)
-    );
+      )
+      .where(eq(platforms.isActive, true))
+      .orderBy(platforms.sortOrder);
 
     return rows.map((row) => ({
       platformId: row.platformId,
@@ -1105,13 +1071,11 @@ export class ScholarsService {
     dto: UpdatePlatformSetupDto,
     staffUserId: string
   ): Promise<ScholarProfileDto> {
-    const scholarRows = asRows<{ id: string; programStage: 'prep_year' | 'scholar' }>(
-      await database
-        .select({ id: scholars.id, programStage: scholars.programStage })
-        .from(scholars)
-        .where(eq(scholars.id, scholarId))
-        .limit(1)
-    );
+    const scholarRows = await database
+      .select({ id: scholars.id, programStage: scholars.programStage })
+      .from(scholars)
+      .where(eq(scholars.id, scholarId))
+      .limit(1);
     const scholar = scholarRows[0];
     if (!scholar) {
       throw new NotFoundException(`Scholar with ID ${scholarId} not found`);
@@ -1120,13 +1084,11 @@ export class ScholarsService {
       throw new BadRequestException('Platform setup is only tracked for Prep Year candidates');
     }
 
-    const platformRows = asRows<{ id: string }>(
-      await database
-        .select({ id: platforms.id })
-        .from(platforms)
-        .where(and(eq(platforms.slug, dto.slug), eq(platforms.isActive, true)))
-        .limit(1)
-    );
+    const platformRows = await database
+      .select({ id: platforms.id })
+      .from(platforms)
+      .where(and(eq(platforms.slug, dto.slug), eq(platforms.isActive, true)))
+      .limit(1);
     const platform = platformRows[0];
     if (!platform) {
       throw new NotFoundException(`Unknown platform: ${dto.slug}`);

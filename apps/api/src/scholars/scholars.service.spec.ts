@@ -356,6 +356,12 @@ describe('ScholarsService', () => {
         } else if (selectCallCount === 3) {
           // Third call: tasks stats
           mockGroupBy.mockResolvedValueOnce(mockTasksData);
+        } else if (selectCallCount === 4) {
+          // Fourth call: active platforms
+          mockWhere.mockResolvedValueOnce([]);
+        } else if (selectCallCount === 5) {
+          // Fifth call: yes rows
+          mockGroupBy.mockResolvedValueOnce([]);
         }
 
         return {
