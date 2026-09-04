@@ -2,34 +2,38 @@ import { BadRequestException } from '@nestjs/common';
 import { validateProfileImage } from './profile-image';
 
 describe('validateProfileImage', () => {
-  it('allows empty values so a picture can be removed', () => {
-    expect(() => validateProfileImage(null)).not.toThrow();
-    expect(() => validateProfileImage(undefined)).not.toThrow();
-    expect(() => validateProfileImage('')).not.toThrow();
+  const userId = '11111111-1111-4111-8111-111111111111';
+
+  it('allows empty values', () => {
+    expect(() => validateProfileImage(null, userId)).not.toThrow();
+    expect(() => validateProfileImage(undefined, userId)).not.toThrow();
+    expect(() => validateProfileImage('', userId)).not.toThrow();
   });
 
-  it('accepts JPEG data URLs including the image/jpg alias', () => {
+  it('allows a pending avatar key owned by the user', () => {
     expect(() =>
-      validateProfileImage('data:image/jpeg;base64,abc')
+      validateProfileImage(`avatars/pending/${userId}/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.jpg`, userId)
     ).not.toThrow();
-    expect(() => validateProfileImage('data:image/jpg;base64,abc')).not.toThrow();
   });
 
-  it('rejects unsupported image types', () => {
-    expect(() => validateProfileImage('data:image/svg+xml;base64,abc')).toThrow(
+  it('rejects data URLs for new writes', () => {
+    expect(() => validateProfileImage('data:image/jpeg;base64,abc', userId)).toThrow(
       BadRequestException
     );
-    expect(() => validateProfileImage('data:image/pjpeg;base64,abc')).toThrow(
-      BadRequestException
-    );
-    expect(() => validateProfileImage('https://example.com/photo.jpg')).toThrow(
-      BadRequestException
+    expect(() => validateProfileImage('data:image/jpeg;base64,abc', userId)).toThrow(
+      'uploaded to object storage'
     );
   });
 
-  it('rejects data URLs over the maximum length', () => {
-    const oversized = `data:image/jpeg;base64,${'a'.repeat(3_000_000)}`;
-    expect(() => validateProfileImage(oversized)).toThrow(BadRequestException);
-    expect(() => validateProfileImage(oversized)).toThrow('Profile image is too large to save');
+  it('rejects foreign pending keys and https URLs', () => {
+    expect(() =>
+      validateProfileImage(
+        'avatars/pending/22222222-2222-4222-8222-222222222222/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.jpg',
+        userId
+      )
+    ).toThrow(BadRequestException);
+    expect(() => validateProfileImage('https://example.com/photo.jpg', userId)).toThrow(
+      BadRequestException
+    );
   });
 });

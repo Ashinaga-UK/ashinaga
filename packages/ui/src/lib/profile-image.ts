@@ -1,9 +1,12 @@
 /** Loose sanity bound on the *source* file. The real limit is applied to the compressed output. */
 export const PROFILE_IMAGE_MAX_SOURCE_BYTES = 25 * 1024 * 1024;
-/** Keep in sync with PROFILE_IMAGE_MAX_DATA_URL_LENGTH in apps/api/src/common/profile-image.ts */
+/** Legacy data-URL length bound (kept for any remaining preview helpers). */
 export const PROFILE_IMAGE_MAX_DATA_URL_LENGTH = 3_000_000;
+/** Max compressed JPEG size uploaded to S3 (keep in sync with AVATAR_FILE_MAX_SIZE_BYTES). */
+export const PROFILE_IMAGE_MAX_BLOB_BYTES = 1 * 1024 * 1024;
 export const PROFILE_IMAGE_MAX_DIMENSION = 800;
 export const PROFILE_IMAGE_JPEG_QUALITY = 0.85;
+export const PROFILE_IMAGE_CONTENT_TYPE = 'image/jpeg';
 
 function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -59,7 +62,7 @@ async function decodeOrientedImage(file: File): Promise<DecodedImage> {
   };
 }
 
-function compressToJpeg(decoded: DecodedImage): string {
+function compressToJpegDataUrl(decoded: DecodedImage): string {
   const longestSide = Math.max(decoded.width, decoded.height) || 1;
   const scale =
     longestSide > PROFILE_IMAGE_MAX_DIMENSION ? PROFILE_IMAGE_MAX_DIMENSION / longestSide : 1;
@@ -76,7 +79,20 @@ function compressToJpeg(decoded: DecodedImage): string {
   return canvas.toDataURL('image/jpeg', PROFILE_IMAGE_JPEG_QUALITY);
 }
 
-export async function fileToProfileImageDataUrl(file: File): Promise<string> {
+function dataUrlToBlob(dataUrl: string): Blob {
+  const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+  if (!match) {
+    throw new Error('Could not process that image. Please try another file.');
+  }
+  const binary = atob(match[2]);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return new Blob([bytes], { type: match[1] || PROFILE_IMAGE_CONTENT_TYPE });
+}
+
+async function compressFile(file: File): Promise<string> {
   if (!file.type.startsWith('image/')) {
     throw new Error('Please choose an image file.');
   }
@@ -87,12 +103,26 @@ export async function fileToProfileImageDataUrl(file: File): Promise<string> {
 
   const decoded = await decodeOrientedImage(file);
   try {
-    const compressed = compressToJpeg(decoded);
-    if (compressed.length > PROFILE_IMAGE_MAX_DATA_URL_LENGTH) {
-      throw new Error('That image is too large to save. Please try a smaller one.');
-    }
-    return compressed;
+    return compressToJpegDataUrl(decoded);
   } finally {
     decoded.close();
   }
+}
+
+/** @deprecated Prefer fileToProfileImageBlob for uploads. Still useful for local previews. */
+export async function fileToProfileImageDataUrl(file: File): Promise<string> {
+  const compressed = await compressFile(file);
+  if (compressed.length > PROFILE_IMAGE_MAX_DATA_URL_LENGTH) {
+    throw new Error('That image is too large to save. Please try a smaller one.');
+  }
+  return compressed;
+}
+
+export async function fileToProfileImageBlob(file: File): Promise<Blob> {
+  const compressed = await compressFile(file);
+  const blob = dataUrlToBlob(compressed);
+  if (blob.size > PROFILE_IMAGE_MAX_BLOB_BYTES) {
+    throw new Error('That image is too large to save. Please try a smaller one.');
+  }
+  return blob;
 }
