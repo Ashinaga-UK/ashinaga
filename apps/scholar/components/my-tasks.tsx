@@ -1,6 +1,14 @@
 'use client';
 
-import { AlertCircle, Calendar, CheckCircle, Circle, Clock } from 'lucide-react';
+import {
+  AlertCircle,
+  Calendar,
+  CheckCircle,
+  Circle,
+  Clock,
+  ListTodo,
+  Loader2,
+} from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
 import type { Task } from '../lib/api/tasks';
 import { completeTask, getMyTasks, updateTaskStatus } from '../lib/api/tasks';
@@ -175,7 +183,7 @@ export function MyTasks() {
   const renderTaskCard = (task: Task) => (
     <div
       key={task.id}
-      className={`rounded-lg border bg-card p-4 ${task.status === 'completed' ? 'opacity-75' : ''}`}
+      className={`rounded-lg border border-ashinaga-teal-100 bg-card p-4 dark:border-border ${task.status === 'completed' ? 'opacity-75' : ''}`}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1 space-y-2">
@@ -206,12 +214,7 @@ export function MyTasks() {
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           {task.status !== 'completed' && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => openCompleteDialog(task)}
-              className="border-green-600 text-green-700 hover:bg-green-50 dark:border-green-500 dark:text-green-400 dark:hover:bg-green-950"
-            >
+            <Button size="sm" variant="outline" onClick={() => openCompleteDialog(task)}>
               <CheckCircle className="mr-1 h-4 w-4" />
               Complete
             </Button>
@@ -239,8 +242,9 @@ export function MyTasks() {
 
   if (isLoading || profileStatus === 'loading') {
     return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-ashinaga-blue" />
+      <div className="flex min-h-[220px] items-center justify-center text-sm text-muted-foreground">
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        Loading tasks...
       </div>
     );
   }
@@ -323,7 +327,13 @@ export function MyTasks() {
             />
           </>
         ) : sortedTasks.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">No tasks found</p>
+          <div className="flex min-h-[220px] flex-col items-center justify-center rounded-lg border border-ashinaga-teal-100 bg-card/40 px-4 text-center dark:border-border">
+            <ListTodo className="mb-2 h-6 w-6 text-muted-foreground" />
+            <p className="text-sm font-medium text-foreground">No tasks found</p>
+            <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+              Tasks assigned to you will show up here.
+            </p>
+          </div>
         ) : (
           <div className="space-y-3">{sortedTasks.map(renderTaskCard)}</div>
         )}
