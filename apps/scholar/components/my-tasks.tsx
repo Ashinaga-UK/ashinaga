@@ -242,7 +242,7 @@ export function MyTasks() {
 
   if (isLoading || profileStatus === 'loading') {
     return (
-      <div className="flex min-h-[220px] items-center justify-center text-sm text-muted-foreground">
+      <div className="flex min-h-[220px] items-center justify-center rounded-lg border border-ashinaga-teal-100 bg-card/40 text-sm text-muted-foreground dark:border-border">
         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
         Loading tasks...
       </div>
@@ -265,6 +265,10 @@ export function MyTasks() {
 
   const isPrepYear = programStage === 'prep_year';
   const grouped = isPrepYear ? groupPrepYearTasks(tasks) : null;
+  const emptyHint =
+    !isPrepYear && filter !== 'all'
+      ? 'Try changing your filters to see more tasks.'
+      : 'Tasks assigned to you will show up here.';
 
   return (
     <>
@@ -306,34 +310,32 @@ export function MyTasks() {
         </div>
 
         {isPrepYear && grouped ? (
-          <>
-            <TaskGroupSection
-              title="Due now"
-              emptyLabel="Nothing due right now"
-              tasks={grouped.dueNow}
-              renderTask={renderTaskCard}
-            />
-            <TaskGroupSection
-              title="Upcoming"
-              emptyLabel="No upcoming tasks"
-              tasks={grouped.upcoming}
-              renderTask={renderTaskCard}
-            />
-            <TaskGroupSection
-              title="Completed"
-              emptyLabel="No completed tasks yet"
-              tasks={grouped.completed}
-              renderTask={renderTaskCard}
-            />
-          </>
+          tasks.length === 0 ? (
+            <TasksEmptyState hint={emptyHint} />
+          ) : (
+            <>
+              <TaskGroupSection
+                title="Due now"
+                emptyLabel="Nothing due right now"
+                tasks={grouped.dueNow}
+                renderTask={renderTaskCard}
+              />
+              <TaskGroupSection
+                title="Upcoming"
+                emptyLabel="No upcoming tasks"
+                tasks={grouped.upcoming}
+                renderTask={renderTaskCard}
+              />
+              <TaskGroupSection
+                title="Completed"
+                emptyLabel="No completed tasks yet"
+                tasks={grouped.completed}
+                renderTask={renderTaskCard}
+              />
+            </>
+          )
         ) : sortedTasks.length === 0 ? (
-          <div className="flex min-h-[220px] flex-col items-center justify-center rounded-lg border border-ashinaga-teal-100 bg-card/40 px-4 text-center dark:border-border">
-            <ListTodo className="mb-2 h-6 w-6 text-muted-foreground" />
-            <p className="text-sm font-medium text-foreground">No tasks found</p>
-            <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-              Tasks assigned to you will show up here.
-            </p>
-          </div>
+          <TasksEmptyState hint={emptyHint} />
         ) : (
           <div className="space-y-3">{sortedTasks.map(renderTaskCard)}</div>
         )}
@@ -348,6 +350,16 @@ export function MyTasks() {
         />
       )}
     </>
+  );
+}
+
+function TasksEmptyState({ hint }: { hint: string }) {
+  return (
+    <div className="flex min-h-[220px] flex-col items-center justify-center rounded-lg border border-ashinaga-teal-100 bg-card/40 px-4 text-center dark:border-border">
+      <ListTodo className="mb-2 h-6 w-6 text-muted-foreground" />
+      <p className="text-sm font-medium text-foreground">No tasks found</p>
+      <p className="mt-1 max-w-sm text-sm text-muted-foreground">{hint}</p>
+    </div>
   );
 }
 
