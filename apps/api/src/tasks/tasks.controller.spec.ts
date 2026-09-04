@@ -1,4 +1,7 @@
+import { RequestMethod } from '@nestjs/common';
+import { GUARDS_METADATA, METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { Test, type TestingModule } from '@nestjs/testing';
+import { StaffGuard } from '../auth/staff.guard';
 import { TasksController } from './tasks.controller';
 import { TasksService } from './tasks.service';
 
@@ -11,6 +14,7 @@ describe('TasksController', () => {
     updateTaskStatus: jest.Mock;
     getTitleSuggestions: jest.Mock;
     getTasksByUser: jest.Mock;
+    getCohort: jest.Mock;
     getTasksByScholar: jest.Mock;
     updateTask: jest.Mock;
     softDeleteTask: jest.Mock;
@@ -24,6 +28,7 @@ describe('TasksController', () => {
       updateTaskStatus: jest.fn(),
       getTitleSuggestions: jest.fn(),
       getTasksByUser: jest.fn(),
+      getCohort: jest.fn(),
       getTasksByScholar: jest.fn(),
       updateTask: jest.fn(),
       softDeleteTask: jest.fn(),
@@ -77,6 +82,26 @@ describe('TasksController', () => {
     service.completeTask.mockResolvedValue({ task: { id: 'task-1', status: 'completed' } });
     await controller.completeTask('task-1', { responseText: 'Done' }, { user: { id: 'user-1' } });
     expect(service.completeTask).toHaveBeenCalledWith('task-1', { responseText: 'Done' }, 'user-1');
+  });
+
+  it('guards GET /cohort with StaffGuard on a static path', () => {
+    expect(Reflect.getMetadata(PATH_METADATA, TasksController.prototype.getCohort)).toBe('cohort');
+    expect(Reflect.getMetadata(METHOD_METADATA, TasksController.prototype.getCohort)).toBe(
+      RequestMethod.GET
+    );
+    expect(Reflect.getMetadata(GUARDS_METADATA, TasksController.prototype.getCohort)).toEqual(
+      expect.arrayContaining([StaffGuard])
+    );
+    expect(Reflect.getMetadata(PATH_METADATA, TasksController.prototype.getTasksByScholar)).toBe(
+      'scholar/:scholarId'
+    );
+  });
+
+  it('forwards cohort query filters to the service', async () => {
+    service.getCohort.mockResolvedValue({ columns: [], scholars: [], summary: {} });
+    const query = { phase: 'english', state: 'overdue' as const };
+    await controller.getCohort(query);
+    expect(service.getCohort).toHaveBeenCalledWith(query);
   });
 
   it('passes the actor into status updates', async () => {

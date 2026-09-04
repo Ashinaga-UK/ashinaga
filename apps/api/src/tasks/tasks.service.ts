@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, desc, eq, ilike, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, ilike, inArray, isNull, sql } from 'drizzle-orm';
 import { assertHttpUrl } from '../common/http-url';
 import { getDatabase } from '../db/connection';
 import { scholars } from '../db/schema/scholars';
@@ -17,7 +17,9 @@ import { ObjectStorageService } from '../storage/object-storage';
 import { AttachmentDto, CompleteTaskDto } from './dto/complete-task.dto';
 import { CreateBulkTasksDto } from './dto/create-bulk-tasks.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { GetTaskCohortQueryDto } from './dto/get-task-cohort-query.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
+import { buildPrepTaskCohortMatrix } from './prep-task-cohort';
 import { isTaskOverdue } from './task-due';
 import {
   normalizePhase,
@@ -297,6 +299,54 @@ export class TasksService {
     return rows.map((row) => this.withOverdue(row));
   }
 
+  async getCohort(query: GetTaskCohortQueryDto) {
+    if (query.assignmentGroupId && query.columnKey) {
+      throw new BadRequestException('Provide assignmentGroupId or columnKey, not both');
+    }
+
+    const prepScholars = await this.db
+      .select({
+        scholarId: scholars.id,
+        name: users.name,
+        email: users.email,
+      })
+      .from(scholars)
+      .innerJoin(users, eq(scholars.userId, users.id))
+      .where(eq(scholars.programStage, 'prep_year'))
+      .orderBy(asc(users.name));
+
+    const scholarIds = prepScholars.map((row) => row.scholarId);
+    const taskRows =
+      scholarIds.length === 0
+        ? []
+        : await this.db
+            .select({
+              id: tasks.id,
+              scholarId: tasks.scholarId,
+              title: tasks.title,
+              phase: tasks.phase,
+              dueDate: tasks.dueDate,
+              assignmentGroupId: tasks.assignmentGroupId,
+              requiresResponse: tasks.requiresResponse,
+              requiresAttachment: tasks.requiresAttachment,
+              requiresLink: tasks.requiresLink,
+              status: tasks.status,
+              completedAt: tasks.completedAt,
+              createdAt: tasks.createdAt,
+              updatedAt: tasks.updatedAt,
+            })
+            .from(tasks)
+            .where(and(inArray(tasks.scholarId, scholarIds), isNull(tasks.deletedAt)));
+
+    return buildPrepTaskCohortMatrix(prepScholars, taskRows, {
+      phase: query.phase,
+      scholarId: query.scholarId,
+      assignmentGroupId: query.assignmentGroupId,
+      columnKey: query.columnKey,
+      state: query.state,
+    });
+  }
+
   async getTitleSuggestions(query: string, assignedBy: string, limit = 8) {
     await this.assertStaffActor(assignedBy);
     const trimmed = (query || '').trim();
@@ -407,9 +457,7 @@ export class TasksService {
           .where(eq(taskResponses.taskId, taskId))
           .limit(1);
         if (response) {
-          await tx
-            .delete(taskAttachments)
-            .where(eq(taskAttachments.taskResponseId, response.id));
+          await tx.delete(taskAttachments).where(eq(taskAttachments.taskResponseId, response.id));
           await tx.delete(taskResponses).where(eq(taskResponses.id, response.id));
         }
       }

@@ -12,6 +12,7 @@ import {
   Query,
   Req,
   UseGuards,
+  ValidationPipe,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
@@ -20,6 +21,7 @@ import { StaffGuard } from '../auth/staff.guard';
 import { CompleteTaskDto } from './dto/complete-task.dto';
 import { CreateBulkTasksDto } from './dto/create-bulk-tasks.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { GetTaskCohortQueryDto } from './dto/get-task-cohort-query.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { TasksService } from './tasks.service';
 
@@ -91,6 +93,16 @@ export class TasksController {
       throw new Error('User not authenticated');
     }
     return this.tasksService.getTasksByUser(userId);
+  }
+
+  @Get('cohort')
+  @UseGuards(StaffGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get Prep Year cohort task completion matrix' })
+  async getCohort(
+    @Query(new ValidationPipe({ transform: true, whitelist: true })) query: GetTaskCohortQueryDto
+  ) {
+    return this.tasksService.getCohort(query);
   }
 
   @Get('scholar/:scholarId')
