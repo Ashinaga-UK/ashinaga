@@ -24,8 +24,8 @@ function task(
 }
 
 const scholars = [
-  { scholarId: 's1', name: 'Ada Candidate', email: 'ada@example.com' },
-  { scholarId: 's2', name: 'Ben Candidate', email: 'ben@example.com' },
+  { scholarId: 's1', name: 'Ada Candidate', email: 'ada@example.com', status: 'active' as const },
+  { scholarId: 's2', name: 'Ben Candidate', email: 'ben@example.com', status: 'on_hold' as const },
 ];
 
 describe('prepTaskColumnKey', () => {
@@ -68,6 +68,19 @@ describe('buildPrepTaskCohortMatrix', () => {
     expect(payload.scholars[1]?.cells[0]).toEqual(
       expect.objectContaining({ taskId: 't2', status: 'in_progress', overdue: false })
     );
+    expect(payload.scholars.map((row) => row.status)).toEqual(['active', 'on_hold']);
+  });
+
+  it('keeps scholar rows when there are no task columns', () => {
+    const payload = buildPrepTaskCohortMatrix(scholars, [], {}, now);
+    expect(payload.columns).toEqual([]);
+    expect(payload.scholars).toHaveLength(2);
+    expect(payload.summary).toEqual({
+      scholarCount: 2,
+      columnCount: 0,
+      overdueCount: 0,
+      completedCount: 0,
+    });
   });
 
   it('keeps one cell per scholar/column and prefers the latest updatedAt', () => {

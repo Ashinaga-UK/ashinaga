@@ -95,6 +95,7 @@ const cohortPayload = {
       scholarId: 's1',
       name: 'Ada Candidate',
       email: 'ada@example.com',
+      status: 'active',
       cells: [
         {
           columnKey: 'group-1',
@@ -109,6 +110,7 @@ const cohortPayload = {
       scholarId: 's2',
       name: 'Ben Candidate',
       email: 'ben@example.com',
+      status: 'on_hold',
       cells: [
         {
           columnKey: 'group-1',
@@ -157,6 +159,9 @@ describe('PrepTasksTracker', () => {
     expect(screen.getByText('Loading Prep Year tasks...')).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: 'Ada Candidate' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Ben Candidate' })).toBeInTheDocument();
+    expect(screen.getByText('Active')).toBeInTheDocument();
+    expect(screen.getByText('On hold')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Assign to Prep Year cohort' })).toBeInTheDocument();
     expect(screen.getAllByText('Not started').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Completed').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Overdue').length).toBeGreaterThan(0);
@@ -172,6 +177,34 @@ describe('PrepTasksTracker', () => {
     });
     renderTracker();
     expect(await screen.findByText('No Prep Year candidates yet.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Assign to Prep Year cohort' })).toBeInTheDocument();
+  });
+
+  it('shows the no-tasks empty state when candidates exist but there are no columns', async () => {
+    mockGetCohort.mockResolvedValue({
+      columns: [],
+      scholars: [
+        {
+          scholarId: 's1',
+          name: 'Ada Candidate',
+          email: 'ada@example.com',
+          status: 'active',
+          cells: [],
+        },
+      ],
+      summary: { scholarCount: 1, columnCount: 0, overdueCount: 0, completedCount: 0 },
+      filterOptions: {
+        phases: [],
+        columns: [],
+        scholars: [{ scholarId: 's1', name: 'Ada Candidate' }],
+      },
+    });
+    renderTracker();
+    expect(
+      await screen.findByText('No tasks have been assigned to the Prep Year cohort yet.')
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Ada Candidate' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Assign to Prep Year cohort' })).toBeInTheDocument();
   });
 
   it('shows an inline error when the cohort request fails', async () => {

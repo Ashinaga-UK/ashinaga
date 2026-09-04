@@ -20,10 +20,13 @@ export type PrepTaskCohortFilters = {
   state?: PrepTaskCohortState;
 };
 
+export type PrepTaskCohortScholarStatus = 'active' | 'inactive' | 'on_hold' | 'archived';
+
 export type PrepTaskCohortScholarInput = {
   scholarId: string;
   name: string;
   email: string;
+  status: PrepTaskCohortScholarStatus;
 };
 
 export type PrepTaskCohortTaskInput = {
@@ -67,6 +70,7 @@ export type PrepTaskCohortPayload = {
     scholarId: string;
     name: string;
     email: string;
+    status: PrepTaskCohortScholarStatus;
     cells: PrepTaskCohortCell[];
   }>;
   summary: {
@@ -254,6 +258,7 @@ export function buildPrepTaskCohortMatrix(
       scholarId: scholar.scholarId,
       name: scholar.name,
       email: scholar.email,
+      status: scholar.status,
       cells,
     };
   });

@@ -1243,6 +1243,7 @@ export interface PrepTaskCohort {
     scholarId: string;
     name: string;
     email: string;
+    status: 'active' | 'inactive' | 'on_hold' | 'archived';
     cells: PrepTaskCohortCell[];
   }>;
   summary: {

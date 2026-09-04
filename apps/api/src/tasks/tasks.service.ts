@@ -309,6 +309,7 @@ export class TasksService {
         scholarId: scholars.id,
         name: users.name,
         email: users.email,
+        status: scholars.status,
       })
       .from(scholars)
       .innerJoin(users, eq(scholars.userId, users.id))

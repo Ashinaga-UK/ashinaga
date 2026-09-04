@@ -142,6 +142,11 @@ describe('GET /api/tasks/cohort (integration)', () => {
     expect(titles).not.toContain('Archived prep task');
     expect(titles).not.toContain('Hidden enrolled task');
 
+    const cara = res.body.scholars.find(
+      (row: { scholarId: string; status?: string }) => row.scholarId === onHold.scholarId
+    );
+    expect(cara.status).toBe('on_hold');
+
     const ada = res.body.scholars.find(
       (row: { scholarId: string }) => row.scholarId === prepA.scholarId
     );

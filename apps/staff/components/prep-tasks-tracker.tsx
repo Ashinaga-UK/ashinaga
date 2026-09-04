@@ -24,6 +24,13 @@ function statusLabel(status: PrepTaskCohortCell['status']): string {
   return 'Unassigned';
 }
 
+function scholarStatusLabel(status: 'active' | 'inactive' | 'on_hold' | 'archived'): string {
+  if (status === 'on_hold') return 'On hold';
+  if (status === 'inactive') return 'Inactive';
+  if (status === 'archived') return 'Archived';
+  return 'Active';
+}
+
 function CellBadges({ cell }: { cell: PrepTaskCohortCell }) {
   return (
     <div className="flex flex-wrap items-center gap-1">
@@ -194,7 +201,7 @@ export function PrepTasksTracker({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {scholars.length === 0 ? (
+            {scholars.length === 0 || columns.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={Math.max(columns.length + 1, 1)}
@@ -211,14 +218,17 @@ export function PrepTasksTracker({
               scholars.map((scholar) => (
                 <TableRow key={scholar.scholarId}>
                   <TableCell>
-                    <button
-                      type="button"
-                      className="text-left font-medium hover:underline"
-                      onClick={() => onViewScholar(scholar.scholarId)}
-                    >
-                      {scholar.name}
-                    </button>
-                    <p className="text-xs text-muted-foreground">{scholar.email}</p>
+                    <div className="space-y-1">
+                      <button
+                        type="button"
+                        className="text-left font-medium hover:underline"
+                        onClick={() => onViewScholar(scholar.scholarId)}
+                      >
+                        {scholar.name}
+                      </button>
+                      <Badge variant="secondary">{scholarStatusLabel(scholar.status)}</Badge>
+                      <p className="text-xs text-muted-foreground">{scholar.email}</p>
+                    </div>
                   </TableCell>
                   {columns.map((column) => {
                     const cell = scholar.cells.find((item) => item.columnKey === column.key);
