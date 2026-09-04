@@ -8,6 +8,7 @@ import {
   FolderOpen,
   Home,
   Library,
+  ListChecks,
   LogOut,
   Mail,
   MessageSquare,
@@ -39,6 +40,12 @@ export const STAFF_NAV_ITEMS = [
     value: 'prep-documents',
     label: 'Prep documents',
     icon: FolderOpen,
+  },
+  {
+    href: '/?tab=prep-tasks',
+    value: 'prep-tasks',
+    label: 'Prep tasks',
+    icon: ListChecks,
   },
   {
     href: '/?tab=annual-reviews',

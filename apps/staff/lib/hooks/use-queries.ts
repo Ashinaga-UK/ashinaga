@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   archiveScholar,
   type CreateTaskData,
@@ -9,6 +9,7 @@ import {
   type GetAnnouncementsParams,
   getAnnouncements,
   getAnnualUpdatesByScholar,
+  getPrepTaskCohort,
   getRequiredDocumentCohort,
   getRequiredDocumentTypes,
   getResourceFilterOptions,
@@ -17,6 +18,7 @@ import {
   getScholarRequiredDocuments,
   getTasksByScholar,
   type PlatformSetupStatus,
+  type PrepTaskCohortFilters,
   type ResourceFilterOptions,
   type Task,
   type UpdateScholarProfileData,
@@ -40,6 +42,8 @@ export const queryKeys = {
     ['required-documents', 'cohort', missingTypeId ?? 'all'] as const,
   requiredDocumentTypes: ['required-documents', 'types'] as const,
   scholarRequiredDocuments: (id: string) => ['scholar', id, 'required-documents'] as const,
+  prepTaskCohort: (filters: PrepTaskCohortFilters = {}) =>
+    ['prep-tasks', 'cohort', filters] as const,
 };
 
 // Scholar profile query
@@ -131,6 +135,14 @@ export function useResourceFilterOptions() {
     queryKey: queryKeys.resourceFilterOptions,
     queryFn: getResourceFilterOptions,
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function usePrepTaskCohort(filters: PrepTaskCohortFilters = {}) {
+  return useQuery({
+    queryKey: queryKeys.prepTaskCohort(filters),
+    queryFn: () => getPrepTaskCohort(filters),
+    placeholderData: keepPreviousData,
   });
 }
 

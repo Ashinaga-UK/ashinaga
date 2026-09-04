@@ -1201,6 +1201,77 @@ export async function getRequiredDocumentCohort(
   return fetchAPI<RequiredDocumentCohort>(`/api/documents/cohort${query}`);
 }
 
+export type PrepTaskCohortState =
+  | 'not_started'
+  | 'in_progress'
+  | 'completed'
+  | 'overdue'
+  | 'unassigned';
+
+export type PrepTaskCohortStatus = 'pending' | 'in_progress' | 'completed';
+
+export interface PrepTaskCohortFilters {
+  phase?: string;
+  scholarId?: string;
+  assignmentGroupId?: string;
+  columnKey?: string;
+  state?: PrepTaskCohortState;
+}
+
+export interface PrepTaskCohortColumn {
+  key: string;
+  title: string;
+  phase: string | null;
+  dueDate: string;
+  assignmentGroupId: string | null;
+  requiresResponse: boolean;
+  requiresAttachment: boolean;
+  requiresLink: boolean;
+}
+
+export interface PrepTaskCohortCell {
+  columnKey: string;
+  taskId: string | null;
+  status: PrepTaskCohortStatus | null;
+  overdue: boolean;
+  completedAt: string | null;
+}
+
+export interface PrepTaskCohort {
+  columns: PrepTaskCohortColumn[];
+  scholars: Array<{
+    scholarId: string;
+    name: string;
+    email: string;
+    status: 'active' | 'inactive' | 'on_hold' | 'archived';
+    cells: PrepTaskCohortCell[];
+  }>;
+  summary: {
+    scholarCount: number;
+    columnCount: number;
+    overdueCount: number;
+    completedCount: number;
+  };
+  filterOptions: {
+    phases: string[];
+    columns: Array<{ key: string; title: string; phase: string | null }>;
+    scholars: Array<{ scholarId: string; name: string }>;
+  };
+}
+
+export async function getPrepTaskCohort(
+  filters: PrepTaskCohortFilters = {}
+): Promise<PrepTaskCohort> {
+  const params = new URLSearchParams();
+  if (filters.phase) params.set('phase', filters.phase);
+  if (filters.scholarId) params.set('scholarId', filters.scholarId);
+  if (filters.assignmentGroupId) params.set('assignmentGroupId', filters.assignmentGroupId);
+  if (filters.columnKey) params.set('columnKey', filters.columnKey);
+  if (filters.state) params.set('state', filters.state);
+  const query = params.toString();
+  return fetchAPI<PrepTaskCohort>(`/api/tasks/cohort${query ? `?${query}` : ''}`);
+}
+
 export async function getScholarRequiredDocuments(
   scholarId: string
 ): Promise<RequiredDocumentChecklist> {

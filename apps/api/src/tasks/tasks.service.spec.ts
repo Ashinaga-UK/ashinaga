@@ -70,7 +70,9 @@ describe('TasksService', () => {
       sendTaskAssignmentNotification: jest.fn().mockResolvedValue(undefined),
     };
     objectStorage = {
-      headObject: jest.fn().mockResolvedValue({ contentLength: 12, contentType: 'application/pdf' }),
+      headObject: jest
+        .fn()
+        .mockResolvedValue({ contentLength: 12, contentType: 'application/pdf' }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -148,12 +150,10 @@ describe('TasksService', () => {
   });
 
   it('creates a cohort of tasks for active prep-year scholars', async () => {
-    const insertReturning = jest
-      .fn()
-      .mockResolvedValue([
-        { ...createdTask, assignmentGroupId: 'group-1' },
-        { ...createdTask, id: 'task-2', assignmentGroupId: 'group-1' },
-      ]);
+    const insertReturning = jest.fn().mockResolvedValue([
+      { ...createdTask, assignmentGroupId: 'group-1' },
+      { ...createdTask, id: 'task-2', assignmentGroupId: 'group-1' },
+    ]);
     const db = {
       insert: jest.fn().mockReturnValue({
         values: jest.fn().mockReturnValue({ returning: insertReturning }),
@@ -303,9 +303,7 @@ describe('TasksService', () => {
       service.completeTask(
         'task-1',
         {
-          attachmentIds: [
-            { fileName: 'doc.pdf', fileKey: 'scholar-1/requests/temp/file.pdf' },
-          ],
+          attachmentIds: [{ fileName: 'doc.pdf', fileKey: 'scholar-1/requests/temp/file.pdf' }],
         },
         'user-1'
       )
@@ -323,9 +321,9 @@ describe('TasksService', () => {
     };
     (getDatabase as jest.Mock).mockReturnValue(db);
 
-    await expect(
-      service.updateTaskStatus('task-1', 'completed', 'user-1')
-    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.updateTaskStatus('task-1', 'completed', 'user-1')).rejects.toBeInstanceOf(
+      BadRequestException
+    );
     expect(db.update).not.toHaveBeenCalled();
   });
 
@@ -340,9 +338,9 @@ describe('TasksService', () => {
     };
     (getDatabase as jest.Mock).mockReturnValue(db);
 
-    await expect(
-      service.updateTaskStatus('task-1', 'completed', 'staff-1')
-    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.updateTaskStatus('task-1', 'completed', 'staff-1')).rejects.toBeInstanceOf(
+      BadRequestException
+    );
     expect(db.transaction).not.toHaveBeenCalled();
   });
 
@@ -381,6 +379,27 @@ describe('TasksService', () => {
     expect(tx.delete).toHaveBeenCalledTimes(2);
   });
 
+  it('rejects assignmentGroupId and columnKey together', async () => {
+    await expect(
+      service.getCohort({
+        assignmentGroupId: '11111111-1111-4111-8111-111111111111',
+        columnKey: 'indiv:english:Essay:2026-10-01',
+      })
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('skips the tasks query when there are no prep_year scholars', async () => {
+    const select = jest.fn(() => chain([]));
+    (getDatabase as jest.Mock).mockReturnValue({ select });
+
+    const result = await service.getCohort({});
+
+    expect(select).toHaveBeenCalledTimes(1);
+    expect(result.columns).toEqual([]);
+    expect(result.scholars).toEqual([]);
+    expect(result.summary.scholarCount).toBe(0);
+  });
+
   it('returns 404 when updating a missing task', async () => {
     const db = {
       select: jest
@@ -409,9 +428,9 @@ describe('TasksService', () => {
     };
     (getDatabase as jest.Mock).mockReturnValue(db);
 
-    await expect(
-      service.updateTask('task-1', { title: 'Nope' }, 'staff-1')
-    ).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.updateTask('task-1', { title: 'Nope' }, 'staff-1')).rejects.toBeInstanceOf(
+      NotFoundException
+    );
     expect(db.update).not.toHaveBeenCalled();
   });
 
