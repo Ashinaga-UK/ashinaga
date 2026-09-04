@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getDatabase } from '../db/connection';
 import { EmailService } from '../email/email.service';
@@ -379,5 +379,66 @@ describe('TasksService', () => {
     const result = await service.updateTaskStatus('task-1', 'pending', 'user-1');
     expect(result.status).toBe('pending');
     expect(tx.delete).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns 404 when updating a missing task', async () => {
+    const db = {
+      select: jest
+        .fn()
+        .mockImplementationOnce(() => chain([{ isActive: true }]))
+        .mockImplementationOnce(() => chain([])),
+      update: jest.fn(),
+    };
+    (getDatabase as jest.Mock).mockReturnValue(db);
+
+    await expect(
+      service.updateTask('00000000-0000-0000-0000-000000000000', { title: 'Nope' }, 'staff-1')
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(db.update).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 when updating a soft-deleted task', async () => {
+    const db = {
+      select: jest
+        .fn()
+        .mockImplementationOnce(() => chain([{ isActive: true }]))
+        .mockImplementationOnce(() =>
+          chain([{ ...createdTask, deletedAt: new Date('2026-09-01T00:00:00.000Z') }])
+        ),
+      update: jest.fn(),
+    };
+    (getDatabase as jest.Mock).mockReturnValue(db);
+
+    await expect(
+      service.updateTask('task-1', { title: 'Nope' }, 'staff-1')
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(db.update).not.toHaveBeenCalled();
+  });
+
+  it('updates an existing task for staff', async () => {
+    const updated = { ...createdTask, title: 'Renamed', phase: 'english' };
+    const db = {
+      select: jest
+        .fn()
+        .mockImplementationOnce(() => chain([{ isActive: true }]))
+        .mockImplementationOnce(() => chain([createdTask])),
+      update: jest.fn().mockReturnValue({
+        set: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            returning: jest.fn().mockResolvedValue([updated]),
+          }),
+        }),
+      }),
+    };
+    (getDatabase as jest.Mock).mockReturnValue(db);
+
+    const result = await service.updateTask(
+      'task-1',
+      { title: 'Renamed', phase: 'English' },
+      'staff-1'
+    );
+
+    expect(result).toEqual(expect.objectContaining({ title: 'Renamed', phase: 'english' }));
+    expect(db.update).toHaveBeenCalled();
   });
 });
