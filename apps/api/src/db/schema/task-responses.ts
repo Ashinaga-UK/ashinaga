@@ -8,6 +8,7 @@ export const taskResponses = pgTable('task_responses', {
     .references(() => tasks.id)
     .unique(), // One response per task
   responseText: text('response_text'), // Scholar's notes/response
+  linkUrl: text('link_url'),
   submittedAt: timestamp('submitted_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });

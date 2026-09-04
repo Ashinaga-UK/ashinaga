@@ -12,6 +12,7 @@ import {
   Plus,
   Search,
   Trash2,
+  Users,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -276,17 +277,15 @@ export function ScholarManagementTable({
               }
             />
           )}
-          {/* TODO: Enable "Assign to All Filtered" button later
           <BulkTaskAssignment
-            filteredScholars={scholars}
+            assignToProgramStage="prep_year"
             trigger={
-              <Button variant="outline">
+              <Button variant="outline" className="w-full sm:w-auto">
                 <Users className="h-4 w-4 mr-2" />
-                Assign to All Filtered ({scholars.length})
+                Assign to Prep Year cohort
               </Button>
             }
           />
-          */}
           <Button
             variant="outline"
             className="w-full sm:w-auto"

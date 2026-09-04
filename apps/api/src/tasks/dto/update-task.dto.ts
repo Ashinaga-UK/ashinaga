@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
+import { TASK_TYPES, type TaskType } from '../task-evidence';
 
 export class UpdateTaskDto {
   @ApiPropertyOptional({ description: 'The title of the task' })
@@ -14,31 +15,11 @@ export class UpdateTaskDto {
 
   @ApiPropertyOptional({
     description: 'The type of task',
-    enum: [
-      'document_upload',
-      'form_completion',
-      'meeting_attendance',
-      'goal_update',
-      'feedback_submission',
-      'other',
-    ],
+    enum: TASK_TYPES,
   })
   @IsOptional()
-  @IsEnum([
-    'document_upload',
-    'form_completion',
-    'meeting_attendance',
-    'goal_update',
-    'feedback_submission',
-    'other',
-  ])
-  type?:
-    | 'document_upload'
-    | 'form_completion'
-    | 'meeting_attendance'
-    | 'goal_update'
-    | 'feedback_submission'
-    | 'other';
+  @IsEnum(TASK_TYPES)
+  type?: TaskType;
 
   @ApiPropertyOptional({
     description: 'The priority of the task',
@@ -52,4 +33,24 @@ export class UpdateTaskDto {
   @IsOptional()
   @IsDateString()
   dueDate?: string;
+
+  @ApiPropertyOptional({ description: 'Programme phase label' })
+  @IsOptional()
+  @IsString()
+  phase?: string | null;
+
+  @ApiPropertyOptional({ description: 'Whether a written response is required' })
+  @IsOptional()
+  @IsBoolean()
+  requiresResponse?: boolean;
+
+  @ApiPropertyOptional({ description: 'Whether a file upload is required' })
+  @IsOptional()
+  @IsBoolean()
+  requiresAttachment?: boolean;
+
+  @ApiPropertyOptional({ description: 'Whether a link is required' })
+  @IsOptional()
+  @IsBoolean()
+  requiresLink?: boolean;
 }

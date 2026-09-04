@@ -70,6 +70,7 @@ export interface TaskAttachment {
 
 export interface TaskResponse {
   responseText?: string | null;
+  linkUrl?: string | null;
   submittedAt: string;
   attachments: TaskAttachment[];
 }
@@ -87,11 +88,17 @@ export interface Task {
     | 'other';
   priority: 'high' | 'medium' | 'low';
   dueDate: string;
+  phase?: string | null;
+  assignmentGroupId?: string | null;
+  requiresResponse: boolean;
+  requiresAttachment: boolean;
+  requiresLink: boolean;
   status: 'pending' | 'in_progress' | 'completed';
   assignedBy: string;
   completedAt?: string | null;
   createdAt: string;
   updatedAt: string;
+  overdue: boolean;
   response?: TaskResponse;
 }
 
@@ -753,21 +760,14 @@ export interface CreateTaskData {
   priority?: 'high' | 'medium' | 'low';
   dueDate: string;
   scholarId: string;
+  phase?: string;
+  requiresResponse?: boolean;
+  requiresAttachment?: boolean;
+  requiresLink?: boolean;
 }
 
-export async function createTask(data: CreateTaskData): Promise<{
-  id: string;
-  title: string;
-  description?: string;
-  type: string;
-  priority: string;
-  dueDate: string;
-  status: string;
-  scholarId: string;
-  assignedBy: string;
-  createdAt: string;
-}> {
-  return fetchAPI('/api/tasks', {
+export async function createTask(data: CreateTaskData): Promise<Task> {
+  return fetchAPI<Task>('/api/tasks', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -782,7 +782,12 @@ export interface CreateBulkTasksData {
   type: CreateTaskData['type'];
   priority?: 'high' | 'medium' | 'low';
   dueDate: string;
-  scholarIds: string[];
+  scholarIds?: string[];
+  programStage?: 'prep_year';
+  phase?: string;
+  requiresResponse?: boolean;
+  requiresAttachment?: boolean;
+  requiresLink?: boolean;
 }
 
 export async function createBulkTasks(
@@ -813,6 +818,10 @@ export interface UpdateTaskData {
     | 'other';
   priority?: 'high' | 'medium' | 'low';
   dueDate?: string;
+  phase?: string | null;
+  requiresResponse?: boolean;
+  requiresAttachment?: boolean;
+  requiresLink?: boolean;
 }
 
 export async function updateTask(taskId: string, data: UpdateTaskData): Promise<Task> {
@@ -842,6 +851,10 @@ export interface TaskTitleSuggestion {
     | 'feedback_submission'
     | 'other';
   priority: 'high' | 'medium' | 'low';
+  phase?: string | null;
+  requiresResponse?: boolean;
+  requiresAttachment?: boolean;
+  requiresLink?: boolean;
   lastUsedAt: string;
   useCount: number;
 }

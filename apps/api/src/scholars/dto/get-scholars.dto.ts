@@ -95,6 +95,7 @@ export class TaskAttachmentDto {
 
 export class TaskResponseDto {
   responseText?: string | null;
+  linkUrl?: string | null;
   submittedAt: Date;
   attachments: TaskAttachmentDto[];
 }
@@ -115,11 +116,17 @@ export class TaskDto {
     | 'other';
   priority: 'high' | 'medium' | 'low';
   dueDate: Date;
+  phase?: string | null;
+  assignmentGroupId?: string | null;
+  requiresResponse: boolean;
+  requiresAttachment: boolean;
+  requiresLink: boolean;
   status: 'pending' | 'in_progress' | 'completed' | 'overdue';
   assignedBy: string;
   completedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  overdue: boolean;
   response?: TaskResponseDto;
 }
 

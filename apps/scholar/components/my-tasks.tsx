@@ -1,19 +1,27 @@
 'use client';
 
-import { AlertCircle, Calendar, CheckCircle, Circle, Clock, FileText } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { AlertCircle, Calendar, CheckCircle, Circle, Clock } from 'lucide-react';
+import { type ReactNode, useEffect, useState } from 'react';
 import type { Task } from '../lib/api/tasks';
 import { completeTask, getMyTasks, updateTaskStatus } from '../lib/api/tasks';
+import { groupPrepYearTasks } from '../lib/group-prep-tasks';
+import { useScholarSession } from '../lib/scholar-session';
+import { isTaskDueToday, isTaskOverdue } from '../lib/task-due';
 import { TaskCompletionDialog } from './task-completion-dialog';
+import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { useToast } from './ui/use-toast';
 
 export function MyTasks() {
+  const { programStage, profileStatus } = useScholarSession();
+  const { toast } = useToast();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'all' | 'pending' | 'in_progress' | 'completed'>('all');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'in_progress' | 'completed' | 'overdue'>(
+    'all'
+  );
   const [sortBy, setSortBy] = useState<'dueDate' | 'priority'>('dueDate');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
@@ -36,24 +44,14 @@ export function MyTasks() {
     }
   };
 
-  const handleStatusChange = async (
-    taskId: string,
-    newStatus: 'pending' | 'in_progress' | 'completed'
-  ) => {
-    // If marking as completed, open the completion dialog
-    if (newStatus === 'completed') {
-      const task = tasks.find((t) => t.id === taskId);
-      if (task) {
-        setSelectedTask(task);
-        setShowCompletionDialog(true);
-      }
-      return;
-    }
+  const openCompleteDialog = (task: Task) => {
+    setSelectedTask(task);
+    setShowCompletionDialog(true);
+  };
 
-    // Otherwise, just update the status
+  const handleStatusChange = async (taskId: string, newStatus: 'pending' | 'in_progress') => {
     try {
       await updateTaskStatus(taskId, newStatus);
-      // Update the local state
       setTasks((prevTasks) =>
         prevTasks.map((task) =>
           task.id === taskId
@@ -61,23 +59,27 @@ export function MyTasks() {
                 ...task,
                 status: newStatus,
                 completedAt: null,
+                overdue: isTaskOverdue({ ...task, status: newStatus, overdue: undefined }),
               }
             : task
         )
       );
     } catch (err) {
       console.error('Error updating task status:', err);
+      toast({
+        title: 'Could not update task',
+        description: 'Please try again.',
+        variant: 'destructive',
+      });
     }
   };
 
   const handleTaskComplete = async (
     taskId: string,
-    responseText: string,
-    attachmentData: any[]
+    payload: { responseText?: string; attachmentIds?: unknown[]; linkUrl?: string }
   ) => {
     try {
-      await completeTask(taskId, responseText, attachmentData);
-      // Update the local state
+      await completeTask(taskId, payload);
       setTasks((prevTasks) =>
         prevTasks.map((task) =>
           task.id === taskId
@@ -85,6 +87,7 @@ export function MyTasks() {
                 ...task,
                 status: 'completed' as const,
                 completedAt: new Date().toISOString(),
+                overdue: false,
               }
             : task
         )
@@ -93,12 +96,18 @@ export function MyTasks() {
       setSelectedTask(null);
     } catch (err) {
       console.error('Error completing task:', err);
+      toast({
+        title: 'Could not complete task',
+        description: 'Please try again.',
+        variant: 'destructive',
+      });
       throw err;
     }
   };
 
   const filteredTasks = tasks.filter((task) => {
     if (filter === 'all') return true;
+    if (filter === 'overdue') return isTaskOverdue(task);
     return task.status === filter;
   });
 
@@ -106,7 +115,6 @@ export function MyTasks() {
     if (sortBy === 'dueDate') {
       return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
     }
-    // Sort by priority
     const priorityOrder = { high: 0, medium: 1, low: 2 };
     return priorityOrder[a.priority] - priorityOrder[b.priority];
   });
@@ -114,94 +122,135 @@ export function MyTasks() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'completed':
-        return <CheckCircle className="h-5 w-5 text-green-600" />;
+        return <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />;
       case 'in_progress':
-        return <Clock className="h-5 w-5 text-blue-600" />;
+        return <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />;
       default:
-        return <Circle className="h-5 w-5 text-gray-400" />;
+        return <Circle className="h-5 w-5 text-muted-foreground" />;
     }
   };
 
   const getPriorityBadge = (priority: string) => {
-    const colors = {
-      high: 'bg-red-100 text-red-700',
-      medium: 'bg-yellow-100 text-yellow-700',
-      low: 'bg-blue-100 text-blue-700',
-    };
+    const labels = { high: 'High', medium: 'Medium', low: 'Low' } as const;
     return (
-      <span
-        className={`px-2 py-1 text-xs font-semibold rounded-full ${colors[priority as keyof typeof colors]}`}
-      >
-        {priority.charAt(0).toUpperCase() + priority.slice(1)}
-      </span>
+      <Badge variant={priority === 'high' ? 'destructive' : 'secondary'}>
+        {labels[priority as keyof typeof labels] ?? priority}
+      </Badge>
     );
   };
 
   const getTaskTypeBadge = (type: string) => {
     const displayText = type.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
-    return (
-      <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-full">
-        {displayText}
-      </span>
+    return <Badge variant="outline">{displayText}</Badge>;
+  };
+
+  const formatDate = (task: Task) => {
+    const date = new Date(task.dueDate);
+
+    if (isTaskOverdue(task)) {
+      return (
+        <span className="font-medium text-destructive">Overdue: {date.toLocaleDateString()}</span>
+      );
+    }
+
+    if (isTaskDueToday(task)) {
+      return <span className="font-medium text-orange-600 dark:text-orange-400">Due Today</span>;
+    }
+
+    const tomorrow = new Date();
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    const dueDay = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+    const tomorrowDay = Date.UTC(
+      tomorrow.getUTCFullYear(),
+      tomorrow.getUTCMonth(),
+      tomorrow.getUTCDate()
     );
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    // Check if overdue
-    const isOverdue = date < today && date.toDateString() !== today.toDateString();
-
-    // Check if due today
-    if (date.toDateString() === today.toDateString()) {
-      return <span className="text-orange-600 font-medium">Due Today</span>;
+    if (dueDay === tomorrowDay) {
+      return <span className="font-medium text-blue-600 dark:text-blue-400">Due Tomorrow</span>;
     }
 
-    // Check if due tomorrow
-    if (date.toDateString() === tomorrow.toDateString()) {
-      return <span className="text-blue-600 font-medium">Due Tomorrow</span>;
-    }
-
-    // Check if overdue
-    if (isOverdue) {
-      return <span className="text-red-600 font-medium">Overdue: {date.toLocaleDateString()}</span>;
-    }
-
-    return <span>{date.toLocaleDateString()}</span>;
+    return <span className="text-muted-foreground">{date.toLocaleDateString()}</span>;
   };
 
-  const getTaskStats = () => {
-    const total = tasks.length;
-    const completed = tasks.filter((t) => t.status === 'completed').length;
-    const inProgress = tasks.filter((t) => t.status === 'in_progress').length;
-    const pending = tasks.filter((t) => t.status === 'pending').length;
-    const overdue = tasks.filter((t) => {
-      const dueDate = new Date(t.dueDate);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      return dueDate < today && t.status !== 'completed';
-    }).length;
+  const renderTaskCard = (task: Task) => (
+    <div
+      key={task.id}
+      className={`rounded-lg border bg-card p-4 ${task.status === 'completed' ? 'opacity-75' : ''}`}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="flex items-center gap-2">
+            {getStatusIcon(task.status)}
+            <h3
+              className={`text-lg font-semibold text-foreground ${task.status === 'completed' ? 'line-through' : ''}`}
+            >
+              {task.title}
+            </h3>
+          </div>
+          {task.description && (
+            <p className="text-sm text-muted-foreground">{task.description}</p>
+          )}
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            {getPriorityBadge(task.priority)}
+            {getTaskTypeBadge(task.type)}
+            {task.phase && <Badge variant="secondary">{task.phase}</Badge>}
+            {isTaskOverdue(task) && <Badge variant="destructive">Overdue</Badge>}
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <Calendar className="h-4 w-4" />
+              {formatDate(task)}
+            </div>
+            {task.assignedByName && (
+              <span className="text-muted-foreground">Assigned by: {task.assignedByName}</span>
+            )}
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {task.status !== 'completed' && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => openCompleteDialog(task)}
+              className="border-green-600 text-green-700 hover:bg-green-50 dark:border-green-500 dark:text-green-400 dark:hover:bg-green-950"
+            >
+              <CheckCircle className="mr-1 h-4 w-4" />
+              Complete
+            </Button>
+          )}
+          {task.status !== 'completed' && (
+            <Select
+              value={task.status}
+              onValueChange={(value) =>
+                handleStatusChange(task.id, value as 'pending' | 'in_progress')
+              }
+            >
+              <SelectTrigger className="w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="in_progress">In Progress</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 
-    return { total, completed, inProgress, pending, overdue };
-  };
-
-  if (isLoading) {
+  if (isLoading || profileStatus === 'loading') {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ashinaga-blue"></div>
+      <div className="flex min-h-[400px] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-ashinaga-blue" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex min-h-[400px] items-center justify-center">
         <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <p className="text-gray-700">{error}</p>
+          <AlertCircle className="mx-auto mb-4 h-12 w-12 text-destructive" />
+          <p className="text-foreground">{error}</p>
           <Button onClick={loadTasks} className="mt-4">
             Retry
           </Button>
@@ -210,150 +259,76 @@ export function MyTasks() {
     );
   }
 
-  const stats = getTaskStats();
+  const isPrepYear = programStage === 'prep_year';
+  const grouped = isPrepYear ? groupPrepYearTasks(tasks) : null;
 
   return (
     <>
       <div className="space-y-6">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Total Tasks</CardDescription>
-              <CardTitle className="text-2xl">{stats.total}</CardTitle>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Pending</CardDescription>
-              <CardTitle className="text-2xl text-gray-600">{stats.pending}</CardTitle>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>In Progress</CardDescription>
-              <CardTitle className="text-2xl text-blue-600">{stats.inProgress}</CardTitle>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Completed</CardDescription>
-              <CardTitle className="text-2xl text-green-600">{stats.completed}</CardTitle>
-            </CardHeader>
-          </Card>
-          {stats.overdue > 0 && (
-            <Card className="border-red-200">
-              <CardHeader className="pb-2">
-                <CardDescription>Overdue</CardDescription>
-                <CardTitle className="text-2xl text-red-600">{stats.overdue}</CardTitle>
-              </CardHeader>
-            </Card>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="hidden text-2xl font-bold text-foreground md:block">My Tasks</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {isPrepYear
+                ? 'Due now, upcoming, and completed work for Prep Year.'
+                : 'Track and complete the work assigned to you.'}
+            </p>
+          </div>
+          {!isPrepYear && (
+            <div className="flex flex-wrap gap-2">
+              <Select value={filter} onValueChange={(value: typeof filter) => setFilter(value)}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Tasks</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="overdue">Overdue</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={sortBy} onValueChange={(value: typeof sortBy) => setSortBy(value)}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="dueDate">Due Date</SelectItem>
+                  <SelectItem value="priority">Priority</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           )}
         </div>
 
-        {/* Filters and Sort */}
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <CardTitle>My Tasks</CardTitle>
-              <div className="flex gap-2">
-                <Select value={filter} onValueChange={(value: any) => setFilter(value)}>
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Tasks</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="dueDate">Due Date</SelectItem>
-                    <SelectItem value="priority">Priority</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {sortedTasks.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-gray-500">No tasks found</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {sortedTasks.map((task) => (
-                  <Card key={task.id} className={task.status === 'completed' ? 'opacity-75' : ''}>
-                    <CardContent className="pt-6">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 space-y-2">
-                          <div className="flex items-center gap-2">
-                            {getStatusIcon(task.status)}
-                            <h3
-                              className={`text-lg font-semibold ${task.status === 'completed' ? 'line-through' : ''}`}
-                            >
-                              {task.title}
-                            </h3>
-                          </div>
-                          {task.description && (
-                            <p className="text-gray-600 text-sm">{task.description}</p>
-                          )}
-                          <div className="flex flex-wrap gap-2 items-center text-sm">
-                            {getPriorityBadge(task.priority)}
-                            {getTaskTypeBadge(task.type)}
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-4 w-4 text-gray-500" />
-                              {formatDate(task.dueDate)}
-                            </div>
-                            {task.assignedByName && (
-                              <span className="text-gray-500">
-                                Assigned by: {task.assignedByName}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {task.status !== 'completed' && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleStatusChange(task.id, 'completed')}
-                              className="border-green-600 text-green-600 hover:bg-green-50"
-                            >
-                              <CheckCircle className="h-4 w-4 mr-1" />
-                              Complete
-                            </Button>
-                          )}
-                          <Select
-                            value={task.status}
-                            onValueChange={(value) => handleStatusChange(task.id, value as any)}
-                          >
-                            <SelectTrigger className="w-[120px]">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="pending">Pending</SelectItem>
-                              <SelectItem value="in_progress">In Progress</SelectItem>
-                              <SelectItem value="completed">Completed</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {isPrepYear && grouped ? (
+          <>
+            <TaskGroupSection
+              title="Due now"
+              emptyLabel="Nothing due right now"
+              tasks={grouped.dueNow}
+              renderTask={renderTaskCard}
+            />
+            <TaskGroupSection
+              title="Upcoming"
+              emptyLabel="No upcoming tasks"
+              tasks={grouped.upcoming}
+              renderTask={renderTaskCard}
+            />
+            <TaskGroupSection
+              title="Completed"
+              emptyLabel="No completed tasks yet"
+              tasks={grouped.completed}
+              renderTask={renderTaskCard}
+            />
+          </>
+        ) : sortedTasks.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">No tasks found</p>
+        ) : (
+          <div className="space-y-3">{sortedTasks.map(renderTaskCard)}</div>
+        )}
       </div>
 
-      {/* Task Completion Dialog */}
       {selectedTask && (
         <TaskCompletionDialog
           task={selectedTask}
@@ -363,5 +338,31 @@ export function MyTasks() {
         />
       )}
     </>
+  );
+}
+
+function TaskGroupSection({
+  title,
+  emptyLabel,
+  tasks,
+  renderTask,
+}: {
+  title: string;
+  emptyLabel: string;
+  tasks: Task[];
+  renderTask: (task: Task) => ReactNode;
+}) {
+  return (
+    <section className="space-y-3">
+      <h3 className="text-lg font-semibold text-foreground">
+        {title}{' '}
+        <span className="text-base font-normal text-muted-foreground">({tasks.length})</span>
+      </h3>
+      {tasks.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{emptyLabel}</p>
+      ) : (
+        <div className="space-y-3">{tasks.map(renderTask)}</div>
+      )}
+    </section>
   );
 }

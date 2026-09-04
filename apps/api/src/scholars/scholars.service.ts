@@ -24,6 +24,7 @@ import {
 } from '../db/schema';
 import { DocumentsService } from '../documents/documents.service';
 import { InvitationsService } from '../invitations/invitations.service';
+import { isTaskOverdue } from '../tasks/task-due';
 import { escapeCsvValue } from '../utils/csv';
 import { isPlaceholderAcademicValue } from './academic-values';
 import { CreateScholarDto } from './dto/create-scholar.dto';
@@ -385,8 +386,6 @@ export class ScholarsService {
   private async getTasksStats(scholarIds: string[]): Promise<Record<string, ScholarTasksStatsDto>> {
     if (scholarIds.length === 0) return {};
 
-    const now = new Date();
-
     const tasksData = await database
       .select({
         scholarId: tasks.scholarId,
@@ -422,7 +421,7 @@ export class ScholarsService {
 
       if (row.status === 'completed') {
         stats[scholarId].completed += row.count;
-      } else if (row.dueDate && row.dueDate < now) {
+      } else if (row.dueDate && isTaskOverdue({ dueDate: row.dueDate, status: row.status })) {
         stats[scholarId].overdue += row.count;
       }
     }
@@ -600,14 +599,21 @@ export class ScholarsService {
         type: task.type,
         priority: task.priority,
         dueDate: task.dueDate,
+        phase: task.phase,
+        assignmentGroupId: task.assignmentGroupId,
+        requiresResponse: task.requiresResponse,
+        requiresAttachment: task.requiresAttachment,
+        requiresLink: task.requiresLink,
         status: task.status,
         assignedBy: task.assignedBy,
         completedAt: task.completedAt,
         createdAt: task.createdAt,
         updatedAt: task.updatedAt,
+        overdue: isTaskOverdue(task),
         response: response
           ? {
               responseText: response.responseText,
+              linkUrl: response.linkUrl,
               submittedAt: response.submittedAt,
               attachments: attachments.map((a) => ({
                 id: a.id,
@@ -825,10 +831,16 @@ export class ScholarsService {
         priority: task.priority as 'high' | 'medium' | 'low',
         status: task.status as 'pending' | 'in_progress' | 'completed' | 'overdue',
         dueDate: task.dueDate,
+        phase: task.phase,
+        assignmentGroupId: task.assignmentGroupId,
+        requiresResponse: task.requiresResponse,
+        requiresAttachment: task.requiresAttachment,
+        requiresLink: task.requiresLink,
         assignedBy: task.assignedBy,
         completedAt: task.completedAt,
         createdAt: task.createdAt,
         updatedAt: task.updatedAt,
+        overdue: isTaskOverdue(task),
       })
     );
 

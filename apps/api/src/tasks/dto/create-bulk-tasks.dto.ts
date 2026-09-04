@@ -1,13 +1,16 @@
 import {
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
   IsUUID,
+  ValidateIf,
 } from 'class-validator';
+import { TASK_TYPES, type TaskType } from '../task-evidence';
 
 export class CreateBulkTasksDto {
   @IsNotEmpty()
@@ -19,21 +22,8 @@ export class CreateBulkTasksDto {
   description?: string;
 
   @IsNotEmpty()
-  @IsEnum([
-    'document_upload',
-    'form_completion',
-    'meeting_attendance',
-    'goal_update',
-    'feedback_submission',
-    'other',
-  ])
-  type:
-    | 'document_upload'
-    | 'form_completion'
-    | 'meeting_attendance'
-    | 'goal_update'
-    | 'feedback_submission'
-    | 'other';
+  @IsEnum(TASK_TYPES)
+  type: TaskType;
 
   @IsOptional()
   @IsEnum(['high', 'medium', 'low'])
@@ -43,8 +33,29 @@ export class CreateBulkTasksDto {
   @IsDateString()
   dueDate: string;
 
+  @ValidateIf((dto: CreateBulkTasksDto) => dto.programStage == null)
   @IsArray()
   @ArrayMinSize(1, { message: 'Select at least one scholar' })
   @IsUUID('4', { each: true })
-  scholarIds: string[];
+  scholarIds?: string[];
+
+  @IsOptional()
+  @IsEnum(['prep_year'])
+  programStage?: 'prep_year';
+
+  @IsOptional()
+  @IsString()
+  phase?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  requiresResponse?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  requiresAttachment?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  requiresLink?: boolean;
 }

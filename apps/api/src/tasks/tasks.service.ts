@@ -1,21 +1,96 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { and, desc, eq, ilike, inArray, isNull, sql } from 'drizzle-orm';
+import { assertHttpUrl } from '../common/http-url';
 import { getDatabase } from '../db/connection';
 import { scholars } from '../db/schema/scholars';
 import { taskAttachments, taskResponses } from '../db/schema/task-responses';
 import { tasks } from '../db/schema/tasks';
-import { users } from '../db/schema/users';
+import { staff, users } from '../db/schema/users';
 import { EmailService } from '../email/email.service';
+import { ObjectStorageService } from '../storage/object-storage';
 import { AttachmentDto, CompleteTaskDto } from './dto/complete-task.dto';
 import { CreateBulkTasksDto } from './dto/create-bulk-tasks.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
+import { isTaskOverdue } from './task-due';
+import {
+  normalizePhase,
+  resolveEvidenceFlags,
+  type TaskEvidenceFlags,
+  taskRequiresEvidence,
+} from './task-evidence';
 
 @Injectable()
 export class TasksService {
-  private db = getDatabase();
+  constructor(
+    private readonly emailService: EmailService,
+    private readonly objectStorage: ObjectStorageService
+  ) {}
 
-  constructor(private readonly emailService: EmailService) {}
+  private get db() {
+    return getDatabase();
+  }
+
+  private async assertStaffActor(userId: string) {
+    const [member] = await this.db
+      .select({ isActive: staff.isActive })
+      .from(staff)
+      .where(eq(staff.userId, userId))
+      .limit(1);
+    if (!member?.isActive) {
+      throw new ForbiddenException('Access restricted to staff members only');
+    }
+  }
+
+  private async isActiveStaff(userId: string): Promise<boolean> {
+    const [member] = await this.db
+      .select({ isActive: staff.isActive })
+      .from(staff)
+      .where(eq(staff.userId, userId))
+      .limit(1);
+    return Boolean(member?.isActive);
+  }
+
+  private assignmentValues(
+    dto: {
+      title: string;
+      description?: string;
+      type: CreateTaskDto['type'];
+      priority?: 'high' | 'medium' | 'low';
+      dueDate: Date;
+      phase?: string | null;
+    },
+    flags: TaskEvidenceFlags,
+    assignedBy: string,
+    scholarId: string,
+    assignmentGroupId: string | null
+  ) {
+    return {
+      title: dto.title,
+      description: dto.description,
+      type: dto.type,
+      priority: dto.priority || 'medium',
+      dueDate: dto.dueDate,
+      phase: dto.phase ?? null,
+      assignmentGroupId,
+      requiresResponse: flags.requiresResponse,
+      requiresAttachment: flags.requiresAttachment,
+      requiresLink: flags.requiresLink,
+      scholarId,
+      assignedBy,
+      status: 'pending' as const,
+    };
+  }
+
+  private withOverdue<T extends { dueDate: Date; status: string }>(row: T) {
+    return { ...row, overdue: isTaskOverdue(row) };
+  }
 
   private async notifyScholarsOfAssignment(
     scholarIds: string[],
@@ -68,19 +143,54 @@ export class TasksService {
     );
   }
 
+  private async assertTaskAttachments(
+    scholarId: string,
+    attachments: AttachmentDto[] | undefined,
+    required: boolean
+  ) {
+    const list = attachments ?? [];
+    if (required && list.length === 0) {
+      throw new BadRequestException('At least one attachment is required for this task');
+    }
+
+    for (const attachment of list) {
+      const fileKey = attachment.fileKey?.trim();
+      const fileName = attachment.fileName?.trim();
+      if (!fileKey || !fileName) {
+        throw new BadRequestException('Each attachment must include fileKey and fileName');
+      }
+      if (fileKey.includes('..') || !fileKey.startsWith(`${scholarId}/`)) {
+        throw new BadRequestException('Attachment file key is invalid');
+      }
+      const uploaded = await this.objectStorage.headObject(fileKey);
+      if (!uploaded) {
+        throw new BadRequestException('Uploaded file was not found. Please upload the file again.');
+      }
+    }
+  }
+
   async createTask(createTaskDto: CreateTaskDto, assignedBy: string) {
+    await this.assertStaffActor(assignedBy);
+    const flags = resolveEvidenceFlags(createTaskDto.type, createTaskDto);
+    const dueDate = new Date(createTaskDto.dueDate);
     const [task] = await this.db
       .insert(tasks)
-      .values({
-        title: createTaskDto.title,
-        description: createTaskDto.description,
-        type: createTaskDto.type,
-        priority: createTaskDto.priority || 'medium',
-        dueDate: new Date(createTaskDto.dueDate),
-        scholarId: createTaskDto.scholarId,
-        assignedBy,
-        status: 'pending',
-      })
+      .values(
+        this.assignmentValues(
+          {
+            title: createTaskDto.title,
+            description: createTaskDto.description,
+            type: createTaskDto.type,
+            priority: createTaskDto.priority,
+            dueDate,
+            phase: normalizePhase(createTaskDto.phase),
+          },
+          flags,
+          assignedBy,
+          createTaskDto.scholarId,
+          null
+        )
+      )
       .returning();
 
     void this.notifyScholarsOfAssignment([task.scholarId], assignedBy, {
@@ -91,22 +201,50 @@ export class TasksService {
       dueDate: task.dueDate,
     });
 
-    return task;
+    return this.withOverdue(task);
   }
 
   async createBulkTasks(dto: CreateBulkTasksDto, assignedBy: string) {
-    const uniqueScholarIds = Array.from(new Set(dto.scholarIds));
+    await this.assertStaffActor(assignedBy);
+
+    let uniqueScholarIds: string[];
+    if (dto.programStage === 'prep_year') {
+      if (dto.scholarIds && dto.scholarIds.length > 0) {
+        throw new BadRequestException('Do not send scholarIds when assigning to a program stage');
+      }
+      const cohort = await this.db
+        .select({ id: scholars.id })
+        .from(scholars)
+        .where(and(eq(scholars.programStage, 'prep_year'), eq(scholars.status, 'active')));
+      uniqueScholarIds = cohort.map((row) => row.id);
+    } else {
+      uniqueScholarIds = Array.from(new Set(dto.scholarIds ?? []));
+    }
+
+    if (uniqueScholarIds.length === 0) {
+      throw new BadRequestException('No scholars to assign this task to');
+    }
+
+    const flags = resolveEvidenceFlags(dto.type, dto);
     const dueDate = new Date(dto.dueDate);
-    const rows = uniqueScholarIds.map((scholarId) => ({
-      title: dto.title,
-      description: dto.description,
-      type: dto.type,
-      priority: dto.priority || 'medium',
-      dueDate,
-      scholarId,
-      assignedBy,
-      status: 'pending' as const,
-    }));
+    const phase = normalizePhase(dto.phase);
+    const assignmentGroupId = randomUUID();
+    const rows = uniqueScholarIds.map((scholarId) =>
+      this.assignmentValues(
+        {
+          title: dto.title,
+          description: dto.description,
+          type: dto.type,
+          priority: dto.priority,
+          dueDate,
+          phase,
+        },
+        flags,
+        assignedBy,
+        scholarId,
+        assignmentGroupId
+      )
+    );
 
     const inserted = await this.db.insert(tasks).values(rows).returning();
 
@@ -118,11 +256,10 @@ export class TasksService {
       dueDate,
     });
 
-    return { created: inserted.length, tasks: inserted };
+    return { created: inserted.length, tasks: inserted.map((task) => this.withOverdue(task)) };
   }
 
   async getTasksByUser(userId: string) {
-    // First get the scholar record for this user
     const [scholar] = await this.db.select().from(scholars).where(eq(scholars.userId, userId));
 
     if (!scholar) {
@@ -133,7 +270,7 @@ export class TasksService {
   }
 
   async getTasksByScholar(scholarId: string) {
-    const results = await this.db
+    const rows = await this.db
       .select({
         id: tasks.id,
         title: tasks.title,
@@ -141,6 +278,11 @@ export class TasksService {
         type: tasks.type,
         priority: tasks.priority,
         dueDate: tasks.dueDate,
+        phase: tasks.phase,
+        assignmentGroupId: tasks.assignmentGroupId,
+        requiresResponse: tasks.requiresResponse,
+        requiresAttachment: tasks.requiresAttachment,
+        requiresLink: tasks.requiresLink,
         status: tasks.status,
         assignedBy: tasks.assignedBy,
         assignedByName: users.name,
@@ -152,17 +294,18 @@ export class TasksService {
       .where(and(eq(tasks.scholarId, scholarId), isNull(tasks.deletedAt)))
       .orderBy(tasks.dueDate);
 
-    return results;
+    return rows.map((row) => this.withOverdue(row));
   }
 
   async getTitleSuggestions(query: string, assignedBy: string, limit = 8) {
+    await this.assertStaffActor(assignedBy);
     const trimmed = (query || '').trim();
     const baseConditions = [isNull(tasks.deletedAt), eq(tasks.assignedBy, assignedBy)];
     if (trimmed.length > 0) {
       baseConditions.push(ilike(tasks.title, `${trimmed}%`));
     }
 
-    const rows = await this.db
+    return this.db
       .select({
         title: tasks.title,
         description: sql<string | null>`max(${tasks.description})`.as('description'),
@@ -173,6 +316,21 @@ export class TasksService {
           sql<string>`(array_agg(${tasks.priority} ORDER BY ${tasks.createdAt} DESC))[1]`.as(
             'priority'
           ),
+        phase: sql<
+          string | null
+        >`(array_agg(${tasks.phase} ORDER BY ${tasks.createdAt} DESC))[1]`.as('phase'),
+        requiresResponse:
+          sql<boolean>`(array_agg(${tasks.requiresResponse} ORDER BY ${tasks.createdAt} DESC))[1]`.as(
+            'requires_response'
+          ),
+        requiresAttachment:
+          sql<boolean>`(array_agg(${tasks.requiresAttachment} ORDER BY ${tasks.createdAt} DESC))[1]`.as(
+            'requires_attachment'
+          ),
+        requiresLink:
+          sql<boolean>`(array_agg(${tasks.requiresLink} ORDER BY ${tasks.createdAt} DESC))[1]`.as(
+            'requires_link'
+          ),
         lastUsedAt: sql<Date>`max(${tasks.createdAt})`.as('last_used_at'),
         useCount: sql<number>`count(*)::int`.as('use_count'),
       })
@@ -181,11 +339,10 @@ export class TasksService {
       .groupBy(tasks.title)
       .orderBy(desc(sql`max(${tasks.createdAt})`))
       .limit(Math.max(1, Math.min(limit, 25)));
-
-    return rows;
   }
 
   async softDeleteTask(taskId: string, deletedBy: string) {
+    await this.assertStaffActor(deletedBy);
     const [task] = await this.db.select().from(tasks).where(eq(tasks.id, taskId));
     if (!task) {
       throw new NotFoundException('Task not found');
@@ -203,30 +360,83 @@ export class TasksService {
     return { id: deleted.id, alreadyDeleted: false };
   }
 
-  async updateTaskStatus(taskId: string, status: 'pending' | 'in_progress' | 'completed') {
-    const updateData: any = { status, updatedAt: new Date() };
-    if (status === 'completed') {
-      updateData.completedAt = new Date();
+  async updateTaskStatus(
+    taskId: string,
+    status: 'pending' | 'in_progress' | 'completed',
+    actorId: string
+  ) {
+    const [existing] = await this.db.select().from(tasks).where(eq(tasks.id, taskId));
+    if (!existing || existing.deletedAt) {
+      throw new NotFoundException('Task not found');
     }
 
-    const [task] = await this.db
-      .update(tasks)
-      .set(updateData)
-      .where(eq(tasks.id, taskId))
-      .returning();
+    const staffActor = await this.isActiveStaff(actorId);
+    if (!staffActor) {
+      const [scholar] = await this.db.select().from(scholars).where(eq(scholars.userId, actorId));
+      if (!scholar || scholar.id !== existing.scholarId) {
+        throw new ForbiddenException('Unauthorized to update this task');
+      }
+      if (status === 'completed') {
+        throw new BadRequestException(
+          'Complete this task with the required evidence via POST /api/tasks/:id/complete'
+        );
+      }
+    }
 
-    return task;
+    if (status === 'completed' && taskRequiresEvidence(existing)) {
+      throw new BadRequestException(
+        'This task requires evidence. Complete it with the required fields.'
+      );
+    }
+
+    const updateData: {
+      status: 'pending' | 'in_progress' | 'completed';
+      updatedAt: Date;
+      completedAt: Date | null;
+    } = {
+      status,
+      updatedAt: new Date(),
+      completedAt: status === 'completed' ? new Date() : null,
+    };
+
+    const task = await this.db.transaction(async (tx) => {
+      if (existing.status === 'completed' && status !== 'completed') {
+        const [response] = await tx
+          .select({ id: taskResponses.id })
+          .from(taskResponses)
+          .where(eq(taskResponses.taskId, taskId))
+          .limit(1);
+        if (response) {
+          await tx
+            .delete(taskAttachments)
+            .where(eq(taskAttachments.taskResponseId, response.id));
+          await tx.delete(taskResponses).where(eq(taskResponses.id, response.id));
+        }
+      }
+
+      const [updated] = await tx
+        .update(tasks)
+        .set(updateData)
+        .where(eq(tasks.id, taskId))
+        .returning();
+      return updated;
+    });
+
+    return this.withOverdue(task);
   }
 
-  async updateTask(taskId: string, updateTaskDto: UpdateTaskDto) {
-    const updateData: any = {
+  async updateTask(taskId: string, updateTaskDto: UpdateTaskDto, actorId: string) {
+    await this.assertStaffActor(actorId);
+    const updateData: Record<string, unknown> = {
       ...updateTaskDto,
       updatedAt: new Date(),
     };
 
-    // Convert dueDate string to Date object if provided
     if (updateTaskDto.dueDate) {
       updateData.dueDate = new Date(updateTaskDto.dueDate);
+    }
+    if (updateTaskDto.phase !== undefined) {
+      updateData.phase = normalizePhase(updateTaskDto.phase);
     }
 
     const [task] = await this.db
@@ -235,30 +445,45 @@ export class TasksService {
       .where(eq(tasks.id, taskId))
       .returning();
 
-    return task;
+    return this.withOverdue(task);
   }
 
   async completeTask(taskId: string, completeTaskDto: CompleteTaskDto, userId: string) {
-    // First verify the user owns this task
     const [scholar] = await this.db.select().from(scholars).where(eq(scholars.userId, userId));
 
     if (!scholar) {
-      throw new Error('Scholar not found');
+      throw new NotFoundException('Scholar not found');
     }
 
     const [task] = await this.db.select().from(tasks).where(eq(tasks.id, taskId));
 
-    if (!task) {
-      throw new Error('Task not found');
+    if (!task || task.deletedAt) {
+      throw new NotFoundException('Task not found');
     }
 
     if (task.scholarId !== scholar.id) {
-      throw new Error('Unauthorized to complete this task');
+      throw new ForbiddenException('Unauthorized to complete this task');
     }
 
-    // Start a transaction to update task and create response
+    if (task.requiresResponse && !completeTaskDto.responseText?.trim()) {
+      throw new BadRequestException('A written response is required for this task');
+    }
+
+    let linkUrl: string | null = null;
+    if (completeTaskDto.linkUrl?.trim()) {
+      linkUrl = assertHttpUrl(completeTaskDto.linkUrl);
+    }
+    if (task.requiresLink && !linkUrl) {
+      throw new BadRequestException('A link is required for this task');
+    }
+
+    await this.assertTaskAttachments(
+      scholar.id,
+      completeTaskDto.attachmentIds,
+      task.requiresAttachment
+    );
+
     const result = await this.db.transaction(async (tx) => {
-      // Update task status to completed
       const [updatedTask] = await tx
         .update(tasks)
         .set({
@@ -269,7 +494,6 @@ export class TasksService {
         .where(eq(tasks.id, taskId))
         .returning();
 
-      // Create or update task response
       const existingResponse = await tx
         .select()
         .from(taskResponses)
@@ -278,72 +502,47 @@ export class TasksService {
       let responseId: string;
 
       if (existingResponse.length > 0) {
-        // Update existing response
         const [updated] = await tx
           .update(taskResponses)
           .set({
             responseText: completeTaskDto.responseText,
+            linkUrl,
             updatedAt: new Date(),
           })
           .where(eq(taskResponses.taskId, taskId))
           .returning();
         responseId = updated.id;
       } else {
-        // Create new response
         const [created] = await tx
           .insert(taskResponses)
           .values({
             taskId,
             responseText: completeTaskDto.responseText,
+            linkUrl,
           })
           .returning();
         responseId = created.id;
       }
 
-      // Handle attachments if provided
       const attachmentData = completeTaskDto.attachmentIds;
 
-      // The frontend sends an array of attachment objects with metadata
       if (attachmentData && attachmentData.length > 0) {
-        // Delete existing attachments for this response
         await tx.delete(taskAttachments).where(eq(taskAttachments.taskResponseId, responseId));
 
-        // Import uuid for generating IDs
-        const { v4: uuidv4 } = await import('uuid');
+        const attachments = attachmentData.map((attachment) => ({
+          id: attachment.attachmentId || randomUUID(),
+          taskResponseId: responseId,
+          fileName: attachment.fileName.trim(),
+          fileUrl: attachment.fileKey.trim(),
+          fileSize: attachment.fileSize || '0',
+          mimeType: attachment.mimeType || 'application/octet-stream',
+        }));
 
-        // Create task attachment records with the S3 keys
-        const attachments = attachmentData.map((attachment: string | AttachmentDto) => {
-          // Handle both string IDs and objects with metadata
-          if (typeof attachment === 'string') {
-            // Legacy format - just the ID
-            return {
-              id: uuidv4(), // Generate a unique ID for the attachment
-              taskResponseId: responseId,
-              fileName: `attachment-${attachment}`,
-              fileUrl: attachment, // This should be the S3 key
-              fileSize: '0',
-              mimeType: 'application/octet-stream',
-            };
-          } else {
-            // New format with metadata
-            return {
-              id: attachment.attachmentId || uuidv4(), // Use the attachment ID or generate one
-              taskResponseId: responseId,
-              fileName: attachment.fileName || `attachment-${attachment.attachmentId}`,
-              fileUrl: attachment.fileKey || attachment.attachmentId, // Use S3 key if available
-              fileSize: attachment.fileSize || '0',
-              mimeType: attachment.mimeType || 'application/octet-stream',
-            };
-          }
-        });
-
-        if (attachments.length > 0) {
-          await tx.insert(taskAttachments).values(attachments);
-        }
+        await tx.insert(taskAttachments).values(attachments);
       }
 
       return {
-        task: updatedTask,
+        task: this.withOverdue(updatedTask),
         responseId,
       };
     });
