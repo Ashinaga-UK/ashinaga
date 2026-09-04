@@ -475,6 +475,12 @@ export class TasksService {
 
   async updateTask(taskId: string, updateTaskDto: UpdateTaskDto, actorId: string) {
     await this.assertStaffActor(actorId);
+
+    const [existing] = await this.db.select().from(tasks).where(eq(tasks.id, taskId));
+    if (!existing || existing.deletedAt) {
+      throw new NotFoundException('Task not found');
+    }
+
     const updateData: Record<string, unknown> = {
       ...updateTaskDto,
       updatedAt: new Date(),
