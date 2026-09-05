@@ -116,6 +116,14 @@ describe('StaffLayout', () => {
     ).toBeTruthy();
   });
 
+  it('hides the desktop rail at print so md:block cannot win', () => {
+    renderLayout();
+
+    expect(getSidebar().className).toContain('print:!hidden');
+    const rail = getSidebar().querySelector('.fixed');
+    expect(rail?.className).toContain('print:!hidden');
+  });
+
   it('collapses to an icon rail while keeping the header toggle visible', async () => {
     const user = userEvent.setup();
     renderLayout();

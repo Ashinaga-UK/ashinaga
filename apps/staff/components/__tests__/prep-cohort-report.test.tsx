@@ -1,6 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { PrepCohortReport } from '../prep-cohort-report';
 
 const mockGetReport = jest.fn();
@@ -174,6 +176,27 @@ describe('PrepCohortReport', () => {
     mockGetReport.mockRejectedValue(new Error('nope'));
     renderReport();
     expect(await screen.findByText('Could not load the cohort report.')).toBeInTheDocument();
+  });
+
+  it('does not keep the previous cohort on screen while a filter refetch is in flight', async () => {
+    mockGetReport
+      .mockResolvedValueOnce(reportPayload)
+      .mockImplementationOnce(() => new Promise(() => {}));
+    const user = userEvent.setup();
+    renderReport();
+    await screen.findByRole('button', { name: 'Ada Candidate' });
+
+    await user.selectOptions(screen.getByLabelText('Filter by candidate'), 's1');
+
+    expect(await screen.findByText('Loading Prep Year report...')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Ada Candidate' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Export CSV' })).not.toBeInTheDocument();
+  });
+
+  it('scopes print chrome to the report and does not set a global @page', () => {
+    const css = readFileSync(join(__dirname, '../../app/globals.css'), 'utf8');
+    expect(css).not.toMatch(/@page/);
+    expect(css).toContain('body.prep-report-printing header');
   });
 
   it('refetches with query filters and exports CSV with the same params', async () => {
