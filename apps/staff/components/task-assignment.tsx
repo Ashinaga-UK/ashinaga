@@ -282,7 +282,7 @@ export function TaskAssignment({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto pr-1">
+        <div className="flex min-h-0 flex-1 flex-col gap-6">
           {/* Student Selection - Hide in edit mode since we can't change the assigned student */}
           {!preselectedScholarId && mode !== 'edit' && (
             <div className="space-y-2">
@@ -339,57 +339,60 @@ export function TaskAssignment({
             </div>
           )}
 
-          {/* Task Details */}
-          <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
+          <div className="grid shrink-0 grid-cols-1 items-stretch gap-4 md:grid-cols-2">
             <div className="relative space-y-2">
-                <Label htmlFor="taskTitle">Task Title *</Label>
-                <Input
-                  id="taskTitle"
-                  ref={titleInputRef}
-                  value={taskTitle}
-                  onChange={(e) => {
-                    setTaskTitle(e.target.value);
-                    setSuggestionsOpen(true);
-                  }}
-                  onFocus={() => setSuggestionsOpen(true)}
-                  onBlur={() => {
-                    // Delay so a click on a suggestion still registers
-                    setTimeout(() => setSuggestionsOpen(false), 150);
-                  }}
-                  placeholder="Enter task title"
-                  autoComplete="off"
-                />
-                {mode !== 'edit' && suggestionsOpen && suggestions.length > 0 && (
-                  <ul className="absolute z-20 mt-1 w-full max-h-60 overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md">
-                    {suggestions.map((s) => (
-                      <li key={s.title}>
-                        <button
-                          type="button"
-                          className="w-full text-left px-3 py-2 hover:bg-muted focus:bg-muted focus:outline-none"
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            applySuggestion(s);
-                          }}
-                        >
-                          <div className="text-sm font-medium truncate">{s.title}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {s.type.replace('_', ' ')} • {s.priority} • used {s.useCount}×
-                          </div>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="dueDate">Due Date</Label>
-                <Input
-                  id="dueDate"
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                />
-              </div>
+              <Label htmlFor="taskTitle">Task Title *</Label>
+              <Input
+                id="taskTitle"
+                ref={titleInputRef}
+                value={taskTitle}
+                onChange={(e) => {
+                  setTaskTitle(e.target.value);
+                  setSuggestionsOpen(true);
+                }}
+                onFocus={() => setSuggestionsOpen(true)}
+                onBlur={() => {
+                  // Delay so a click on a suggestion still registers
+                  setTimeout(() => setSuggestionsOpen(false), 150);
+                }}
+                placeholder="Enter task title"
+                autoComplete="off"
+              />
+              {mode !== 'edit' && suggestionsOpen && suggestions.length > 0 && (
+                <ul className="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md">
+                  {suggestions.map((s) => (
+                    <li key={s.title}>
+                      <button
+                        type="button"
+                        className="w-full px-3 py-2 text-left hover:bg-muted focus:bg-muted focus:outline-none"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          applySuggestion(s);
+                        }}
+                      >
+                        <div className="truncate text-sm font-medium">{s.title}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {s.type.replace('_', ' ')} • {s.priority} • used {s.useCount}×
+                        </div>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="dueDate">Due Date</Label>
+              <Input
+                id="dueDate"
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1 space-y-6 overflow-y-auto pr-1">
+            <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="taskType">Task Type</Label>
                 <Select
@@ -443,18 +446,19 @@ export function TaskAssignment({
                   className="min-h-24 resize-none overflow-y-auto"
                 />
               </div>
-          </div>
+            </div>
 
-          <TaskEvidenceFields
-            phase={phase}
-            onPhaseChange={setPhase}
-            requiresResponse={requiresResponse}
-            requiresAttachment={requiresAttachment}
-            requiresLink={requiresLink}
-            onRequiresResponseChange={setRequiresResponse}
-            onRequiresAttachmentChange={setRequiresAttachment}
-            onRequiresLinkChange={setRequiresLink}
-          />
+            <TaskEvidenceFields
+              phase={phase}
+              onPhaseChange={setPhase}
+              requiresResponse={requiresResponse}
+              requiresAttachment={requiresAttachment}
+              requiresLink={requiresLink}
+              onRequiresResponseChange={setRequiresResponse}
+              onRequiresAttachmentChange={setRequiresAttachment}
+              onRequiresLinkChange={setRequiresLink}
+            />
+          </div>
         </div>
 
         <DialogFooter className="shrink-0">

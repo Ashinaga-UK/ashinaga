@@ -65,6 +65,9 @@ export function BulkTaskAssignment({
   const [requiresLink, setRequiresLink] = useState(otherDefaults.requiresLink);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [cohortCount, setCohortCount] = useState<number | null>(null);
+  const [cohortCountStatus, setCohortCountStatus] = useState<'loading' | 'ready' | 'error'>(
+    'loading'
+  );
 
   const resolvedScholarIds: string[] =
     selectedScholarIds && selectedScholarIds.length > 0
@@ -76,12 +79,18 @@ export function BulkTaskAssignment({
   useEffect(() => {
     if (!open || !isPrepCohort) return;
     let cancelled = false;
+    setCohortCount(null);
+    setCohortCountStatus('loading');
     void getScholars({ programStage: 'prep_year', status: 'active', limit: 1 })
       .then((response) => {
-        if (!cancelled) setCohortCount(response.pagination.totalItems);
+        if (cancelled) return;
+        setCohortCount(response.pagination.totalItems);
+        setCohortCountStatus('ready');
       })
       .catch(() => {
-        if (!cancelled) setCohortCount(null);
+        if (cancelled) return;
+        setCohortCount(null);
+        setCohortCountStatus('error');
       });
     return () => {
       cancelled = true;
@@ -170,9 +179,11 @@ export function BulkTaskAssignment({
           </DialogTitle>
           <DialogDescription>
             {isPrepCohort
-              ? cohortCount == null
+              ? cohortCountStatus === 'loading'
                 ? 'Counting active candidates…'
-                : `${cohortCount} active candidate${cohortCount === 1 ? '' : 's'} will receive this task.`
+                : cohortCountStatus === 'error'
+                  ? "Couldn't load the active candidate count. You can still assign this task."
+                  : `${cohortCount} active candidate${cohortCount === 1 ? '' : 's'} will receive this task.`
               : `Create and assign the same task to ${targetCount} ${
                   selectedScholarIds && selectedScholarIds.length > 0
                     ? 'selected scholars'
