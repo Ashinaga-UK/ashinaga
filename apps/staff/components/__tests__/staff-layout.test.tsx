@@ -55,6 +55,10 @@ describe('StaffLayout', () => {
       'href',
       '/?tab=prep-tasks'
     );
+    expect(screen.getByRole('link', { name: 'Prep reports' })).toHaveAttribute(
+      'href',
+      '/?tab=prep-reports'
+    );
     expect(screen.getByRole('link', { name: 'Annual Reviews' })).toHaveAttribute(
       'href',
       '/?tab=annual-reviews'
@@ -110,6 +114,14 @@ describe('StaffLayout', () => {
     expect(
       back.compareDocumentPosition(sectionTitle) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
+  });
+
+  it('hides the desktop rail at print so md:block cannot win', () => {
+    renderLayout();
+
+    expect(getSidebar().className).toContain('print:!hidden');
+    const rail = getSidebar().querySelector('.fixed');
+    expect(rail?.className).toContain('print:!hidden');
   });
 
   it('collapses to an icon rail while keeping the header toggle visible', async () => {

@@ -10,6 +10,7 @@ import {
   getAnnouncements,
   getAnnualUpdatesByScholar,
   getPrepTaskCohort,
+  getPrepYearReport,
   getRequiredDocumentCohort,
   getRequiredDocumentTypes,
   getResourceFilterOptions,
@@ -19,6 +20,7 @@ import {
   getTasksByScholar,
   type PlatformSetupStatus,
   type PrepTaskCohortFilters,
+  type PrepYearReportFilters,
   type ResourceFilterOptions,
   type Task,
   type UpdateScholarProfileData,
@@ -44,6 +46,8 @@ export const queryKeys = {
   scholarRequiredDocuments: (id: string) => ['scholar', id, 'required-documents'] as const,
   prepTaskCohort: (filters: PrepTaskCohortFilters = {}) =>
     ['prep-tasks', 'cohort', filters] as const,
+  prepYearReport: (filters: PrepYearReportFilters = {}) =>
+    ['prep-year', 'report', filters] as const,
 };
 
 // Scholar profile query
@@ -143,6 +147,13 @@ export function usePrepTaskCohort(filters: PrepTaskCohortFilters = {}) {
     queryKey: queryKeys.prepTaskCohort(filters),
     queryFn: () => getPrepTaskCohort(filters),
     placeholderData: keepPreviousData,
+  });
+}
+
+export function usePrepYearReport(filters: PrepYearReportFilters = {}) {
+  return useQuery({
+    queryKey: queryKeys.prepYearReport(filters),
+    queryFn: () => getPrepYearReport(filters),
   });
 }
 

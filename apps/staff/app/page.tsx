@@ -17,6 +17,7 @@ import { AnnualReviewsReport } from '../components/annual-reviews-report';
 import { InvitationsManagement } from '../components/invitations-management';
 import { LoginPage } from '../components/login-page';
 import { MyProfile } from '../components/my-profile';
+import { PrepCohortReport } from '../components/prep-cohort-report';
 import { PrepDocumentsTracker } from '../components/prep-documents-tracker';
 import { PrepTasksTracker } from '../components/prep-tasks-tracker';
 import { RequestManagement } from '../components/request-management';
@@ -395,7 +396,7 @@ function StaffDashboardContent() {
       onOpenProfile={() => router.push('?view=my-profile')}
       user={user}
     >
-      <div className="mx-auto min-w-0 max-w-7xl px-3 py-5 animate-fade-in sm:px-6 sm:py-8">
+      <div className="mx-auto min-w-0 max-w-7xl px-3 py-5 animate-fade-in sm:px-6 sm:py-8 print:max-w-none print:px-0 print:py-0">
         {currentView === 'onboarding' ? (
           <ScholarOnboarding onBack={() => router.push('/')} />
         ) : currentView === 'my-profile' ? (
@@ -406,26 +407,29 @@ function StaffDashboardContent() {
               <h2
                 className={cn(
                   'text-2xl font-semibold tracking-tight text-foreground',
-                  activeTab !== 'overview' && 'hidden md:block'
+                  activeTab !== 'overview' && 'hidden md:block print:block'
                 )}
               >
                 {activeTab === 'overview' && 'Overview'}
                 {activeTab === 'scholars' && 'Scholars'}
                 {activeTab === 'prep-documents' && 'Prep documents'}
                 {activeTab === 'prep-tasks' && 'Prep tasks'}
+                {activeTab === 'prep-reports' && 'Prep reports'}
                 {activeTab === 'annual-reviews' && 'Annual Reviews'}
                 {activeTab === 'requests' && 'Requests'}
                 {activeTab === 'announcements' && 'Announcements'}
                 {activeTab === 'resources' && 'Resources'}
                 {activeTab === 'invitations' && 'Invitations'}
               </h2>
-              <p className="text-sm text-muted-foreground mt-0.5">
+              <p className="mt-0.5 text-sm text-muted-foreground print:hidden">
                 {activeTab === 'overview' && 'Your dashboard at a glance.'}
                 {activeTab === 'scholars' && 'View and manage your assigned scholars.'}
                 {activeTab === 'prep-documents' &&
                   'See submitted and missing Prep Year documents without opening each profile.'}
                 {activeTab === 'prep-tasks' &&
                   'See Prep Year task completion without opening each profile.'}
+                {activeTab === 'prep-reports' &&
+                  'Generate a Prep Year cohort overview for internal and board reviews.'}
                 {activeTab === 'annual-reviews' &&
                   'Track annual review submissions by scholar and academic year.'}
                 {activeTab === 'requests' && 'Review and respond to scholar submissions.'}
@@ -610,6 +614,22 @@ function StaffDashboardContent() {
                       onViewScholar={(scholarId) => {
                         router.push(
                           `?tab=scholars&view=scholar-profile&scholarId=${scholarId}&scholarTab=tasks`
+                        );
+                      }}
+                    />
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {activeTab === 'prep-reports' && (
+              <div className="space-y-6">
+                <Card className="print:border-0 print:shadow-none">
+                  <CardContent className="p-4 sm:p-5 print:p-0">
+                    <PrepCohortReport
+                      onViewScholar={(scholarId) => {
+                        router.push(
+                          `?tab=scholars&view=scholar-profile&scholarId=${scholarId}&scholarTab=profile`
                         );
                       }}
                     />

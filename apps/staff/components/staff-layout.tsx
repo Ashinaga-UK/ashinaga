@@ -4,6 +4,7 @@ import { ThemeToggle } from '@workspace/ui';
 import {
   ChevronLeft,
   ClipboardCheck,
+  FileSpreadsheet,
   FileText,
   FolderOpen,
   Home,
@@ -48,6 +49,12 @@ export const STAFF_NAV_ITEMS = [
     icon: ListChecks,
   },
   {
+    href: '/?tab=prep-reports',
+    value: 'prep-reports',
+    label: 'Prep reports',
+    icon: FileSpreadsheet,
+  },
+  {
     href: '/?tab=annual-reviews',
     value: 'annual-reviews',
     label: 'Annual Reviews',
@@ -79,7 +86,7 @@ function StaffSidebar({ activeTab, onLogout }: Pick<StaffLayoutProps, 'activeTab
   const { isMobile, setOpenMobile } = useSidebar();
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" className="print:hidden">
       {isMobile ? (
         <div className="flex items-center border-b border-sidebar-border px-2 py-1.5">
           <button
@@ -149,11 +156,11 @@ export function StaffLayout({
 
   return (
     <SidebarProvider
-      className="flex h-svh flex-col overflow-hidden"
+      className="flex h-svh flex-col overflow-hidden print:h-auto print:overflow-visible"
       style={{ '--sidebar-header-height': '3.5rem' } as React.CSSProperties}
     >
       <header
-        className="z-30 grid h-14 w-full shrink-0 items-center border-b bg-background/80 px-3 backdrop-blur-xl sm:px-4 md:flex md:gap-2"
+        className="z-30 grid h-14 w-full shrink-0 items-center border-b bg-background/80 px-3 backdrop-blur-xl print:hidden sm:px-4 md:flex md:gap-2"
         style={{ gridTemplateColumns: '1fr auto 1fr' }}
       >
         <div className="flex items-center justify-start md:contents">
@@ -215,9 +222,9 @@ export function StaffLayout({
           </button>
         </div>
       </header>
-      <div className="flex min-h-0 flex-1 overflow-hidden">
+      <div className="flex min-h-0 flex-1 overflow-hidden print:h-auto print:overflow-visible">
         <StaffSidebar activeTab={activeTab} onLogout={onLogout} />
-        <SidebarInset className="min-h-0 min-w-0 overflow-y-auto">
+        <SidebarInset className="min-h-0 min-w-0 overflow-y-auto print:overflow-visible">
           <div className="min-w-0 flex-1">{children}</div>
         </SidebarInset>
       </div>
