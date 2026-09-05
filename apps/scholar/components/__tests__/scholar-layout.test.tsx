@@ -63,10 +63,8 @@ describe('ScholarLayout', () => {
     await renderLayout();
 
     const wrapper = document.querySelector('[style*="--sidebar-width"]') as HTMLElement;
-    expect(wrapper.className).toContain('fixed');
-    expect(wrapper.className).toContain('inset-0');
+    expect(wrapper.className).toContain('h-svh');
     expect(wrapper.className).toContain('overflow-hidden');
-    expect(wrapper.className).toContain('overscroll-none');
 
     const inset = document.querySelector('main') as HTMLElement;
     expect(inset.className).toContain('overflow-y-auto');

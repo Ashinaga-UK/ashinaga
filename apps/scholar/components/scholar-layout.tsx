@@ -218,11 +218,11 @@ function ScholarLayoutChrome({ children, onLogout }: ScholarLayoutProps) {
 
   return (
     <SidebarProvider
-      className="fixed inset-0 flex h-svh max-h-svh flex-col overflow-hidden overscroll-none bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:from-background dark:to-background"
+      className="flex h-svh flex-col overflow-hidden bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:from-background dark:to-background"
       style={{ '--sidebar-header-height': '3.5rem' } as React.CSSProperties}
     >
       <ScholarHeader programStage={programStage} />
-      <div className="flex min-h-0 flex-1 overflow-hidden overscroll-none">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         <ScholarSidebar onLogout={onLogout} programStage={programStage} />
         <SidebarInset className="min-h-0 min-w-0 overflow-y-auto overscroll-none bg-transparent">
           <div className="min-w-0 flex-1">{children}</div>
