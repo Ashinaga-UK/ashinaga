@@ -163,10 +163,7 @@ describe('buildPrepYearReport', () => {
       completedCount: 1,
       completionRate: 100,
     });
-    expect(report.filterOptions.phases).toEqual(
-      expect.arrayContaining(['english', 'English', 'proposal'])
-    );
-    expect(report.filterOptions.phases).toHaveLength(3);
+    expect(report.filterOptions.phases).toEqual(['english', 'proposal']);
   });
 
   it('filters rows by scholarId without dropping filter options', () => {

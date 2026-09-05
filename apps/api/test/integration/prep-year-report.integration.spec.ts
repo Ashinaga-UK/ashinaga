@@ -135,6 +135,16 @@ describe('GET /api/prep-year/report (integration)', () => {
           assignedBy: staffActor.userId,
           status: 'completed',
         },
+        {
+          title: 'Deleted overdue essay',
+          type: 'other',
+          dueDate: new Date('2020-01-01T00:00:00.000Z'),
+          phase: 'English',
+          scholarId: prepA.scholarId,
+          assignedBy: staffActor.userId,
+          status: 'pending',
+          deletedAt: new Date('2026-08-01T00:00:00.000Z'),
+        },
       ])
       .returning({ id: tasks.id });
     createdTaskIds.push(...rows.map((row) => row.id));
@@ -174,6 +184,7 @@ describe('GET /api/prep-year/report (integration)', () => {
     expect(ada.completionRate).toBe(50);
     expect(ada.documents[ieltsTypeId]).toBe('submitted');
     expect(ada.platforms[courseraPlatformId]).toBe('yes');
+    expect(res.body.filterOptions.phases).toEqual(['english', 'proposal']);
 
     const ben = res.body.scholars.find(
       (row: { scholarId: string }) => row.scholarId === prepB.scholarId
@@ -221,6 +232,7 @@ describe('GET /api/prep-year/report (integration)', () => {
   it('rejects non-staff and invalid scholarId', async () => {
     auth.setUser({ id: prepA.userId, email: prepA.email, userType: 'scholar' });
     await request(app.getHttpServer()).get('/api/prep-year/report').expect(403);
+    await request(app.getHttpServer()).get('/api/prep-year/report/csv').expect(403);
 
     auth.setUser({ id: staffActor.userId, email: staffActor.email, userType: 'staff' });
     await request(app.getHttpServer())

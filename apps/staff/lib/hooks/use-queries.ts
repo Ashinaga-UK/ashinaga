@@ -154,7 +154,6 @@ export function usePrepYearReport(filters: PrepYearReportFilters = {}) {
   return useQuery({
     queryKey: queryKeys.prepYearReport(filters),
     queryFn: () => getPrepYearReport(filters),
-    placeholderData: keepPreviousData,
   });
 }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { Download, Loader2, Printer } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type {
   PrepYearDocumentStatus,
   PrepYearPlatformStatus,
@@ -18,6 +18,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 
 const ALL = 'all';
+const PREP_REPORT_PRINT_CLASS = 'prep-report-printing';
+const PREP_REPORT_PAGE_STYLE_ID = 'prep-report-page-style';
+
+function beginPrepReportPrint() {
+  document.body.classList.add(PREP_REPORT_PRINT_CLASS);
+  if (document.getElementById(PREP_REPORT_PAGE_STYLE_ID)) return;
+  const style = document.createElement('style');
+  style.id = PREP_REPORT_PAGE_STYLE_ID;
+  style.textContent = '@page { size: A4 landscape; margin: 10mm; }';
+  document.head.appendChild(style);
+}
+
+function endPrepReportPrint() {
+  document.body.classList.remove(PREP_REPORT_PRINT_CLASS);
+  document.getElementById(PREP_REPORT_PAGE_STYLE_ID)?.remove();
+}
 
 function scholarStatusLabel(status: 'active' | 'inactive' | 'on_hold' | 'archived'): string {
   if (status === 'on_hold') return 'On hold';
@@ -96,7 +112,7 @@ export function PrepCohortReport({
     return next;
   }, [phase, scholarId]);
 
-  const { data, isLoading, error } = usePrepYearReport(filters);
+  const { data, isLoading, isFetching, error } = usePrepYearReport(filters);
   const scholars = data?.scholars ?? [];
   const documentTypes = data?.documentTypes ?? [];
   const platforms = data?.platforms ?? [];
@@ -110,7 +126,23 @@ export function PrepCohortReport({
         'All candidates');
   const phaseFilterLabel = phase === ALL ? 'All phases' : phase;
 
+  useEffect(() => {
+    const onBeforePrint = () => beginPrepReportPrint();
+    const onAfterPrint = () => endPrepReportPrint();
+    window.addEventListener('beforeprint', onBeforePrint);
+    window.addEventListener('afterprint', onAfterPrint);
+    return () => {
+      window.removeEventListener('beforeprint', onBeforePrint);
+      window.removeEventListener('afterprint', onAfterPrint);
+      onAfterPrint();
+    };
+  }, []);
+
+  const reportBusy = exporting || isFetching;
+  const canExportOrPrint = !reportBusy && scholars.length > 0;
+
   const handleExportCsv = async () => {
+    if (!canExportOrPrint) return;
     setExporting(true);
     try {
       await downloadPrepYearReportCSV(filters);
@@ -120,6 +152,12 @@ export function PrepCohortReport({
     } finally {
       setExporting(false);
     }
+  };
+
+  const handlePrint = () => {
+    if (!canExportOrPrint) return;
+    beginPrepReportPrint();
+    window.print();
   };
 
   if (isLoading) {
@@ -183,7 +221,7 @@ export function PrepCohortReport({
             onClick={() => {
               void handleExportCsv();
             }}
-            disabled={exporting || scholars.length === 0}
+            disabled={!canExportOrPrint}
           >
             {exporting ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -195,8 +233,8 @@ export function PrepCohortReport({
           <Button
             variant="outline"
             className="w-full sm:w-fit"
-            onClick={() => window.print()}
-            disabled={scholars.length === 0}
+            onClick={handlePrint}
+            disabled={!canExportOrPrint}
           >
             <Printer className="mr-2 h-4 w-4" />
             Print / Save as PDF

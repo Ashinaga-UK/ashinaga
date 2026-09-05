@@ -173,7 +173,11 @@ export function buildPrepYearReport(
   }
 
   const phases = [
-    ...new Set(tasks.map((task) => task.phase).filter((phase): phase is string => Boolean(phase))),
+    ...new Set(
+      tasks
+        .map((task) => normalizePhase(task.phase))
+        .filter((phase): phase is string => Boolean(phase))
+    ),
   ].sort((a, b) => a.localeCompare(b, 'en-GB'));
 
   return {

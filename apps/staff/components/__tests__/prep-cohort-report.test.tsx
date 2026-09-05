@@ -186,11 +186,13 @@ describe('PrepCohortReport', () => {
     await waitFor(() => {
       expect(mockGetReport).toHaveBeenCalledWith({ scholarId: 's1' });
     });
+    await screen.findByRole('button', { name: 'Ada Candidate' });
 
     await user.selectOptions(screen.getByLabelText('Filter by phase'), 'english');
     await waitFor(() => {
       expect(mockGetReport).toHaveBeenCalledWith({ scholarId: 's1', phase: 'english' });
     });
+    await screen.findByRole('button', { name: 'Ada Candidate' });
 
     await user.click(screen.getByRole('button', { name: 'Export CSV' }));
     await waitFor(() => {
@@ -206,10 +208,17 @@ describe('PrepCohortReport', () => {
     await screen.findByRole('button', { name: 'Ada Candidate' });
     await user.click(screen.getByRole('button', { name: 'Print / Save as PDF' }));
     expect(print).toHaveBeenCalled();
+    expect(document.body.classList.contains('prep-report-printing')).toBe(true);
+    expect(document.getElementById('prep-report-page-style')?.textContent).toContain(
+      'size: A4 landscape'
+    );
     const printed = screen.getByTestId('prep-report-print');
     expect(printed).toHaveTextContent('Ada Candidate');
     expect(printed).toHaveTextContent('Intended university');
     expect(printed).toHaveTextContent('Oxford');
+    window.dispatchEvent(new Event('afterprint'));
+    expect(document.body.classList.contains('prep-report-printing')).toBe(false);
+    expect(document.getElementById('prep-report-page-style')).toBeNull();
     print.mockRestore();
   });
 });
