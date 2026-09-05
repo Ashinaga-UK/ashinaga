@@ -24,7 +24,8 @@ import {
 } from '../db/schema';
 import { DocumentsService } from '../documents/documents.service';
 import { InvitationsService } from '../invitations/invitations.service';
-import { isTaskOverdue } from '../tasks/task-due';
+import { isTaskDueToday, isTaskOverdue } from '../tasks/task-due';
+import { taskProgressFilterSql } from '../tasks/task-progress-filter';
 import { escapeCsvValue } from '../utils/csv';
 import { isPlaceholderAcademicValue } from './academic-values';
 import { CreateScholarDto } from './dto/create-scholar.dto';
@@ -43,10 +44,7 @@ import {
 } from './dto/get-scholars.dto';
 import { UpdatePlatformSetupDto } from './dto/update-platform-setup.dto';
 import { UpdateScholarProfileDto } from './dto/update-scholar-profile.dto';
-import {
-  buildPlatformSetupIncompleteMap,
-  platformSetupFilterSql,
-} from './platform-setup';
+import { buildPlatformSetupIncompleteMap, platformSetupFilterSql } from './platform-setup';
 
 function uniqueFilterValues(values: Array<string | null | undefined>): string[] {
   const seen = new Set<string>();
@@ -154,6 +152,7 @@ export class ScholarsService {
       status,
       programStage,
       platformSetup,
+      taskProgress,
       sortBy = 'createdAt',
       sortOrder = 'desc',
     } = query;
@@ -200,6 +199,10 @@ export class ScholarsService {
       whereConditions.push(platformSetupFilterSql(true));
     } else if (platformSetup === 'complete') {
       whereConditions.push(platformSetupFilterSql(false));
+    }
+
+    if (taskProgress) {
+      whereConditions.push(taskProgressFilterSql(taskProgress));
     }
 
     const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
@@ -260,7 +263,7 @@ export class ScholarsService {
       startDate: row.scholar.startDate,
       lastActivity: row.scholar.lastActivity,
       goals: goalsStats[row.scholar.id] || { total: 0, completed: 0, inProgress: 0, pending: 0 },
-      tasks: tasksStats[row.scholar.id] || { total: 0, completed: 0, overdue: 0 },
+      tasks: tasksStats[row.scholar.id] || { total: 0, completed: 0, overdue: 0, dueToday: 0 },
       platformSetupIncomplete:
         row.scholar.programStage === 'prep_year' ? incompleteMap[row.scholar.id] : null,
       createdAt: row.scholar.createdAt,
@@ -322,7 +325,7 @@ export class ScholarsService {
       startDate: row.scholar.startDate,
       lastActivity: row.scholar.lastActivity,
       goals: goalsStats[row.scholar.id] || { total: 0, completed: 0, inProgress: 0, pending: 0 },
-      tasks: tasksStats[row.scholar.id] || { total: 0, completed: 0, overdue: 0 },
+      tasks: tasksStats[row.scholar.id] || { total: 0, completed: 0, overdue: 0, dueToday: 0 },
       platformSetupIncomplete:
         row.scholar.programStage === 'prep_year' ? incompleteMap[row.scholar.id] : null,
       createdAt: row.scholar.createdAt,
@@ -404,6 +407,7 @@ export class ScholarsService {
         total: 0,
         completed: 0,
         overdue: 0,
+        dueToday: 0,
       };
     }
 
@@ -414,6 +418,7 @@ export class ScholarsService {
           total: 0,
           completed: 0,
           overdue: 0,
+          dueToday: 0,
         };
       }
 
@@ -423,6 +428,8 @@ export class ScholarsService {
         stats[scholarId].completed += row.count;
       } else if (row.dueDate && isTaskOverdue({ dueDate: row.dueDate, status: row.status })) {
         stats[scholarId].overdue += row.count;
+      } else if (row.dueDate && isTaskDueToday({ dueDate: row.dueDate, status: row.status })) {
+        stats[scholarId].dueToday += row.count;
       }
     }
 
