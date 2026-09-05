@@ -272,7 +272,7 @@ export function TaskAssignment({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="flex max-h-[90vh] max-w-2xl flex-col overflow-hidden data-[state=open]:flex">
         <DialogHeader>
           <DialogTitle>{mode === 'edit' ? 'Edit Task' : 'Assign Task to Student'}</DialogTitle>
           <DialogDescription>
@@ -282,7 +282,7 @@ export function TaskAssignment({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto pr-1">
           {/* Student Selection - Hide in edit mode since we can't change the assigned student */}
           {!preselectedScholarId && mode !== 'edit' && (
             <div className="space-y-2">
@@ -416,17 +416,6 @@ export function TaskAssignment({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex h-full min-h-0 flex-col space-y-2 md:row-span-2">
-                <Label htmlFor="taskDescription">Task Description *</Label>
-                <Textarea
-                  id="taskDescription"
-                  value={taskDescription}
-                  onChange={(e) => setTaskDescription(e.target.value)}
-                  placeholder="Provide detailed instructions for the student"
-                  rows={3}
-                  className="h-24 flex-1 resize-none overflow-y-auto md:h-0 md:min-h-0"
-                />
-              </div>
               <div className="space-y-2">
                 <Label htmlFor="priority">Priority</Label>
                 <Select
@@ -443,6 +432,17 @@ export function TaskAssignment({
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="taskDescription">Task Description *</Label>
+                <Textarea
+                  id="taskDescription"
+                  value={taskDescription}
+                  onChange={(e) => setTaskDescription(e.target.value)}
+                  placeholder="Provide detailed instructions for the student"
+                  rows={4}
+                  className="min-h-24 resize-none overflow-y-auto"
+                />
+              </div>
           </div>
 
           <TaskEvidenceFields
@@ -457,7 +457,7 @@ export function TaskAssignment({
           />
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="shrink-0">
           <Button variant="outline" onClick={() => setOpen(false)}>
             Cancel
           </Button>
