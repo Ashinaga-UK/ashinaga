@@ -65,6 +65,9 @@ export function BulkTaskAssignment({
   const [requiresLink, setRequiresLink] = useState(otherDefaults.requiresLink);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [cohortCount, setCohortCount] = useState<number | null>(null);
+  const [cohortCountStatus, setCohortCountStatus] = useState<'loading' | 'ready' | 'error'>(
+    'loading'
+  );
 
   const resolvedScholarIds: string[] =
     selectedScholarIds && selectedScholarIds.length > 0
@@ -76,12 +79,18 @@ export function BulkTaskAssignment({
   useEffect(() => {
     if (!open || !isPrepCohort) return;
     let cancelled = false;
+    setCohortCount(null);
+    setCohortCountStatus('loading');
     void getScholars({ programStage: 'prep_year', status: 'active', limit: 1 })
       .then((response) => {
-        if (!cancelled) setCohortCount(response.pagination.totalItems);
+        if (cancelled) return;
+        setCohortCount(response.pagination.totalItems);
+        setCohortCountStatus('ready');
       })
       .catch(() => {
-        if (!cancelled) setCohortCount(null);
+        if (cancelled) return;
+        setCohortCount(null);
+        setCohortCountStatus('error');
       });
     return () => {
       cancelled = true;
@@ -163,14 +172,18 @@ export function BulkTaskAssignment({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="flex max-h-[90vh] max-w-2xl flex-col overflow-hidden data-[state=open]:flex">
         <DialogHeader>
           <DialogTitle>
-            {isPrepCohort ? 'Assign Task to Prep Year cohort' : 'Assign Task to Multiple Scholars'}
+            {isPrepCohort ? 'Assign task to Prep Year cohort' : 'Assign Task to Multiple Scholars'}
           </DialogTitle>
           <DialogDescription>
             {isPrepCohort
-              ? 'Create and assign the same task to all active Prep Year candidates.'
+              ? cohortCountStatus === 'loading'
+                ? 'Counting active candidates…'
+                : cohortCountStatus === 'error'
+                  ? "Couldn't load the active candidate count. You can still assign this task."
+                  : `${cohortCount} active candidate${cohortCount === 1 ? '' : 's'} will receive this task.`
               : `Create and assign the same task to ${targetCount} ${
                   selectedScholarIds && selectedScholarIds.length > 0
                     ? 'selected scholars'
@@ -179,39 +192,33 @@ export function BulkTaskAssignment({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Target Summary */}
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto pr-1">
+          {!isPrepCohort ? (
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Assignment Target</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Assignment Target</CardTitle>
               <CardDescription>
-                {isPrepCohort
-                  ? 'This task will be assigned to every active Prep Year candidate.'
-                  : `This task will be assigned to ${targetCount} scholar${targetCount === 1 ? '' : 's'}`}
+                {`This task will be assigned to ${targetCount} scholar${targetCount === 1 ? '' : 's'}`}
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="text-lg px-3 py-1">
-                  {isPrepCohort && cohortCount == null
-                    ? 'Prep Year cohort'
-                    : `${targetCount} ${isPrepCohort ? 'Candidate' : 'Scholar'}${targetCount === 1 ? '' : 's'}`}
+            <CardContent className="pt-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="secondary">
+                  {`${targetCount} Scholar${targetCount === 1 ? '' : 's'}`}
                 </Badge>
                 <span className="text-sm text-muted-foreground">
-                  {isPrepCohort
-                    ? 'All active candidates with programStage = prep_year'
-                    : selectedScholarIds && selectedScholarIds.length > 0
-                      ? 'Selected from table'
-                      : 'All currently filtered scholars'}
+                  {selectedScholarIds && selectedScholarIds.length > 0
+                    ? 'Selected from table'
+                    : 'All currently filtered scholars'}
                 </span>
               </div>
             </CardContent>
           </Card>
+          ) : null}
 
           {/* Task Details */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-4">
-              <div>
+          <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
+            <div className="space-y-2">
                 <Label htmlFor="taskTitle">Task Title *</Label>
                 <Input
                   id="taskTitle"
@@ -220,7 +227,16 @@ export function BulkTaskAssignment({
                   placeholder="Enter task title"
                 />
               </div>
-              <div>
+              <div className="space-y-2">
+                <Label htmlFor="dueDate">Due Date *</Label>
+                <Input
+                  id="dueDate"
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="taskType">Task Type</Label>
                 <Select
                   value={taskType}
@@ -246,7 +262,7 @@ export function BulkTaskAssignment({
                   </SelectContent>
                 </Select>
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor="priority">Priority</Label>
                 <Select value={priority} onValueChange={(v) => setPriority(v as Priority)}>
                   <SelectTrigger>
@@ -259,29 +275,17 @@ export function BulkTaskAssignment({
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="dueDate">Due Date *</Label>
-                <Input
-                  id="dueDate"
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                />
-              </div>
-              <div>
+              <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="taskDescription">Task Description *</Label>
                 <Textarea
                   id="taskDescription"
                   value={taskDescription}
                   onChange={(e) => setTaskDescription(e.target.value)}
                   placeholder="Provide detailed instructions for the scholars"
-                  rows={6}
+                  rows={4}
+                  className="min-h-24 resize-none overflow-y-auto"
                 />
               </div>
-            </div>
           </div>
 
           <TaskEvidenceFields
@@ -296,7 +300,7 @@ export function BulkTaskAssignment({
           />
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="shrink-0">
           <Button variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>
             Cancel
           </Button>

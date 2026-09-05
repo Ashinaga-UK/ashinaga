@@ -28,6 +28,7 @@ import {
 } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Textarea } from './ui/textarea';
 import { useToast } from './ui/use-toast';
@@ -272,7 +273,7 @@ export function TaskAssignment({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="flex max-h-[90vh] max-w-2xl flex-col overflow-hidden data-[state=open]:flex">
         <DialogHeader>
           <DialogTitle>{mode === 'edit' ? 'Edit Task' : 'Assign Task to Student'}</DialogTitle>
           <DialogDescription>
@@ -282,7 +283,7 @@ export function TaskAssignment({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto pr-1">
           {/* Student Selection - Hide in edit mode since we can't change the assigned student */}
           {!preselectedScholarId && mode !== 'edit' && (
             <div className="space-y-2">
@@ -318,7 +319,7 @@ export function TaskAssignment({
 
           {/* Selected Student Display */}
           {selectedScholar && (
-            <div className="bg-muted p-4 rounded-lg">
+            <div className="rounded-lg bg-muted p-4">
               <div className="flex items-center gap-3">
                 <Avatar>
                   <AvatarImage src={selectedScholar.image || '/placeholder.svg'} />
@@ -339,40 +340,49 @@ export function TaskAssignment({
             </div>
           )}
 
-          {/* Task Details */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-4">
-              <div className="relative">
-                <Label htmlFor="taskTitle">Task Title *</Label>
-                <Input
-                  id="taskTitle"
-                  ref={titleInputRef}
-                  value={taskTitle}
-                  onChange={(e) => {
-                    setTaskTitle(e.target.value);
-                    setSuggestionsOpen(true);
-                  }}
-                  onFocus={() => setSuggestionsOpen(true)}
-                  onBlur={() => {
-                    // Delay so a click on a suggestion still registers
-                    setTimeout(() => setSuggestionsOpen(false), 150);
-                  }}
-                  placeholder="Enter task title"
-                  autoComplete="off"
-                />
-                {mode !== 'edit' && suggestionsOpen && suggestions.length > 0 && (
-                  <ul className="absolute z-20 mt-1 w-full max-h-60 overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md">
+          <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="taskTitle">Task Title *</Label>
+              <Popover
+                modal
+                open={mode !== 'edit' && suggestionsOpen && suggestions.length > 0}
+                onOpenChange={(nextOpen) => {
+                  if (mode === 'edit') return;
+                  setSuggestionsOpen(nextOpen);
+                }}
+              >
+                <PopoverTrigger asChild>
+                  <Input
+                    id="taskTitle"
+                    ref={titleInputRef}
+                    value={taskTitle}
+                    onChange={(e) => {
+                      setTaskTitle(e.target.value);
+                      setSuggestionsOpen(true);
+                    }}
+                    onFocus={() => setSuggestionsOpen(true)}
+                    placeholder="Enter task title"
+                    autoComplete="off"
+                  />
+                </PopoverTrigger>
+                <PopoverContent
+                  align="start"
+                  onOpenAutoFocus={(event) => event.preventDefault()}
+                  onCloseAutoFocus={(event) => event.preventDefault()}
+                  className="w-[var(--radix-popover-trigger-width)] max-h-60 overflow-y-auto p-0"
+                >
+                  <ul>
                     {suggestions.map((s) => (
                       <li key={s.title}>
                         <button
                           type="button"
-                          className="w-full text-left px-3 py-2 hover:bg-muted focus:bg-muted focus:outline-none"
-                          onMouseDown={(e) => {
-                            e.preventDefault();
+                          className="w-full px-3 py-2 text-left hover:bg-muted focus:bg-muted focus:outline-none"
+                          onMouseDown={(event) => {
+                            event.preventDefault();
                             applySuggestion(s);
                           }}
                         >
-                          <div className="text-sm font-medium truncate">{s.title}</div>
+                          <div className="truncate text-sm font-medium">{s.title}</div>
                           <div className="text-xs text-muted-foreground">
                             {s.type.replace('_', ' ')} • {s.priority} • used {s.useCount}×
                           </div>
@@ -380,72 +390,70 @@ export function TaskAssignment({
                       </li>
                     ))}
                   </ul>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="taskType">Task Type</Label>
-                <Select
-                  value={taskType}
-                  onValueChange={(value) => {
-                    const nextType = value as CreateTaskData['type'];
-                    setTaskType(nextType);
-                    const defaults = evidenceDefaultsForType(nextType);
-                    setRequiresResponse(defaults.requiresResponse);
-                    setRequiresAttachment(defaults.requiresAttachment);
-                    setRequiresLink(defaults.requiresLink);
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select task type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="document_upload">Document Upload</SelectItem>
-                    <SelectItem value="form_completion">Form Completion</SelectItem>
-                    <SelectItem value="meeting_attendance">Meeting Attendance</SelectItem>
-                    <SelectItem value="goal_update">Goal Update</SelectItem>
-                    <SelectItem value="feedback_submission">Feedback Submission</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="priority">Priority</Label>
-                <Select
-                  value={priority}
-                  onValueChange={(value) => setPriority(value as 'high' | 'medium' | 'low')}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select priority" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="low">Low</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                </PopoverContent>
+              </Popover>
             </div>
-
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="dueDate">Due Date</Label>
-                <Input
-                  id="dueDate"
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="taskDescription">Task Description *</Label>
-                <Textarea
-                  id="taskDescription"
-                  value={taskDescription}
-                  onChange={(e) => setTaskDescription(e.target.value)}
-                  placeholder="Provide detailed instructions for the student"
-                  rows={6}
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="dueDate">Due Date</Label>
+              <Input
+                id="dueDate"
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="taskType">Task Type</Label>
+              <Select
+                value={taskType}
+                onValueChange={(value) => {
+                  const nextType = value as CreateTaskData['type'];
+                  setTaskType(nextType);
+                  const defaults = evidenceDefaultsForType(nextType);
+                  setRequiresResponse(defaults.requiresResponse);
+                  setRequiresAttachment(defaults.requiresAttachment);
+                  setRequiresLink(defaults.requiresLink);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select task type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="document_upload">Document Upload</SelectItem>
+                  <SelectItem value="form_completion">Form Completion</SelectItem>
+                  <SelectItem value="meeting_attendance">Meeting Attendance</SelectItem>
+                  <SelectItem value="goal_update">Goal Update</SelectItem>
+                  <SelectItem value="feedback_submission">Feedback Submission</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="priority">Priority</Label>
+              <Select
+                value={priority}
+                onValueChange={(value) => setPriority(value as 'high' | 'medium' | 'low')}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="low">Low</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="taskDescription">Task Description *</Label>
+              <Textarea
+                id="taskDescription"
+                value={taskDescription}
+                onChange={(e) => setTaskDescription(e.target.value)}
+                placeholder="Provide detailed instructions for the student"
+                rows={4}
+                className="min-h-24 resize-none overflow-y-auto"
+              />
             </div>
           </div>
 
@@ -461,7 +469,7 @@ export function TaskAssignment({
           />
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="shrink-0">
           <Button variant="outline" onClick={() => setOpen(false)}>
             Cancel
           </Button>
