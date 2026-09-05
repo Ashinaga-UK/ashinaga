@@ -1111,6 +1111,43 @@ export async function createResourceUploadUrl(data: {
   );
 }
 
+export async function createAvatarUploadUrl(data: {
+  fileType: string;
+  fileSize: number;
+}): Promise<{ uploadUrl: string; fields: Record<string, string>; fileKey: string }> {
+  return fetchAPI<{ uploadUrl: string; fields: Record<string, string>; fileKey: string }>(
+    '/api/avatars/upload-url',
+    {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+export async function uploadAvatarBlob(blob: Blob): Promise<string> {
+  const { uploadUrl, fields, fileKey } = await createAvatarUploadUrl({
+    fileType: 'image/jpeg',
+    fileSize: blob.size,
+  });
+
+  const formData = new FormData();
+  for (const [key, value] of Object.entries(fields)) {
+    formData.append(key, value);
+  }
+  formData.append('file', blob, 'avatar.jpg');
+
+  const uploadResponse = await fetch(uploadUrl, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!uploadResponse.ok) {
+    throw new Error('Failed to upload profile picture');
+  }
+
+  return fileKey;
+}
+
 export async function getResourceDownloadUrl(
   resourceId: string,
   disposition: 'attachment' | 'inline' = 'attachment'

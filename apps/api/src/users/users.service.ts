@@ -5,6 +5,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
+import { AvatarsService } from '../avatars/avatars.service';
+import { resolveAvatarSrc } from '../avatars/avatar-files';
 import { validateProfileImage } from '../common/profile-image';
 import { database } from '../db/connection';
 import { sessions, staff, users } from '../db/schema';
@@ -23,6 +25,8 @@ export interface StaffListItem {
 
 @Injectable()
 export class UsersService {
+  constructor(private readonly avatarsService: AvatarsService) {}
+
   async findById(userId: string) {
     const user = await database.select().from(users).where(eq(users.id, userId)).limit(1);
 
@@ -30,13 +34,20 @@ export class UsersService {
       throw new Error('User not found');
     }
 
-    // Return user data
-    return user[0];
+    return {
+      ...user[0],
+      image: resolveAvatarSrc(user[0].image, userId),
+    };
   }
 
   async updateUser(userId: string, updateUserDto: UpdateUserDto) {
     if (updateUserDto.image !== undefined) {
-      validateProfileImage(updateUserDto.image);
+      validateProfileImage(updateUserDto.image, userId);
+    }
+
+    const [existing] = await database.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!existing) {
+      throw new Error('User not found');
     }
 
     const updateData: Partial<typeof users.$inferInsert> = { updatedAt: new Date() };
@@ -46,7 +57,11 @@ export class UsersService {
     }
 
     if (updateUserDto.image !== undefined) {
-      updateData.image = updateUserDto.image || null;
+      updateData.image = await this.avatarsService.resolveImageUpdate(
+        userId,
+        updateUserDto.image,
+        existing.image
+      );
     }
 
     if (Object.keys(updateData).length > 1) {
@@ -60,15 +75,16 @@ export class UsersService {
         throw new Error('Failed to update user');
       }
 
-      return updatedUser[0];
+      return {
+        ...updatedUser[0],
+        image: resolveAvatarSrc(updatedUser[0].image, userId),
+      };
     }
 
-    // If no supported fields were provided, just return the existing user
     return this.findById(userId);
   }
 
   async getStaffList(currentUserId?: string): Promise<StaffListItem[]> {
-    // Active staff with full details for management views
     const staffList = await database
       .select({
         id: staff.id,
@@ -105,7 +121,6 @@ export class UsersService {
       throw new BadRequestException('You cannot remove your own staff account');
     }
 
-    // Verify requester is an active super-admin
     const [requester] = await database
       .select()
       .from(staff)
@@ -120,7 +135,6 @@ export class UsersService {
       throw new ForbiddenException('Only super-admins can remove staff members');
     }
 
-    // Find the target staff record
     const [target] = await database
       .select()
       .from(staff)
@@ -135,13 +149,11 @@ export class UsersService {
       return { success: true, alreadyInactive: true };
     }
 
-    // Soft-delete: mark inactive
     await database
       .update(staff)
       .set({ isActive: false, updatedAt: new Date() })
       .where(eq(staff.userId, targetUserId));
 
-    // Invalidate any active sessions so the removed staff can't keep using the app
     try {
       await database.delete(sessions).where(eq(sessions.userId, targetUserId));
     } catch (error) {

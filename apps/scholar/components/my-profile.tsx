@@ -1,6 +1,9 @@
 'use client';
 
-import { fileToProfileImageDataUrl } from '@workspace/ui/lib/profile-image';
+import {
+  fileToProfileImageBlob,
+  PROFILE_IMAGE_CONTENT_TYPE,
+} from '@workspace/ui/lib/profile-image';
 import { toSafeHttpUrl } from '@workspace/ui/lib/safe-href';
 import {
   AlertTriangle,
@@ -20,6 +23,7 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
+import { uploadAvatarBlob } from '../lib/api-client';
 import { type ScholarProfile, type UpdateProfileData, updateMyProfile } from '../lib/api/profile';
 import { useScholarSession } from '../lib/scholar-session';
 import { Alert, AlertDescription } from './ui/alert';
@@ -75,12 +79,16 @@ export function MyProfile() {
   const [imageError, setImageError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [formData, setFormData] = useState<UpdateProfileData>({});
+  const [pendingAvatarBlob, setPendingAvatarBlob] = useState<Blob | null>(null);
+  const [avatarRemoved, setAvatarRemoved] = useState(false);
   const [formHydrated, setFormHydrated] = useState(false);
   const loading = profileStatus === 'loading' || !formHydrated;
 
   useEffect(() => {
     if (profile && !editing) {
       setFormData(toFormData(profile));
+      setPendingAvatarBlob(null);
+      setAvatarRemoved(false);
       setFormHydrated(true);
     }
     if (profileStatus === 'error') {
@@ -88,6 +96,14 @@ export function MyProfile() {
       setFormHydrated(true);
     }
   }, [profile, profileStatus, editing]);
+
+  useEffect(() => {
+    return () => {
+      if (typeof formData.image === 'string' && formData.image.startsWith('blob:')) {
+        URL.revokeObjectURL(formData.image);
+      }
+    };
+  }, [formData.image]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,11 +114,20 @@ export function MyProfile() {
 
     try {
       const payload: UpdateProfileData = { ...formData };
-      if (payload.image === profile?.image) {
+      if (avatarRemoved) {
+        payload.image = null;
+      } else if (pendingAvatarBlob) {
+        if (pendingAvatarBlob.type !== PROFILE_IMAGE_CONTENT_TYPE) {
+          throw new Error('Profile picture must be JPEG');
+        }
+        payload.image = await uploadAvatarBlob(pendingAvatarBlob);
+      } else {
         delete payload.image;
       }
       const updatedProfile = await updateMyProfile(payload);
       applyProfile(updatedProfile);
+      setPendingAvatarBlob(null);
+      setAvatarRemoved(false);
       setSuccess(true);
       setEditing(false);
       setTimeout(() => setSuccess(false), 3000);
@@ -116,9 +141,15 @@ export function MyProfile() {
 
   const handleCancel = () => {
     setEditing(false);
+    if (typeof formData.image === 'string' && formData.image.startsWith('blob:')) {
+      URL.revokeObjectURL(formData.image);
+    }
     if (profile) {
       setFormData(toFormData(profile));
     }
+    setPendingAvatarBlob(null);
+    setAvatarRemoved(false);
+    setImageError(null);
   };
 
   const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -129,13 +160,28 @@ export function MyProfile() {
     if (!file) return;
 
     try {
-      const image = await fileToProfileImageDataUrl(file);
-      setFormData((current) => ({ ...current, image }));
+      const blob = await fileToProfileImageBlob(file);
+      if (typeof formData.image === 'string' && formData.image.startsWith('blob:')) {
+        URL.revokeObjectURL(formData.image);
+      }
+      const previewUrl = URL.createObjectURL(blob);
+      setPendingAvatarBlob(blob);
+      setAvatarRemoved(false);
+      setFormData((current) => ({ ...current, image: previewUrl }));
     } catch (err) {
       setImageError(
         err instanceof Error ? err.message : 'Could not read that image. Please try another file.'
       );
     }
+  };
+
+  const handleRemoveImage = () => {
+    if (typeof formData.image === 'string' && formData.image.startsWith('blob:')) {
+      URL.revokeObjectURL(formData.image);
+    }
+    setPendingAvatarBlob(null);
+    setAvatarRemoved(true);
+    setFormData((current) => ({ ...current, image: null }));
   };
 
   if (loading) {
@@ -279,7 +325,7 @@ export function MyProfile() {
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => setFormData((current) => ({ ...current, image: null }))}
+                        onClick={handleRemoveImage}
                       >
                         <Trash2 className="h-4 w-4" />
                         Remove

@@ -36,6 +36,7 @@ jest.mock('../auth/auth.config', () => ({
 
 import { DocumentsService } from '../documents/documents.service';
 import { InvitationsService } from '../invitations/invitations.service';
+import { AvatarsService } from '../avatars/avatars.service';
 import type { CreateScholarDto } from './dto/create-scholar.dto';
 import { PlatformSetupStatus } from './dto/update-platform-setup.dto';
 import { Gender, ProgramStage } from './dto/update-scholar-profile.dto';
@@ -59,6 +60,9 @@ describe('ScholarsService', () => {
     const mockDocumentsService = {
       deleteStoredFilesForScholar: jest.fn().mockResolvedValue(undefined),
     };
+    const mockAvatarsService = {
+      resolveImageUpdate: jest.fn().mockImplementation(async (_userId, next) => next),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -70,6 +74,10 @@ describe('ScholarsService', () => {
         {
           provide: DocumentsService,
           useValue: mockDocumentsService,
+        },
+        {
+          provide: AvatarsService,
+          useValue: mockAvatarsService,
         },
       ],
     }).compile();

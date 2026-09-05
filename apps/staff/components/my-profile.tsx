@@ -1,9 +1,13 @@
 'use client';
 
-import { fileToProfileImageDataUrl } from '@workspace/ui/lib/profile-image';
+import {
+  fileToProfileImageBlob,
+  PROFILE_IMAGE_CONTENT_TYPE,
+} from '@workspace/ui/lib/profile-image';
 import { ArrowLeft, Camera, Save, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
+import { uploadAvatarBlob } from '../lib/api-client';
 import { useSession } from '../lib/auth-client';
 import { useUpdateUser } from '../lib/hooks/use-queries';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -29,6 +33,8 @@ export function MyProfile({ onBack }: MyProfileProps) {
     email: '',
     image: null as string | null,
   });
+  const [pendingAvatarBlob, setPendingAvatarBlob] = useState<Blob | null>(null);
+  const [avatarRemoved, setAvatarRemoved] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
   const profileImage = profileData.image;
@@ -41,15 +47,27 @@ export function MyProfile({ onBack }: MyProfileProps) {
         email: user.email || '',
         image: user.image || null,
       });
+      setPendingAvatarBlob(null);
+      setAvatarRemoved(false);
     }
   }, [user]);
+
+  useEffect(() => {
+    return () => {
+      if (profileData.image?.startsWith('blob:')) {
+        URL.revokeObjectURL(profileData.image);
+      }
+    };
+  }, [profileData.image]);
 
   const handleInputChange = (field: string, value: string) => {
     setProfileData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleCancel = () => {
-    // Reset form data to original user data
+    if (profileData.image?.startsWith('blob:')) {
+      URL.revokeObjectURL(profileData.image);
+    }
     if (user) {
       setProfileData({
         name: user.name || '',
@@ -57,6 +75,8 @@ export function MyProfile({ onBack }: MyProfileProps) {
         image: user.image || null,
       });
     }
+    setPendingAvatarBlob(null);
+    setAvatarRemoved(false);
     setImageError(null);
     setIsEditing(false);
   };
@@ -69,8 +89,14 @@ export function MyProfile({ onBack }: MyProfileProps) {
     if (!file) return;
 
     try {
-      const image = await fileToProfileImageDataUrl(file);
-      setProfileData((prev) => ({ ...prev, image }));
+      const blob = await fileToProfileImageBlob(file);
+      if (profileData.image?.startsWith('blob:')) {
+        URL.revokeObjectURL(profileData.image);
+      }
+      const previewUrl = URL.createObjectURL(blob);
+      setPendingAvatarBlob(blob);
+      setAvatarRemoved(false);
+      setProfileData((prev) => ({ ...prev, image: previewUrl }));
     } catch (error) {
       setImageError(
         error instanceof Error
@@ -80,30 +106,61 @@ export function MyProfile({ onBack }: MyProfileProps) {
     }
   };
 
+  const handleRemoveImage = () => {
+    if (profileData.image?.startsWith('blob:')) {
+      URL.revokeObjectURL(profileData.image);
+    }
+    setPendingAvatarBlob(null);
+    setAvatarRemoved(true);
+    setProfileData((prev) => ({ ...prev, image: null }));
+  };
+
   const handleSave = async () => {
-    updateUserMutation.mutate(
-      {
-        name: profileData.name,
-        ...(profileData.image !== user?.image ? { image: profileData.image } : {}),
-      },
-      {
-        onSuccess: () => {
-          toast({
-            title: 'Success',
-            description: 'Your profile has been updated successfully.',
-          });
-          setIsEditing(false);
-        },
-        onError: (error) => {
-          console.error('Error updating profile:', error);
-          toast({
-            title: 'Error',
-            description: 'Failed to update profile. Please try again.',
-            variant: 'destructive',
-          });
-        },
+    try {
+      let imagePayload: string | null | undefined;
+      if (avatarRemoved) {
+        imagePayload = null;
+      } else if (pendingAvatarBlob) {
+        if (pendingAvatarBlob.type !== PROFILE_IMAGE_CONTENT_TYPE) {
+          throw new Error('Profile picture must be JPEG');
+        }
+        imagePayload = await uploadAvatarBlob(pendingAvatarBlob);
       }
-    );
+
+      updateUserMutation.mutate(
+        {
+          name: profileData.name,
+          ...(imagePayload !== undefined ? { image: imagePayload } : {}),
+        },
+        {
+          onSuccess: () => {
+            setPendingAvatarBlob(null);
+            setAvatarRemoved(false);
+            toast({
+              title: 'Success',
+              description: 'Your profile has been updated successfully.',
+            });
+            setIsEditing(false);
+          },
+          onError: (error) => {
+            console.error('Error updating profile:', error);
+            toast({
+              title: 'Error',
+              description: 'Failed to update profile. Please try again.',
+              variant: 'destructive',
+            });
+          },
+        }
+      );
+    } catch (error) {
+      console.error('Error uploading profile picture:', error);
+      toast({
+        title: 'Error',
+        description:
+          error instanceof Error ? error.message : 'Failed to upload profile picture.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -183,7 +240,7 @@ export function MyProfile({ onBack }: MyProfileProps) {
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => setProfileData((prev) => ({ ...prev, image: null }))}
+                      onClick={handleRemoveImage}
                     >
                       <Trash2 className="h-4 w-4" />
                       Remove
