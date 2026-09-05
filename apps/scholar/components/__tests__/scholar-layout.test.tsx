@@ -59,6 +59,20 @@ describe('ScholarLayout', () => {
     expect(getToggle()).toBeInTheDocument();
   });
 
+  it('locks the shell to the viewport so the sidebar stays put while content scrolls', async () => {
+    await renderLayout();
+
+    const wrapper = document.querySelector('[style*="--sidebar-width"]') as HTMLElement;
+    expect(wrapper.className).toContain('fixed');
+    expect(wrapper.className).toContain('inset-0');
+    expect(wrapper.className).toContain('overflow-hidden');
+    expect(wrapper.className).toContain('overscroll-none');
+
+    const inset = document.querySelector('main') as HTMLElement;
+    expect(inset.className).toContain('overflow-y-auto');
+    expect(inset.className).toContain('overscroll-none');
+  });
+
   it('keeps hamburger, brand, and actions on one top rail', async () => {
     await renderLayout();
 
