@@ -75,6 +75,29 @@ describe('CoordinatorNotesService', () => {
     ]);
   });
 
+  it('falls back to Unknown staff when the author row is gone', async () => {
+    const orphaned = {
+      id: noteId,
+      scholarId,
+      body: 'Still here after staff delete',
+      createdBy: null,
+      updatedBy: null,
+      createdAt: new Date('2026-09-03T12:00:00.000Z'),
+      updatedAt: new Date('2026-09-03T12:00:00.000Z'),
+    };
+    mockSelectSequence([[{ id: scholarId }], [{ note: orphaned, authorName: null }]]);
+
+    const result = await service.listNotes(scholarId);
+
+    expect(result).toEqual([
+      expect.objectContaining({
+        id: noteId,
+        createdBy: null,
+        authorName: 'Unknown staff',
+      }),
+    ]);
+  });
+
   it('creates a note for an existing scholar', async () => {
     mockSelectSequence([[{ id: scholarId }], [{ name: 'Ada Coordinator' }]]);
     const created = {

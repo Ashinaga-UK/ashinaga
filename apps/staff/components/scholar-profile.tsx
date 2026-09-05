@@ -49,11 +49,12 @@ import {
   useUpdateScholarPlatformSetup,
   useUpdateScholarProfile,
 } from '../lib/hooks/use-queries';
-import { isTaskOverdue } from '../lib/task-due';
+import { countTaskProgressFlags, isTaskDueToday, isTaskOverdue } from '../lib/task-due';
 import { CommentThread } from './comment-thread';
 import { CoordinatorPanel } from './coordinator-panel';
 import { PlatformSetupCard } from './platform-setup-card';
 import { TaskAssignment } from './task-assignment';
+import { TaskFlagsBadges } from './task-flags-badges';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { Alert, AlertDescription } from './ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -799,6 +800,7 @@ export function ScholarProfilePage({
                   >
                     {scholar.status}
                   </Badge>
+                  <TaskFlagsBadges {...countTaskProgressFlags(scholar.tasks)} />
                 </div>
                 <p className="mb-4 text-muted-foreground">{scholar.bio || 'No bio available'}</p>
                 <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
@@ -1218,6 +1220,9 @@ export function ScholarProfilePage({
                           {isTaskOverdue(task) && (
                             <span className="text-red-600 dark:text-red-400">Overdue</span>
                           )}
+                          {!isTaskOverdue(task) && isTaskDueToday(task) && (
+                            <span className="text-amber-700 dark:text-amber-300">Due today</span>
+                          )}
                           {task.phase && <span>Phase: {task.phase}</span>}
                           <span className={getStatusColor(task.status)}>
                             Status: {task.status.replace('_', ' ')}
@@ -1412,7 +1417,7 @@ export function ScholarProfilePage({
         </TabsContent>
 
         <TabsContent value="coordinator" className="space-y-4">
-          <CoordinatorPanel scholarId={scholarId} />
+          <CoordinatorPanel scholarId={scholarId} {...countTaskProgressFlags(scholar.tasks)} />
         </TabsContent>
       </Tabs>
     </div>

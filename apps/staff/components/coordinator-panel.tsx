@@ -13,6 +13,7 @@ import {
   useUpdateCoordinatorMeetingUpdate,
   useUpdateCoordinatorNote,
 } from '../lib/hooks/use-queries';
+import { TaskFlagsBadges } from './task-flags-badges';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +31,8 @@ import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { useToast } from './ui/use-toast';
 
+const COORDINATOR_TEXT_MAX_LENGTH = 10_000;
+
 function formatIsoDate(value: string) {
   const [year, month, day] = value.split('-').map(Number);
   if (!year || !month || !day) {
@@ -46,9 +49,28 @@ function mutationErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
-export function CoordinatorPanel({ scholarId }: { scholarId: string }) {
+export function CoordinatorPanel({
+  scholarId,
+  overdue = 0,
+  dueToday = 0,
+}: {
+  scholarId: string;
+  overdue?: number;
+  dueToday?: number;
+}) {
   return (
     <div className="space-y-6">
+      <section className="space-y-1">
+        <h3 className="text-lg font-semibold">Task flags</h3>
+        <p className="text-sm text-muted-foreground">
+          From assigned task due dates. Overdue and due today use the same helper as Prep tasks.
+        </p>
+        {overdue > 0 || dueToday > 0 ? (
+          <TaskFlagsBadges overdue={overdue} dueToday={dueToday} />
+        ) : (
+          <p className="text-sm text-muted-foreground">No overdue or due-today tasks.</p>
+        )}
+      </section>
       <PrivateNotesSection scholarId={scholarId} />
       <MeetingLogSection scholarId={scholarId} />
     </div>
@@ -133,6 +155,7 @@ function PrivateNotesSection({ scholarId }: { scholarId: string }) {
             value={body}
             onChange={(event) => setBody(event.target.value)}
             placeholder="Write a private coordinator note"
+            maxLength={COORDINATOR_TEXT_MAX_LENGTH}
             rows={3}
           />
           <Button
@@ -168,6 +191,7 @@ function PrivateNotesSection({ scholarId }: { scholarId: string }) {
                       <Textarea
                         value={editingBody}
                         onChange={(event) => setEditingBody(event.target.value)}
+                        maxLength={COORDINATOR_TEXT_MAX_LENGTH}
                         rows={3}
                         aria-label="Edit note"
                       />
@@ -385,6 +409,7 @@ function MeetingLogSection({ scholarId }: { scholarId: string }) {
               id="meeting-notes"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
+              maxLength={COORDINATOR_TEXT_MAX_LENGTH}
               rows={2}
             />
           </div>
@@ -394,6 +419,7 @@ function MeetingLogSection({ scholarId }: { scholarId: string }) {
               id="meeting-concern"
               value={concern}
               onChange={(event) => setConcern(event.target.value)}
+              maxLength={COORDINATOR_TEXT_MAX_LENGTH}
               rows={2}
             />
           </div>
@@ -403,6 +429,7 @@ function MeetingLogSection({ scholarId }: { scholarId: string }) {
               id="meeting-further-action"
               value={furtherAction}
               onChange={(event) => setFurtherAction(event.target.value)}
+              maxLength={COORDINATOR_TEXT_MAX_LENGTH}
               rows={2}
             />
           </div>
@@ -455,6 +482,7 @@ function MeetingLogSection({ scholarId }: { scholarId: string }) {
                           onChange={(event) =>
                             setEditing({ ...editing, notes: event.target.value })
                           }
+                          maxLength={COORDINATOR_TEXT_MAX_LENGTH}
                           rows={2}
                         />
                       </div>
@@ -466,6 +494,7 @@ function MeetingLogSection({ scholarId }: { scholarId: string }) {
                           onChange={(event) =>
                             setEditing({ ...editing, concern: event.target.value })
                           }
+                          maxLength={COORDINATOR_TEXT_MAX_LENGTH}
                           rows={2}
                         />
                       </div>
@@ -477,6 +506,7 @@ function MeetingLogSection({ scholarId }: { scholarId: string }) {
                           onChange={(event) =>
                             setEditing({ ...editing, furtherAction: event.target.value })
                           }
+                          maxLength={COORDINATOR_TEXT_MAX_LENGTH}
                           rows={2}
                         />
                       </div>
