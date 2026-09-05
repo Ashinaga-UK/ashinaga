@@ -28,7 +28,7 @@ import {
 } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Popover, PopoverAnchor, PopoverContent } from './ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Textarea } from './ui/textarea';
 import { useToast } from './ui/use-toast';
@@ -351,10 +351,11 @@ export function TaskAssignment({
                   setSuggestionsOpen(nextOpen);
                 }}
               >
-                <PopoverTrigger asChild>
+                <PopoverAnchor asChild>
                   <Input
                     id="taskTitle"
                     ref={titleInputRef}
+                    type="text"
                     value={taskTitle}
                     onChange={(e) => {
                       setTaskTitle(e.target.value);
@@ -364,12 +365,12 @@ export function TaskAssignment({
                     placeholder="Enter task title"
                     autoComplete="off"
                   />
-                </PopoverTrigger>
+                </PopoverAnchor>
                 <PopoverContent
                   align="start"
                   onOpenAutoFocus={(event) => event.preventDefault()}
                   onCloseAutoFocus={(event) => event.preventDefault()}
-                  className="w-[var(--radix-popover-trigger-width)] max-h-60 overflow-y-auto p-0"
+                  className="w-[var(--radix-popover-trigger-width,var(--radix-popper-anchor-width))] max-h-60 overflow-y-auto p-0"
                 >
                   <ul>
                     {suggestions.map((s) => (
