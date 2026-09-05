@@ -113,3 +113,87 @@
     font-variant-numeric: tabular-nums;
   }
 }
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  header,
+  [data-side] {
+    display: none !important;
+  }
+
+  .group\/sidebar-wrapper,
+  main {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  .overflow-auto,
+  .overflow-x-auto,
+  .overflow-y-auto,
+  .overflow-hidden {
+    overflow: visible !important;
+  }
+
+  * {
+    box-shadow: none !important;
+  }
+
+  .prep-cohort-screen-table {
+    display: none !important;
+  }
+
+  .prep-cohort-print-cards {
+    display: block !important;
+  }
+
+  .prep-cohort-print-cards article {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .prep-cohort-print-cards .prep-cohort-print-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-auto-flow: row;
+    gap: 8px 16px;
+    align-items: start;
+  }
+
+  .prep-cohort-print-cards h3 {
+    margin: 0;
+  }
+
+  .prep-cohort-print-cards article > p {
+    margin: 2px 0 8px;
+  }
+
+  .prep-cohort-print-cards .prep-cohort-print-grid p {
+    margin: 0;
+  }
+
+  .prep-cohort-print-cards .prep-cohort-print-grid p + p {
+    margin-top: 2px;
+  }
+
+  .prep-cohort-print-cards .prep-cohort-print-grid > * {
+    min-width: 0;
+  }
+}
+
+.prep-cohort-print-cards {
+  display: none;
+}

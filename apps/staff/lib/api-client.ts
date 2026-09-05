@@ -1272,6 +1272,82 @@ export async function getPrepTaskCohort(
   return fetchAPI<PrepTaskCohort>(`/api/tasks/cohort${query ? `?${query}` : ''}`);
 }
 
+export type PrepYearDocumentStatus = 'submitted' | 'missing';
+export type PrepYearPlatformStatus = 'yes' | 'no' | 'pending';
+
+export interface PrepYearReportFilters {
+  phase?: string;
+  scholarId?: string;
+}
+
+export interface PrepYearReportDocumentType {
+  id: string;
+  slug: string;
+  label: string;
+}
+
+export interface PrepYearReportPlatform {
+  id: string;
+  slug: string;
+  name: string;
+}
+
+export interface PrepYearReportRow {
+  scholarId: string;
+  name: string;
+  email: string;
+  status: 'active' | 'inactive' | 'on_hold' | 'archived';
+  intendedUniversity: string | null;
+  intendedCourse: string | null;
+  degreePathway: string | null;
+  assignedCount: number;
+  completedCount: number;
+  overdueCount: number;
+  completionRate: number | null;
+  documents: Record<string, PrepYearDocumentStatus>;
+  platforms: Record<string, PrepYearPlatformStatus>;
+}
+
+export interface PrepYearReport {
+  documentTypes: PrepYearReportDocumentType[];
+  platforms: PrepYearReportPlatform[];
+  scholars: PrepYearReportRow[];
+  summary: {
+    scholarCount: number;
+    overdueCount: number;
+    missingDocumentCount: number;
+    completedTaskCount: number;
+  };
+  filterOptions: {
+    phases: string[];
+    scholars: Array<{ scholarId: string; name: string }>;
+  };
+}
+
+function prepYearReportQuery(filters: PrepYearReportFilters = {}): string {
+  const params = new URLSearchParams();
+  if (filters.phase) params.set('phase', filters.phase);
+  if (filters.scholarId) params.set('scholarId', filters.scholarId);
+  const query = params.toString();
+  return query ? `?${query}` : '';
+}
+
+export async function getPrepYearReport(
+  filters: PrepYearReportFilters = {}
+): Promise<PrepYearReport> {
+  return fetchAPI<PrepYearReport>(`/api/prep-year/report${prepYearReportQuery(filters)}`);
+}
+
+export async function downloadPrepYearReportCSV(
+  filters: PrepYearReportFilters = {}
+): Promise<void> {
+  await downloadCsvFile(
+    `/api/prep-year/report/csv${prepYearReportQuery(filters)}`,
+    `prep-year-cohort-report-${new Date().toISOString().slice(0, 10)}.csv`,
+    'Failed to download Prep Year cohort report CSV'
+  );
+}
+
 export async function getScholarRequiredDocuments(
   scholarId: string
 ): Promise<RequiredDocumentChecklist> {

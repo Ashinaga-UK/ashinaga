@@ -55,6 +55,10 @@ describe('StaffLayout', () => {
       'href',
       '/?tab=prep-tasks'
     );
+    expect(screen.getByRole('link', { name: 'Prep reports' })).toHaveAttribute(
+      'href',
+      '/?tab=prep-reports'
+    );
     expect(screen.getByRole('link', { name: 'Annual Reviews' })).toHaveAttribute(
       'href',
       '/?tab=annual-reviews'
