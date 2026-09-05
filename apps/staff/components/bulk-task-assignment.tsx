@@ -209,9 +209,8 @@ export function BulkTaskAssignment({
           </Card>
 
           {/* Task Details */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-4">
-              <div>
+          <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
+            <div className="space-y-2">
                 <Label htmlFor="taskTitle">Task Title *</Label>
                 <Input
                   id="taskTitle"
@@ -220,7 +219,16 @@ export function BulkTaskAssignment({
                   placeholder="Enter task title"
                 />
               </div>
-              <div>
+              <div className="space-y-2">
+                <Label htmlFor="dueDate">Due Date *</Label>
+                <Input
+                  id="dueDate"
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="taskType">Task Type</Label>
                 <Select
                   value={taskType}
@@ -246,7 +254,18 @@ export function BulkTaskAssignment({
                   </SelectContent>
                 </Select>
               </div>
-              <div>
+              <div className="flex h-full min-h-0 flex-col space-y-2 md:row-span-2">
+                <Label htmlFor="taskDescription">Task Description *</Label>
+                <Textarea
+                  id="taskDescription"
+                  value={taskDescription}
+                  onChange={(e) => setTaskDescription(e.target.value)}
+                  placeholder="Provide detailed instructions for the scholars"
+                  rows={3}
+                  className="h-24 flex-1 resize-none overflow-y-auto md:h-0 md:min-h-0"
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="priority">Priority</Label>
                 <Select value={priority} onValueChange={(v) => setPriority(v as Priority)}>
                   <SelectTrigger>
@@ -259,29 +278,6 @@ export function BulkTaskAssignment({
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="dueDate">Due Date *</Label>
-                <Input
-                  id="dueDate"
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="taskDescription">Task Description *</Label>
-                <Textarea
-                  id="taskDescription"
-                  value={taskDescription}
-                  onChange={(e) => setTaskDescription(e.target.value)}
-                  placeholder="Provide detailed instructions for the scholars"
-                  rows={6}
-                />
-              </div>
-            </div>
           </div>
 
           <TaskEvidenceFields
