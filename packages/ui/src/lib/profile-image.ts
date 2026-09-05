@@ -81,15 +81,17 @@ function compressToJpegDataUrl(decoded: DecodedImage): string {
 
 function dataUrlToBlob(dataUrl: string): Blob {
   const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
-  if (!match) {
+  const mimeType = match?.[1];
+  const base64 = match?.[2];
+  if (!mimeType || !base64) {
     throw new Error('Could not process that image. Please try another file.');
   }
-  const binary = atob(match[2]);
+  const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i += 1) {
     bytes[i] = binary.charCodeAt(i);
   }
-  return new Blob([bytes], { type: match[1] || PROFILE_IMAGE_CONTENT_TYPE });
+  return new Blob([bytes], { type: mimeType });
 }
 
 async function compressFile(file: File): Promise<string> {
