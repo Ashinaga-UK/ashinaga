@@ -14,7 +14,7 @@ import {
   Send,
   Sparkles,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   type AnnualUpdate,
   type AnnualUpdatePayload,
@@ -284,12 +284,13 @@ export function MyAnnualReview() {
   const [missingFields, setMissingFields] = useState<string[]>([]);
   const [initialAcademicYear] = useState(emptyForm.academicYear);
   const [isFormOpen, setIsFormOpen] = useState(true);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   const isSubmitted = annualUpdate?.status === 'submitted';
 
   const foldForm = () => {
     setIsFormOpen(false);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    rootRef.current?.closest('main')?.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const toggleFormOpen = () => {
@@ -413,7 +414,7 @@ export function MyAnnualReview() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div ref={rootRef} className="mx-auto max-w-5xl space-y-6">
       <div className="overflow-hidden rounded-lg border bg-white shadow-sm dark:border-sidebar-border dark:bg-sidebar">
         <div className="border-b bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 px-6 py-6 text-white dark:border-sidebar-border">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">

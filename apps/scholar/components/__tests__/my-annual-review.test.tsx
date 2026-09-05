@@ -45,7 +45,6 @@ function createAnnualUpdate(overrides: Partial<AnnualUpdate> = {}): AnnualUpdate
 describe('MyAnnualReview', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    window.scrollTo = jest.fn();
     mockGetMyAnnualUpdate.mockResolvedValue(null);
     mockGetMyDraftAnnualUpdate.mockResolvedValue(null);
     mockSaveAnnualUpdateDraft.mockImplementation(async () =>
@@ -115,7 +114,16 @@ describe('MyAnnualReview', () => {
   });
 
   it('folds the form after a draft is saved', async () => {
-    render(<MyAnnualReview />);
+    const scrollTo = jest.fn();
+    const { container } = render(
+      <main>
+        <MyAnnualReview />
+      </main>
+    );
+    const inset = container.querySelector('main');
+    if (inset) {
+      inset.scrollTo = scrollTo;
+    }
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Save Draft' })).toBeInTheDocument();
@@ -130,6 +138,7 @@ describe('MyAnnualReview', () => {
     expect(screen.queryByText('Year Overview')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Continue editing' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Save Draft' })).not.toBeInTheDocument();
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' });
   });
 
   it('dismisses the draft saved message after a few seconds', async () => {
