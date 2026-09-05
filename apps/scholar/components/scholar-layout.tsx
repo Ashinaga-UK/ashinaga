@@ -87,7 +87,10 @@ function ScholarSidebar({
   const navItems = getVisibleNavItems(programStage);
 
   return (
-    <Sidebar collapsible="icon" className="border-ashinaga-teal-100 dark:border-sidebar-border">
+    <Sidebar
+      collapsible="icon"
+      className="overscroll-none border-ashinaga-teal-100 dark:border-sidebar-border"
+    >
       {isMobile ? (
         <div className="flex items-center border-b border-ashinaga-teal-100 px-2 py-1.5 dark:border-sidebar-border">
           <button
@@ -101,7 +104,7 @@ function ScholarSidebar({
           </button>
         </div>
       ) : null}
-      <SidebarContent>
+      <SidebarContent className="overscroll-none">
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -215,14 +218,14 @@ function ScholarLayoutChrome({ children, onLogout }: ScholarLayoutProps) {
 
   return (
     <SidebarProvider
-      className="flex-col bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:from-background dark:to-background"
+      className="flex h-svh flex-col overflow-hidden bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:from-background dark:to-background"
       style={{ '--sidebar-header-height': '3.5rem' } as React.CSSProperties}
     >
       <ScholarHeader programStage={programStage} />
-      <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         <ScholarSidebar onLogout={onLogout} programStage={programStage} />
-        <SidebarInset className="bg-transparent">
-          <div className="flex-1">{children}</div>
+        <SidebarInset className="min-h-0 min-w-0 overflow-y-auto overscroll-none bg-transparent">
+          <div className="min-w-0 flex-1">{children}</div>
         </SidebarInset>
       </div>
     </SidebarProvider>
