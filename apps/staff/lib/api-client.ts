@@ -14,6 +14,7 @@ export interface ScholarTasksStats {
   total: number;
   completed: number;
   overdue: number;
+  dueToday: number;
 }
 
 export interface Scholar {
@@ -263,6 +264,7 @@ export interface GetScholarsParams {
   status?: 'active' | 'inactive' | 'on_hold' | 'archived';
   programStage?: 'prep_year' | 'scholar';
   platformSetup?: 'incomplete' | 'complete';
+  taskProgress?: 'overdue' | 'due_today' | 'behind';
   sortBy?: 'name' | 'lastActivity' | 'createdAt';
   sortOrder?: 'asc' | 'desc';
 }
@@ -1290,7 +1292,7 @@ export interface CoordinatorNote {
   id: string;
   scholarId: string;
   body: string;
-  createdBy: string;
+  createdBy: string | null;
   authorName: string;
   createdAt: string;
   updatedAt: string;
@@ -1303,7 +1305,7 @@ export interface CoordinatorMeetingUpdate {
   notes: string | null;
   concern: string | null;
   furtherAction: string | null;
-  createdBy: string;
+  createdBy: string | null;
   authorName: string;
   createdAt: string;
   updatedAt: string;

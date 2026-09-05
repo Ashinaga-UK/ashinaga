@@ -206,6 +206,8 @@ describe('Coordinator notes API (integration)', () => {
     expect(JSON.stringify(staffProfile.body)).not.toContain(CONCERN_SECRET);
     expect(staffProfile.body).not.toHaveProperty('coordinatorNotes');
     expect(staffProfile.body).not.toHaveProperty('meetingUpdates');
+    expect(staffProfile.body).toHaveProperty('platformSetups');
+    expect(Array.isArray(staffProfile.body.platformSetups)).toBe(true);
 
     asScholar();
     const myProfile = await request(app.getHttpServer())

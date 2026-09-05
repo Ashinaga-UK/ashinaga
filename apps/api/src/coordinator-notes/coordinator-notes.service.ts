@@ -231,7 +231,11 @@ export class CoordinatorNotesService {
     return meeting;
   }
 
-  private async getUserName(userId: string): Promise<string> {
+  private async getUserName(userId: string | null): Promise<string> {
+    if (!userId) {
+      return 'Unknown staff';
+    }
+
     const [user] = await database
       .select({ name: users.name })
       .from(users)

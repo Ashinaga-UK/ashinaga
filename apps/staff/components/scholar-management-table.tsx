@@ -27,6 +27,7 @@ import {
 import { useArchiveScholar, useDeleteScholar } from '../lib/hooks/use-queries';
 import { BulkTaskAssignment } from './bulk-task-assignment';
 import { TaskAssignment } from './task-assignment';
+import { TaskFlagsBadges } from './task-flags-badges';
 import { Alert, AlertDescription } from './ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
@@ -71,6 +72,9 @@ export function ScholarManagementTable({
   const [platformSetupFilter, setPlatformSetupFilter] = useState<'all' | 'incomplete' | 'complete'>(
     'all'
   );
+  const [taskProgressFilter, setTaskProgressFilter] = useState<
+    'all' | 'overdue' | 'due_today' | 'behind'
+  >('all');
   const [exportingCsv, setExportingCsv] = useState(false);
   const archiveScholar = useArchiveScholar();
   const deleteScholar = useDeleteScholar();
@@ -96,7 +100,7 @@ export function ScholarManagementTable({
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const scholarListFilterKey = `${programFilter}|${yearFilter}|${universityFilter}|${statusFilter}|${programStageFilter}|${platformSetupFilter}`;
+  const scholarListFilterKey = `${programFilter}|${yearFilter}|${universityFilter}|${statusFilter}|${programStageFilter}|${platformSetupFilter}|${taskProgressFilter}`;
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset pagination when program/year/university/status filters change
   useEffect(() => {
     setCurrentPage(1);
@@ -117,6 +121,7 @@ export function ScholarManagementTable({
         status: statusFilter !== 'all' ? statusFilter : undefined,
         programStage: programStageFilter !== 'all' ? programStageFilter : undefined,
         platformSetup: platformSetupFilter !== 'all' ? platformSetupFilter : undefined,
+        taskProgress: taskProgressFilter !== 'all' ? taskProgressFilter : undefined,
         sortBy: 'createdAt',
         sortOrder: 'desc',
       };
@@ -139,6 +144,7 @@ export function ScholarManagementTable({
     statusFilter,
     programStageFilter,
     platformSetupFilter,
+    taskProgressFilter,
   ]);
 
   useEffect(() => {
@@ -395,12 +401,28 @@ export function ScholarManagementTable({
           </SelectContent>
         </Select>
 
+        <Select
+          value={taskProgressFilter}
+          onValueChange={(v) => setTaskProgressFilter(v as typeof taskProgressFilter)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Task progress" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All task progress</SelectItem>
+            <SelectItem value="overdue">Overdue tasks</SelectItem>
+            <SelectItem value="due_today">Due today</SelectItem>
+            <SelectItem value="behind">Overdue or due today</SelectItem>
+          </SelectContent>
+        </Select>
+
         {(programFilter !== 'all' ||
           yearFilter !== 'all' ||
           universityFilter !== 'all' ||
           statusFilter !== 'all' ||
           programStageFilter !== 'all' ||
-          platformSetupFilter !== 'all') && (
+          platformSetupFilter !== 'all' ||
+          taskProgressFilter !== 'all') && (
           <Button
             variant="outline"
             size="sm"
@@ -412,6 +434,7 @@ export function ScholarManagementTable({
               setStatusFilter('all');
               setProgramStageFilter('all');
               setPlatformSetupFilter('all');
+              setTaskProgressFilter('all');
             }}
           >
             Clear Filters
@@ -462,7 +485,13 @@ export function ScholarManagementTable({
                     </AvatarFallback>
                   </Avatar>
                   <span className="min-w-0">
-                    <span className="block truncate font-medium">{scholar.name}</span>
+                    <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+                      <span className="truncate font-medium">{scholar.name}</span>
+                      <TaskFlagsBadges
+                        overdue={scholar.tasks.overdue}
+                        dueToday={scholar.tasks.dueToday}
+                      />
+                    </span>
                     <span className="block truncate text-sm text-muted-foreground">
                       {scholar.email}
                     </span>
@@ -645,7 +674,13 @@ export function ScholarManagementTable({
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <div className="font-medium">{scholar.name}</div>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <div className="font-medium">{scholar.name}</div>
+                          <TaskFlagsBadges
+                            overdue={scholar.tasks.overdue}
+                            dueToday={scholar.tasks.dueToday}
+                          />
+                        </div>
                         <div className="text-sm text-muted-foreground">{scholar.email}</div>
                       </div>
                     </div>

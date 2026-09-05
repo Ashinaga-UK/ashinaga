@@ -10,12 +10,8 @@ export const coordinatorNotes = pgTable(
       .notNull()
       .references(() => scholars.id, { onDelete: 'cascade' }),
     body: text('body').notNull(),
-    createdBy: text('created_by')
-      .notNull()
-      .references(() => users.id),
-    updatedBy: text('updated_by')
-      .notNull()
-      .references(() => users.id),
+    createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+    updatedBy: text('updated_by').references(() => users.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
@@ -35,12 +31,8 @@ export const coordinatorMeetingUpdates = pgTable(
     notes: text('notes'),
     concern: text('concern'),
     furtherAction: text('further_action'),
-    createdBy: text('created_by')
-      .notNull()
-      .references(() => users.id),
-    updatedBy: text('updated_by')
-      .notNull()
-      .references(() => users.id),
+    createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+    updatedBy: text('updated_by').references(() => users.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },

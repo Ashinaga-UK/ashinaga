@@ -1,6 +1,10 @@
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { CreateCoordinatorNoteDto, CreateMeetingUpdateDto } from './coordinator-notes.dto';
+import {
+  COORDINATOR_TEXT_MAX_LENGTH,
+  CreateCoordinatorNoteDto,
+  CreateMeetingUpdateDto,
+} from './coordinator-notes.dto';
 
 describe('Coordinator notes DTOs', () => {
   it('rejects an empty note body', async () => {
@@ -21,6 +25,14 @@ describe('Coordinator notes DTOs', () => {
       concern: 'Missed the last check-in',
     });
     expect(await validate(dto)).toHaveLength(0);
+  });
+
+  it('rejects a note body over the text cap', async () => {
+    const dto = plainToInstance(CreateCoordinatorNoteDto, {
+      body: 'x'.repeat(COORDINATOR_TEXT_MAX_LENGTH + 1),
+    });
+    const errors = await validate(dto);
+    expect(errors.some((error) => error.property === 'body')).toBe(true);
   });
 
   it('rejects a non ISO date', async () => {

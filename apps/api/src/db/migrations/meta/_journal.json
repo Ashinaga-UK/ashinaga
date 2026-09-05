@@ -162,6 +162,13 @@
       "when": 1788460000000,
       "tag": "0022_prep_year_task_evidence",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1788560836936,
+      "tag": "0023_panoramic_monster_badoon",
+      "breakpoints": true
     }
   ]
 }

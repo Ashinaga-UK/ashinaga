@@ -342,6 +342,37 @@ describe('ScholarsService', () => {
       expect(result.data).toEqual([]);
       expect(mockWhere).toHaveBeenCalled();
     });
+
+    it('should apply the overdue task-progress filter', async () => {
+      const mockFrom = jest.fn().mockReturnThis();
+      const mockInnerJoin = jest.fn().mockReturnThis();
+      const mockWhere = jest.fn().mockReturnThis();
+      const mockOrderBy = jest.fn().mockReturnThis();
+      const mockLimit = jest.fn().mockReturnThis();
+      const mockOffset = jest.fn().mockResolvedValue([]);
+      const mockGroupBy = jest.fn().mockResolvedValue([]);
+
+      mockDatabase.select = jest.fn().mockReturnValue({
+        from: mockFrom,
+        innerJoin: mockInnerJoin,
+        where: mockWhere,
+        orderBy: mockOrderBy,
+        limit: mockLimit,
+        offset: mockOffset,
+        groupBy: mockGroupBy,
+      });
+
+      mockFrom.mockReturnThis();
+      mockInnerJoin.mockReturnThis();
+      mockWhere.mockReturnThis();
+      mockOrderBy.mockReturnThis();
+      mockLimit.mockReturnThis();
+
+      const result = await service.getScholars({ taskProgress: 'overdue' });
+
+      expect(result.data).toEqual([]);
+      expect(mockWhere).toHaveBeenCalled();
+    });
   });
 
   describe('getScholar', () => {
@@ -1137,7 +1168,7 @@ describe('ScholarsService', () => {
         status: 'archived',
         startDate: new Date().toISOString(),
         goals: { total: 0, completed: 0, inProgress: 0, pending: 0 },
-        tasks: { total: 0, completed: 0, overdue: 0 },
+        tasks: { total: 0, completed: 0, overdue: 0, dueToday: 0 },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       } as Awaited<ReturnType<ScholarsService['getScholar']>>);

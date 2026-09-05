@@ -3,6 +3,7 @@ import {
   IsOptional,
   IsString,
   Matches,
+  MaxLength,
   registerDecorator,
   type ValidationArguments,
   type ValidationOptions,
@@ -11,6 +12,7 @@ import {
 } from 'class-validator';
 
 export const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+export const COORDINATOR_TEXT_MAX_LENGTH = 10_000;
 
 function hasText(value: unknown): boolean {
   return typeof value === 'string' && value.trim().length > 0;
@@ -47,12 +49,14 @@ export function AtLeastOneMeetingField(validationOptions?: ValidationOptions) {
 export class CreateCoordinatorNoteDto {
   @IsString()
   @IsNotEmpty()
+  @MaxLength(COORDINATOR_TEXT_MAX_LENGTH)
   body: string;
 }
 
 export class UpdateCoordinatorNoteDto {
   @IsString()
   @IsNotEmpty()
+  @MaxLength(COORDINATOR_TEXT_MAX_LENGTH)
   body: string;
 }
 
@@ -64,14 +68,17 @@ export class CreateMeetingUpdateDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(COORDINATOR_TEXT_MAX_LENGTH)
   notes?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(COORDINATOR_TEXT_MAX_LENGTH)
   concern?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(COORDINATOR_TEXT_MAX_LENGTH)
   furtherAction?: string;
 }
 
@@ -83,13 +90,16 @@ export class UpdateMeetingUpdateDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(COORDINATOR_TEXT_MAX_LENGTH)
   notes?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(COORDINATOR_TEXT_MAX_LENGTH)
   concern?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(COORDINATOR_TEXT_MAX_LENGTH)
   furtherAction?: string;
 }

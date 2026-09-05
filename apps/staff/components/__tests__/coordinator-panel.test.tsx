@@ -39,7 +39,7 @@ jest.mock('../ui/use-toast', () => ({
   useToast: () => ({ toast: mockToast }),
 }));
 
-function renderPanel() {
+function renderPanel(props: { overdue?: number; dueToday?: number } = {}) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -48,7 +48,7 @@ function renderPanel() {
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <CoordinatorPanel scholarId="scholar-1" />
+      <CoordinatorPanel scholarId="scholar-1" {...props} />
     </QueryClientProvider>
   );
 }
@@ -65,8 +65,15 @@ describe('CoordinatorPanel', () => {
 
     expect(await screen.findByText('No private notes yet.')).toBeInTheDocument();
     expect(screen.getByText('No meeting updates yet.')).toBeInTheDocument();
+    expect(screen.getByText('No overdue or due-today tasks.')).toBeInTheDocument();
     expect(screen.getByText('Private notes')).toBeInTheDocument();
     expect(screen.getByText('Meeting log')).toBeInTheDocument();
+  });
+
+  it('shows overdue and due-today flags from assigned task counts', async () => {
+    renderPanel({ overdue: 2, dueToday: 1 });
+    expect(await screen.findByText('Overdue · 2')).toBeInTheDocument();
+    expect(screen.getByText('Due today')).toBeInTheDocument();
   });
 
   it('renders notes and meetings and can add a note', async () => {
@@ -150,6 +157,27 @@ describe('CoordinatorPanel', () => {
         concern: 'Missed deadline',
         furtherAction: 'Follow up Friday',
       });
+    });
+  });
+
+  it('toasts when adding a meeting update fails', async () => {
+    const user = userEvent.setup();
+    mockCreateMeeting.mockRejectedValue(new Error('API Error: 500'));
+
+    renderPanel();
+    await screen.findByText('No meeting updates yet.');
+
+    await user.type(screen.getByLabelText('Date'), '2026-09-03');
+    await user.type(screen.getByLabelText('Concern'), 'Missed deadline');
+    await user.click(screen.getByRole('button', { name: 'Add meeting' }));
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Could not save meeting update',
+          variant: 'destructive',
+        })
+      );
     });
   });
 
