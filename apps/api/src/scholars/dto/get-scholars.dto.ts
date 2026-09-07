@@ -44,6 +44,11 @@ export class GetScholarsQueryDto {
   @IsEnum(['incomplete', 'complete'])
   platformSetup?: 'incomplete' | 'complete';
 
+  /** Incomplete tasks by the shared UTC due-date helper. Not scoped to prep_year. */
+  @IsOptional()
+  @IsEnum(['overdue', 'due_today', 'behind'])
+  taskProgress?: 'overdue' | 'due_today' | 'behind';
+
   @IsOptional()
   @IsEnum(['name', 'lastActivity', 'createdAt'])
   sortBy?: string = 'createdAt';
@@ -65,6 +70,7 @@ export class ScholarTasksStatsDto {
   total: number;
   completed: number;
   overdue: number;
+  dueToday: number;
 }
 
 // New DTOs for detailed scholar profile
