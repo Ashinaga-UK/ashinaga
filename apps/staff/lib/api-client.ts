@@ -1498,3 +1498,83 @@ export async function removeStaffMember(
     method: 'DELETE',
   });
 }
+
+export type ProposalStatus = 'draft' | 'submitted' | 'changes_requested' | 'approved';
+
+export interface ProposalInboxItem {
+  scholarId: string;
+  scholarName: string;
+  stepKey: string;
+  stepTitle: string;
+  submittedAt: string | null;
+}
+
+export interface ProposalComment {
+  id: string;
+  body: string;
+  authorName: string;
+  createdAt: string;
+}
+
+export interface ProposalResource {
+  id: string;
+  title: string;
+  description: string;
+  sourceType: 'url' | 'file';
+  url: string | null;
+}
+
+export interface ProposalStepView {
+  key: string;
+  title: string;
+  sortOrder: number;
+  available: boolean;
+  status: ProposalStatus | null;
+  body: string | null;
+  comments: ProposalComment[];
+  resources: ProposalResource[];
+  submittedAt: string | null;
+  reviewedAt: string | null;
+}
+
+export interface ProposalTimeline {
+  catalog: Array<{ key: string; title: string; sortOrder: number }>;
+  currentStepKey: string;
+  steps: ProposalStepView[];
+}
+
+export async function getProposalInbox(): Promise<ProposalInboxItem[]> {
+  return fetchAPI<ProposalInboxItem[]>('/api/proposals');
+}
+
+export async function getScholarProposal(scholarId: string): Promise<ProposalTimeline> {
+  return fetchAPI<ProposalTimeline>(`/api/proposals/scholars/${scholarId}`);
+}
+
+export async function reviewProposalStep(
+  scholarId: string,
+  stepKey: string,
+  data: { action: 'approve' | 'request_changes'; comment?: string }
+): Promise<ProposalTimeline> {
+  return fetchAPI<ProposalTimeline>(
+    `/api/proposals/scholars/${scholarId}/steps/${stepKey}/review`,
+    {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+export async function addStaffProposalComment(
+  scholarId: string,
+  stepKey: string,
+  body: string
+): Promise<ProposalComment> {
+  return fetchAPI<ProposalComment>(
+    `/api/proposals/scholars/${scholarId}/steps/${stepKey}/comments`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ body }),
+    }
+  );
+}

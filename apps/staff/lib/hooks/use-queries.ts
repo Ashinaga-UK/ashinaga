@@ -1,5 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  addStaffProposalComment,
   archiveScholar,
   type CreateTaskData,
   createAnnouncement,
@@ -17,17 +18,20 @@ import {
   getCoordinatorNotes,
   getPrepTaskCohort,
   getPrepYearReport,
+  getProposalInbox,
   getRequiredDocumentCohort,
   getRequiredDocumentTypes,
   getResourceFilterOptions,
   getResources,
   getScholarProfile,
+  getScholarProposal,
   getScholarRequiredDocuments,
   getTasksByScholar,
   type PlatformSetupStatus,
   type PrepTaskCohortFilters,
   type PrepYearReportFilters,
   type ResourceFilterOptions,
+  reviewProposalStep,
   type Task,
   type UpdateScholarProfileData,
   type UpdateTaskData,
@@ -58,6 +62,8 @@ export const queryKeys = {
     ['prep-year', 'report', filters] as const,
   scholarCoordinatorNotes: (id: string) => ['scholar', id, 'coordinator-notes'] as const,
   scholarMeetingUpdates: (id: string) => ['scholar', id, 'meeting-updates'] as const,
+  proposalInbox: ['proposals', 'inbox'] as const,
+  scholarProposal: (id: string) => ['scholar', id, 'proposal'] as const,
 };
 
 // Scholar profile query
@@ -202,6 +208,52 @@ export function useCoordinatorMeetingUpdates(scholarId: string, enabled = true) 
     queryKey: queryKeys.scholarMeetingUpdates(scholarId),
     queryFn: () => getCoordinatorMeetingUpdates(scholarId),
     enabled: !!scholarId && enabled,
+  });
+}
+
+export function useProposalInbox(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.proposalInbox,
+    queryFn: getProposalInbox,
+    enabled,
+  });
+}
+
+export function useScholarProposal(scholarId: string, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.scholarProposal(scholarId),
+    queryFn: () => getScholarProposal(scholarId),
+    enabled: !!scholarId && enabled,
+  });
+}
+
+export function useReviewProposalStep(scholarId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      stepKey,
+      action,
+      comment,
+    }: {
+      stepKey: string;
+      action: 'approve' | 'request_changes';
+      comment?: string;
+    }) => reviewProposalStep(scholarId, stepKey, { action, comment }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.scholarProposal(scholarId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.proposalInbox });
+    },
+  });
+}
+
+export function useAddStaffProposalComment(scholarId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ stepKey, body }: { stepKey: string; body: string }) =>
+      addStaffProposalComment(scholarId, stepKey, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.scholarProposal(scholarId) });
+    },
   });
 }
 

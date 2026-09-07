@@ -6,6 +6,7 @@ export * from './documents';
 export * from './goals';
 export * from './invitations';
 export * from './platforms';
+export * from './proposals';
 export * from './requests';
 export * from './required-documents';
 export * from './resources';

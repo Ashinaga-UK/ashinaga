@@ -53,6 +53,7 @@ import { countTaskProgressFlags, isTaskDueToday, isTaskOverdue } from '../lib/ta
 import { CommentThread } from './comment-thread';
 import { CoordinatorPanel } from './coordinator-panel';
 import { PlatformSetupCard } from './platform-setup-card';
+import { ProposalPanel } from './proposal-panel';
 import { TaskAssignment } from './task-assignment';
 import { TaskFlagsBadges } from './task-flags-badges';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
@@ -83,7 +84,8 @@ export type ScholarProfileTab =
   | 'documents'
   | 'profile'
   | 'annual-reviews'
-  | 'coordinator';
+  | 'coordinator'
+  | 'proposal';
 
 export function isScholarProfileTab(value: string): value is ScholarProfileTab {
   return (
@@ -92,7 +94,8 @@ export function isScholarProfileTab(value: string): value is ScholarProfileTab {
     value === 'documents' ||
     value === 'profile' ||
     value === 'annual-reviews' ||
-    value === 'coordinator'
+    value === 'coordinator' ||
+    value === 'proposal'
   );
 }
 
@@ -866,6 +869,7 @@ export function ScholarProfilePage({
             <TabsTrigger value="tasks">Tasks</TabsTrigger>
             <TabsTrigger value="documents">Documents</TabsTrigger>
             <TabsTrigger value="coordinator">Coordinator</TabsTrigger>
+            <TabsTrigger value="proposal">Proposal</TabsTrigger>
           </TabsList>
         </div>
 
@@ -1418,6 +1422,10 @@ export function ScholarProfilePage({
 
         <TabsContent value="coordinator" className="space-y-4">
           <CoordinatorPanel scholarId={scholarId} {...countTaskProgressFlags(scholar.tasks)} />
+        </TabsContent>
+
+        <TabsContent value="proposal" className="space-y-4">
+          <ProposalPanel scholarId={scholarId} />
         </TabsContent>
       </Tabs>
     </div>

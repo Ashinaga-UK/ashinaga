@@ -117,6 +117,7 @@ describe('ScholarLayout', () => {
     await renderLayout(<div>content</div>);
 
     expect(await screen.findByRole('link', { name: 'My Annual Review' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'My Proposal' })).toHaveAttribute('href', '/proposal');
     expect(screen.getByRole('link', { name: 'My LDF' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'My Documents' })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Ashinaga Scholar Portal' })).toBeInTheDocument();
@@ -130,6 +131,7 @@ describe('ScholarLayout', () => {
 
     expect(screen.getByRole('heading', { name: 'Ashinaga Prep Year' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'My LDF' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'My Proposal' })).toHaveAttribute('href', '/proposal');
     expect(screen.queryByRole('link', { name: 'My Annual Review' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'My Documents' })).toHaveAttribute(
       'href',
@@ -145,5 +147,15 @@ describe('ScholarLayout', () => {
     expect(screen.getByRole('link', { name: 'My LDF' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'My Annual Review' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'My Documents' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'My Proposal' })).not.toBeInTheDocument();
+  });
+
+  it('does not show Proposal while the profile is still loading', async () => {
+    mockGetMyProfile.mockReturnValue(new Promise(() => {}));
+
+    render(<ScholarLayout onLogout={jest.fn()}>content</ScholarLayout>);
+    await waitFor(() => expect(mockGetMyProfile).toHaveBeenCalled());
+
+    expect(screen.queryByRole('link', { name: 'My Proposal' })).not.toBeInTheDocument();
   });
 });

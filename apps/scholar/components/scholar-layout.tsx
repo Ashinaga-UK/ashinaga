@@ -11,6 +11,7 @@ import {
   Library,
   LogOut,
   MessageSquare,
+  PenLine,
   Target,
   User,
 } from 'lucide-react';
@@ -46,6 +47,7 @@ const NAV_ITEMS = [
   { id: 'documents', href: '/documents', label: 'My Documents', icon: FolderOpen },
   { id: 'goals', href: '/goals', label: 'My LDF', icon: Target },
   { id: 'annual-review', href: '/annual-review', label: 'My Annual Review', icon: ClipboardCheck },
+  { id: 'proposal', href: '/proposal', label: 'My Proposal', icon: PenLine },
   { id: 'tasks', href: '/tasks', label: 'My Tasks', icon: CheckSquare },
   { id: 'requests', href: '/requests', label: 'My Requests', icon: FileText },
   { id: 'announcements', href: '/announcements', label: 'Announcements', icon: MessageSquare },
@@ -56,10 +58,14 @@ type NavItem = (typeof NAV_ITEMS)[number];
 
 const HOME_HREF = '/dashboard';
 
-function getVisibleNavItems(programStage: ProgramStage | null): readonly NavItem[] {
+function getVisibleNavItems(
+  programStage: ProgramStage | null,
+  profileStatus: 'loading' | 'ready' | 'error'
+): readonly NavItem[] {
   return NAV_ITEMS.filter((item) => {
     if (item.id === 'annual-review') return programStage === 'scholar';
     if (item.id === 'documents') return programStage === 'prep_year';
+    if (item.id === 'proposal') return profileStatus === 'ready';
     return true;
   });
 }
@@ -78,13 +84,15 @@ function getScholarSection(pathname: string, navItems: readonly NavItem[]) {
 function ScholarSidebar({
   onLogout,
   programStage,
+  profileStatus,
 }: {
   onLogout: () => void;
   programStage: ProgramStage | null;
+  profileStatus: 'loading' | 'ready' | 'error';
 }) {
   const pathname = usePathname();
   const { isMobile, setOpenMobile } = useSidebar();
-  const navItems = getVisibleNavItems(programStage);
+  const navItems = getVisibleNavItems(programStage, profileStatus);
 
   return (
     <Sidebar
@@ -148,9 +156,15 @@ function ScholarSidebar({
   );
 }
 
-function ScholarHeader({ programStage }: { programStage: ProgramStage | null }) {
+function ScholarHeader({
+  programStage,
+  profileStatus,
+}: {
+  programStage: ProgramStage | null;
+  profileStatus: 'loading' | 'ready' | 'error';
+}) {
   const pathname = usePathname();
-  const navItems = getVisibleNavItems(programStage);
+  const navItems = getVisibleNavItems(programStage, profileStatus);
   const section = getScholarSection(pathname, navItems);
   const isHome = section.href === HOME_HREF;
   const brandTitle =
@@ -214,16 +228,20 @@ export function ScholarLayout({ children, onLogout }: ScholarLayoutProps) {
 }
 
 function ScholarLayoutChrome({ children, onLogout }: ScholarLayoutProps) {
-  const { programStage } = useScholarSession();
+  const { programStage, profileStatus } = useScholarSession();
 
   return (
     <SidebarProvider
       className="flex h-svh flex-col overflow-hidden bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:from-background dark:to-background"
       style={{ '--sidebar-header-height': '3.5rem' } as React.CSSProperties}
     >
-      <ScholarHeader programStage={programStage} />
+      <ScholarHeader programStage={programStage} profileStatus={profileStatus} />
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <ScholarSidebar onLogout={onLogout} programStage={programStage} />
+        <ScholarSidebar
+          onLogout={onLogout}
+          programStage={programStage}
+          profileStatus={profileStatus}
+        />
         <SidebarInset className="min-h-0 min-w-0 overflow-y-auto overscroll-none bg-transparent">
           <div className="min-w-0 flex-1">{children}</div>
         </SidebarInset>
