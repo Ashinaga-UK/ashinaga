@@ -6,7 +6,7 @@ import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
 export function ProposalInbox({ onOpenScholar }: { onOpenScholar: (scholarId: string) => void }) {
-  const { data = [], isLoading } = useProposalInbox();
+  const { data = [], isLoading, error } = useProposalInbox();
 
   return (
     <Card>
@@ -19,6 +19,8 @@ export function ProposalInbox({ onOpenScholar }: { onOpenScholar: (scholarId: st
             <Loader2 className="h-4 w-4 animate-spin" />
             Loading inbox...
           </div>
+        ) : error ? (
+          <p className="text-sm text-muted-foreground">Could not load proposal reviews.</p>
         ) : data.length === 0 ? (
           <p className="text-sm text-muted-foreground">No submitted proposal steps waiting.</p>
         ) : (

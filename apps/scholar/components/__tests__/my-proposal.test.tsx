@@ -10,6 +10,10 @@ jest.mock('../../lib/api/proposals', () => ({
   addProposalComment: jest.fn(),
 }));
 
+jest.mock('../../lib/api-client', () => ({
+  getResourceDownloadUrl: jest.fn(),
+}));
+
 describe('MyProposal', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -75,6 +79,69 @@ describe('MyProposal', () => {
     expect(await screen.findByText('Waiting for coordinator review')).toBeInTheDocument();
     expect(screen.getByText('Waiting text')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Submit for review' })).not.toBeInTheDocument();
+  });
+
+  it('does not repeat the last step in history once the proposal is complete', async () => {
+    mockGetMine.mockResolvedValue({
+      currentStepKey: 'final',
+      catalog: [],
+      steps: [
+        {
+          key: 'topic',
+          title: 'Topic and research question',
+          sortOrder: 1,
+          available: true,
+          status: 'approved',
+          body: 'Topic body',
+          comments: [],
+          resources: [],
+          submittedAt: null,
+          reviewedAt: null,
+        },
+        {
+          key: 'outline',
+          title: 'Outline',
+          sortOrder: 2,
+          available: true,
+          status: 'approved',
+          body: 'Outline body',
+          comments: [],
+          resources: [],
+          submittedAt: null,
+          reviewedAt: null,
+        },
+        {
+          key: 'draft',
+          title: 'Full draft',
+          sortOrder: 3,
+          available: true,
+          status: 'approved',
+          body: 'Draft body',
+          comments: [],
+          resources: [],
+          submittedAt: null,
+          reviewedAt: null,
+        },
+        {
+          key: 'final',
+          title: 'Final proposal',
+          sortOrder: 4,
+          available: true,
+          status: 'approved',
+          body: 'Final body',
+          comments: [],
+          resources: [],
+          submittedAt: null,
+          reviewedAt: null,
+        },
+      ],
+    });
+
+    render(<MyProposal />);
+
+    expect(await screen.findByText('Final proposal')).toBeInTheDocument();
+    expect(screen.getAllByText('Final proposal')).toHaveLength(1);
+    expect(screen.getByText('Topic and research question')).toBeInTheDocument();
   });
 
   it('surfaces a load error', async () => {

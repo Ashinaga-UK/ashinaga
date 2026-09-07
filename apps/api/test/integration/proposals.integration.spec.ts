@@ -52,6 +52,10 @@ describe('Proposals API (integration)', () => {
 
     const mine = await request(app.getHttpServer()).get('/api/proposals/me').expect(200);
     expect(mine.body.currentStepKey).toBe('topic');
+    await request(app.getHttpServer())
+      .post('/api/proposals/me/steps/topic/comments')
+      .send({ body: 'Too early' })
+      .expect(403);
     expect(mine.body.steps.find((step: { key: string }) => step.key === 'outline').available).toBe(
       false
     );
@@ -103,10 +107,13 @@ describe('Proposals API (integration)', () => {
     ).toBe(false);
 
     auth.setUser({ id: prep.userId, email: prep.email, userType: 'scholar' });
-    await request(app.getHttpServer())
+    const resubmitted = await request(app.getHttpServer())
       .post('/api/proposals/me/steps/topic/submit')
       .send({ body: 'Sharper question' })
       .expect(200);
+    expect(
+      resubmitted.body.steps.find((step: { key: string }) => step.key === 'topic').reviewedAt
+    ).toBeNull();
 
     auth.setUser({ id: staffActor.userId, email: staffActor.email, userType: 'staff' });
     const approved = await request(app.getHttpServer())

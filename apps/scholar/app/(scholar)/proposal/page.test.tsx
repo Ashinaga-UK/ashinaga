@@ -49,6 +49,15 @@ describe('ProposalPage', () => {
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
+  it('shows loading while the profile is still fetching', () => {
+    mockGetMyProfile.mockReturnValue(new Promise(() => {}));
+    renderPage();
+    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    expect(screen.queryByText('Proposal content')).not.toBeInTheDocument();
+    expect(screen.queryByText('Redirecting...')).not.toBeInTheDocument();
+    expect(mockReplace).not.toHaveBeenCalled();
+  });
+
   it('redirects to the dashboard if profile loading fails', async () => {
     mockGetMyProfile.mockRejectedValue(new Error('offline'));
     renderPage();

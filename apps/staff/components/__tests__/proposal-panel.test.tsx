@@ -22,6 +22,7 @@ jest.mock('../../lib/api-client', () => ({
   getScholarProposal: (...args: unknown[]) => mockGetProposal(...args),
   reviewProposalStep: (...args: unknown[]) => mockReview(...args),
   addStaffProposalComment: jest.fn(),
+  getResourceDownloadUrl: jest.fn(),
 }));
 
 jest.mock('../ui/use-toast', () => ({
@@ -76,6 +77,33 @@ describe('ProposalPanel', () => {
       action: 'approve',
       comment: undefined,
     });
+  });
+
+  it('keeps add comment available on an approved step', async () => {
+    mockGetProposal.mockResolvedValue({
+      currentStepKey: 'outline',
+      catalog: [],
+      steps: [
+        {
+          key: 'topic',
+          title: 'Topic and research question',
+          sortOrder: 1,
+          available: true,
+          status: 'approved',
+          body: 'Approved text',
+          comments: [],
+          resources: [],
+          submittedAt: '2026-09-07T00:00:00.000Z',
+          reviewedAt: '2026-09-07T01:00:00.000Z',
+        },
+      ],
+    });
+
+    renderPanel();
+
+    expect(await screen.findByText('Approved text')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add comment' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument();
   });
 
   it('requires a comment to request changes', async () => {

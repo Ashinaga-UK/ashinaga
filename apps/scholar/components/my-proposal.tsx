@@ -5,13 +5,71 @@ import { useEffect, useState } from 'react';
 import {
   addProposalComment,
   getMyProposal,
+  type ProposalResource,
   type ProposalTimeline,
   saveProposalDraft,
   submitProposalStep,
 } from '../lib/api/proposals';
+import { getResourceDownloadUrl } from '../lib/api-client';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Textarea } from './ui/textarea';
+import { useToast } from './ui/use-toast';
+
+async function openProposalResourceFile(resourceId: string) {
+  const viewTab = window.open('about:blank', '_blank');
+  if (viewTab) {
+    viewTab.opener = null;
+  }
+  try {
+    const { downloadUrl } = await getResourceDownloadUrl(resourceId, 'inline');
+    if (!viewTab) {
+      throw new Error('Allow pop-ups to view this file.');
+    }
+    viewTab.location.href = downloadUrl;
+  } catch (error) {
+    viewTab?.close();
+    throw error;
+  }
+}
+
+function ProposalResourceLink({ resource }: { resource: ProposalResource }) {
+  const { toast } = useToast();
+  if (resource.url) {
+    return (
+      <a
+        href={resource.url}
+        className="text-primary underline-offset-2 hover:underline"
+        target="_blank"
+        rel="noreferrer"
+      >
+        {resource.title}
+      </a>
+    );
+  }
+  if (resource.sourceType !== 'file') {
+    return resource.title;
+  }
+  return (
+    <button
+      type="button"
+      className="text-primary underline-offset-2 hover:underline"
+      onClick={async () => {
+        try {
+          await openProposalResourceFile(resource.id);
+        } catch (error) {
+          toast({
+            title: 'Could not open resource',
+            description: error instanceof Error ? error.message : 'Please try again.',
+            variant: 'destructive',
+          });
+        }
+      }}
+    >
+      {resource.title}
+    </button>
+  );
+}
 
 function statusLabel(status: string | null) {
   if (status === 'submitted') return 'Waiting for coordinator review';
@@ -30,7 +88,10 @@ export function MyProposal() {
   const [saving, setSaving] = useState(false);
 
   const current = timeline?.steps.find((step) => step.key === timeline.currentStepKey);
-  const history = timeline?.steps.filter((step) => step.status === 'approved') ?? [];
+  const history =
+    timeline?.steps.filter(
+      (step) => step.status === 'approved' && step.key !== timeline.currentStepKey
+    ) ?? [];
 
   useEffect(() => {
     let cancelled = false;
@@ -143,18 +204,7 @@ export function MyProposal() {
               <ul className="space-y-1 text-sm">
                 {current.resources.map((resource) => (
                   <li key={resource.id}>
-                    {resource.url ? (
-                      <a
-                        href={resource.url}
-                        className="text-primary underline-offset-2 hover:underline"
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {resource.title}
-                      </a>
-                    ) : (
-                      resource.title
-                    )}
+                    <ProposalResourceLink resource={resource} />
                   </li>
                 ))}
               </ul>

@@ -70,14 +70,12 @@ function getVisibleNavItems(
   });
 }
 
-function getScholarSection(pathname: string, navItems: readonly NavItem[]) {
+function getScholarSection(pathname: string) {
   return (
-    navItems.find(
+    NAV_ITEMS.find(
       (item) =>
         pathname === item.href || (item.href !== HOME_HREF && pathname.startsWith(`${item.href}/`))
-    ) ??
-    navItems[0] ??
-    NAV_ITEMS[0]
+    ) ?? NAV_ITEMS[0]
   );
 }
 
@@ -156,16 +154,9 @@ function ScholarSidebar({
   );
 }
 
-function ScholarHeader({
-  programStage,
-  profileStatus,
-}: {
-  programStage: ProgramStage | null;
-  profileStatus: 'loading' | 'ready' | 'error';
-}) {
+function ScholarHeader({ programStage }: { programStage: ProgramStage | null }) {
   const pathname = usePathname();
-  const navItems = getVisibleNavItems(programStage, profileStatus);
-  const section = getScholarSection(pathname, navItems);
+  const section = getScholarSection(pathname);
   const isHome = section.href === HOME_HREF;
   const brandTitle =
     programStage === 'prep_year' ? 'Ashinaga Prep Year' : 'Ashinaga Scholar Portal';
@@ -235,7 +226,7 @@ function ScholarLayoutChrome({ children, onLogout }: ScholarLayoutProps) {
       className="flex h-svh flex-col overflow-hidden bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:from-background dark:to-background"
       style={{ '--sidebar-header-height': '3.5rem' } as React.CSSProperties}
     >
-      <ScholarHeader programStage={programStage} profileStatus={profileStatus} />
+      <ScholarHeader programStage={programStage} />
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <ScholarSidebar
           onLogout={onLogout}

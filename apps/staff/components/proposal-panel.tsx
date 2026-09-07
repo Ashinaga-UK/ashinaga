@@ -2,6 +2,7 @@
 
 import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
+import { getResourceDownloadUrl, type ProposalResource } from '../lib/api-client';
 import {
   useAddStaffProposalComment,
   useReviewProposalStep,
@@ -11,6 +12,61 @@ import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Textarea } from './ui/textarea';
 import { useToast } from './ui/use-toast';
+
+async function openProposalResourceFile(resourceId: string) {
+  const viewTab = window.open('about:blank', '_blank');
+  if (viewTab) {
+    viewTab.opener = null;
+  }
+  try {
+    const { downloadUrl } = await getResourceDownloadUrl(resourceId, 'inline');
+    if (!viewTab) {
+      throw new Error('Allow pop-ups to view this file.');
+    }
+    viewTab.location.href = downloadUrl;
+  } catch (error) {
+    viewTab?.close();
+    throw error;
+  }
+}
+
+function ProposalResourceLink({ resource }: { resource: ProposalResource }) {
+  const { toast } = useToast();
+  if (resource.url) {
+    return (
+      <a
+        href={resource.url}
+        className="text-primary underline-offset-2 hover:underline"
+        target="_blank"
+        rel="noreferrer"
+      >
+        {resource.title}
+      </a>
+    );
+  }
+  if (resource.sourceType !== 'file') {
+    return resource.title;
+  }
+  return (
+    <button
+      type="button"
+      className="text-primary underline-offset-2 hover:underline"
+      onClick={async () => {
+        try {
+          await openProposalResourceFile(resource.id);
+        } catch (error) {
+          toast({
+            title: 'Could not open resource',
+            description: error instanceof Error ? error.message : 'Please try again.',
+            variant: 'destructive',
+          });
+        }
+      }}
+    >
+      {resource.title}
+    </button>
+  );
+}
 
 function statusLabel(status: string | null) {
   if (status === 'submitted') return 'Submitted';
@@ -58,7 +114,9 @@ export function ProposalPanel({ scholarId }: { scholarId: string }) {
               {step.resources.length > 0 ? (
                 <ul className="text-sm">
                   {step.resources.map((resource) => (
-                    <li key={resource.id}>{resource.title}</li>
+                    <li key={resource.id}>
+                      <ProposalResourceLink resource={resource} />
+                    </li>
                   ))}
                 </ul>
               ) : null}
@@ -136,7 +194,7 @@ export function ProposalPanel({ scholarId }: { scholarId: string }) {
                     </Button>
                   </>
                 ) : null}
-                {step.status && step.status !== 'approved' && !canReview ? (
+                {step.status && !canReview ? (
                   <Button
                     type="button"
                     variant="outline"

@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { database } from '../db/connection';
 import {
@@ -30,8 +30,6 @@ import {
 
 const authorUser = alias(users, 'proposal_comment_author');
 
-type SubmissionRow = typeof proposalSubmissions.$inferSelect;
-
 @Injectable()
 export class ProposalsService {
   async getMine(userId: string) {
@@ -51,9 +49,10 @@ export class ProposalsService {
     const scholar = await this.requireScholarForUser(userId);
     const key = this.parseStepKey(stepKey);
     const statusByStep = await this.statusByStep(scholar.id);
-    const submission = await this.getSubmission(scholar.id, key);
+    const submission = await this.findSubmission(scholar.id, key);
     if (
-      !scholarCanWrite('comment', submission?.status ?? null, isStepAvailable(key, statusByStep))
+      !submission ||
+      !scholarCanWrite('comment', submission.status, isStepAvailable(key, statusByStep))
     ) {
       throw new ForbiddenException('This proposal step is not open for comments');
     }
@@ -110,20 +109,25 @@ export class ProposalsService {
       throw new BadRequestException('Only a submitted step can be reviewed');
     }
 
-    if (trimmedComment.length > 0) {
-      await this.insertComment(submission.id, actorId, trimmedComment);
-    }
-
     const now = new Date();
-    await database
-      .update(proposalSubmissions)
-      .set({
-        status: nextStatus,
-        reviewedAt: now,
-        reviewedBy: actorId,
-        updatedAt: now,
-      })
-      .where(eq(proposalSubmissions.id, submission.id));
+    await database.transaction(async (tx) => {
+      if (trimmedComment.length > 0) {
+        await tx.insert(proposalComments).values({
+          submissionId: submission.id,
+          authorId: actorId,
+          body: trimmedComment,
+        });
+      }
+      await tx
+        .update(proposalSubmissions)
+        .set({
+          status: nextStatus,
+          reviewedAt: now,
+          reviewedBy: actorId,
+          updatedAt: now,
+        })
+        .where(eq(proposalSubmissions.id, submission.id));
+    });
 
     return this.assembleTimeline(scholarId, { hideLockedBodies: false });
   }
@@ -138,12 +142,22 @@ export class ProposalsService {
   async attachResource(stepKey: string, resourceId: string) {
     const key = this.parseStepKey(stepKey);
     const [resource] = await database
-      .select({ id: resources.id, archived: resources.archived, status: resources.status })
+      .select({
+        id: resources.id,
+        archived: resources.archived,
+        status: resources.status,
+        category: resources.category,
+      })
       .from(resources)
       .where(eq(resources.id, resourceId))
       .limit(1);
 
-    if (!resource || resource.archived || resource.status !== 'live') {
+    if (
+      !resource ||
+      resource.archived ||
+      resource.status !== 'live' ||
+      resource.category !== 'Proposal'
+    ) {
       throw new NotFoundException('Resource not found');
     }
 
@@ -165,32 +179,17 @@ export class ProposalsService {
     const key = this.parseStepKey(stepKey);
     const trimmed = this.requireTrimmed(body, 'Proposal text is required');
     const statusByStep = await this.statusByStep(scholar.id);
-    const existing = await this.findSubmission(scholar.id, key);
     const available = isStepAvailable(key, statusByStep);
 
     let nextStatus: ProposalStatus;
     try {
-      nextStatus = nextStatusAfterScholarWrite(action, existing?.status ?? null, available);
+      nextStatus = nextStatusAfterScholarWrite(action, statusByStep[key] ?? null, available);
     } catch {
       throw new ForbiddenException('This proposal step is locked');
     }
 
     const now = new Date();
-    if (existing) {
-      const [updated] = await database
-        .update(proposalSubmissions)
-        .set({
-          body: trimmed,
-          status: nextStatus,
-          submittedAt: action === 'submit' ? now : existing.submittedAt,
-          updatedAt: now,
-        })
-        .where(eq(proposalSubmissions.id, existing.id))
-        .returning();
-      return this.formatScholarWrite(scholar.id, updated);
-    }
-
-    const [created] = await database
+    const [written] = await database
       .insert(proposalSubmissions)
       .values({
         scholarId: scholar.id,
@@ -199,8 +198,23 @@ export class ProposalsService {
         body: trimmed,
         submittedAt: action === 'submit' ? now : null,
       })
+      .onConflictDoUpdate({
+        target: [proposalSubmissions.scholarId, proposalSubmissions.stepKey],
+        set: {
+          body: trimmed,
+          status: nextStatus,
+          submittedAt: action === 'submit' ? now : sql`${proposalSubmissions.submittedAt}`,
+          reviewedAt: action === 'submit' ? null : sql`${proposalSubmissions.reviewedAt}`,
+          reviewedBy: action === 'submit' ? null : sql`${proposalSubmissions.reviewedBy}`,
+          updatedAt: now,
+        },
+        setWhere: inArray(proposalSubmissions.status, ['draft', 'changes_requested']),
+      })
       .returning();
-    return this.formatScholarWrite(scholar.id, created);
+    if (!written) {
+      throw new ForbiddenException('This proposal step is locked');
+    }
+    return this.assembleTimeline(scholar.id, { hideLockedBodies: true });
   }
 
   private async assembleTimeline(scholarId: string, options: { hideLockedBodies: boolean }) {
@@ -219,8 +233,6 @@ export class ProposalsService {
       steps: PROPOSAL_STEPS.map((step) => {
         const submission = submissions.find((row) => row.stepKey === step.key) ?? null;
         const available = isStepAvailable(step.key, statusByStep);
-        const hideBody =
-          options.hideLockedBodies && !available && submission?.status !== 'approved';
         if (options.hideLockedBodies && !available && submission?.status !== 'approved') {
           return {
             ...step,
@@ -237,8 +249,8 @@ export class ProposalsService {
           ...step,
           available,
           status: submission?.status ?? null,
-          body: hideBody ? null : (submission?.body ?? null),
-          comments: hideBody ? [] : (commentsBySubmission.get(submission?.id ?? '') ?? []),
+          body: submission?.body ?? null,
+          comments: commentsBySubmission.get(submission?.id ?? '') ?? [],
           resources: resourcesByStep.get(step.key) ?? [],
           submittedAt: submission?.submittedAt?.toISOString() ?? null,
           reviewedAt: submission?.reviewedAt?.toISOString() ?? null,
@@ -247,27 +259,18 @@ export class ProposalsService {
     };
   }
 
-  private async formatScholarWrite(scholarId: string, _updated: SubmissionRow) {
-    return this.assembleTimeline(scholarId, { hideLockedBodies: true });
-  }
-
   private async addComment(submissionId: string, authorId: string, body: string) {
     const trimmed = this.requireTrimmed(body, 'Comment is required');
-    const created = await this.insertComment(submissionId, authorId, trimmed);
+    const [created] = await database
+      .insert(proposalComments)
+      .values({ submissionId, authorId, body: trimmed })
+      .returning();
     const [author] = await database
       .select({ name: users.name })
       .from(users)
       .where(eq(users.id, authorId))
       .limit(1);
     return this.formatComment(created, author?.name ?? 'Unknown');
-  }
-
-  private async insertComment(submissionId: string, authorId: string, body: string) {
-    const [created] = await database
-      .insert(proposalComments)
-      .values({ submissionId, authorId, body })
-      .returning();
-    return created;
   }
 
   private async commentsBySubmission(submissionIds: string[]) {

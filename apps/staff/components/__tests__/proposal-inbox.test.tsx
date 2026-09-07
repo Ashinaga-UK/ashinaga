@@ -65,4 +65,11 @@ describe('ProposalInbox', () => {
     renderInbox();
     expect(await screen.findByText('No submitted proposal steps waiting.')).toBeInTheDocument();
   });
+
+  it('does not treat a failed fetch as an empty inbox', async () => {
+    mockInbox.mockRejectedValue(new Error('offline'));
+    renderInbox();
+    expect(await screen.findByText('Could not load proposal reviews.')).toBeInTheDocument();
+    expect(screen.queryByText('No submitted proposal steps waiting.')).not.toBeInTheDocument();
+  });
 });
