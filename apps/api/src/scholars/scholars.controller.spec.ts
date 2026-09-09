@@ -58,6 +58,7 @@ describe('ScholarsController', () => {
             status: 'active',
             startDate: new Date('2023-01-01'),
             lastActivity: new Date('2025-01-01'),
+            staleActivity: true,
             goals: {
               total: 4,
               completed: 2,
@@ -152,6 +153,31 @@ describe('ScholarsController', () => {
       expect(result).toEqual(mockResponse);
       expect(service.getScholars).toHaveBeenCalledWith(query);
     });
+
+    it('should pass loginActivity filter to the service', async () => {
+      const mockResponse: GetScholarsResponseDto = {
+        data: [],
+        pagination: {
+          page: 1,
+          limit: 20,
+          totalItems: 0,
+          totalPages: 0,
+          hasNext: false,
+          hasPrev: false,
+        },
+      };
+
+      mockScholarsService.getScholars.mockResolvedValue(mockResponse);
+
+      const query: GetScholarsQueryDto = {
+        loginActivity: 'stale',
+      };
+
+      const result = await controller.getScholars(query);
+
+      expect(result).toEqual(mockResponse);
+      expect(service.getScholars).toHaveBeenCalledWith(query);
+    });
   });
 
   describe('getScholar', () => {
@@ -171,6 +197,7 @@ describe('ScholarsController', () => {
         status: 'active',
         startDate: new Date('2023-01-01'),
         lastActivity: new Date('2025-01-01'),
+        staleActivity: true,
         goals: {
           total: 4,
           completed: 2,
@@ -212,6 +239,7 @@ describe('ScholarsController', () => {
         status: 'active',
         startDate: new Date('2023-09-01'),
         lastActivity: null,
+        staleActivity: false,
         goals: {
           total: 0,
           completed: 0,

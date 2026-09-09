@@ -24,6 +24,7 @@ import {
 } from '../db/schema';
 import { DocumentsService } from '../documents/documents.service';
 import { InvitationsService } from '../invitations/invitations.service';
+import { isStaleLastActivity } from '../notifications/notification-windows';
 import { isTaskDueToday, isTaskOverdue } from '../tasks/task-due';
 import { taskProgressFilterSql } from '../tasks/task-progress-filter';
 import { escapeCsvValue } from '../utils/csv';
@@ -44,7 +45,9 @@ import {
 } from './dto/get-scholars.dto';
 import { UpdatePlatformSetupDto } from './dto/update-platform-setup.dto';
 import { UpdateScholarProfileDto } from './dto/update-scholar-profile.dto';
+import { loginActivityFilterSql } from './login-activity-filter';
 import { buildPlatformSetupIncompleteMap, platformSetupFilterSql } from './platform-setup';
+import { touchScholarLastActivity } from './scholar-activity';
 
 function uniqueFilterValues(values: Array<string | null | undefined>): string[] {
   const seen = new Set<string>();
@@ -153,6 +156,7 @@ export class ScholarsService {
       programStage,
       platformSetup,
       taskProgress,
+      loginActivity,
       sortBy = 'createdAt',
       sortOrder = 'desc',
     } = query;
@@ -203,6 +207,10 @@ export class ScholarsService {
 
     if (taskProgress) {
       whereConditions.push(taskProgressFilterSql(taskProgress));
+    }
+
+    if (loginActivity === 'stale') {
+      whereConditions.push(loginActivityFilterSql('stale'));
     }
 
     const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
@@ -262,6 +270,7 @@ export class ScholarsService {
       degreePathway: row.scholar.degreePathway,
       startDate: row.scholar.startDate,
       lastActivity: row.scholar.lastActivity,
+      staleActivity: isStaleLastActivity(row.scholar.lastActivity),
       goals: goalsStats[row.scholar.id] || { total: 0, completed: 0, inProgress: 0, pending: 0 },
       tasks: tasksStats[row.scholar.id] || { total: 0, completed: 0, overdue: 0, dueToday: 0 },
       platformSetupIncomplete:
@@ -324,6 +333,7 @@ export class ScholarsService {
       degreePathway: row.scholar.degreePathway,
       startDate: row.scholar.startDate,
       lastActivity: row.scholar.lastActivity,
+      staleActivity: isStaleLastActivity(row.scholar.lastActivity),
       goals: goalsStats[row.scholar.id] || { total: 0, completed: 0, inProgress: 0, pending: 0 },
       tasks: tasksStats[row.scholar.id] || { total: 0, completed: 0, overdue: 0, dueToday: 0 },
       platformSetupIncomplete:
@@ -794,6 +804,7 @@ export class ScholarsService {
       throw new NotFoundException('Scholar profile not found');
     }
 
+    await touchScholarLastActivity(userId);
     const row = result[0];
 
     // Get goals for this scholar

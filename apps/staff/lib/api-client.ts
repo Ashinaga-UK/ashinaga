@@ -36,6 +36,7 @@ export interface Scholar {
   degreePathway?: string | null;
   startDate: string;
   lastActivity?: string | null;
+  staleActivity?: boolean;
   goals: ScholarGoalsStats;
   tasks: ScholarTasksStats;
   platformSetupIncomplete?: boolean | null;
@@ -265,6 +266,7 @@ export interface GetScholarsParams {
   programStage?: 'prep_year' | 'scholar';
   platformSetup?: 'incomplete' | 'complete';
   taskProgress?: 'overdue' | 'due_today' | 'behind';
+  loginActivity?: 'stale';
   sortBy?: 'name' | 'lastActivity' | 'createdAt';
   sortOrder?: 'asc' | 'desc';
 }

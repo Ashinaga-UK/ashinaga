@@ -55,6 +55,21 @@ module "resend_api_key" {
   }
 }
 
+# Cron bearer for ASH-86 notification jobs
+module "notification_cron_secret" {
+  source = "../../modules/secrets_manager"
+
+  secret_name_prefix = "${var.project_name}-notification-cron-secret-${var.environment}-"
+  description        = "Cron secret for notification jobs in ${var.project_name} ${var.environment}"
+  environment        = var.environment
+  password_length    = 32
+
+  additional_tags = {
+    Purpose = "NotificationJobs"
+    Service = "API"
+  }
+}
+
 # S3 Bucket for Scholar Data
 module "scholar_data_bucket" {
   source = "../../modules/s3_bucket"
@@ -262,6 +277,12 @@ module "api_app_runner" {
     # Email Configuration
     RESEND_API_KEY = module.resend_api_key.secret_value
     EMAIL_FROM     = "noreply@ashinaga-uk.org"
+    CRON_SECRET                      = module.notification_cron_secret.secret_value
+    NOTIFICATION_REMINDER_DAYS       = "2"
+    NOTIFICATION_INACTIVITY_DAYS     = "14"
+    NOTIFICATION_MONTHLY_DAY         = "1"
+    NOTIFICATION_ACTIVITY_TOUCH_HOURS = "6"
+    NOTIFICATION_STAFF_DIGEST_WEEKDAY = "1"
 
     # Frontend URLs
     STAFF_APP_URL   = "https://staff.ashinaga-uk.org"

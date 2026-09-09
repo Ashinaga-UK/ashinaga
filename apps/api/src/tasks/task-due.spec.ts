@@ -1,4 +1,4 @@
-import { isTaskDueToday, isTaskOverdue } from './task-due';
+import { isTaskDueInCalendarDays, isTaskDueToday, isTaskOverdue } from './task-due';
 
 describe('task-due', () => {
   const now = new Date('2026-09-03T12:00:00.000Z');
@@ -21,6 +21,18 @@ describe('task-due', () => {
     ).toBe(true);
     expect(
       isTaskDueToday({ dueDate: '2026-09-04T00:00:00.000Z', status: 'pending' }, now)
+    ).toBe(false);
+  });
+
+  it('matches incomplete tasks due exactly N UTC calendar days ahead', () => {
+    expect(
+      isTaskDueInCalendarDays({ dueDate: '2026-09-05T00:00:00.000Z', status: 'pending' }, 2, now)
+    ).toBe(true);
+    expect(
+      isTaskDueInCalendarDays({ dueDate: '2026-09-04T00:00:00.000Z', status: 'pending' }, 2, now)
+    ).toBe(false);
+    expect(
+      isTaskDueInCalendarDays({ dueDate: '2026-09-05T00:00:00.000Z', status: 'completed' }, 2, now)
     ).toBe(false);
   });
 });

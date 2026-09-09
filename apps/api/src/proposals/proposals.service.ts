@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
@@ -18,6 +19,7 @@ import {
   scholars,
   users,
 } from '../db/schema';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PROPOSAL_STEPS, type ProposalStepKey, requireProposalStepKey } from './proposal-steps';
 import {
   currentStepKey,
@@ -34,6 +36,10 @@ const authorUser = alias(users, 'proposal_comment_author');
 
 @Injectable()
 export class ProposalsService {
+  private readonly logger = new Logger(ProposalsService.name);
+
+  constructor(private readonly notifications: NotificationsService) {}
+
   async getMine(userId: string) {
     const scholar = await this.requireScholarForUser(userId);
     return this.assembleTimeline(scholar.id, { hideLockedBodies: true });
@@ -112,13 +118,18 @@ export class ProposalsService {
     }
 
     const now = new Date();
+    let commentId: string | null = null;
     await database.transaction(async (tx) => {
       if (trimmedComment.length > 0) {
-        await tx.insert(proposalComments).values({
-          submissionId: submission.id,
-          authorId: actorId,
-          body: trimmedComment,
-        });
+        const [comment] = await tx
+          .insert(proposalComments)
+          .values({
+            submissionId: submission.id,
+            authorId: actorId,
+            body: trimmedComment,
+          })
+          .returning({ id: proposalComments.id });
+        commentId = comment?.id ?? null;
       }
       const [updated] = await tx
         .update(proposalSubmissions)
@@ -140,6 +151,16 @@ export class ProposalsService {
       }
     });
 
+    void this.notifications
+      .notifyProposalFeedback({
+        scholarId,
+        stepKey: key,
+        action,
+        eventId: commentId ?? `review:${now.toISOString()}`,
+        comment: trimmedComment || null,
+      })
+      .catch((error) => this.logger.error('Failed to send proposal feedback notification', error));
+
     return this.assembleTimeline(scholarId, { hideLockedBodies: false });
   }
 
@@ -147,7 +168,17 @@ export class ProposalsService {
     await this.requireScholar(scholarId);
     const key = this.parseStepKey(stepKey);
     const submission = await this.getSubmission(scholarId, key);
-    return this.addComment(submission.id, actorId, body);
+    const comment = await this.addComment(submission.id, actorId, body);
+    void this.notifications
+      .notifyProposalFeedback({
+        scholarId,
+        stepKey: key,
+        action: 'comment',
+        eventId: comment.id,
+        comment: comment.body,
+      })
+      .catch((error) => this.logger.error('Failed to send proposal comment notification', error));
+    return comment;
   }
 
   async attachResource(stepKey: string, resourceId: string) {
