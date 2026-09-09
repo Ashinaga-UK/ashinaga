@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
+import type { ScholarAudience } from '../common/audience-filters/audience-filter';
+import { buildResourceAudienceVisibilitySql } from '../common/audience-filters/audience-filter.sql';
 import { database } from '../db/connection';
 import {
   proposalComments,
@@ -118,7 +120,7 @@ export class ProposalsService {
           body: trimmedComment,
         });
       }
-      await tx
+      const [updated] = await tx
         .update(proposalSubmissions)
         .set({
           status: nextStatus,
@@ -126,7 +128,16 @@ export class ProposalsService {
           reviewedBy: actorId,
           updatedAt: now,
         })
-        .where(eq(proposalSubmissions.id, submission.id));
+        .where(
+          and(
+            eq(proposalSubmissions.id, submission.id),
+            eq(proposalSubmissions.status, 'submitted')
+          )
+        )
+        .returning();
+      if (!updated) {
+        throw new BadRequestException('Only a submitted step can be reviewed');
+      }
     });
 
     return this.assembleTimeline(scholarId, { hideLockedBodies: false });
@@ -225,7 +236,9 @@ export class ProposalsService {
     const statusByStep = this.toStatusByStep(submissions);
     const current = currentStepKey(statusByStep);
     const commentsBySubmission = await this.commentsBySubmission(submissions.map((row) => row.id));
-    const resourcesByStep = await this.resourcesByStep();
+    const resourcesByStep = await this.resourcesByStep(
+      options.hideLockedBodies ? await this.scholarAudience(scholarId) : undefined
+    );
 
     return {
       catalog: PROPOSAL_STEPS.map((step) => ({ ...step })),
@@ -296,7 +309,25 @@ export class ProposalsService {
     return map;
   }
 
-  private async resourcesByStep() {
+  private async scholarAudience(scholarId: string): Promise<ScholarAudience> {
+    const [row] = await database
+      .select({
+        program: scholars.program,
+        year: scholars.year,
+        university: scholars.university,
+        location: scholars.location,
+        status: scholars.status,
+      })
+      .from(scholars)
+      .where(eq(scholars.id, scholarId))
+      .limit(1);
+    if (!row) {
+      throw new NotFoundException('Scholar not found');
+    }
+    return row;
+  }
+
+  private async resourcesByStep(audience?: ScholarAudience) {
     const liveProposal = await database
       .select({
         id: resources.id,
@@ -310,7 +341,8 @@ export class ProposalsService {
         and(
           eq(resources.archived, false),
           eq(resources.status, 'live'),
-          eq(resources.category, 'Proposal')
+          eq(resources.category, 'Proposal'),
+          ...(audience ? [buildResourceAudienceVisibilitySql(audience)] : [])
         )
       );
 

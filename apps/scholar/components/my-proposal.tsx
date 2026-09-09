@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import {
   addProposalComment,
   getMyProposal,
+  type ProposalComment,
   type ProposalResource,
   type ProposalTimeline,
   saveProposalDraft,
@@ -68,6 +69,25 @@ function ProposalResourceLink({ resource }: { resource: ProposalResource }) {
     >
       {resource.title}
     </button>
+  );
+}
+
+function StepComments({ comments }: { comments: ProposalComment[] }) {
+  if (comments.length === 0) {
+    return null;
+  }
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium">Comments</p>
+      {comments.map((item) => (
+        <div key={item.id} className="rounded-md border p-3 text-sm">
+          <p className="text-muted-foreground">
+            {item.authorName} · {new Date(item.createdAt).toLocaleString()}
+          </p>
+          <p className="mt-1 whitespace-pre-wrap">{item.body}</p>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -188,7 +208,10 @@ export function MyProposal() {
             <CardTitle className="text-base">{step.title}</CardTitle>
             <p className="text-sm text-muted-foreground">Approved</p>
           </CardHeader>
-          <CardContent className="whitespace-pre-wrap text-sm">{step.body}</CardContent>
+          <CardContent className="space-y-3">
+            <p className="whitespace-pre-wrap text-sm">{step.body}</p>
+            <StepComments comments={step.comments} />
+          </CardContent>
         </Card>
       ))}
 
@@ -247,19 +270,7 @@ export function MyProposal() {
             </p>
           )}
 
-          {current.comments.length > 0 ? (
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Comments</p>
-              {current.comments.map((item) => (
-                <div key={item.id} className="rounded-md border p-3 text-sm">
-                  <p className="text-muted-foreground">
-                    {item.authorName} · {new Date(item.createdAt).toLocaleString()}
-                  </p>
-                  <p className="mt-1 whitespace-pre-wrap">{item.body}</p>
-                </div>
-              ))}
-            </div>
-          ) : null}
+          <StepComments comments={current.comments} />
 
           {current.status && current.status !== 'approved' ? (
             <div className="space-y-2">

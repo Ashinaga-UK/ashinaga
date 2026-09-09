@@ -125,6 +125,11 @@ describe('Proposals API (integration)', () => {
       approved.body.steps.find((step: { key: string }) => step.key === 'outline').available
     ).toBe(true);
 
+    await request(app.getHttpServer())
+      .post(`/api/proposals/scholars/${prep.scholarId}/steps/topic/review`)
+      .send({ action: 'approve', comment: 'Second approve' })
+      .expect(400);
+
     auth.setUser({ id: prep.userId, email: prep.email, userType: 'scholar' });
     const unlocked = await request(app.getHttpServer()).get('/api/proposals/me').expect(200);
     expect(unlocked.body.currentStepKey).toBe('outline');

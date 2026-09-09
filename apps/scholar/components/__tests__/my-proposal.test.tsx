@@ -93,7 +93,14 @@ describe('MyProposal', () => {
           available: true,
           status: 'approved',
           body: 'Topic body',
-          comments: [],
+          comments: [
+            {
+              id: 'c1',
+              body: 'Sharpen the question',
+              authorName: 'Coordinator',
+              createdAt: '2026-09-07T00:00:00.000Z',
+            },
+          ],
           resources: [],
           submittedAt: null,
           reviewedAt: null,
@@ -142,6 +149,7 @@ describe('MyProposal', () => {
     expect(await screen.findByText('Final proposal')).toBeInTheDocument();
     expect(screen.getAllByText('Final proposal')).toHaveLength(1);
     expect(screen.getByText('Topic and research question')).toBeInTheDocument();
+    expect(screen.getByText('Sharpen the question')).toBeInTheDocument();
   });
 
   it('surfaces a load error', async () => {
