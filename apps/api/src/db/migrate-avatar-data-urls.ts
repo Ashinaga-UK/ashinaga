@@ -15,6 +15,18 @@ import { users } from './schema';
 
 const DATA_URL_PATTERN = /^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/i;
 
+const MIME_TO_EXT: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/jpg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+};
+
+function extensionForMime(mime: string): string {
+  return MIME_TO_EXT[mime.toLowerCase()] ?? 'bin';
+}
+
 async function main() {
   const bucketName = process.env.S3_BUCKET_NAME;
   if (!bucketName) {
@@ -45,8 +57,10 @@ async function main() {
       continue;
     }
 
+    const mime = match[1].toLowerCase();
     const body = Buffer.from(match[2], 'base64');
-    const key = `avatars/${row.id}/${randomUUID()}.jpg`;
+    const ext = extensionForMime(mime);
+    const key = `avatars/${row.id}/${randomUUID()}.${ext}`;
 
     try {
       await s3.send(
@@ -54,14 +68,14 @@ async function main() {
           Bucket: bucketName,
           Key: key,
           Body: body,
-          ContentType: 'image/jpeg',
+          ContentType: mime,
         })
       );
 
       await db.update(users).set({ image: key, updatedAt: new Date() }).where(eq(users.id, row.id));
 
       migrated += 1;
-      console.log(`Migrated ${row.id} -> ${key}`);
+      console.log(`Migrated ${row.id} -> ${key} (${mime})`);
     } catch (error) {
       failed += 1;
       console.error(`Failed ${row.id}:`, error instanceof Error ? error.message : error);

@@ -18,7 +18,6 @@ import {
   buildPendingAvatarFileKey,
   isPendingAvatarFileKey,
   isPermanentAvatarFileKey,
-  isStoredAvatarKey,
   resolveAvatarSrc,
 } from './avatar-files';
 
@@ -52,16 +51,14 @@ export class AvatarsService {
   }
 
   /**
-   * Confirm a pending upload, remove an avatar, or no-op.
-   * Returns the value to persist on users.image (S3 key or null).
+   * Confirm a pending upload or clear the avatar value.
+   * Copies pending → permanent and deletes the pending object.
+   * Does NOT delete the previous permanent object — callers must UPDATE
+   * `users.image` first, then call {@link deleteStoredAvatar}; on UPDATE
+   * failure, delete the returned permanent key instead.
    */
-  async resolveImageUpdate(
-    userId: string,
-    nextImage: string | null,
-    previousImage: string | null | undefined
-  ): Promise<string | null> {
+  async resolveImageUpdate(userId: string, nextImage: string | null): Promise<string | null> {
     if (nextImage === null || nextImage === '') {
-      await this.deleteStoredAvatarIfOurs(previousImage, userId);
       return null;
     }
 
@@ -94,54 +91,14 @@ export class AvatarsService {
       );
     }
 
-    await this.deleteStoredAvatarIfOurs(previousImage, userId);
     return permanentKey;
   }
 
-  async getAvatarResponse(userId: string): Promise<AvatarRedirectResult> {
-    const [user] = await database.select().from(users).where(eq(users.id, userId)).limit(1);
-    if (!user?.image) {
-      throw new NotFoundException('Avatar not found');
-    }
-
-    const image = user.image;
-
-    if (isStoredAvatarKey(image)) {
-      const url = await this.objectStorage.createDownloadUrl({
-        key: image,
-        contentDisposition: 'inline',
-        expiresInSeconds: AVATAR_DOWNLOAD_URL_EXPIRES_IN_SECONDS,
-      });
-      return { kind: 'redirect', url };
-    }
-
-    if (image.startsWith('http://') || image.startsWith('https://')) {
-      return { kind: 'redirect', url: image };
-    }
-
-    const dataMatch = image.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/i);
-    if (dataMatch) {
-      return {
-        kind: 'data',
-        contentType: dataMatch[1],
-        body: Buffer.from(dataMatch[2], 'base64'),
-      };
-    }
-
-    throw new NotFoundException('Avatar not found');
-  }
-
-  withResolvedImage<T extends { id: string; image?: string | null }>(user: T): T {
-    return {
-      ...user,
-      image: resolveAvatarSrc(user.image, user.id),
-    };
-  }
-
-  private async deleteStoredAvatarIfOurs(
-    image: string | null | undefined,
-    userId: string
-  ): Promise<void> {
+  /**
+   * Best-effort delete of an avatar object we own. A leaked object is cheaper
+   * than a broken avatar row, so failures are logged and swallowed.
+   */
+  async deleteStoredAvatar(image: string | null | undefined, userId: string): Promise<void> {
     if (!image) return;
     if (!isPermanentAvatarFileKey(image, userId) && !isPendingAvatarFileKey(image, userId)) {
       return;
@@ -153,5 +110,44 @@ export class AvatarsService {
         `Failed to delete avatar ${image}: ${error instanceof Error ? error.message : String(error)}`
       );
     }
+  }
+
+  async getAvatarResponse(userId: string): Promise<AvatarRedirectResult> {
+    const [user] = await database.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!user?.image) {
+      throw new NotFoundException('Avatar not found');
+    }
+
+    const image = user.image;
+
+    if (isPermanentAvatarFileKey(image, userId)) {
+      const url = await this.objectStorage.createDownloadUrl({
+        key: image,
+        contentDisposition: 'inline',
+        expiresInSeconds: AVATAR_DOWNLOAD_URL_EXPIRES_IN_SECONDS,
+      });
+      return { kind: 'redirect', url };
+    }
+
+    const dataMatch = image.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/i);
+    if (dataMatch) {
+      return {
+        kind: 'data',
+        contentType: dataMatch[1],
+        body: Buffer.from(dataMatch[2], 'base64'),
+      };
+    }
+
+    // External https (dicebear) stays in JSON via resolveAvatarSrc and must
+    // not be signed/redirected through this route. Pending keys and other
+    // unexpected values are treated as missing.
+    throw new NotFoundException('Avatar not found');
+  }
+
+  withResolvedImage<T extends { id: string; image?: string | null }>(user: T): T {
+    return {
+      ...user,
+      image: resolveAvatarSrc(user.image, user.id),
+    };
   }
 }

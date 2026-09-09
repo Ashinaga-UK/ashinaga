@@ -62,6 +62,7 @@ describe('ScholarsService', () => {
     };
     const mockAvatarsService = {
       resolveImageUpdate: jest.fn().mockImplementation(async (_userId, next) => next),
+      deleteStoredAvatar: jest.fn().mockResolvedValue(undefined),
     };
 
     const module: TestingModule = await Test.createTestingModule({

@@ -56,32 +56,44 @@ export class UsersService {
       updateData.name = updateUserDto.name;
     }
 
-    if (updateUserDto.image !== undefined) {
-      updateData.image = await this.avatarsService.resolveImageUpdate(
-        userId,
-        updateUserDto.image,
-        existing.image
-      );
-    }
-
-    if (Object.keys(updateData).length > 1) {
-      const updatedUser = await database
-        .update(users)
-        .set(updateData)
-        .where(eq(users.id, userId))
-        .returning();
-
-      if (!updatedUser || updatedUser.length === 0) {
-        throw new Error('Failed to update user');
+    let confirmedAvatarKey: string | null | undefined;
+    try {
+      if (updateUserDto.image !== undefined) {
+        confirmedAvatarKey = await this.avatarsService.resolveImageUpdate(
+          userId,
+          updateUserDto.image
+        );
+        updateData.image = confirmedAvatarKey;
       }
 
-      return {
-        ...updatedUser[0],
-        image: resolveAvatarSrc(updatedUser[0].image, userId),
-      };
-    }
+      if (Object.keys(updateData).length > 1) {
+        const updatedUser = await database
+          .update(users)
+          .set(updateData)
+          .where(eq(users.id, userId))
+          .returning();
 
-    return this.findById(userId);
+        if (!updatedUser || updatedUser.length === 0) {
+          throw new Error('Failed to update user');
+        }
+
+        if (updateUserDto.image !== undefined) {
+          await this.avatarsService.deleteStoredAvatar(existing.image, userId);
+        }
+
+        return {
+          ...updatedUser[0],
+          image: resolveAvatarSrc(updatedUser[0].image, userId),
+        };
+      }
+
+      return this.findById(userId);
+    } catch (error) {
+      if (confirmedAvatarKey) {
+        await this.avatarsService.deleteStoredAvatar(confirmedAvatarKey, userId);
+      }
+      throw error;
+    }
   }
 
   async getStaffList(currentUserId?: string): Promise<StaffListItem[]> {

@@ -9,6 +9,7 @@ describe('AvatarsController', () => {
     createUploadUrl: jest.fn(),
     getAvatarResponse: jest.fn(),
   };
+  const betterAuthUserId = 'AbCdEfGhIjKlMnOpQrStUvWxYz123456';
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -42,7 +43,7 @@ describe('AvatarsController', () => {
     expect(result.fileKey).toContain('avatars/pending');
   });
 
-  it('redirects avatar GET responses', async () => {
+  it('redirects avatar GET responses with Cache-Control for Better Auth ids', async () => {
     avatarsService.getAvatarResponse.mockResolvedValue({
       kind: 'redirect',
       url: 'https://s3.example/signed',
@@ -55,9 +56,24 @@ describe('AvatarsController', () => {
       send: jest.fn(),
     };
 
-    await controller.getAvatar('11111111-1111-4111-8111-111111111111', res as any);
+    await controller.getAvatar(betterAuthUserId, res as any);
 
+    expect(avatarsService.getAvatarResponse).toHaveBeenCalledWith(betterAuthUserId);
     expect(res.status).toHaveBeenCalledWith(302);
+    expect(res.header).toHaveBeenCalledWith('Cache-Control', 'private, max-age=300');
     expect(res.redirect).toHaveBeenCalledWith('https://s3.example/signed');
+  });
+
+  it('rejects invalid userId params', async () => {
+    const res = {
+      status: jest.fn().mockReturnThis(),
+      redirect: jest.fn(),
+      type: jest.fn().mockReturnThis(),
+      header: jest.fn().mockReturnThis(),
+      send: jest.fn(),
+    };
+
+    await expect(controller.getAvatar('../evil', res as any)).rejects.toThrow('Invalid user id');
+    expect(avatarsService.getAvatarResponse).not.toHaveBeenCalled();
   });
 });

@@ -26,7 +26,7 @@ import {
 import { UpdatePlatformSetupDto } from './dto/update-platform-setup.dto';
 import {
   UpdateMyScholarProfileDto,
-  UpdateScholarProfileDto,
+  UpdateStaffScholarProfileDto,
 } from './dto/update-scholar-profile.dto';
 import { ScholarsService } from './scholars.service';
 
@@ -109,7 +109,7 @@ export class ScholarsController {
   @UseGuards(StaffGuard)
   async updateScholarProfileByStaff(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() updateData: UpdateScholarProfileDto
+    @Body() updateData: UpdateStaffScholarProfileDto
   ): Promise<ScholarProfileDto> {
     return this.scholarsService.updateScholarProfileByScholarId(id, updateData);
   }

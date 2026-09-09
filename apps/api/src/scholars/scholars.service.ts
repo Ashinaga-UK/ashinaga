@@ -1041,15 +1041,20 @@ export class ScholarsService {
     await database.update(scholars).set(dbUpdateData).where(eq(scholars.id, scholarId));
 
     if (image !== undefined) {
-      const nextImage = await this.avatarsService.resolveImageUpdate(
-        userId,
-        image,
-        existingUser?.image
-      );
-      await database
-        .update(users)
-        .set({ image: nextImage, updatedAt: new Date() })
-        .where(eq(users.id, userId));
+      let confirmedAvatarKey: string | null | undefined;
+      try {
+        confirmedAvatarKey = await this.avatarsService.resolveImageUpdate(userId, image);
+        await database
+          .update(users)
+          .set({ image: confirmedAvatarKey, updatedAt: new Date() })
+          .where(eq(users.id, userId));
+        await this.avatarsService.deleteStoredAvatar(existingUser?.image, userId);
+      } catch (error) {
+        if (confirmedAvatarKey) {
+          await this.avatarsService.deleteStoredAvatar(confirmedAvatarKey, userId);
+        }
+        throw error;
+      }
     }
 
     // Return updated profile

@@ -10,7 +10,7 @@ jest.mock('../db/connection', () => ({
 }));
 
 describe('AvatarsService', () => {
-  const userId = '11111111-1111-4111-8111-111111111111';
+  const userId = 'AbCdEfGhIjKlMnOpQrStUvWxYz123456';
   let service: AvatarsService;
   let objectStorage: {
     createUploadUrl: jest.Mock;
@@ -65,7 +65,7 @@ describe('AvatarsService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('confirms a pending upload, copies to permanent, deletes old', async () => {
+  it('confirms a pending upload, copies to permanent, deletes pending only', async () => {
     const pending = `avatars/pending/${userId}/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.jpg`;
     const previous = `avatars/${userId}/cccccccc-cccc-4ccc-8ccc-cccccccccccc.jpg`;
     objectStorage.headObject.mockResolvedValue({
@@ -75,26 +75,26 @@ describe('AvatarsService', () => {
     objectStorage.copyObject.mockResolvedValue(undefined);
     objectStorage.deleteObject.mockResolvedValue(undefined);
 
-    const next = await service.resolveImageUpdate(userId, pending, previous);
+    const next = await service.resolveImageUpdate(userId, pending);
 
     expect(next).toMatch(new RegExp(`^avatars/${userId}/`));
     expect(objectStorage.copyObject).toHaveBeenCalledWith(pending, next);
     expect(objectStorage.deleteObject).toHaveBeenCalledWith(pending);
-    expect(objectStorage.deleteObject).toHaveBeenCalledWith(previous);
+    expect(objectStorage.deleteObject).not.toHaveBeenCalledWith(previous);
   });
 
-  it('removes an avatar and deletes the stored object', async () => {
+  it('returns null on remove without deleting yet', async () => {
     const previous = `avatars/${userId}/cccccccc-cccc-4ccc-8ccc-cccccccccccc.jpg`;
-    objectStorage.deleteObject.mockResolvedValue(undefined);
 
-    await expect(service.resolveImageUpdate(userId, null, previous)).resolves.toBeNull();
+    await expect(service.resolveImageUpdate(userId, null)).resolves.toBeNull();
+    expect(objectStorage.deleteObject).not.toHaveBeenCalled();
+
+    await service.deleteStoredAvatar(previous, userId);
     expect(objectStorage.deleteObject).toHaveBeenCalledWith(previous);
   });
 
-  it('does not delete external https images on remove', async () => {
-    await expect(
-      service.resolveImageUpdate(userId, null, 'https://api.dicebear.com/x.png')
-    ).resolves.toBeNull();
+  it('does not delete external https images', async () => {
+    await service.deleteStoredAvatar('https://api.dicebear.com/x.png', userId);
     expect(objectStorage.deleteObject).not.toHaveBeenCalled();
   });
 
@@ -114,6 +114,21 @@ describe('AvatarsService', () => {
       kind: 'redirect',
       url: 'https://s3.example/signed',
     });
+  });
+
+  it('does not redirect external https values stored in the column', async () => {
+    const { database } = require('../db/connection');
+    database.select.mockReturnValue({
+      from: () => ({
+        where: () => ({
+          limit: () =>
+            Promise.resolve([{ id: userId, image: 'https://api.dicebear.com/x.png' }]),
+        }),
+      }),
+    });
+
+    await expect(service.getAvatarResponse(userId)).rejects.toBeInstanceOf(NotFoundException);
+    expect(objectStorage.createDownloadUrl).not.toHaveBeenCalled();
   });
 
   it('404s when the user has no image', async () => {

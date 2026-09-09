@@ -13,6 +13,7 @@ describe('UsersService', () => {
           provide: AvatarsService,
           useValue: {
             resolveImageUpdate: jest.fn(),
+            deleteStoredAvatar: jest.fn(),
           },
         },
       ],
