@@ -13,6 +13,7 @@ import { GoalsModule } from './goals/goals.module';
 import { HealthModule } from './health/health.module';
 import { InvitationsModule } from './invitations/invitations.module';
 import { PrepYearReportModule } from './prep-year-report/prep-year-report.module';
+import { ProposalsModule } from './proposals/proposals.module';
 import { RequestsModule } from './requests/requests.module';
 import { ResourcesModule } from './resources/resources.module';
 import { ScholarsModule } from './scholars/scholars.module';
@@ -38,6 +39,7 @@ import { UsersModule } from './users/users.module';
     ResourcesModule,
     DocumentsModule,
     CoordinatorNotesModule,
+    ProposalsModule,
     AnnualUpdatesModule,
     PrepYearReportModule,
   ],

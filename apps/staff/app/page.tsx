@@ -20,6 +20,7 @@ import { MyProfile } from '../components/my-profile';
 import { PrepCohortReport } from '../components/prep-cohort-report';
 import { PrepDocumentsTracker } from '../components/prep-documents-tracker';
 import { PrepTasksTracker } from '../components/prep-tasks-tracker';
+import { ProposalInbox } from '../components/proposal-inbox';
 import { RequestManagement } from '../components/request-management';
 import { ResourcesManagement } from '../components/resources-management';
 import { ScholarManagementTable } from '../components/scholar-management-table';
@@ -561,6 +562,13 @@ function StaffDashboardContent() {
                     />
                   </div>
                 </div>
+                <ProposalInbox
+                  onOpenScholar={(scholarId) =>
+                    router.push(
+                      `?tab=scholars&view=scholar-profile&scholarId=${scholarId}&scholarTab=proposal`
+                    )
+                  }
+                />
               </div>
             )}
 

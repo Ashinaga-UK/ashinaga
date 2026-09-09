@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { ScholarLayout } from '../scholar-layout';
 
 const mockGetMyProfile = jest.fn();
+const navState = { pathname: '' };
 
 jest.mock('../../lib/api/profile', () => ({
   getMyProfile: (...args: unknown[]) => mockGetMyProfile(...args),
@@ -11,6 +12,16 @@ jest.mock('../../lib/api/profile', () => ({
 
 jest.mock('next-themes', () => ({
   useTheme: () => ({ theme: 'light', setTheme: jest.fn() }),
+}));
+
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    prefetch: jest.fn(),
+  }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => navState.pathname,
 }));
 
 function getSidebar() {
@@ -42,6 +53,7 @@ async function renderLayout(children: ReactNode = <p>Dashboard content</p>, onLo
 describe('ScholarLayout', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    navState.pathname = '';
     mockGetMyProfile.mockResolvedValue({ programStage: 'scholar' });
   });
 
@@ -117,6 +129,7 @@ describe('ScholarLayout', () => {
     await renderLayout(<div>content</div>);
 
     expect(await screen.findByRole('link', { name: 'My Annual Review' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'My Proposal' })).toHaveAttribute('href', '/proposal');
     expect(screen.getByRole('link', { name: 'My LDF' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'My Documents' })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Ashinaga Scholar Portal' })).toBeInTheDocument();
@@ -130,6 +143,7 @@ describe('ScholarLayout', () => {
 
     expect(screen.getByRole('heading', { name: 'Ashinaga Prep Year' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'My LDF' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'My Proposal' })).toHaveAttribute('href', '/proposal');
     expect(screen.queryByRole('link', { name: 'My Annual Review' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'My Documents' })).toHaveAttribute(
       'href',
@@ -145,5 +159,17 @@ describe('ScholarLayout', () => {
     expect(screen.getByRole('link', { name: 'My LDF' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'My Annual Review' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'My Documents' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'My Proposal' })).not.toBeInTheDocument();
+  });
+
+  it('does not show Proposal while the profile is still loading', async () => {
+    navState.pathname = '/proposal';
+    mockGetMyProfile.mockReturnValue(new Promise(() => {}));
+
+    render(<ScholarLayout onLogout={jest.fn()}>content</ScholarLayout>);
+    await waitFor(() => expect(mockGetMyProfile).toHaveBeenCalled());
+
+    expect(screen.queryByRole('link', { name: 'My Proposal' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'My Proposal' })).toBeInTheDocument();
   });
 });
