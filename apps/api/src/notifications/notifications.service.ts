@@ -6,7 +6,7 @@ import { EmailService } from '../email/email.service';
 import { PROPOSAL_STEPS } from '../proposals/proposal-steps';
 import { isTaskDueInCalendarDays, isTaskOverdue } from '../tasks/task-due';
 import { brandedEmail, escapeHtml } from './email-layout';
-import { inactivityDays, reminderDays } from './notification-config';
+import { dueSoonWindowLabel, inactivityDays, reminderDays } from './notification-config';
 import { NOTIFICATION_KINDS } from './notification-kinds';
 import {
   isMonthlySummaryDay,
@@ -47,12 +47,13 @@ export class NotificationsService {
     const recipient = await this.scholarRecipient(input.scholarId);
     if (!recipient) return;
 
-    const claimed = await this.claimDelivery({
+    const claim = {
       kind: NOTIFICATION_KINDS.proposalFeedback,
       recipientUserId: recipient.userId,
       dedupeKey: `${input.scholarId}:${input.stepKey}:${input.action}:${input.eventId}`,
-    });
-    if (!claimed) return;
+    };
+    const claimId = await this.claimDelivery(claim);
+    if (!claimId) return;
 
     const stepTitle =
       PROPOSAL_STEPS.find((step) => step.key === input.stepKey)?.title ?? input.stepKey;
@@ -72,12 +73,10 @@ export class NotificationsService {
       ctaLabel: 'Open proposal',
     });
 
-    await this.emailService.sendEmail({
-      to: recipient.email,
-      subject: actionCopy.title,
-      html: email.html,
-      text: email.text,
-    });
+    const delivered = await this.sendAfterClaim(claimId, recipient.email, actionCopy.title, email);
+    if (!delivered) {
+      throw new Error(`Failed to send proposal feedback to ${recipient.email}`);
+    }
   }
 
   private async sendDueSoonReminders(now: Date): Promise<number> {
@@ -101,25 +100,28 @@ export class NotificationsService {
     let sent = 0;
     for (const row of rows) {
       if (!isTaskDueInCalendarDays(row, days, now)) continue;
-      const claimed = await this.claimDelivery({
+      const claimId = await this.claimDelivery({
         kind: NOTIFICATION_KINDS.taskDueSoon,
         recipientUserId: row.userId,
         dedupeKey: `${row.taskId}:${utcDateKey(row.dueDate)}`,
       });
-      if (!claimed) continue;
+      if (!claimId) continue;
 
       const dueLabel = formatDueDate(row.dueDate);
+      const windowLabel = dueSoonWindowLabel(days);
+      const subject = `Reminder: ${row.title} is due ${windowLabel}`;
       const audience = audienceNoun(row.programStage);
       const email = brandedEmail({
-        title: `Reminder: ${row.title} is due in 48 hours`,
+        title: subject,
         greeting: `Dear ${row.scholarName},`,
-        bodyHtml: `<p>This is a reminder that your ${escapeHtml(audience)} task <strong>${escapeHtml(row.title)}</strong> is due on <strong>${escapeHtml(dueLabel)}</strong>.</p>`,
-        textBody: `Your ${audience} task "${row.title}" is due on ${dueLabel}.`,
+        bodyHtml: `<p>This is a reminder that your ${escapeHtml(audience)} task <strong>${escapeHtml(row.title)}</strong> is due on <strong>${escapeHtml(dueLabel)}</strong> (${escapeHtml(windowLabel)}).</p>`,
+        textBody: `Your ${audience} task "${row.title}" is due on ${dueLabel} (${windowLabel}).`,
         ctaUrl: `${scholarAppUrl()}/tasks`,
         ctaLabel: 'Open tasks',
       });
-      await this.safeSend(row.scholarEmail, `Reminder: ${row.title} is due in 48 hours`, email);
-      sent += 1;
+      if (await this.sendAfterClaim(claimId, row.scholarEmail, subject, email)) {
+        sent += 1;
+      }
     }
     return sent;
   }
@@ -170,12 +172,12 @@ export class NotificationsService {
       );
       if (completed.length === 0 && due.length === 0) continue;
 
-      const claimed = await this.claimDelivery({
+      const claimId = await this.claimDelivery({
         kind: NOTIFICATION_KINDS.monthlySummary,
         recipientUserId: recipient.userId,
         dedupeKey: monthKey,
       });
-      if (!claimed) continue;
+      if (!claimId) continue;
 
       const audience = audienceNoun(recipient.programStage);
       const completedHtml = listHtml(
@@ -194,8 +196,9 @@ export class NotificationsService {
         ctaUrl: `${scholarAppUrl()}/tasks`,
         ctaLabel: 'Open tasks',
       });
-      await this.safeSend(recipient.email, 'Your monthly task summary', email);
-      sent += 1;
+      if (await this.sendAfterClaim(claimId, recipient.email, 'Your monthly task summary', email)) {
+        sent += 1;
+      }
     }
     return sent;
   }
@@ -263,12 +266,12 @@ export class NotificationsService {
 
     let sent = 0;
     for (const recipient of staffRecipients) {
-      const claimed = await this.claimDelivery({
+      const claimId = await this.claimDelivery({
         kind: NOTIFICATION_KINDS.staffDigest,
         recipientUserId: recipient.userId,
         dedupeKey: digestKey,
       });
-      if (!claimed) continue;
+      if (!claimId) continue;
 
       const email = brandedEmail({
         title: 'Weekly coordinator alerts',
@@ -278,8 +281,9 @@ export class NotificationsService {
         ctaUrl: staffScholarsUrl(),
         ctaLabel: 'Open scholar list',
       });
-      await this.safeSend(recipient.email, 'Weekly coordinator alerts', email);
-      sent += 1;
+      if (await this.sendAfterClaim(claimId, recipient.email, 'Weekly coordinator alerts', email)) {
+        sent += 1;
+      }
     }
     return sent;
   }
@@ -303,7 +307,7 @@ export class NotificationsService {
     kind: string;
     recipientUserId: string;
     dedupeKey: string;
-  }): Promise<boolean> {
+  }): Promise<string | null> {
     const [row] = await database
       .insert(notificationDeliveries)
       .values({
@@ -313,18 +317,26 @@ export class NotificationsService {
       })
       .onConflictDoNothing()
       .returning({ id: notificationDeliveries.id });
-    return Boolean(row);
+    return row?.id ?? null;
   }
 
-  private async safeSend(
+  private async releaseDelivery(claimId: string): Promise<void> {
+    await database.delete(notificationDeliveries).where(eq(notificationDeliveries.id, claimId));
+  }
+
+  private async sendAfterClaim(
+    claimId: string,
     to: string,
     subject: string,
     email: { html: string; text: string }
-  ): Promise<void> {
+  ): Promise<boolean> {
     try {
       await this.emailService.sendEmail({ to, subject, html: email.html, text: email.text });
+      return true;
     } catch (error) {
       this.logger.error(`Failed to send "${subject}" to ${to}`, error);
+      await this.releaseDelivery(claimId);
+      return false;
     }
   }
 }

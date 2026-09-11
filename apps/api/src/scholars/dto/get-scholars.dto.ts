@@ -49,7 +49,7 @@ export class GetScholarsQueryDto {
   @IsEnum(['overdue', 'due_today', 'behind'])
   taskProgress?: 'overdue' | 'due_today' | 'behind';
 
-  /** lastActivity older than NOTIFICATION_INACTIVITY_DAYS. Null lastActivity is unknown, not stale. */
+  /** lastActivity older than NOTIFICATION_INACTIVITY_DAYS. Null is unknown (column unused before ASH-86), not stale. */
   @IsOptional()
   @IsEnum(['stale'])
   loginActivity?: 'stale';

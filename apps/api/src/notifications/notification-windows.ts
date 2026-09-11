@@ -20,6 +20,7 @@ export function utcDateKey(date: Date): string {
   return new Date(date).toISOString().slice(0, 10);
 }
 
+/** Null lastActivity is unknown, not stale. The column was unused until ASH-86, so null is not “never logged in”. */
 export function isStaleLastActivity(
   lastActivity: Date | string | null | undefined,
   now = new Date(),

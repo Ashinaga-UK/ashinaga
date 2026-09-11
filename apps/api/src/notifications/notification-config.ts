@@ -22,6 +22,13 @@ export function activityTouchHours(): number {
   return parsePositiveInt(process.env.NOTIFICATION_ACTIVITY_TOUCH_HOURS, 6);
 }
 
+/** Human window for the due-soon email, matching NOTIFICATION_REMINDER_DAYS. */
+export function dueSoonWindowLabel(days = reminderDays()): string {
+  if (days === 1) return 'in 24 hours';
+  if (days === 2) return 'in 48 hours';
+  return `in ${days} days`;
+}
+
 /** UTC weekday for the staff digest. 0=Sunday … 6=Saturday. Default Monday. */
 export function staffDigestWeekday(): number {
   const parsed = Number(process.env.NOTIFICATION_STAFF_DIGEST_WEEKDAY);

@@ -30,7 +30,7 @@ describe('notification-windows', () => {
     expect(monthlyDedupeKey(now)).toBe('2026-09');
   });
 
-  it('does not treat missing lastActivity as stale', () => {
+  it('does not treat missing lastActivity as stale (unknown, not never-logged-in)', () => {
     expect(isStaleLastActivity(null, now, 14)).toBe(false);
     expect(isStaleLastActivity(undefined, now, 14)).toBe(false);
   });

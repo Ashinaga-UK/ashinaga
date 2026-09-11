@@ -1,4 +1,4 @@
-import { reminderDays, staffDigestWeekday } from './notification-config';
+import { dueSoonWindowLabel, reminderDays, staffDigestWeekday } from './notification-config';
 
 describe('notification-config', () => {
   const originalReminder = process.env.NOTIFICATION_REMINDER_DAYS;
@@ -29,5 +29,11 @@ describe('notification-config', () => {
     expect(staffDigestWeekday()).toBe(0);
     process.env.NOTIFICATION_STAFF_DIGEST_WEEKDAY = '7';
     expect(staffDigestWeekday()).toBe(1);
+  });
+
+  it('labels the due-soon window from reminder days', () => {
+    expect(dueSoonWindowLabel(1)).toBe('in 24 hours');
+    expect(dueSoonWindowLabel(2)).toBe('in 48 hours');
+    expect(dueSoonWindowLabel(3)).toBe('in 3 days');
   });
 });
