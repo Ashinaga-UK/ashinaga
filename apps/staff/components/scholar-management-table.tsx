@@ -26,6 +26,7 @@ import {
 } from '../lib/api-client';
 import { useArchiveScholar, useDeleteScholar } from '../lib/hooks/use-queries';
 import { BulkTaskAssignment } from './bulk-task-assignment';
+import { StaleActivityBadge } from './stale-activity-badge';
 import { TaskAssignment } from './task-assignment';
 import { TaskFlagsBadges } from './task-flags-badges';
 import { Alert, AlertDescription } from './ui/alert';
@@ -75,6 +76,7 @@ export function ScholarManagementTable({
   const [taskProgressFilter, setTaskProgressFilter] = useState<
     'all' | 'overdue' | 'due_today' | 'behind'
   >('all');
+  const [loginActivityFilter, setLoginActivityFilter] = useState<'all' | 'stale'>('all');
   const [exportingCsv, setExportingCsv] = useState(false);
   const archiveScholar = useArchiveScholar();
   const deleteScholar = useDeleteScholar();
@@ -100,7 +102,7 @@ export function ScholarManagementTable({
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const scholarListFilterKey = `${programFilter}|${yearFilter}|${universityFilter}|${statusFilter}|${programStageFilter}|${platformSetupFilter}|${taskProgressFilter}`;
+  const scholarListFilterKey = `${programFilter}|${yearFilter}|${universityFilter}|${statusFilter}|${programStageFilter}|${platformSetupFilter}|${taskProgressFilter}|${loginActivityFilter}`;
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset pagination when program/year/university/status filters change
   useEffect(() => {
     setCurrentPage(1);
@@ -122,6 +124,7 @@ export function ScholarManagementTable({
         programStage: programStageFilter !== 'all' ? programStageFilter : undefined,
         platformSetup: platformSetupFilter !== 'all' ? platformSetupFilter : undefined,
         taskProgress: taskProgressFilter !== 'all' ? taskProgressFilter : undefined,
+        loginActivity: loginActivityFilter !== 'all' ? loginActivityFilter : undefined,
         sortBy: 'createdAt',
         sortOrder: 'desc',
       };
@@ -145,6 +148,7 @@ export function ScholarManagementTable({
     programStageFilter,
     platformSetupFilter,
     taskProgressFilter,
+    loginActivityFilter,
   ]);
 
   useEffect(() => {
@@ -416,13 +420,27 @@ export function ScholarManagementTable({
           </SelectContent>
         </Select>
 
+        <Select
+          value={loginActivityFilter}
+          onValueChange={(v) => setLoginActivityFilter(v as typeof loginActivityFilter)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Login activity" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All login activity</SelectItem>
+            <SelectItem value="stale">No recent activity</SelectItem>
+          </SelectContent>
+        </Select>
+
         {(programFilter !== 'all' ||
           yearFilter !== 'all' ||
           universityFilter !== 'all' ||
           statusFilter !== 'all' ||
           programStageFilter !== 'all' ||
           platformSetupFilter !== 'all' ||
-          taskProgressFilter !== 'all') && (
+          taskProgressFilter !== 'all' ||
+          loginActivityFilter !== 'all') && (
           <Button
             variant="outline"
             size="sm"
@@ -435,6 +453,7 @@ export function ScholarManagementTable({
               setProgramStageFilter('all');
               setPlatformSetupFilter('all');
               setTaskProgressFilter('all');
+              setLoginActivityFilter('all');
             }}
           >
             Clear Filters
@@ -491,6 +510,7 @@ export function ScholarManagementTable({
                         overdue={scholar.tasks.overdue}
                         dueToday={scholar.tasks.dueToday}
                       />
+                      <StaleActivityBadge stale={scholar.staleActivity} />
                     </span>
                     <span className="block truncate text-sm text-muted-foreground">
                       {scholar.email}
@@ -680,6 +700,7 @@ export function ScholarManagementTable({
                             overdue={scholar.tasks.overdue}
                             dueToday={scholar.tasks.dueToday}
                           />
+                          <StaleActivityBadge stale={scholar.staleActivity} />
                         </div>
                         <div className="text-sm text-muted-foreground">{scholar.email}</div>
                       </div>

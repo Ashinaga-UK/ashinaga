@@ -176,6 +176,13 @@
       "when": 1788799294767,
       "tag": "0024_windy_iceman",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1788978675256,
+      "tag": "0025_condemned_loa",
+      "breakpoints": true
     }
   ]
 }

@@ -49,6 +49,11 @@ export class GetScholarsQueryDto {
   @IsEnum(['overdue', 'due_today', 'behind'])
   taskProgress?: 'overdue' | 'due_today' | 'behind';
 
+  /** lastActivity older than NOTIFICATION_INACTIVITY_DAYS. Null is unknown (column unused before ASH-86), not stale. */
+  @IsOptional()
+  @IsEnum(['stale'])
+  loginActivity?: 'stale';
+
   @IsOptional()
   @IsEnum(['name', 'lastActivity', 'createdAt'])
   sortBy?: string = 'createdAt';
@@ -168,6 +173,8 @@ export class ScholarResponseDto {
   degreePathway?: string | null;
   startDate: Date;
   lastActivity?: Date | null;
+  /** True when lastActivity is older than the documented inactivity window. False when unknown. */
+  staleActivity: boolean;
   goals: ScholarGoalsStatsDto;
   tasks: ScholarTasksStatsDto;
   /** True when a prep-year candidate still has platforms that are not Yes. Null for confirmed scholars. */
