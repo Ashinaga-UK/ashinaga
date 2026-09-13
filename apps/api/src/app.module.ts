@@ -6,6 +6,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { AvatarsModule } from './avatars/avatars.module';
+import { CoordinatorNotesModule } from './coordinator-notes/coordinator-notes.module';
 import { DocumentsModule } from './documents/documents.module';
 import { EmailModule } from './email/email.module';
 import { FilesModule } from './files/files.module';
@@ -13,6 +14,7 @@ import { GoalsModule } from './goals/goals.module';
 import { HealthModule } from './health/health.module';
 import { InvitationsModule } from './invitations/invitations.module';
 import { PrepYearReportModule } from './prep-year-report/prep-year-report.module';
+import { ProposalsModule } from './proposals/proposals.module';
 import { RequestsModule } from './requests/requests.module';
 import { ResourcesModule } from './resources/resources.module';
 import { ScholarsModule } from './scholars/scholars.module';
@@ -38,6 +40,8 @@ import { UsersModule } from './users/users.module';
     GoalsModule,
     ResourcesModule,
     DocumentsModule,
+    CoordinatorNotesModule,
+    ProposalsModule,
     AnnualUpdatesModule,
     PrepYearReportModule,
   ],

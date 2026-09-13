@@ -162,6 +162,20 @@
       "when": 1788460000000,
       "tag": "0022_prep_year_task_evidence",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1788560836936,
+      "tag": "0023_panoramic_monster_badoon",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1788799294767,
+      "tag": "0024_windy_iceman",
+      "breakpoints": true
     }
   ]
 }

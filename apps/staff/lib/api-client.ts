@@ -14,6 +14,7 @@ export interface ScholarTasksStats {
   total: number;
   completed: number;
   overdue: number;
+  dueToday: number;
 }
 
 export interface Scholar {
@@ -263,6 +264,7 @@ export interface GetScholarsParams {
   status?: 'active' | 'inactive' | 'on_hold' | 'archived';
   programStage?: 'prep_year' | 'scholar';
   platformSetup?: 'incomplete' | 'complete';
+  taskProgress?: 'overdue' | 'due_today' | 'behind';
   sortBy?: 'name' | 'lastActivity' | 'createdAt';
   sortOrder?: 'asc' | 'desc';
 }
@@ -1399,6 +1401,112 @@ export async function getRequiredDocumentDownloadUrl(
   return fetchAPI<{ downloadUrl: string }>(`/api/documents/${fileId}/download${query}`);
 }
 
+export interface CoordinatorNote {
+  id: string;
+  scholarId: string;
+  body: string;
+  createdBy: string | null;
+  authorName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CoordinatorMeetingUpdate {
+  id: string;
+  scholarId: string;
+  meetingDate: string;
+  notes: string | null;
+  concern: string | null;
+  furtherAction: string | null;
+  createdBy: string | null;
+  authorName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getCoordinatorNotes(scholarId: string): Promise<CoordinatorNote[]> {
+  return fetchAPI<CoordinatorNote[]>(`/api/scholars/${scholarId}/coordinator-notes`);
+}
+
+export async function createCoordinatorNote(
+  scholarId: string,
+  data: { body: string }
+): Promise<CoordinatorNote> {
+  return fetchAPI<CoordinatorNote>(`/api/scholars/${scholarId}/coordinator-notes`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateCoordinatorNote(
+  scholarId: string,
+  noteId: string,
+  data: { body: string }
+): Promise<CoordinatorNote> {
+  return fetchAPI<CoordinatorNote>(`/api/scholars/${scholarId}/coordinator-notes/${noteId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteCoordinatorNote(
+  scholarId: string,
+  noteId: string
+): Promise<{ success: boolean }> {
+  return fetchAPI<{ success: boolean }>(`/api/scholars/${scholarId}/coordinator-notes/${noteId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function getCoordinatorMeetingUpdates(
+  scholarId: string
+): Promise<CoordinatorMeetingUpdate[]> {
+  return fetchAPI<CoordinatorMeetingUpdate[]>(`/api/scholars/${scholarId}/meeting-updates`);
+}
+
+export async function createCoordinatorMeetingUpdate(
+  scholarId: string,
+  data: {
+    meetingDate: string;
+    notes?: string;
+    concern?: string;
+    furtherAction?: string;
+  }
+): Promise<CoordinatorMeetingUpdate> {
+  return fetchAPI<CoordinatorMeetingUpdate>(`/api/scholars/${scholarId}/meeting-updates`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateCoordinatorMeetingUpdate(
+  scholarId: string,
+  updateId: string,
+  data: {
+    meetingDate?: string;
+    notes?: string;
+    concern?: string;
+    furtherAction?: string;
+  }
+): Promise<CoordinatorMeetingUpdate> {
+  return fetchAPI<CoordinatorMeetingUpdate>(
+    `/api/scholars/${scholarId}/meeting-updates/${updateId}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+export async function deleteCoordinatorMeetingUpdate(
+  scholarId: string,
+  updateId: string
+): Promise<{ success: boolean }> {
+  return fetchAPI<{ success: boolean }>(`/api/scholars/${scholarId}/meeting-updates/${updateId}`, {
+    method: 'DELETE',
+  });
+}
+
 // Staff management
 export interface StaffMember {
   id: string;
@@ -1426,4 +1534,84 @@ export async function removeStaffMember(
   return fetchAPI<{ success: boolean; alreadyInactive: boolean }>(`/api/users/staff/${userId}`, {
     method: 'DELETE',
   });
+}
+
+export type ProposalStatus = 'draft' | 'submitted' | 'changes_requested' | 'approved';
+
+export interface ProposalInboxItem {
+  scholarId: string;
+  scholarName: string;
+  stepKey: string;
+  stepTitle: string;
+  submittedAt: string | null;
+}
+
+export interface ProposalComment {
+  id: string;
+  body: string;
+  authorName: string;
+  createdAt: string;
+}
+
+export interface ProposalResource {
+  id: string;
+  title: string;
+  description: string;
+  sourceType: 'url' | 'file';
+  url: string | null;
+}
+
+export interface ProposalStepView {
+  key: string;
+  title: string;
+  sortOrder: number;
+  available: boolean;
+  status: ProposalStatus | null;
+  body: string | null;
+  comments: ProposalComment[];
+  resources: ProposalResource[];
+  submittedAt: string | null;
+  reviewedAt: string | null;
+}
+
+export interface ProposalTimeline {
+  catalog: Array<{ key: string; title: string; sortOrder: number }>;
+  currentStepKey: string;
+  steps: ProposalStepView[];
+}
+
+export async function getProposalInbox(): Promise<ProposalInboxItem[]> {
+  return fetchAPI<ProposalInboxItem[]>('/api/proposals');
+}
+
+export async function getScholarProposal(scholarId: string): Promise<ProposalTimeline> {
+  return fetchAPI<ProposalTimeline>(`/api/proposals/scholars/${scholarId}`);
+}
+
+export async function reviewProposalStep(
+  scholarId: string,
+  stepKey: string,
+  data: { action: 'approve' | 'request_changes'; comment?: string }
+): Promise<ProposalTimeline> {
+  return fetchAPI<ProposalTimeline>(
+    `/api/proposals/scholars/${scholarId}/steps/${stepKey}/review`,
+    {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+export async function addStaffProposalComment(
+  scholarId: string,
+  stepKey: string,
+  body: string
+): Promise<ProposalComment> {
+  return fetchAPI<ProposalComment>(
+    `/api/proposals/scholars/${scholarId}/steps/${stepKey}/comments`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ body }),
+    }
+  );
 }

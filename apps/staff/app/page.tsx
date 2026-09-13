@@ -20,11 +20,16 @@ import { MyProfile } from '../components/my-profile';
 import { PrepCohortReport } from '../components/prep-cohort-report';
 import { PrepDocumentsTracker } from '../components/prep-documents-tracker';
 import { PrepTasksTracker } from '../components/prep-tasks-tracker';
+import { ProposalInbox } from '../components/proposal-inbox';
 import { RequestManagement } from '../components/request-management';
 import { ResourcesManagement } from '../components/resources-management';
 import { ScholarManagementTable } from '../components/scholar-management-table';
 import { ScholarOnboarding } from '../components/scholar-onboarding';
-import { ScholarProfilePage } from '../components/scholar-profile';
+import {
+  isScholarProfileTab,
+  ScholarProfilePage,
+  type ScholarProfileTab,
+} from '../components/scholar-profile';
 import { StaffInviteDialog } from '../components/staff-invite-dialog';
 import { StaffLayout } from '../components/staff-layout';
 import { TaskAssignment } from '../components/task-assignment';
@@ -118,11 +123,8 @@ function StaffDashboardContent() {
     viewFromUrl as StaffDashboardView
   );
   const [selectedScholarId, setSelectedScholarId] = useState<string | null>(scholarIdFromUrl);
-  const [scholarProfileTab, setScholarProfileTab] = useState<
-    'profile' | 'goals' | 'annual-reviews' | 'tasks' | 'documents'
-  >(
-    (scholarTabFromUrl as 'profile' | 'goals' | 'annual-reviews' | 'tasks' | 'documents') ||
-      'profile'
+  const [scholarProfileTab, setScholarProfileTab] = useState<ScholarProfileTab>(
+    isScholarProfileTab(scholarTabFromUrl) ? scholarTabFromUrl : 'profile'
   );
   const [requestCategoryFilter, setRequestCategoryFilter] = useState('all');
   const [requestStatusFilter, setRequestStatusFilter] = useState('all');
@@ -205,9 +207,7 @@ function StaffDashboardContent() {
         | 'my-profile'
     );
     setSelectedScholarId(newScholarId);
-    setScholarProfileTab(
-      (newScholarTab || 'profile') as 'profile' | 'goals' | 'annual-reviews' | 'tasks' | 'documents'
-    );
+    setScholarProfileTab(isScholarProfileTab(newScholarTab) ? newScholarTab : 'profile');
   }, [searchParams]);
 
   const _getPriorityColor = (priority: string) => {
@@ -562,6 +562,13 @@ function StaffDashboardContent() {
                     />
                   </div>
                 </div>
+                <ProposalInbox
+                  onOpenScholar={(scholarId) =>
+                    router.push(
+                      `?tab=scholars&view=scholar-profile&scholarId=${scholarId}&scholarTab=proposal`
+                    )
+                  }
+                />
               </div>
             )}
 
