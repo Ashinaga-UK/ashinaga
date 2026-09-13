@@ -142,3 +142,8 @@ export class UpdateScholarProfileDto {
 export class UpdateMyScholarProfileDto extends OmitType(UpdateScholarProfileDto, [
   'programStage',
 ] as const) {}
+
+/** Staff edit of a scholar profile — avatar changes only via the scholar's own My Profile. */
+export class UpdateStaffScholarProfileDto extends OmitType(UpdateScholarProfileDto, [
+  'image',
+] as const) {}

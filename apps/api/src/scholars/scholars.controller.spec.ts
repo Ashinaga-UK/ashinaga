@@ -267,6 +267,22 @@ describe('ScholarsController', () => {
         programStage: ProgramStage.SCHOLAR,
       });
     });
+
+    it('accepts UpdateStaffScholarProfileDto without image field', async () => {
+      mockScholarsService.updateScholarProfileByScholarId.mockResolvedValue({
+        id: 'scholar-1',
+      });
+
+      await controller.updateScholarProfileByStaff('scholar-1', {
+        phone: '+123',
+      });
+
+      expect(service.updateScholarProfileByScholarId).toHaveBeenCalledWith('scholar-1', {
+        phone: '+123',
+      });
+      const passed = mockScholarsService.updateScholarProfileByScholarId.mock.calls[0][1];
+      expect(passed).not.toHaveProperty('image');
+    });
   });
 
   describe('updatePlatformSetup', () => {

@@ -5,6 +5,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { and, count, desc, eq, ilike, inArray, isNull, not, or, sql } from 'drizzle-orm';
+import { resolveAvatarSrc } from '../avatars/avatar-files';
+import { AvatarsService } from '../avatars/avatars.service';
 import { validateProfileImage } from '../common/profile-image';
 import { database } from '../db/connection';
 import {
@@ -62,7 +64,8 @@ function uniqueFilterValues(values: Array<string | null | undefined>): string[] 
 export class ScholarsService {
   constructor(
     private readonly invitationsService: InvitationsService,
-    private readonly documentsService: DocumentsService
+    private readonly documentsService: DocumentsService,
+    private readonly avatarsService: AvatarsService
   ) {}
 
   async createScholar(
@@ -248,7 +251,7 @@ export class ScholarsService {
       userId: row.scholar.userId,
       name: row.user.name,
       email: row.user.email,
-      image: row.user.image,
+      image: resolveAvatarSrc(row.user.image, row.scholar.userId),
       phone: row.scholar.phone,
       program: row.scholar.program,
       year: row.scholar.year,
@@ -310,7 +313,7 @@ export class ScholarsService {
       userId: row.scholar.userId,
       name: row.user.name,
       email: row.user.email,
-      image: row.user.image,
+      image: resolveAvatarSrc(row.user.image, row.scholar.userId),
       phone: row.scholar.phone,
       program: row.scholar.program,
       year: row.scholar.year,
@@ -653,7 +656,7 @@ export class ScholarsService {
       userId: row.scholar.userId,
       name: row.user.name,
       email: row.user.email,
-      image: row.user.image,
+      image: resolveAvatarSrc(row.user.image, row.scholar.userId),
       phone: row.scholar.phone,
       program: row.scholar.program,
       year: row.scholar.year,
@@ -878,7 +881,7 @@ export class ScholarsService {
       userId: row.scholar.userId,
       name: row.user.name,
       email: row.user.email,
-      image: row.user.image,
+      image: resolveAvatarSrc(row.user.image, row.scholar.userId),
       phone: row.scholar.phone,
       program: row.scholar.program,
       year: row.scholar.year,
@@ -926,7 +929,7 @@ export class ScholarsService {
     profileUpdateData: UpdateScholarProfileDto
   ): Promise<ScholarProfileDto> {
     if (profileUpdateData.image !== undefined) {
-      validateProfileImage(profileUpdateData.image);
+      validateProfileImage(profileUpdateData.image, userId);
     }
 
     // First check if the scholar exists
@@ -942,6 +945,8 @@ export class ScholarsService {
 
     const current = scholarResult[0];
     const scholarId = current.id;
+
+    const [existingUser] = await database.select().from(users).where(eq(users.id, userId)).limit(1);
 
     // Prepare update data - remove fields that shouldn't be updated
     const {
@@ -1043,10 +1048,20 @@ export class ScholarsService {
     await database.update(scholars).set(dbUpdateData).where(eq(scholars.id, scholarId));
 
     if (image !== undefined) {
-      await database
-        .update(users)
-        .set({ image: image || null, updatedAt: new Date() })
-        .where(eq(users.id, userId));
+      let confirmedAvatarKey: string | null | undefined;
+      try {
+        confirmedAvatarKey = await this.avatarsService.resolveImageUpdate(userId, image);
+        await database
+          .update(users)
+          .set({ image: confirmedAvatarKey, updatedAt: new Date() })
+          .where(eq(users.id, userId));
+        await this.avatarsService.deleteStoredAvatar(existingUser?.image, userId);
+      } catch (error) {
+        if (confirmedAvatarKey) {
+          await this.avatarsService.deleteStoredAvatar(confirmedAvatarKey, userId);
+        }
+        throw error;
+      }
     }
 
     // Return updated profile

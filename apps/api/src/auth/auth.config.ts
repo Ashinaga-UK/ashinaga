@@ -1,5 +1,6 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { resolveAvatarSrc } from '../avatars/avatar-files';
 import { eq } from 'drizzle-orm';
 import { getDatabase } from '../db/connection';
 import * as schema from '../db/schema';
@@ -256,6 +257,7 @@ If you didn't request this, you can ignore this email.
 
             const result = {
               ...user,
+              image: resolveAvatarSrc(user.image, user.id),
               phone: staffData.phone || null,
               department: department || null,
               role: jobTitle || null,
@@ -265,7 +267,10 @@ If you didn't request this, you can ignore this email.
             return result;
           }
         }
-        return user;
+        return {
+          ...user,
+          image: resolveAvatarSrc(user.image, user.id),
+        };
       },
     },
     signUp: {

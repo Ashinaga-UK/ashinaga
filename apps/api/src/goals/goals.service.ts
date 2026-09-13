@@ -1,5 +1,6 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { desc, eq } from 'drizzle-orm';
+import { resolveAvatarSrc } from '../avatars/avatar-files';
 import { getDatabase } from '../db/connection';
 import { goalComments, goals } from '../db/schema/goals';
 import { scholars } from '../db/schema/scholars';
@@ -158,7 +159,10 @@ export class GoalsService {
       .where(eq(goalComments.goalId, goalId))
       .orderBy(goalComments.createdAt);
 
-    return comments;
+    return comments.map((comment) => ({
+      ...comment,
+      userImage: comment.userId ? resolveAvatarSrc(comment.userImage, comment.userId) : null,
+    }));
   }
 
   async createComment(userId: string, goalId: string, createCommentDto: CreateCommentDto) {
@@ -224,7 +228,14 @@ export class GoalsService {
       createCommentDto.comment
     );
 
-    return commentWithUser;
+    return commentWithUser
+      ? {
+          ...commentWithUser,
+          userImage: commentWithUser.userId
+            ? resolveAvatarSrc(commentWithUser.userImage, commentWithUser.userId)
+            : null,
+        }
+      : commentWithUser;
   }
 
   private async sendCommentNotifications(
@@ -347,7 +358,14 @@ export class GoalsService {
       .leftJoin(users, eq(goalComments.userId, users.id))
       .where(eq(goalComments.id, updatedComment.id));
 
-    return commentWithUser;
+    return commentWithUser
+      ? {
+          ...commentWithUser,
+          userImage: commentWithUser.userId
+            ? resolveAvatarSrc(commentWithUser.userImage, commentWithUser.userId)
+            : null,
+        }
+      : commentWithUser;
   }
 
   async deleteComment(userId: string, commentId: string) {
