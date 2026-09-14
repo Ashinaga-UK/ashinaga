@@ -23,6 +23,7 @@ jest.mock('../../lib/api-client', () => ({
   reviewProposalStep: (...args: unknown[]) => mockReview(...args),
   addStaffProposalComment: jest.fn(),
   getResourceDownloadUrl: jest.fn(),
+  getScholarProposalFileDownloadUrl: jest.fn(),
 }));
 
 jest.mock('../ui/use-toast', () => ({
@@ -57,6 +58,8 @@ describe('ProposalPanel', () => {
           available: true,
           status: 'submitted',
           body: 'A research question',
+          stageLabel: '1b',
+          fileName: 'topic.pdf',
           comments: [],
           resources: [],
           submittedAt: '2026-09-07T00:00:00.000Z',
@@ -72,6 +75,8 @@ describe('ProposalPanel', () => {
     renderPanel();
 
     expect(await screen.findByText('A research question')).toBeInTheDocument();
+    expect(screen.getByText(/scholar is on 1b/)).toBeInTheDocument();
+    expect(screen.getByText('Download topic.pdf')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Approve' }));
     expect(mockReview).toHaveBeenCalledWith('scholar-1', 'topic', {
       action: 'approve',
@@ -91,6 +96,8 @@ describe('ProposalPanel', () => {
           available: true,
           status: 'approved',
           body: 'Approved text',
+          stageLabel: '1c',
+          fileName: 'topic.pdf',
           comments: [],
           resources: [],
           submittedAt: '2026-09-07T00:00:00.000Z',

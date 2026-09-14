@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import {
   BadRequestException,
   ForbiddenException,
@@ -20,6 +21,19 @@ import {
   users,
 } from '../db/schema';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ObjectStorageService } from '../storage/object-storage';
+import {
+  buildContentDispositionHeader,
+  buildPendingProposalFileKey,
+  buildPermanentProposalFileKey,
+  isPendingProposalFileKey,
+  PROPOSAL_DOWNLOAD_URL_EXPIRES_IN_SECONDS,
+  PROPOSAL_FILE_MAX_SIZE_BYTES,
+  PROPOSAL_UPLOAD_URL_EXPIRES_IN_SECONDS,
+  type ProposalDownloadDisposition,
+  resolveProposalMimeType,
+} from './proposal-files';
+import { normalizeStageLabel } from './proposal-stage-label';
 import { PROPOSAL_STEPS, type ProposalStepKey, requireProposalStepKey } from './proposal-steps';
 import {
   currentStepKey,
@@ -34,23 +48,80 @@ import {
 
 const authorUser = alias(users, 'proposal_comment_author');
 
+type ProposalFileInput = {
+  pendingFileKey: string;
+  fileName: string;
+  fileMimeType: string;
+  fileSizeBytes: number;
+};
+
 @Injectable()
 export class ProposalsService {
   private readonly logger = new Logger(ProposalsService.name);
 
-  constructor(private readonly notifications: NotificationsService) {}
+  constructor(
+    private readonly notifications: NotificationsService,
+    private readonly objectStorage: ObjectStorageService
+  ) {}
 
   async getMine(userId: string) {
     const scholar = await this.requireScholarForUser(userId);
     return this.assembleTimeline(scholar.id, { hideLockedBodies: true });
   }
 
-  async saveDraft(userId: string, stepKey: string, body: string) {
-    return this.writeScholarStep(userId, stepKey, 'draft', body);
+  async saveDraft(userId: string, stepKey: string, body: string, stageLabel?: string) {
+    return this.writeScholarStep(userId, stepKey, 'draft', body, stageLabel);
   }
 
-  async submit(userId: string, stepKey: string, body: string) {
-    return this.writeScholarStep(userId, stepKey, 'submit', body);
+  async submit(
+    userId: string,
+    stepKey: string,
+    body: string,
+    stageLabel?: string,
+    note?: string,
+    file?: ProposalFileInput
+  ) {
+    return this.writeScholarStep(userId, stepKey, 'submit', body, stageLabel, note, file);
+  }
+
+  async createUploadUrl(
+    userId: string,
+    input: { fileName: string; fileType: string; fileSize: number }
+  ) {
+    const scholar = await this.requireScholarForUser(userId);
+    const mimeType = resolveProposalMimeType(input.fileName, input.fileType);
+    if (!mimeType) {
+      throw new BadRequestException('Upload a PDF or Word document');
+    }
+    if (input.fileSize < 1 || input.fileSize > PROPOSAL_FILE_MAX_SIZE_BYTES) {
+      throw new BadRequestException('Upload a file smaller than 10MB');
+    }
+    const fileKey = buildPendingProposalFileKey(scholar.id, randomUUID(), input.fileName);
+    const upload = await this.objectStorage.createUploadUrl({
+      key: fileKey,
+      contentType: mimeType,
+      contentLength: input.fileSize,
+      expiresInSeconds: PROPOSAL_UPLOAD_URL_EXPIRES_IN_SECONDS,
+    });
+    return { uploadUrl: upload.url, fields: upload.fields, fileKey };
+  }
+
+  async getMyFileDownloadUrl(
+    userId: string,
+    stepKey: string,
+    disposition: ProposalDownloadDisposition = 'attachment'
+  ) {
+    const scholar = await this.requireScholarForUser(userId);
+    return this.getFileDownloadUrl(scholar.id, stepKey, disposition);
+  }
+
+  async getStaffFileDownloadUrl(
+    scholarId: string,
+    stepKey: string,
+    disposition: ProposalDownloadDisposition = 'attachment'
+  ) {
+    await this.requireScholar(scholarId);
+    return this.getFileDownloadUrl(scholarId, stepKey, disposition);
   }
 
   async addScholarComment(userId: string, stepKey: string, body: string) {
@@ -72,6 +143,7 @@ export class ProposalsService {
       .select({
         scholarId: proposalSubmissions.scholarId,
         stepKey: proposalSubmissions.stepKey,
+        stageLabel: proposalSubmissions.stageLabel,
         submittedAt: proposalSubmissions.submittedAt,
         scholarName: users.name,
       })
@@ -86,6 +158,7 @@ export class ProposalsService {
       scholarName: row.scholarName,
       stepKey: row.stepKey,
       stepTitle: this.stepTitle(row.stepKey),
+      stageLabel: row.stageLabel,
       submittedAt: row.submittedAt?.toISOString() ?? null,
     }));
   }
@@ -215,13 +288,17 @@ export class ProposalsService {
     userId: string,
     stepKey: string,
     action: 'draft' | 'submit',
-    body: string
+    body: string,
+    stageLabel?: string,
+    note?: string,
+    file?: ProposalFileInput
   ) {
     const scholar = await this.requireScholarForUser(userId);
     const key = this.parseStepKey(stepKey);
     const trimmed = this.requireTrimmed(body, 'Proposal text is required');
     const statusByStep = await this.statusByStep(scholar.id);
     const available = isStepAvailable(key, statusByStep);
+    const existing = await this.findSubmission(scholar.id, key);
 
     let nextStatus: ProposalStatus;
     try {
@@ -229,6 +306,23 @@ export class ProposalsService {
     } catch {
       throw new ForbiddenException('This proposal step is locked');
     }
+
+    let normalizedStageLabel: string | null;
+    try {
+      normalizedStageLabel = normalizeStageLabel(stageLabel);
+    } catch (error) {
+      throw new BadRequestException(
+        error instanceof Error ? error.message : 'Use a step like 1, 1a, or 1b'
+      );
+    }
+    if (action === 'submit' && !normalizedStageLabel) {
+      throw new BadRequestException('Say which step you are on, for example 1a or 1b');
+    }
+
+    const storedFile =
+      action === 'submit'
+        ? await this.resolveSubmissionFile(scholar.id, key, existing, file)
+        : null;
 
     const now = new Date();
     const [written] = await database
@@ -238,12 +332,22 @@ export class ProposalsService {
         stepKey: key,
         status: nextStatus,
         body: trimmed,
+        stageLabel: normalizedStageLabel,
+        fileKey: storedFile?.fileKey ?? null,
+        fileName: storedFile?.fileName ?? null,
+        fileMimeType: storedFile?.fileMimeType ?? null,
+        fileSizeBytes: storedFile?.fileSizeBytes ?? null,
         submittedAt: action === 'submit' ? now : null,
       })
       .onConflictDoUpdate({
         target: [proposalSubmissions.scholarId, proposalSubmissions.stepKey],
         set: {
           body: trimmed,
+          stageLabel: normalizedStageLabel ?? sql`${proposalSubmissions.stageLabel}`,
+          fileKey: storedFile?.fileKey ?? sql`${proposalSubmissions.fileKey}`,
+          fileName: storedFile?.fileName ?? sql`${proposalSubmissions.fileName}`,
+          fileMimeType: storedFile?.fileMimeType ?? sql`${proposalSubmissions.fileMimeType}`,
+          fileSizeBytes: storedFile?.fileSizeBytes ?? sql`${proposalSubmissions.fileSizeBytes}`,
           status: nextStatus,
           submittedAt: action === 'submit' ? now : sql`${proposalSubmissions.submittedAt}`,
           reviewedAt: action === 'submit' ? null : sql`${proposalSubmissions.reviewedAt}`,
@@ -255,6 +359,10 @@ export class ProposalsService {
       .returning();
     if (!written) {
       throw new ForbiddenException('This proposal step is locked');
+    }
+    const trimmedNote = note?.trim();
+    if (action === 'submit' && trimmedNote) {
+      await this.addComment(written.id, userId, trimmedNote);
     }
     return this.assembleTimeline(scholar.id, { hideLockedBodies: true });
   }
@@ -283,6 +391,8 @@ export class ProposalsService {
             available: false,
             status: null,
             body: null,
+            stageLabel: null,
+            fileName: null,
             comments: [],
             resources: resourcesByStep.get(step.key) ?? [],
             submittedAt: null,
@@ -294,6 +404,8 @@ export class ProposalsService {
           available,
           status: submission?.status ?? null,
           body: submission?.body ?? null,
+          stageLabel: submission?.stageLabel ?? null,
+          fileName: submission?.fileName ?? null,
           comments: commentsBySubmission.get(submission?.id ?? '') ?? [],
           resources: resourcesByStep.get(step.key) ?? [],
           submittedAt: submission?.submittedAt?.toISOString() ?? null,
@@ -411,6 +523,85 @@ export class ProposalsService {
       }
     }
     return map;
+  }
+
+  private async resolveSubmissionFile(
+    scholarId: string,
+    stepKey: ProposalStepKey,
+    existing: typeof proposalSubmissions.$inferSelect | null,
+    file?: ProposalFileInput
+  ) {
+    if (file) {
+      return this.copyPendingUpload({
+        scholarId,
+        stepKey,
+        pendingFileKey: file.pendingFileKey,
+        fileName: file.fileName,
+        fileMimeType: file.fileMimeType,
+        fileSizeBytes: file.fileSizeBytes,
+      });
+    }
+    if (existing?.fileKey && existing.fileName) {
+      return {
+        fileKey: existing.fileKey,
+        fileName: existing.fileName,
+        fileMimeType: existing.fileMimeType,
+        fileSizeBytes: existing.fileSizeBytes,
+      };
+    }
+    throw new BadRequestException('Upload the completed file for this step');
+  }
+
+  private async copyPendingUpload(input: {
+    scholarId: string;
+    stepKey: string;
+    pendingFileKey: string;
+    fileName: string;
+    fileMimeType: string;
+    fileSizeBytes: number;
+  }) {
+    if (!isPendingProposalFileKey(input.pendingFileKey, input.scholarId)) {
+      throw new BadRequestException('Invalid uploaded file');
+    }
+    const uploaded = await this.objectStorage.headObject(input.pendingFileKey);
+    if (!uploaded) {
+      throw new BadRequestException('Uploaded file was not found. Please upload the file again.');
+    }
+    const storedType = uploaded.contentType?.split(';')[0]?.trim() || input.fileMimeType;
+    const mimeType = resolveProposalMimeType(input.fileName, storedType);
+    if (!mimeType) {
+      throw new BadRequestException('Upload a PDF or Word document');
+    }
+    const sizeBytes = uploaded.contentLength ?? input.fileSizeBytes;
+    if (sizeBytes < 1 || sizeBytes > PROPOSAL_FILE_MAX_SIZE_BYTES) {
+      throw new BadRequestException('Upload a file smaller than 10MB');
+    }
+    const fileKey = buildPermanentProposalFileKey(input.scholarId, input.stepKey, input.fileName);
+    await this.objectStorage.copyObject(input.pendingFileKey, fileKey);
+    return {
+      fileKey,
+      fileName: input.fileName,
+      fileMimeType: mimeType,
+      fileSizeBytes: sizeBytes,
+    };
+  }
+
+  private async getFileDownloadUrl(
+    scholarId: string,
+    stepKey: string,
+    disposition: ProposalDownloadDisposition
+  ) {
+    const key = this.parseStepKey(stepKey);
+    const submission = await this.getSubmission(scholarId, key);
+    if (!submission.fileKey || !submission.fileName) {
+      throw new NotFoundException('No completed file has been uploaded for this step');
+    }
+    const downloadUrl = await this.objectStorage.createDownloadUrl({
+      key: submission.fileKey,
+      contentDisposition: buildContentDispositionHeader(submission.fileName, disposition),
+      expiresInSeconds: PROPOSAL_DOWNLOAD_URL_EXPIRES_IN_SECONDS,
+    });
+    return { downloadUrl };
   }
 
   private async getSubmission(scholarId: string, stepKey: ProposalStepKey) {

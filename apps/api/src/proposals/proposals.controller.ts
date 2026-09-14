@@ -7,6 +7,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   Req,
   UnauthorizedException,
   UseGuards,
@@ -18,7 +19,9 @@ import { AuthGuard } from '../auth/auth.guard';
 import { StaffGuard } from '../auth/staff.guard';
 import {
   AttachProposalResourceDto,
+  CreateProposalUploadUrlDto,
   ProposalBodyDto,
+  ProposalDownloadQueryDto,
   ReviewProposalStepDto,
 } from './dto/proposals.dto';
 import { ProposalsService } from './proposals.service';
@@ -56,7 +59,7 @@ export class ProposalsController {
     @Body(bodyValidation) dto: ProposalBodyDto,
     @Req() req: AuthenticatedRequest
   ) {
-    return this.proposalsService.saveDraft(this.actorId(req), stepKey, dto.body);
+    return this.proposalsService.saveDraft(this.actorId(req), stepKey, dto.body, dto.stageLabel);
   }
 
   @Post('me/steps/:stepKey/submit')
@@ -67,7 +70,44 @@ export class ProposalsController {
     @Body(bodyValidation) dto: ProposalBodyDto,
     @Req() req: AuthenticatedRequest
   ) {
-    return this.proposalsService.submit(this.actorId(req), stepKey, dto.body);
+    return this.proposalsService.submit(
+      this.actorId(req),
+      stepKey,
+      dto.body,
+      dto.stageLabel,
+      dto.note,
+      dto.pendingFileKey
+        ? {
+            pendingFileKey: dto.pendingFileKey,
+            fileName: dto.fileName ?? '',
+            fileMimeType: dto.fileMimeType ?? '',
+            fileSizeBytes: dto.fileSizeBytes ?? 0,
+          }
+        : undefined
+    );
+  }
+
+  @Post('me/upload-url')
+  @UseGuards(AuthGuard)
+  async createUploadUrl(
+    @Body(bodyValidation) dto: CreateProposalUploadUrlDto,
+    @Req() req: AuthenticatedRequest
+  ) {
+    return this.proposalsService.createUploadUrl(this.actorId(req), dto);
+  }
+
+  @Get('me/steps/:stepKey/file')
+  @UseGuards(AuthGuard)
+  async getMyFile(
+    @Param('stepKey') stepKey: string,
+    @Query(bodyValidation) query: ProposalDownloadQueryDto,
+    @Req() req: AuthenticatedRequest
+  ) {
+    return this.proposalsService.getMyFileDownloadUrl(
+      this.actorId(req),
+      stepKey,
+      query.disposition ?? 'attachment'
+    );
   }
 
   @Post('me/steps/:stepKey/comments')
@@ -99,6 +139,20 @@ export class ProposalsController {
   @UseGuards(StaffGuard)
   async getForScholar(@Param('scholarId', ParseUUIDPipe) scholarId: string) {
     return this.proposalsService.getForScholar(scholarId);
+  }
+
+  @Get('scholars/:scholarId/steps/:stepKey/file')
+  @UseGuards(StaffGuard)
+  async getStaffFile(
+    @Param('scholarId', ParseUUIDPipe) scholarId: string,
+    @Param('stepKey') stepKey: string,
+    @Query(bodyValidation) query: ProposalDownloadQueryDto
+  ) {
+    return this.proposalsService.getStaffFileDownloadUrl(
+      scholarId,
+      stepKey,
+      query.disposition ?? 'attachment'
+    );
   }
 
   @Post('scholars/:scholarId/steps/:stepKey/review')

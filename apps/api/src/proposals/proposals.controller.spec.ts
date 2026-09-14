@@ -13,6 +13,9 @@ describe('ProposalsController', () => {
     getMine: jest.fn(),
     saveDraft: jest.fn(),
     submit: jest.fn(),
+    createUploadUrl: jest.fn(),
+    getMyFileDownloadUrl: jest.fn(),
+    getStaffFileDownloadUrl: jest.fn(),
     addScholarComment: jest.fn(),
     listInbox: jest.fn(),
     getForScholar: jest.fn(),
@@ -47,7 +50,14 @@ describe('ProposalsController', () => {
     await expect(
       controller.submit('topic', { body: 'Draft' }, { user: { id: 'scholar-1' } } as never)
     ).resolves.toEqual({ currentStepKey: 'topic' });
-    expect(service.submit).toHaveBeenCalledWith('scholar-1', 'topic', 'Draft');
+    expect(service.submit).toHaveBeenCalledWith(
+      'scholar-1',
+      'topic',
+      'Draft',
+      undefined,
+      undefined,
+      undefined
+    );
   });
 
   it('passes staff review through to the lock', async () => {

@@ -1,5 +1,6 @@
 import {
   index,
+  integer,
   pgEnum,
   pgTable,
   primaryKey,
@@ -29,6 +30,12 @@ export const proposalSubmissions = pgTable(
     stepKey: text('step_key').notNull(),
     status: proposalStatusEnum('status').notNull().default('draft'),
     body: text('body'),
+    /** Scholar-entered marker such as 1a, 1b, 1c within the locked approval step. */
+    stageLabel: text('stage_label'),
+    fileKey: text('file_key'),
+    fileName: text('file_name'),
+    fileMimeType: text('file_mime_type'),
+    fileSizeBytes: integer('file_size_bytes'),
     submittedAt: timestamp('submitted_at', { withTimezone: true }),
     reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
     reviewedBy: text('reviewed_by').references(() => users.id, { onDelete: 'set null' }),

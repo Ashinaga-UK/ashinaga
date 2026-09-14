@@ -922,6 +922,8 @@ export class ScholarsService {
       kokorozashi: row.scholar.kokorozashi,
       longTermCareerPlan: row.scholar.longTermCareerPlan,
       postGraduationPlan: row.scholar.postGraduationPlan,
+      majorCategory: row.scholar.majorCategory ?? undefined,
+      fieldOfStudy: row.scholar.fieldOfStudy ?? undefined,
       // Related data
       goals: goalsList,
       tasks: tasksList,

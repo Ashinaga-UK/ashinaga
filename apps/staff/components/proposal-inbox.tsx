@@ -32,7 +32,11 @@ export function ProposalInbox({ onOpenScholar }: { onOpenScholar: (scholarId: st
               >
                 <div>
                   <p className="text-sm font-medium">{item.scholarName}</p>
-                  <p className="text-sm text-muted-foreground">{item.stepTitle}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {item.stageLabel
+                      ? `${item.stepTitle} · Step ${item.stageLabel}`
+                      : item.stepTitle}
+                  </p>
                 </div>
                 <Button
                   type="button"

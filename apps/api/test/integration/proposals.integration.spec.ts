@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
+import { afterAll, beforeAll, describe, expect, it, jest } from '@jest/globals';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
 import request from 'supertest';
@@ -21,8 +21,35 @@ describe('Proposals API (integration)', () => {
   let prep: SeededScholar;
   let other: SeededScholar;
 
+  const objectStorage = {
+    createUploadUrl: jest.fn(async (input: { key: string }) => ({
+      url: 'https://s3.example/post',
+      fields: { key: input.key, Policy: 'policy' },
+    })),
+    createDownloadUrl: jest.fn(async () => 'https://s3.example/signed-get'),
+    headObject: jest.fn(async () => ({
+      contentType: 'application/pdf',
+      contentLength: 2048,
+    })),
+    copyObject: jest.fn(async () => undefined),
+    deleteObject: jest.fn(async () => undefined),
+  };
+
+  async function uploadTopicFile() {
+    const upload = await request(app.getHttpServer())
+      .post('/api/proposals/me/upload-url')
+      .send({ fileName: 'topic.pdf', fileType: 'application/pdf', fileSize: 2048 })
+      .expect(201);
+    return {
+      pendingFileKey: upload.body.fileKey as string,
+      fileName: 'topic.pdf',
+      fileMimeType: 'application/pdf' as const,
+      fileSizeBytes: 2048,
+    };
+  }
+
   beforeAll(async () => {
-    const built = await createAuthenticatedIntegrationApp();
+    const built = await createAuthenticatedIntegrationApp({ objectStorage });
     app = built.app;
     auth = built.auth;
     const testDatabase = getTestPool();
@@ -66,9 +93,15 @@ describe('Proposals API (integration)', () => {
       .send({ body: 'Too early' })
       .expect(403);
 
+    const firstFile = await uploadTopicFile();
     await request(app.getHttpServer())
       .post('/api/proposals/me/steps/topic/submit')
-      .send({ body: 'My research question' })
+      .send({
+        body: 'My research question',
+        stageLabel: ' 1a ',
+        note: 'Ready for a look',
+        ...firstFile,
+      })
       .expect(200);
 
     auth.setUser({ id: other.userId, email: other.email, userType: 'scholar' });
@@ -81,6 +114,7 @@ describe('Proposals API (integration)', () => {
         expect.objectContaining({
           scholarId: prep.scholarId,
           stepKey: 'topic',
+          stageLabel: '1a',
         }),
       ])
     );
@@ -100,7 +134,10 @@ describe('Proposals API (integration)', () => {
     );
     expect(topicAfterChanges.status).toBe('changes_requested');
     expect(topicAfterChanges.comments).toEqual(
-      expect.arrayContaining([expect.objectContaining({ body: 'Sharpen the question' })])
+      expect.arrayContaining([
+        expect.objectContaining({ body: 'Ready for a look' }),
+        expect.objectContaining({ body: 'Sharpen the question' }),
+      ])
     );
     expect(
       changes.body.steps.find((step: { key: string }) => step.key === 'outline').available
@@ -109,7 +146,7 @@ describe('Proposals API (integration)', () => {
     auth.setUser({ id: prep.userId, email: prep.email, userType: 'scholar' });
     const resubmitted = await request(app.getHttpServer())
       .post('/api/proposals/me/steps/topic/submit')
-      .send({ body: 'Sharper question' })
+      .send({ body: 'Sharper question', stageLabel: '1b' })
       .expect(200);
     expect(
       resubmitted.body.steps.find((step: { key: string }) => step.key === 'topic').reviewedAt
