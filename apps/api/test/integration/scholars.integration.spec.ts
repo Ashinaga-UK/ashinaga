@@ -207,7 +207,7 @@ describe('Scholars API (integration)', () => {
       const unauthenticated = await createAuthenticatedIntegrationApp();
       await request(unauthenticated.app.getHttpServer())
         .get(`/api/scholars/${seededScholarId}/profile`)
-        .expect(403);
+        .expect(401);
       await unauthenticated.app.close();
     });
 

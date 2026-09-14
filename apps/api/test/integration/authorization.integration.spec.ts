@@ -6,7 +6,8 @@
  * These tests call the API directly with the wrong caller (no session, or a
  * scholar session) and assert the request is refused.
  *
- * Each describe block states the expected behaviour, not the current one.
+ * The control cases (staff doing the same thing) exist so a harness fault shows
+ * up as everything failing rather than as a false clean bill of health.
  */
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 import { eq } from 'drizzle-orm';
@@ -39,6 +40,7 @@ describe('API authorization (integration)', () => {
 
   const createdRequestIds: string[] = [];
   const createdAnnouncementIds: string[] = [];
+  const seededStaffIds: string[] = [];
 
   beforeAll(async () => {
     const built = await createAuthenticatedIntegrationApp();
@@ -61,7 +63,7 @@ describe('API authorization (integration)', () => {
         .catch(() => undefined);
     }
     await cleanupSeeded(db, {
-      userIds: [scholarA.userId, scholarB.userId, staffUser.userId],
+      userIds: [scholarA.userId, scholarB.userId, staffUser.userId, ...seededStaffIds],
       scholarIds: [scholarA.scholarId, scholarB.scholarId],
       requestIds: createdRequestIds,
     });
@@ -98,8 +100,8 @@ describe('API authorization (integration)', () => {
 
   /**
    * POST /api/requests/:id/status is how staff approve, reject or comment on a
-   * request. It decides funding outcomes, and `reviewedBy` is taken from the
-   * request body rather than the session.
+   * request, so it decides funding outcomes. It must be staff-only, and the
+   * recorded reviewer must come from the session rather than the request body.
    */
   describe('POST /api/requests/:id/status — staff only', () => {
     it('rejects an unauthenticated caller', async () => {
@@ -146,11 +148,26 @@ describe('API authorization (integration)', () => {
 
       expect(res.status).toBeLessThan(400);
     });
+
+    it('records the reviewer from the session, not the body', async () => {
+      const requestId = await createRequestAs(scholarA);
+      const otherStaff = await seedStaffUser(db, { name: 'Impersonated Staff' });
+      seededStaffIds.push(otherStaff.userId);
+      asStaff();
+
+      await request(app.getHttpServer())
+        .post(`/api/requests/${requestId}/status`)
+        .send({ status: 'approved', comment: 'Looks fine', reviewedBy: otherStaff.userId });
+
+      const [row] = await db.select().from(requests).where(eq(requests.id, requestId));
+      expect(row?.reviewedBy).toBe(staffUser.userId);
+    });
   });
 
   /**
-   * AnnouncementsController carries a single class-level AuthGuard, so every
-   * route is open to any signed-in user unless the service checks the role.
+   * Every announcement route is staff-only except my-announcements, which is how
+   * a scholar reads their own. A blanket class-level AuthGuard is not enough here:
+   * it authenticates without saying anything about role.
    */
   describe('Announcements — staff only', () => {
     it('refuses a scholar creating an announcement', async () => {

@@ -343,8 +343,15 @@ export class AnnouncementsService {
       return true;
     }
 
-    return activeFilters.every(([type, value]) =>
-      filters.some((filter) => filter.type === type && audienceValuesEqual(filter.value, value))
-    );
+    return activeFilters.every(([type, value]) => {
+      const filtersOfType = filters.filter((filter) => filter.type === type);
+
+      // An announcement carrying no filter of this type was never narrowed on that
+      // dimension, so it reached every value of it — including the one being queried.
+      // Dropping it here would hide broadcasts the moment anyone applies a filter.
+      if (filtersOfType.length === 0) return true;
+
+      return filtersOfType.some((filter) => audienceValuesEqual(filter.value, value));
+    });
   }
 }

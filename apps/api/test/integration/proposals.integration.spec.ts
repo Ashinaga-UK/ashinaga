@@ -69,9 +69,9 @@ describe('Proposals API (integration)', () => {
     await pool.end();
   });
 
-  it('returns 403 when no user is set', async () => {
+  it('returns 401 when no user is set', async () => {
     auth.setUser(null);
-    await request(app.getHttpServer()).get('/api/proposals/me').expect(403);
+    await request(app.getHttpServer()).get('/api/proposals/me').expect(401);
   });
 
   it('locks step 2 until step 1 is approved, and keeps comments on the same thread', async () => {

@@ -1,4 +1,4 @@
-import { ValidationPipe } from '@nestjs/common';
+import { ForbiddenException, UnauthorizedException, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { FastifyAdapter } from '@nestjs/platform-fastify';
@@ -68,6 +68,9 @@ export async function createAuthenticatedIntegrationApp(options?: {
 
   const adapter = new FastifyAdapter({ bodyLimit: 5 * 1024 * 1024 });
 
+  // These mirror the real guards' failure modes: no session is 401, a session
+  // belonging to the wrong role is 403. Returning `false` instead would collapse
+  // both to 403 and hide which one an endpoint actually produces in production.
   const moduleBuilder = Test.createTestingModule({ imports: [AppModule] })
     .overrideGuard(AuthGuard)
     .useValue({
@@ -75,7 +78,7 @@ export async function createAuthenticatedIntegrationApp(options?: {
         switchToHttp: () => { getRequest: () => Record<string, unknown> };
       }) => {
         const req = context.switchToHttp().getRequest();
-        if (!currentUser) return false;
+        if (!currentUser) throw new UnauthorizedException('User not authenticated');
         req.user = { ...currentUser };
         return true;
       },
@@ -86,8 +89,10 @@ export async function createAuthenticatedIntegrationApp(options?: {
         switchToHttp: () => { getRequest: () => Record<string, unknown> };
       }) => {
         const req = context.switchToHttp().getRequest();
-        if (!currentUser) return false;
-        if (currentUser.userType !== 'staff') return false;
+        if (!currentUser) throw new UnauthorizedException('User not authenticated');
+        if (currentUser.userType !== 'staff') {
+          throw new ForbiddenException('Access restricted to staff members only');
+        }
         req.user = { ...currentUser };
         return true;
       },
