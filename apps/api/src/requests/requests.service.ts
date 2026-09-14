@@ -408,6 +408,8 @@ export class RequestsService {
 
     // Link attachments to the request if provided
     if (createRequestDto.attachmentIds && createRequestDto.attachmentIds.length > 0) {
+      await this.assertAttachmentsOwnedByScholar(createRequestDto.attachmentIds, scholarId);
+
       // Update attachments to link them to this request
       await database
         .update(requestAttachments)
@@ -510,6 +512,30 @@ export class RequestsService {
     return updatedRequest;
   }
 
+  /**
+   * Attachments are uploaded against a request the scholar already owns (files.service
+   * enforces that), so re-pointing them is only ever legitimate when the caller owns the
+   * request they currently sit on. Without this check a caller can name any attachment id
+   * and pull another scholar's file onto their own request — and then download it.
+   */
+  private async assertAttachmentsOwnedByScholar(
+    attachmentIds: string[],
+    scholarId: string
+  ): Promise<void> {
+    const uniqueIds = [...new Set(attachmentIds)];
+    if (uniqueIds.length === 0) return;
+
+    const owned = await database
+      .select({ id: requestAttachments.id })
+      .from(requestAttachments)
+      .innerJoin(requests, eq(requestAttachments.requestId, requests.id))
+      .where(and(inArray(requestAttachments.id, uniqueIds), eq(requests.scholarId, scholarId)));
+
+    if (owned.length !== uniqueIds.length) {
+      throw new ForbiddenException('One or more attachments do not belong to you');
+    }
+  }
+
   async respondToCommentedRequest(
     requestId: string,
     userId: string,
@@ -571,6 +597,8 @@ export class RequestsService {
 
     // Link new attachments to this request (if any)
     if (attachmentIds.length > 0) {
+      await this.assertAttachmentsOwnedByScholar(attachmentIds, scholar.id);
+
       await database
         .update(requestAttachments)
         .set({ requestId })

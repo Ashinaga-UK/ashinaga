@@ -11,10 +11,7 @@ const PROFILE_IMAGE_DATA_URL_PATTERN = /^data:image\/(jpeg|jpg|png|webp|gif);bas
  * Accepts null (remove), a pending avatar S3 key owned by the user, or (legacy read-only
  * compatibility is handled on GET — new writes must not send data URLs).
  */
-export function validateProfileImage(
-  image: string | null | undefined,
-  userId: string
-): void {
+export function validateProfileImage(image: string | null | undefined, userId: string): void {
   if (image === null || image === undefined || image === '') return;
 
   if (isPendingAvatarFileKey(image, userId)) {

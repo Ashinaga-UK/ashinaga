@@ -7,12 +7,7 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
 import request from 'supertest';
 import { type AuthContext, createAuthenticatedIntegrationApp } from './helpers/create-app';
-import {
-  cleanupSeeded,
-  getTestPool,
-  type SeededScholar,
-  seedScholarUser,
-} from './helpers/seed';
+import { cleanupSeeded, getTestPool, type SeededScholar, seedScholarUser } from './helpers/seed';
 
 describe('Profile image save (integration)', () => {
   let app: import('@nestjs/platform-fastify').NestFastifyApplication;

@@ -57,9 +57,7 @@ describe('RequestCard expanded details', () => {
 
     expect(screen.getByText('Form Details')).toBeInTheDocument();
     expect(screen.getByText('Activity Type')).toBeInTheDocument();
-    expect(
-      screen.getByText('An 8-week+ internship in sub-Saharan Africa')
-    ).toBeInTheDocument();
+    expect(screen.getByText('An 8-week+ internship in sub-Saharan Africa')).toBeInTheDocument();
   });
 
   it('shows attachment downloads when the chevron is opened', () => {

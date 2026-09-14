@@ -1,10 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { database } from '../db/connection';
 import { users } from '../db/schema';

@@ -14,6 +14,7 @@ import {
 import { ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
+import { StaffGuard } from '../auth/staff.guard';
 import { CreateRequestDto, CreateRequestResponseDto } from './dto/create-request.dto';
 import { GetRequestsQueryDto, GetRequestsResponseDto } from './dto/get-requests.dto';
 import { RespondToRequestDto } from './dto/respond-to-request.dto';
@@ -64,19 +65,26 @@ export class RequestsController {
   }
 
   @Post(':id/status')
+  @UseGuards(StaffGuard)
   async updateRequestStatus(
     @Param('id') requestId: string,
     @Body() body: {
       status: 'approved' | 'rejected' | 'reviewed' | 'commented';
       comment: string;
-      reviewedBy: string;
-    }
+    },
+    @Req() req: AuthenticatedRequest
   ) {
+    const reviewedBy = req.user?.id;
+    if (!reviewedBy) {
+      throw new UnauthorizedException('User not authenticated');
+    }
+    // reviewedBy comes from the session, never the body — otherwise a caller
+    // can attribute their own review to another staff member.
     return this.requestsService.updateRequestStatus(
       requestId,
       body.status,
       body.comment,
-      body.reviewedBy
+      reviewedBy
     );
   }
 

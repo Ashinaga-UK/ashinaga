@@ -55,7 +55,9 @@ export function PlatformSetupCard({
               <div className="flex items-center gap-2">
                 <Select
                   value={setup.status}
-                  onValueChange={(value) => onStatusChange(setup.slug, value as PlatformSetupStatus)}
+                  onValueChange={(value) =>
+                    onStatusChange(setup.slug, value as PlatformSetupStatus)
+                  }
                   disabled={updatingSlug === setup.slug}
                 >
                   <SelectTrigger id={`platform-setup-${setup.slug}`} className="w-36">

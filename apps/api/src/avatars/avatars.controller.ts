@@ -61,10 +61,7 @@ export class AvatarsController {
 
     const result = await this.avatarsService.getAvatarResponse(userId);
     if (result.kind === 'redirect') {
-      return res
-        .status(302)
-        .header('Cache-Control', 'private, max-age=300')
-        .redirect(result.url);
+      return res.status(302).header('Cache-Control', 'private, max-age=300').redirect(result.url);
     }
     return res
       .type(result.contentType)

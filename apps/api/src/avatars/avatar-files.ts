@@ -8,8 +8,7 @@ export const AVATAR_UPLOAD_URL_EXPIRES_IN_SECONDS = 300;
 export const AVATAR_DOWNLOAD_URL_EXPIRES_IN_SECONDS = 900;
 
 /** Object id segment in permanent keys (always a UUID from our builders). */
-const UUID_SEGMENT =
-  '[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}';
+const UUID_SEGMENT = '[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}';
 
 /**
  * Better Auth user ids are opaque alphanumeric strings (typically 32 chars),
@@ -74,10 +73,7 @@ export function isStoredAvatarKey(image: string | null | undefined): boolean {
  * Rewrite stored avatar keys and legacy data URLs to a stable API URL.
  * Leave external https (e.g. dicebear) untouched.
  */
-export function resolveAvatarSrc(
-  image: string | null | undefined,
-  userId: string
-): string | null {
+export function resolveAvatarSrc(image: string | null | undefined, userId: string): string | null {
   if (!image) return null;
   if (isStoredAvatarKey(image) || image.startsWith('data:image/')) {
     return buildAvatarPublicUrl(userId);

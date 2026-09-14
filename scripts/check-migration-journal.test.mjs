@@ -44,10 +44,7 @@ describe('checkMigrationJournal', () => {
   });
 
   it('rejects missing or non-finite when', () => {
-    assert.match(
-      checkMigrationJournal([{ idx: 0, tag: '0000_a' }]).failures[0],
-      /finite number/
-    );
+    assert.match(checkMigrationJournal([{ idx: 0, tag: '0000_a' }]).failures[0], /finite number/);
     assert.match(
       checkMigrationJournal([{ idx: 0, tag: '0000_a', when: Number.NaN }]).failures[0],
       /finite number/

@@ -97,7 +97,5 @@ if (isMain()) {
     process.exit(1);
   }
 
-  console.log(
-    `Migration journal timestamps are monotonic (${journal.entries.length} entries).`
-  );
+  console.log(`Migration journal timestamps are monotonic (${journal.entries.length} entries).`);
 }

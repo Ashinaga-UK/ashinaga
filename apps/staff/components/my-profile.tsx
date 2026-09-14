@@ -156,8 +156,7 @@ export function MyProfile({ onBack }: MyProfileProps) {
       console.error('Error uploading profile picture:', error);
       toast({
         title: 'Error',
-        description:
-          error instanceof Error ? error.message : 'Failed to upload profile picture.',
+        description: error instanceof Error ? error.message : 'Failed to upload profile picture.',
         variant: 'destructive',
       });
     }
@@ -236,12 +235,7 @@ export function MyProfile({ onBack }: MyProfileProps) {
                     </label>
                   </Button>
                   {profileData.image && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleRemoveImage}
-                    >
+                    <Button type="button" variant="ghost" size="sm" onClick={handleRemoveImage}>
                       <Trash2 className="h-4 w-4" />
                       Remove
                     </Button>
