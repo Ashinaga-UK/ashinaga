@@ -1,12 +1,17 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MyProposal } from '../my-proposal';
 
 const mockGetMine = jest.fn();
+const mockSubmit = jest.fn();
+const mockUpload = jest.fn();
 
 jest.mock('../../lib/api/proposals', () => ({
   getMyProposal: (...args: unknown[]) => mockGetMine(...args),
   saveProposalDraft: jest.fn(),
-  submitProposalStep: jest.fn(),
+  submitProposalStep: (...args: unknown[]) => mockSubmit(...args),
+  uploadProposalCompletedFile: (...args: unknown[]) => mockUpload(...args),
+  getProposalFileDownloadUrl: jest.fn(),
   addProposalComment: jest.fn(),
 }));
 
@@ -31,6 +36,8 @@ describe('MyProposal', () => {
           available: true,
           status: null,
           body: null,
+          stageLabel: null,
+          fileName: null,
           comments: [],
           resources: [
             {
@@ -50,8 +57,70 @@ describe('MyProposal', () => {
     render(<MyProposal />);
 
     expect(await screen.findByText('Topic and research question')).toBeInTheDocument();
-    expect(screen.getByText('Proposal booklet')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Submit for review' })).toBeInTheDocument();
+    expect(screen.getByText('Download Proposal booklet')).toBeInTheDocument();
+    expect(screen.getByLabelText('Which step are you on?')).toBeInTheDocument();
+    expect(screen.getByLabelText('Topic, research question, and summary')).toBeInTheDocument();
+    expect(screen.getByLabelText('Note to your coordinator')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save draft' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Send note' })).not.toBeInTheDocument();
+    const submit = screen.getByRole('button', { name: 'Submit for review' });
+    expect(submit).toBeDisabled();
+
+    const user = userEvent.setup();
+    await user.type(
+      screen.getByLabelText('Topic, research question, and summary'),
+      'My research question'
+    );
+    expect(submit).toBeDisabled();
+    await user.type(screen.getByLabelText('Which step are you on?'), '1a');
+    expect(submit).toBeDisabled();
+    await user.upload(
+      screen.getByLabelText('Completed file'),
+      new File(['filled'], 'topic.pdf', { type: 'application/pdf' })
+    );
+    expect(submit).toBeEnabled();
+
+    mockUpload.mockResolvedValue({
+      pendingFileKey: 'pending-key',
+      fileName: 'topic.pdf',
+      fileMimeType: 'application/pdf',
+      fileSizeBytes: 6,
+    });
+    mockSubmit.mockResolvedValue({
+      currentStepKey: 'topic',
+      catalog: [],
+      steps: [
+        {
+          key: 'topic',
+          title: 'Topic and research question',
+          sortOrder: 1,
+          available: true,
+          status: 'submitted',
+          body: 'My research question',
+          stageLabel: '1a',
+          fileName: 'topic.pdf',
+          comments: [],
+          resources: [],
+          submittedAt: '2026-09-07T00:00:00.000Z',
+          reviewedAt: null,
+        },
+      ],
+    });
+    await user.type(screen.getByLabelText('Note to your coordinator'), 'Please take a look');
+    await user.click(submit);
+    expect(mockUpload).toHaveBeenCalled();
+    expect(mockSubmit).toHaveBeenCalledWith(
+      'topic',
+      'My research question',
+      '1a',
+      'Please take a look',
+      {
+        pendingFileKey: 'pending-key',
+        fileName: 'topic.pdf',
+        fileMimeType: 'application/pdf',
+        fileSizeBytes: 6,
+      }
+    );
   });
 
   it('shows waiting copy when the current step is submitted', async () => {
@@ -66,6 +135,8 @@ describe('MyProposal', () => {
           available: true,
           status: 'submitted',
           body: 'Waiting text',
+          stageLabel: '1a',
+          fileName: 'topic.pdf',
           comments: [],
           resources: [],
           submittedAt: '2026-09-07T00:00:00.000Z',
@@ -78,6 +149,9 @@ describe('MyProposal', () => {
 
     expect(await screen.findByText('Waiting for coordinator review')).toBeInTheDocument();
     expect(screen.getByText('Waiting text')).toBeInTheDocument();
+    expect(screen.getByText('Marked as step 1a')).toBeInTheDocument();
+    expect(screen.getByText('Download topic.pdf')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Note to your coordinator')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Submit for review' })).not.toBeInTheDocument();
   });
 
@@ -93,6 +167,7 @@ describe('MyProposal', () => {
           available: true,
           status: 'approved',
           body: 'Topic body',
+          stageLabel: '1c',
           comments: [
             {
               id: 'c1',
@@ -112,6 +187,7 @@ describe('MyProposal', () => {
           available: true,
           status: 'approved',
           body: 'Outline body',
+          stageLabel: '2a',
           comments: [],
           resources: [],
           submittedAt: null,
@@ -124,6 +200,7 @@ describe('MyProposal', () => {
           available: true,
           status: 'approved',
           body: 'Draft body',
+          stageLabel: '3',
           comments: [],
           resources: [],
           submittedAt: null,
@@ -136,6 +213,7 @@ describe('MyProposal', () => {
           available: true,
           status: 'approved',
           body: 'Final body',
+          stageLabel: '4b',
           comments: [],
           resources: [],
           submittedAt: null,

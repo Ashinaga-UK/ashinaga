@@ -524,13 +524,17 @@ function StaffDashboardContent() {
                         <QuickActionButton
                           icon={<FileText className="h-4 w-4" />}
                           label="Assign Task"
-                          description="Send a task to one or more scholars."
+                          description="Send a task to one or more scholars or Prep Year candidates."
                         />
                       }
-                      onSuccess={(scholarId) => {
-                        router.push(
-                          `?tab=scholars&view=scholar-profile&scholarId=${scholarId}&scholarTab=tasks`
-                        );
+                      onSuccess={(scholarIds) => {
+                        if (scholarIds.length === 1 && scholarIds[0]) {
+                          router.push(
+                            `?tab=scholars&view=scholar-profile&scholarId=${scholarIds[0]}&scholarTab=tasks`
+                          );
+                          return;
+                        }
+                        router.push('?tab=scholars');
                       }}
                     />
                     <QuickActionButton

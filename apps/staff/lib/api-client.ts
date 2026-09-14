@@ -351,6 +351,27 @@ export async function getScholars(params?: GetScholarsParams): Promise<GetSchola
   return fetchAPI<GetScholarsResponse>(endpoint);
 }
 
+export async function getAllActiveScholars(): Promise<Scholar[]> {
+  const scholars: Scholar[] = [];
+  let page = 1;
+  let hasNext = true;
+
+  while (hasNext && page <= 50) {
+    const response = await getScholars({
+      page,
+      limit: 100,
+      status: 'active',
+      sortBy: 'name',
+      sortOrder: 'asc',
+    });
+    scholars.push(...response.data);
+    hasNext = response.pagination.hasNext;
+    page += 1;
+  }
+
+  return scholars;
+}
+
 export async function getScholar(id: string): Promise<Scholar> {
   return fetchAPI<Scholar>(`/api/scholars/${id}`);
 }
@@ -1508,6 +1529,7 @@ export interface ProposalInboxItem {
   scholarName: string;
   stepKey: string;
   stepTitle: string;
+  stageLabel: string | null;
   submittedAt: string | null;
 }
 
@@ -1533,6 +1555,8 @@ export interface ProposalStepView {
   available: boolean;
   status: ProposalStatus | null;
   body: string | null;
+  stageLabel: string | null;
+  fileName: string | null;
   comments: ProposalComment[];
   resources: ProposalResource[];
   submittedAt: string | null;
@@ -1578,5 +1602,16 @@ export async function addStaffProposalComment(
       method: 'POST',
       body: JSON.stringify({ body }),
     }
+  );
+}
+
+export async function getScholarProposalFileDownloadUrl(
+  scholarId: string,
+  stepKey: string,
+  disposition: 'attachment' | 'inline' = 'attachment'
+): Promise<{ downloadUrl: string }> {
+  const query = disposition === 'inline' ? '?disposition=inline' : '';
+  return fetchAPI<{ downloadUrl: string }>(
+    `/api/proposals/scholars/${scholarId}/steps/${stepKey}/file${query}`
   );
 }

@@ -6,6 +6,7 @@ import {
   Check,
   CheckCircle,
   ChevronsUpDown,
+  Download,
   FileSpreadsheet,
   Send,
   Upload,
@@ -21,6 +22,11 @@ import {
   type Gender,
   mergeUniqueOptions,
 } from '../lib/constants';
+import {
+  buildScholarImportTemplateCsv,
+  parseScholarImportCsv,
+  SCHOLAR_IMPORT_TEMPLATE_FILENAME,
+} from '../lib/scholar-import';
 import { cn } from '../lib/utils';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -233,7 +239,7 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
   const [activeTab, setActiveTab] = useState('single');
   const [scholarData, setScholarData] = useState<ScholarData>(initialScholarData);
   const [csvData, setCsvData] = useState<ScholarData[]>([]);
-  const [_csvFile, setCsvFile] = useState<File | null>(null);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -281,77 +287,49 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
 
   const handleCsvUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      setCsvFile(file);
-      // Mock CSV parsing - in real app, you'd parse the actual CSV
-      const mockCsvData: ScholarData[] = [
-        {
-          name: 'John Doe',
-          aaiScholarId: 'AAI123',
-          dateOfBirth: '2000-01-01',
-          gender: 'male',
-          nationality: 'British',
-          phone: '+44 7123 456789',
-          email: 'john.doe@scholar.ac.uk',
-          passportExpirationDate: '2026-01-01',
-          visaExpirationDate: '2025-01-01',
-          location: '123 Scholar St, London',
-          addressHomeCountry: '456 Home St, London',
-          emergencyContactCountryOfStudy: 'Jane Doe',
-          emergencyContactHomeCountry: 'John Smith',
-          universityId: 'UNI123',
-          dietaryInformation: 'None',
-          kokorozashi: 'To become a software engineer',
-          longTermCareerPlan: 'Work in AI',
-          postGraduationPlan: 'Get a job',
-          program: 'Computer Science',
-          university: 'Imperial College London',
-          year: 'Foundation',
-          startDate: '2025-09-01',
-          graduationDate: '2029-06-01',
-          bio: 'Computer Science student',
-          majorCategory: 'Engineering and Technology',
-          fieldOfStudy: 'Computer Science',
-          programStage: 'scholar',
-          intendedUniversity: '',
-          intendedCourse: '',
-          degreePathway: '',
-        },
-        {
-          name: 'Jane Smith',
-          aaiScholarId: 'AAI456',
-          dateOfBirth: '2001-02-02',
-          gender: 'female',
-          nationality: 'American',
-          phone: '+44 7234 567890',
-          email: 'jane.smith@scholar.ac.uk',
-          passportExpirationDate: '2027-02-02',
-          visaExpirationDate: '2026-02-02',
-          location: '456 Scholar Ave, Edinburgh',
-          addressHomeCountry: '789 Home Ave, New York',
-          emergencyContactCountryOfStudy: 'John Smith',
-          emergencyContactHomeCountry: 'Jane Doe',
-          universityId: 'UNI456',
-          dietaryInformation: 'Vegetarian',
-          kokorozashi: 'To become a doctor',
-          longTermCareerPlan: 'Work in healthcare',
-          postGraduationPlan: 'Go to medical school',
-          program: 'Medicine',
-          university: 'University of Edinburgh',
-          year: 'Foundation',
-          startDate: '2025-09-01',
-          graduationDate: '2030-06-01',
-          bio: 'Medicine student',
-          majorCategory: 'Medical, Science, and Math-related',
-          fieldOfStudy: 'Medicine',
-          programStage: 'scholar',
-          intendedUniversity: '',
-          intendedCourse: '',
-          degreePathway: '',
-        },
-      ];
-      setCsvData(mockCsvData);
-    }
+    event.target.value = '';
+    if (!file) return;
+
+    setCsvFile(file);
+    setValidationErrors((prev) => {
+      const { submit: _, ...rest } = prev;
+      return rest;
+    });
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = typeof reader.result === 'string' ? reader.result : '';
+      const parsed = parseScholarImportCsv(text);
+      if (parsed.errors.length > 0 && parsed.rows.length === 0) {
+        setCsvData([]);
+        setValidationErrors((prev) => ({ ...prev, submit: parsed.errors.join(' ') }));
+        return;
+      }
+      setCsvData(parsed.rows.map((row) => ({ ...initialScholarData, ...row })));
+      if (parsed.errors.length > 0) {
+        setValidationErrors((prev) => ({ ...prev, submit: parsed.errors.join(' ') }));
+      }
+    };
+    reader.onerror = () => {
+      setCsvData([]);
+      setValidationErrors((prev) => ({
+        ...prev,
+        submit: 'Could not read that file. Please try the CSV template.',
+      }));
+    };
+    reader.readAsText(file);
+  };
+
+  const downloadImportTemplate = () => {
+    const blob = new Blob([buildScholarImportTemplateCsv()], {
+      type: 'text/csv;charset=utf-8',
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = SCHOLAR_IMPORT_TEMPLATE_FILENAME;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleSingleScholarSubmit = async () => {
@@ -407,11 +385,40 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
   };
 
   const handleBulkSubmit = async () => {
+    if (csvData.length === 0) return;
     setIsSubmitting(true);
-    // Mock API call
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    setStep(2);
+    setValidationErrors((prev) => {
+      const { submit: _, ...rest } = prev;
+      return rest;
+    });
+
+    const failures: string[] = [];
+    for (const scholar of csvData) {
+      const cleanedData = Object.fromEntries(
+        Object.entries(scholar).filter(([, value]) => value !== '' && value !== undefined)
+      ) as CreateScholarData;
+      try {
+        const result = await createScholar(cleanedData);
+        if (!result.success) {
+          failures.push(`${scholar.email}: ${result.message || 'Could not create scholar'}`);
+        }
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Could not create scholar';
+        failures.push(`${scholar.email}: ${message}`);
+      }
+    }
+
     setIsSubmitting(false);
+    if (failures.length === csvData.length) {
+      setValidationErrors({ submit: failures.join(' ') });
+      return;
+    }
+    if (failures.length > 0) {
+      setValidationErrors({
+        submit: `Imported ${csvData.length - failures.length} of ${csvData.length}. ${failures.join(' ')}`,
+      });
+    }
+    setStep(3);
   };
 
   const sendInvitation = async () => {
@@ -656,29 +663,49 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
 
             <TabsContent value="bulk" className="space-y-6">
               <div className="space-y-4">
-                <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
-                  <FileSpreadsheet className="h-12 w-12 text-ashinaga-teal-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Upload CSV File</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Upload a CSV file with student information. Make sure it includes: name, email,
-                    program, university, year.
+                <div className="rounded-lg border-2 border-dashed border-border p-8 text-center">
+                  <FileSpreadsheet className="mx-auto mb-4 h-12 w-12 text-ashinaga-teal-400" />
+                  <h3 className="mb-2 text-lg font-medium">Upload scholar list</h3>
+                  <p className="mx-auto mb-6 max-w-lg text-muted-foreground">
+                    Download the template, fill it in Excel, then import the CSV. Required columns
+                    are name, email, program, university, and year. Use programStage{' '}
+                    <span className="font-medium text-foreground">scholar</span> or{' '}
+                    <span className="font-medium text-foreground">prep_year</span>.
                   </p>
-                  <Input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleCsvUpload}
-                    className="max-w-xs mx-auto"
-                    id="csv-upload"
-                  />
-                  <Label htmlFor="csv-upload" className="cursor-pointer">
-                    <Button variant="outline" className="mt-2 bg-transparent" asChild>
-                      <span>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Choose CSV File
-                      </span>
+                  <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
+                    <Button type="button" variant="outline" onClick={downloadImportTemplate}>
+                      <Download className="mr-2 h-4 w-4" />
+                      Download template
                     </Button>
-                  </Label>
+                    <Label htmlFor="csv-upload" className="cursor-pointer">
+                      <Input
+                        type="file"
+                        accept=".csv,text/csv"
+                        onChange={handleCsvUpload}
+                        id="csv-upload"
+                        className="sr-only"
+                      />
+                      <Button variant="outline" className="bg-transparent" asChild>
+                        <span>
+                          <Upload className="mr-2 h-4 w-4" />
+                          Choose CSV file
+                        </span>
+                      </Button>
+                    </Label>
+                  </div>
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    {csvFile ? csvFile.name : 'No file chosen'}
+                  </p>
                 </div>
+
+                {validationErrors.submit && (
+                  <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-500/30 dark:bg-red-500/10">
+                    <p className="font-medium text-red-800 dark:text-red-300">Import error</p>
+                    <p className="text-sm text-red-700 dark:text-red-300">
+                      {validationErrors.submit}
+                    </p>
+                  </div>
+                )}
 
                 {csvData.length > 0 && (
                   <Card>

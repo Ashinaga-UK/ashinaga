@@ -5,7 +5,8 @@ import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import {
   type CreateTaskData,
-  getScholars,
+  createBulkTasks,
+  getAllActiveScholars,
   getTaskTitleSuggestions,
   type Scholar,
   type TaskTitleSuggestion,
@@ -17,6 +18,7 @@ import { TaskEvidenceFields } from './task-evidence-fields';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
+import { Checkbox } from './ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -50,7 +52,7 @@ interface ExistingTask {
 interface TaskAssignmentProps {
   trigger?: React.ReactNode;
   preselectedScholarId?: string;
-  onSuccess?: (scholarId: string) => void;
+  onSuccess?: (scholarIds: string[]) => void;
   existingTask?: ExistingTask;
   mode?: 'create' | 'edit';
 }
@@ -68,7 +70,11 @@ export function TaskAssignment({
   const [open, setOpen] = useState(false);
   const [scholars, setScholars] = useState<Scholar[]>([]);
   const [loadingScholars, setLoadingScholars] = useState(false);
-  const [selectedScholarId, setSelectedScholarId] = useState(preselectedScholarId || '');
+  const [selectedScholarIds, setSelectedScholarIds] = useState<string[]>(
+    preselectedScholarId ? [preselectedScholarId] : []
+  );
+  const [scholarSearch, setScholarSearch] = useState('');
+  const [isAssigningMany, setIsAssigningMany] = useState(false);
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDescription, setTaskDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
@@ -103,7 +109,13 @@ export function TaskAssignment({
     }
   }, [existingTask, mode]);
 
-  // Fetch scholars when dialog opens
+  useEffect(() => {
+    if (preselectedScholarId) {
+      setSelectedScholarIds([preselectedScholarId]);
+    }
+  }, [preselectedScholarId]);
+
+  // Fetch scholars when the picker dialog opens
   useEffect(() => {
     if (open && !preselectedScholarId) {
       fetchScholars();
@@ -144,8 +156,8 @@ export function TaskAssignment({
   const fetchScholars = async () => {
     setLoadingScholars(true);
     try {
-      const response = await getScholars({ limit: 100, status: 'active' });
-      setScholars(response.data);
+      const data = await getAllActiveScholars();
+      setScholars(data);
     } catch (error) {
       console.error('Error fetching scholars:', error);
       toast({
@@ -158,10 +170,53 @@ export function TaskAssignment({
     }
   };
 
-  const selectedScholar = scholars.find((s) => s.id === selectedScholarId);
+  const canPickScholars = !preselectedScholarId && mode !== 'edit';
+  const visibleScholars = scholars.filter((scholar) => {
+    const query = scholarSearch.trim().toLowerCase();
+    if (!query) return true;
+    return (
+      scholar.name.toLowerCase().includes(query) ||
+      scholar.email.toLowerCase().includes(query) ||
+      scholar.program.toLowerCase().includes(query)
+    );
+  });
+  const selectedScholars = scholars.filter((scholar) => selectedScholarIds.includes(scholar.id));
+  const selectedScholar = preselectedScholarId
+    ? (scholars.find((s) => s.id === preselectedScholarId) ?? selectedScholars[0])
+    : selectedScholars[0];
+
+  const toggleScholar = (scholarId: string, checked: boolean) => {
+    setSelectedScholarIds((current) => {
+      if (checked) {
+        return current.includes(scholarId) ? current : [...current, scholarId];
+      }
+      return current.filter((id) => id !== scholarId);
+    });
+  };
+
+  const toggleAllScholars = (checked: boolean) => {
+    setSelectedScholarIds(checked ? scholars.map((scholar) => scholar.id) : []);
+  };
+
+  const resetCreateForm = () => {
+    setTaskTitle('');
+    setTaskDescription('');
+    setDueDate('');
+    setPriority('medium');
+    setTaskType('other');
+    setPhase('');
+    setScholarSearch('');
+    const resetDefaults = evidenceDefaultsForType('other');
+    setRequiresResponse(resetDefaults.requiresResponse);
+    setRequiresAttachment(resetDefaults.requiresAttachment);
+    setRequiresLink(resetDefaults.requiresLink);
+    if (!preselectedScholarId) {
+      setSelectedScholarIds([]);
+    }
+  };
 
   const handleSubmit = async () => {
-    if (!selectedScholarId || !taskTitle || !dueDate || !taskType) {
+    if (selectedScholarIds.length === 0 || !taskTitle || !dueDate || !taskType) {
       toast({
         title: 'Missing Information',
         description: 'Please fill in all required fields.',
@@ -170,13 +225,12 @@ export function TaskAssignment({
       return;
     }
 
-    const taskData: CreateTaskData = {
+    const sharedTask = {
       title: taskTitle,
       description: taskDescription || undefined,
       type: taskType,
       priority: priority || 'medium',
       dueDate,
-      scholarId: selectedScholarId,
       phase: phase.trim() || undefined,
       requiresResponse,
       requiresAttachment,
@@ -207,7 +261,7 @@ export function TaskAssignment({
 
             // Call onSuccess callback after successful update
             if (onSuccess && preselectedScholarId) {
-              onSuccess(preselectedScholarId);
+              onSuccess([preselectedScholarId]);
             }
 
             setOpen(false);
@@ -222,44 +276,59 @@ export function TaskAssignment({
           },
         }
       );
+    } else if (selectedScholarIds.length === 1 && selectedScholarIds[0]) {
+      createTaskMutation.mutate(
+        { ...sharedTask, scholarId: selectedScholarIds[0] },
+        {
+          onSuccess: () => {
+            toast({
+              title: 'Success',
+              description: 'Task has been assigned successfully.',
+            });
+            if (onSuccess && mode === 'create') {
+              onSuccess(selectedScholarIds);
+            }
+            resetCreateForm();
+            setOpen(false);
+          },
+          onError: (error) => {
+            console.error('Error creating task:', error);
+            toast({
+              title: 'Error',
+              description: 'Failed to assign task. Please try again.',
+              variant: 'destructive',
+            });
+          },
+        }
+      );
     } else {
-      createTaskMutation.mutate(taskData, {
-        onSuccess: () => {
+      setIsAssigningMany(true);
+      void createBulkTasks({
+        ...sharedTask,
+        scholarIds: selectedScholarIds,
+      })
+        .then((result) => {
           toast({
-            title: 'Success',
-            description: 'Task has been assigned successfully.',
+            title: 'Tasks assigned',
+            description: `${result.created} task${result.created === 1 ? '' : 's'} created.`,
           });
-
-          // Call onSuccess callback after successful creation
           if (onSuccess && mode === 'create') {
-            onSuccess(selectedScholarId);
+            onSuccess(selectedScholarIds);
           }
-
-          // Reset form
-          setTaskTitle('');
-          setTaskDescription('');
-          setDueDate('');
-          setPriority('medium');
-          setTaskType('other');
-          setPhase('');
-          const resetDefaults = evidenceDefaultsForType('other');
-          setRequiresResponse(resetDefaults.requiresResponse);
-          setRequiresAttachment(resetDefaults.requiresAttachment);
-          setRequiresLink(resetDefaults.requiresLink);
-          if (!preselectedScholarId) {
-            setSelectedScholarId('');
-          }
+          resetCreateForm();
           setOpen(false);
-        },
-        onError: (error) => {
-          console.error('Error creating task:', error);
+        })
+        .catch((error) => {
+          console.error('Error creating tasks:', error);
           toast({
             title: 'Error',
             description: 'Failed to assign task. Please try again.',
             variant: 'destructive',
           });
-        },
-      });
+        })
+        .finally(() => {
+          setIsAssigningMany(false);
+        });
     }
   };
 
@@ -275,28 +344,79 @@ export function TaskAssignment({
       </DialogTrigger>
       <DialogContent className="flex max-h-[90vh] max-w-2xl flex-col overflow-hidden data-[state=open]:flex">
         <DialogHeader>
-          <DialogTitle>{mode === 'edit' ? 'Edit Task' : 'Assign Task to Student'}</DialogTitle>
+          <DialogTitle>
+            {mode === 'edit'
+              ? 'Edit Task'
+              : canPickScholars
+                ? 'Assign Task'
+                : 'Assign Task to Scholar'}
+          </DialogTitle>
           <DialogDescription>
             {mode === 'edit'
               ? 'Update the task details'
-              : 'Create and assign a new task to a student'}
+              : canPickScholars
+                ? 'Choose one or more people. Prep Year candidates and enrolled scholars can both receive this task.'
+                : 'Create and assign a new task to this scholar'}
           </DialogDescription>
         </DialogHeader>
 
         <div className="min-h-0 flex-1 space-y-6 overflow-y-auto pr-1">
-          {/* Student Selection - Hide in edit mode since we can't change the assigned student */}
-          {!preselectedScholarId && mode !== 'edit' && (
-            <div className="space-y-2">
-              <Label>Select Student *</Label>
-              <Select value={selectedScholarId} onValueChange={setSelectedScholarId}>
-                <SelectTrigger>
-                  <SelectValue placeholder={loadingScholars ? 'Loading...' : 'Choose a student'} />
-                </SelectTrigger>
-                <SelectContent>
-                  {scholars.map((scholar) => (
-                    <SelectItem key={scholar.id} value={scholar.id}>
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-6 w-6">
+          {canPickScholars && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="scholarSearch">Select scholars *</Label>
+                <p className="text-sm text-muted-foreground">
+                  {selectedScholarIds.length} selected
+                </p>
+              </div>
+              <Input
+                id="scholarSearch"
+                value={scholarSearch}
+                onChange={(e) => setScholarSearch(e.target.value)}
+                placeholder="Search by name, email, or program"
+              />
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  className="text-sm font-medium text-ashinaga-teal-700 hover:underline"
+                  onClick={() =>
+                    toggleAllScholars(
+                      !scholars.every((scholar) => selectedScholarIds.includes(scholar.id))
+                    )
+                  }
+                  disabled={loadingScholars || scholars.length === 0}
+                >
+                  {scholars.length > 0 &&
+                  scholars.every((scholar) => selectedScholarIds.includes(scholar.id))
+                    ? 'Clear all'
+                    : 'Select all'}
+                </button>
+                {loadingScholars ? (
+                  <span className="text-sm text-muted-foreground">Loading scholars…</span>
+                ) : null}
+              </div>
+              <div className="max-h-56 space-y-1 overflow-y-auto rounded-md border p-2">
+                {visibleScholars.length === 0 ? (
+                  <p className="px-2 py-6 text-center text-sm text-muted-foreground">
+                    {loadingScholars ? 'Loading scholars…' : 'No matching scholars.'}
+                  </p>
+                ) : (
+                  visibleScholars.map((scholar) => {
+                    const checked = selectedScholarIds.includes(scholar.id);
+                    const checkboxId = `assign-scholar-${scholar.id}`;
+                    return (
+                      <label
+                        key={scholar.id}
+                        htmlFor={checkboxId}
+                        className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 hover:bg-muted"
+                      >
+                        <Checkbox
+                          id={checkboxId}
+                          checked={checked}
+                          onCheckedChange={(value) => toggleScholar(scholar.id, value === true)}
+                          aria-label={`Select ${scholar.name}`}
+                        />
+                        <Avatar className="h-7 w-7">
                           <AvatarImage src={scholar.image || '/placeholder.svg'} />
                           <AvatarFallback>
                             {scholar.name
@@ -305,20 +425,26 @@ export function TaskAssignment({
                               .join('')}
                           </AvatarFallback>
                         </Avatar>
-                        <span>{scholar.name}</span>
-                        <Badge variant="outline" className="ml-2">
-                          {scholar.year}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium">{scholar.name}</p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {scholar.program} • {scholar.year}
+                          </p>
+                        </div>
+                        <Badge
+                          variant={scholar.programStage === 'prep_year' ? 'default' : 'secondary'}
+                        >
+                          {scholar.programStage === 'prep_year' ? 'Candidate' : 'Scholar'}
                         </Badge>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
             </div>
           )}
 
-          {/* Selected Student Display */}
-          {selectedScholar && (
+          {!canPickScholars && selectedScholar && (
             <div className="rounded-lg bg-muted p-4">
               <div className="flex items-center gap-3">
                 <Avatar>
@@ -477,21 +603,25 @@ export function TaskAssignment({
           <Button
             onClick={handleSubmit}
             disabled={
-              !selectedScholarId ||
+              selectedScholarIds.length === 0 ||
               !taskTitle ||
               !taskDescription ||
+              !dueDate ||
+              isAssigningMany ||
               createTaskMutation.isPending ||
               updateTaskMutation.isPending
             }
             className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700"
           >
-            {createTaskMutation.isPending || updateTaskMutation.isPending
+            {isAssigningMany || createTaskMutation.isPending || updateTaskMutation.isPending
               ? mode === 'edit'
                 ? 'Updating...'
                 : 'Assigning...'
               : mode === 'edit'
                 ? 'Update Task'
-                : 'Assign Task'}
+                : selectedScholarIds.length > 1
+                  ? `Assign to ${selectedScholarIds.length} scholars`
+                  : 'Assign Task'}
           </Button>
         </DialogFooter>
       </DialogContent>

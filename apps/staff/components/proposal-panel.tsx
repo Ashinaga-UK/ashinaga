@@ -1,8 +1,12 @@
 'use client';
 
-import { Loader2 } from 'lucide-react';
+import { Download, Loader2 } from 'lucide-react';
 import { useState } from 'react';
-import { getResourceDownloadUrl, type ProposalResource } from '../lib/api-client';
+import {
+  getResourceDownloadUrl,
+  getScholarProposalFileDownloadUrl,
+  type ProposalResource,
+} from '../lib/api-client';
 import {
   useAddStaffProposalComment,
   useReviewProposalStep,
@@ -96,10 +100,13 @@ export function ProposalPanel({ scholarId }: { scholarId: string }) {
     return <p className="text-sm text-muted-foreground">Could not load this proposal.</p>;
   }
 
+  const current = data.steps.find((step) => step.key === data.currentStepKey);
+
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Current step: {data.steps.find((step) => step.key === data.currentStepKey)?.title}
+        Current gate: {current?.title}
+        {current?.stageLabel ? ` · scholar is on ${current.stageLabel}` : ''}
       </p>
       {data.steps.map((step) => {
         const comment = commentByStep[step.key] ?? '';
@@ -107,7 +114,10 @@ export function ProposalPanel({ scholarId }: { scholarId: string }) {
         return (
           <Card key={step.key}>
             <CardHeader>
-              <CardTitle className="text-base">{step.title}</CardTitle>
+              <CardTitle className="text-base">
+                {step.sortOrder}. {step.title}
+                {step.stageLabel ? ` · ${step.stageLabel}` : ''}
+              </CardTitle>
               <p className="text-sm text-muted-foreground">{statusLabel(step.status)}</p>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -124,6 +134,31 @@ export function ProposalPanel({ scholarId }: { scholarId: string }) {
                 {step.body ||
                   (step.available ? 'No text yet.' : 'Locked until the previous step is approved.')}
               </p>
+              {step.fileName ? (
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 text-sm text-primary underline-offset-2 hover:underline"
+                  onClick={async () => {
+                    try {
+                      const { downloadUrl } = await getScholarProposalFileDownloadUrl(
+                        scholarId,
+                        step.key,
+                        'attachment'
+                      );
+                      window.location.href = downloadUrl;
+                    } catch (err) {
+                      toast({
+                        title: 'Could not download file',
+                        description: err instanceof Error ? err.message : 'Please try again.',
+                        variant: 'destructive',
+                      });
+                    }
+                  }}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Download {step.fileName}
+                </button>
+              ) : null}
               {step.comments.map((item) => (
                 <div key={item.id} className="rounded-md border p-3 text-sm">
                   <p className="text-muted-foreground">

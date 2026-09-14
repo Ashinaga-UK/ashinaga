@@ -1,38 +1,23 @@
 'use client';
 
-import { Loader2, Save, Send } from 'lucide-react';
+import { Download, Loader2, Send } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
-  addProposalComment,
   getMyProposal,
+  getProposalFileDownloadUrl,
   type ProposalComment,
   type ProposalResource,
   type ProposalTimeline,
-  saveProposalDraft,
   submitProposalStep,
+  uploadProposalCompletedFile,
 } from '../lib/api/proposals';
 import { getResourceDownloadUrl } from '../lib/api-client';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { useToast } from './ui/use-toast';
-
-async function openProposalResourceFile(resourceId: string) {
-  const viewTab = window.open('about:blank', '_blank');
-  if (viewTab) {
-    viewTab.opener = null;
-  }
-  try {
-    const { downloadUrl } = await getResourceDownloadUrl(resourceId, 'inline');
-    if (!viewTab) {
-      throw new Error('Allow pop-ups to view this file.');
-    }
-    viewTab.location.href = downloadUrl;
-  } catch (error) {
-    viewTab?.close();
-    throw error;
-  }
-}
 
 function ProposalResourceLink({ resource }: { resource: ProposalResource }) {
   const { toast } = useToast();
@@ -44,7 +29,7 @@ function ProposalResourceLink({ resource }: { resource: ProposalResource }) {
         target="_blank"
         rel="noreferrer"
       >
-        {resource.title}
+        Download {resource.title}
       </a>
     );
   }
@@ -54,20 +39,22 @@ function ProposalResourceLink({ resource }: { resource: ProposalResource }) {
   return (
     <button
       type="button"
-      className="text-primary underline-offset-2 hover:underline"
+      className="inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline"
       onClick={async () => {
         try {
-          await openProposalResourceFile(resource.id);
+          const { downloadUrl } = await getResourceDownloadUrl(resource.id, 'attachment');
+          window.location.href = downloadUrl;
         } catch (error) {
           toast({
-            title: 'Could not open resource',
+            title: 'Could not download material',
             description: error instanceof Error ? error.message : 'Please try again.',
             variant: 'destructive',
           });
         }
       }}
     >
-      {resource.title}
+      <Download className="h-3.5 w-3.5" />
+      Download {resource.title}
     </button>
   );
 }
@@ -99,12 +86,29 @@ function statusLabel(status: string | null) {
   return 'Not started';
 }
 
+function submissionCopy(stepKey: string, title: string) {
+  if (stepKey === 'topic') {
+    return {
+      label: 'Topic, research question, and summary',
+      hint: 'Write your topic and research question, plus a short summary of this submission.',
+      placeholder: 'Topic and research question\n\nSummary of this submission',
+    };
+  }
+  return {
+    label: `${title} and summary`,
+    hint: `Write your ${title.toLowerCase()}, plus a short summary of this submission.`,
+    placeholder: `${title}\n\nSummary of this submission`,
+  };
+}
+
 export function MyProposal() {
   const [timeline, setTimeline] = useState<ProposalTimeline | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [body, setBody] = useState('');
+  const [stageLabel, setStageLabel] = useState('');
   const [comment, setComment] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
   const current = timeline?.steps.find((step) => step.key === timeline.currentStepKey);
@@ -121,6 +125,7 @@ export function MyProposal() {
         setTimeline(next);
         const step = next.steps.find((item) => item.key === next.currentStepKey);
         setBody(step?.body ?? '');
+        setStageLabel(step?.stageLabel ?? '');
         setLoading(false);
       })
       .catch((err: unknown) => {
@@ -137,39 +142,24 @@ export function MyProposal() {
     setTimeline(next);
     const step = next.steps.find((item) => item.key === next.currentStepKey);
     setBody(step?.body ?? '');
+    setStageLabel(step?.stageLabel ?? '');
   };
 
-  const handleWrite = async (action: 'draft' | 'submit') => {
+  const handleSubmit = async () => {
     if (!current || !current.available || current.status === 'submitted') return;
     const trimmed = body.trim();
-    if (!trimmed) return;
+    if (!trimmed || !stageLabel.trim()) return;
+    if (!selectedFile && !current.fileName) return;
     setSaving(true);
     setError(null);
     try {
-      const next =
-        action === 'draft'
-          ? await saveProposalDraft(current.key, trimmed)
-          : await submitProposalStep(current.key, trimmed);
+      const file = selectedFile ? await uploadProposalCompletedFile(selectedFile) : undefined;
+      const next = await submitProposalStep(current.key, trimmed, stageLabel, comment, file);
+      setComment('');
+      setSelectedFile(null);
       applyTimeline(next);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save proposal');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleComment = async () => {
-    if (!current || !current.status || current.status === 'approved') return;
-    const trimmed = comment.trim();
-    if (!trimmed) return;
-    setSaving(true);
-    setError(null);
-    try {
-      await addProposalComment(current.key, trimmed);
-      setComment('');
-      applyTimeline(await getMyProposal());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not add comment');
     } finally {
       setSaving(false);
     }
@@ -190,13 +180,15 @@ export function MyProposal() {
 
   const writable =
     current.available && current.status !== 'submitted' && current.status !== 'approved';
+  const submission = submissionCopy(current.key, current.title);
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-semibold tracking-tight">My Proposal</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Each step unlocks after your coordinator approves the previous one.
+          Each step unlocks after your coordinator approves the previous one. Write the exact step
+          you are on — 1, 1a, 1b, 1c, and so on.
         </p>
       </div>
 
@@ -206,7 +198,9 @@ export function MyProposal() {
         <Card key={step.key}>
           <CardHeader>
             <CardTitle className="text-base">{step.title}</CardTitle>
-            <p className="text-sm text-muted-foreground">Approved</p>
+            <p className="text-sm text-muted-foreground">
+              Approved{step.stageLabel ? ` · marked ${step.stageLabel}` : ''}
+            </p>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="whitespace-pre-wrap text-sm">{step.body}</p>
@@ -222,42 +216,87 @@ export function MyProposal() {
         </CardHeader>
         <CardContent className="space-y-4">
           {current.resources.length > 0 ? (
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Resources for this step</p>
-              <ul className="space-y-1 text-sm">
-                {current.resources.map((resource) => (
-                  <li key={resource.id}>
-                    <ProposalResourceLink resource={resource} />
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">No proposal resources attached yet.</p>
-          )}
+            <ul className="space-y-1 text-sm">
+              {current.resources.map((resource) => (
+                <li key={resource.id}>
+                  <ProposalResourceLink resource={resource} />
+                </li>
+              ))}
+            </ul>
+          ) : null}
 
           {writable ? (
             <>
-              <Textarea
-                value={body}
-                onChange={(event) => setBody(event.target.value)}
-                rows={10}
-                placeholder="Write this step here."
-              />
-              <div className="flex flex-wrap gap-2">
+              <div className="max-w-xs space-y-2">
+                <Label htmlFor="proposal-stage-label">Which step are you on?</Label>
+                <Input
+                  id="proposal-stage-label"
+                  value={stageLabel}
+                  onChange={(event) => setStageLabel(event.target.value)}
+                  placeholder="e.g. 1a"
+                  maxLength={8}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Use the number of this step plus a letter if needed: 1, 1a, 1b, 1c, 2a…
+                </p>
+              </div>
+
+              <div className="space-y-3 rounded-lg border border-ashinaga-teal-200 bg-ashinaga-teal-50/70 p-4 dark:border-border dark:bg-accent/30">
+                <div className="space-y-1">
+                  <Label htmlFor="proposal-submission" className="text-base font-semibold">
+                    {submission.label}
+                  </Label>
+                  <p className="text-sm text-muted-foreground">{submission.hint}</p>
+                </div>
+                <Textarea
+                  id="proposal-submission"
+                  value={body}
+                  onChange={(event) => setBody(event.target.value)}
+                  rows={12}
+                  className="min-h-[16rem] bg-background text-base"
+                  placeholder={submission.placeholder}
+                />
+                <div className="space-y-1">
+                  <Label htmlFor="proposal-note">Note to your coordinator</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Optional. Leave blank if you have nothing to add.
+                  </p>
+                </div>
+                <Textarea
+                  id="proposal-note"
+                  value={comment}
+                  onChange={(event) => setComment(event.target.value)}
+                  rows={3}
+                  className="bg-background"
+                  placeholder="Add a note, or leave this empty"
+                />
+                <div className="space-y-1">
+                  <Label htmlFor="proposal-completed-file">Completed file</Label>
+                </div>
+                <Input
+                  id="proposal-completed-file"
+                  type="file"
+                  accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
+                  className="bg-background"
+                />
+                {selectedFile ? (
+                  <p className="text-sm text-muted-foreground">Selected: {selectedFile.name}</p>
+                ) : current.fileName ? (
+                  <p className="text-sm text-muted-foreground">
+                    Already uploaded: {current.fileName}. Choose a new file only if you need to
+                    replace it.
+                  </p>
+                ) : null}
                 <Button
                   type="button"
-                  variant="outline"
-                  disabled={saving || !body.trim()}
-                  onClick={() => void handleWrite('draft')}
-                >
-                  <Save className="mr-2 h-4 w-4" />
-                  Save draft
-                </Button>
-                <Button
-                  type="button"
-                  disabled={saving || !body.trim()}
-                  onClick={() => void handleWrite('submit')}
+                  disabled={
+                    saving ||
+                    !body.trim() ||
+                    !stageLabel.trim() ||
+                    (!selectedFile && !current.fileName)
+                  }
+                  onClick={() => void handleSubmit()}
                 >
                   <Send className="mr-2 h-4 w-4" />
                   Submit for review
@@ -265,31 +304,38 @@ export function MyProposal() {
               </div>
             </>
           ) : (
-            <p className="whitespace-pre-wrap text-sm">
-              {current.body || 'Waiting for coordinator approval.'}
-            </p>
+            <div className="space-y-2 rounded-lg border border-ashinaga-teal-200 bg-ashinaga-teal-50/70 p-4 dark:border-border dark:bg-accent/30">
+              <p className="text-base font-semibold">{submission.label}</p>
+              {current.stageLabel ? (
+                <p className="text-sm text-muted-foreground">Marked as step {current.stageLabel}</p>
+              ) : null}
+              <p className="whitespace-pre-wrap text-sm">
+                {current.body || 'Waiting for coordinator approval.'}
+              </p>
+              {current.fileName ? (
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 text-sm text-primary underline-offset-2 hover:underline"
+                  onClick={async () => {
+                    try {
+                      const { downloadUrl } = await getProposalFileDownloadUrl(
+                        current.key,
+                        'attachment'
+                      );
+                      window.location.href = downloadUrl;
+                    } catch (err) {
+                      setError(err instanceof Error ? err.message : 'Could not download file');
+                    }
+                  }}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Download {current.fileName}
+                </button>
+              ) : null}
+            </div>
           )}
 
           <StepComments comments={current.comments} />
-
-          {current.status && current.status !== 'approved' ? (
-            <div className="space-y-2">
-              <Textarea
-                value={comment}
-                onChange={(event) => setComment(event.target.value)}
-                rows={3}
-                placeholder="Add a comment"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                disabled={saving || !comment.trim()}
-                onClick={() => void handleComment()}
-              >
-                Add comment
-              </Button>
-            </div>
-          ) : null}
         </CardContent>
       </Card>
     </div>

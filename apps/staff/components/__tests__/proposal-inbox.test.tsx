@@ -47,6 +47,7 @@ describe('ProposalInbox', () => {
         scholarName: 'Ada Prep',
         stepKey: 'topic',
         stepTitle: 'Topic and research question',
+        stageLabel: '1a',
         submittedAt: '2026-09-07T00:00:00.000Z',
       },
     ]);
@@ -55,7 +56,7 @@ describe('ProposalInbox', () => {
     renderInbox();
 
     expect(await screen.findByText('Ada Prep')).toBeInTheDocument();
-    expect(screen.getByText('Topic and research question')).toBeInTheDocument();
+    expect(screen.getByText('Topic and research question · Step 1a')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Review' }));
     expect(mockOnOpen).toHaveBeenCalledWith('scholar-1');
   });
