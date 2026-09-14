@@ -32,12 +32,13 @@ jobs:
             api_url: https://api-test.ashinaga-uk.org
           - environment: prod
             api_url: https://api.ashinaga-uk.org
-    if: >
-      github.event_name == 'schedule' ||
-      github.event.inputs.environment == 'both' ||
-      github.event.inputs.environment == matrix.environment
     runs-on: ubuntu-latest
     environment: ${{ matrix.environment }}
+    env:
+      # `matrix` is not available in a job-level `if`, so gate the steps instead.
+      SHOULD_RUN: ${{ github.event_name == 'schedule' ||
+        github.event.inputs.environment == 'both' ||
+        github.event.inputs.environment == matrix.environment }}
     concurrency:
       group: notification-jobs-${{ matrix.environment }}
       cancel-in-progress: false
@@ -47,12 +48,14 @@ jobs:
 
     steps:
     - name: Configure AWS credentials
+      if: env.SHOULD_RUN == 'true'
       uses: aws-actions/configure-aws-credentials@v4
       with:
         role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
         aws-region: ${{ env.AWS_REGION }}
 
     - name: Run notification jobs (${{ matrix.environment }})
+      if: env.SHOULD_RUN == 'true'
       env:
         API_URL: ${{ matrix.api_url }}
         SECRET_NAME_MATCH: ashinaga-notification-cron-secret-${{ matrix.environment }}
