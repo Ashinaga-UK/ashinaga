@@ -31,7 +31,7 @@ Currently, this is a placeholder application with a simple landing page. Feature
 # From the monorepo root
 pnpm install
 
-# Start the development server (runs on port 3002)
+# Start the development server (runs on port 4002)
 cd apps/scholar
 pnpm dev
 
@@ -41,7 +41,7 @@ pnpm dev --filter=scholar
 
 ### Available Scripts
 
-- `pnpm dev` - Start development server on port 3002
+- `pnpm dev` - Start development server on port 4002
 - `pnpm build` - Build for production
 - `pnpm start` - Start production server
 - `pnpm lint` - Run linting

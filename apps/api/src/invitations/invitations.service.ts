@@ -109,8 +109,10 @@ export class InvitationsService {
     };
   }
 
-  async resendInvitation(invitationId: string, requestingUserId: string) {
+  async resendInvitation(invitationId: string, _requestingUserId: string) {
     const db = getDatabase();
+
+    await this.markExpiredPendingInvitations();
 
     // Get the invitation
     const [invitation] = await db
@@ -123,7 +125,7 @@ export class InvitationsService {
       throw new NotFoundException('Invitation not found');
     }
 
-    if (invitation.status !== 'pending') {
+    if (invitation.status !== 'pending' && invitation.status !== 'expired') {
       throw new BadRequestException(`Cannot resend invitation with status: ${invitation.status}`);
     }
 
@@ -133,8 +135,6 @@ export class InvitationsService {
       throw new BadRequestException('Maximum resend limit reached for this invitation');
     }
 
-    // If the invitation has passed its expiry, extend it so the resent link is usable.
-    const isExpired = new Date() > new Date(invitation.expiresAt);
     const newExpiresAt = new Date();
     newExpiresAt.setDate(newExpiresAt.getDate() + 30);
 
@@ -146,9 +146,10 @@ export class InvitationsService {
     await db
       .update(invitations)
       .set({
+        status: 'pending',
+        expiresAt: newExpiresAt,
         lastResentAt: new Date(),
         resentCount: String(resentCount + 1),
-        ...(isExpired ? { expiresAt: newExpiresAt } : {}),
         updatedAt: new Date(),
       })
       .where(eq(invitations.id, invitationId));
@@ -161,6 +162,8 @@ export class InvitationsService {
 
   async listInvitations(status?: 'pending' | 'accepted' | 'expired' | 'cancelled') {
     const db = getDatabase();
+
+    await this.markExpiredPendingInvitations();
 
     const baseQuery = db
       .select({
@@ -184,7 +187,7 @@ export class InvitationsService {
     return results;
   }
 
-  async cancelInvitation(invitationId: string, cancelledBy: string) {
+  async cancelInvitation(invitationId: string, _cancelledBy: string) {
     const db = getDatabase();
 
     const [invitation] = await db
@@ -256,6 +259,15 @@ export class InvitationsService {
       scholarData,
       expiresAt: invitation.expiresAt,
     };
+  }
+
+  private async markExpiredPendingInvitations() {
+    const db = getDatabase();
+
+    await db
+      .update(invitations)
+      .set({ status: 'expired', updatedAt: new Date() })
+      .where(sql`${invitations.status} = 'pending' and ${invitations.expiresAt} < now()`);
   }
 
   private buildInviteUrl(token: string, userType: string): string {

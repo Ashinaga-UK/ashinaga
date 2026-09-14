@@ -1,8 +1,13 @@
 'use client';
 
+import {
+  fileToProfileImageBlob,
+  PROFILE_IMAGE_CONTENT_TYPE,
+} from '@workspace/ui/lib/profile-image';
 import { ArrowLeft, Camera, Save, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
+import { uploadAvatarBlob } from '../lib/api-client';
 import { useSession } from '../lib/auth-client';
 import { useUpdateUser } from '../lib/hooks/use-queries';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -28,6 +33,8 @@ export function MyProfile({ onBack }: MyProfileProps) {
     email: '',
     image: null as string | null,
   });
+  const [pendingAvatarBlob, setPendingAvatarBlob] = useState<Blob | null>(null);
+  const [avatarRemoved, setAvatarRemoved] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
   const profileImage = profileData.image;
@@ -40,15 +47,27 @@ export function MyProfile({ onBack }: MyProfileProps) {
         email: user.email || '',
         image: user.image || null,
       });
+      setPendingAvatarBlob(null);
+      setAvatarRemoved(false);
     }
   }, [user]);
+
+  useEffect(() => {
+    return () => {
+      if (profileData.image?.startsWith('blob:')) {
+        URL.revokeObjectURL(profileData.image);
+      }
+    };
+  }, [profileData.image]);
 
   const handleInputChange = (field: string, value: string) => {
     setProfileData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleCancel = () => {
-    // Reset form data to original user data
+    if (profileData.image?.startsWith('blob:')) {
+      URL.revokeObjectURL(profileData.image);
+    }
     if (user) {
       setProfileData({
         name: user.name || '',
@@ -56,59 +75,91 @@ export function MyProfile({ onBack }: MyProfileProps) {
         image: user.image || null,
       });
     }
+    setPendingAvatarBlob(null);
+    setAvatarRemoved(false);
     setImageError(null);
     setIsEditing(false);
   };
 
-  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     setImageError(null);
 
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      setImageError('Please choose an image file.');
-      return;
+    try {
+      const blob = await fileToProfileImageBlob(file);
+      if (profileData.image?.startsWith('blob:')) {
+        URL.revokeObjectURL(profileData.image);
+      }
+      const previewUrl = URL.createObjectURL(blob);
+      setPendingAvatarBlob(blob);
+      setAvatarRemoved(false);
+      setProfileData((prev) => ({ ...prev, image: previewUrl }));
+    } catch (error) {
+      setImageError(
+        error instanceof Error
+          ? error.message
+          : 'Could not read that image. Please try another file.'
+      );
     }
+  };
 
-    if (file.size > 2 * 1024 * 1024) {
-      setImageError('Please choose an image smaller than 2MB.');
-      return;
+  const handleRemoveImage = () => {
+    if (profileData.image?.startsWith('blob:')) {
+      URL.revokeObjectURL(profileData.image);
     }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      setProfileData((prev) => ({ ...prev, image: reader.result as string }));
-    };
-    reader.onerror = () => setImageError('Could not read that image. Please try another file.');
-    reader.readAsDataURL(file);
+    setPendingAvatarBlob(null);
+    setAvatarRemoved(true);
+    setProfileData((prev) => ({ ...prev, image: null }));
   };
 
   const handleSave = async () => {
-    updateUserMutation.mutate(
-      {
-        name: profileData.name,
-        image: profileData.image,
-      },
-      {
-        onSuccess: () => {
-          toast({
-            title: 'Success',
-            description: 'Your profile has been updated successfully.',
-          });
-          setIsEditing(false);
-        },
-        onError: (error) => {
-          console.error('Error updating profile:', error);
-          toast({
-            title: 'Error',
-            description: 'Failed to update profile. Please try again.',
-            variant: 'destructive',
-          });
-        },
+    try {
+      let imagePayload: string | null | undefined;
+      if (avatarRemoved) {
+        imagePayload = null;
+      } else if (pendingAvatarBlob) {
+        if (pendingAvatarBlob.type !== PROFILE_IMAGE_CONTENT_TYPE) {
+          throw new Error('Profile picture must be JPEG');
+        }
+        imagePayload = await uploadAvatarBlob(pendingAvatarBlob);
       }
-    );
+
+      updateUserMutation.mutate(
+        {
+          name: profileData.name,
+          ...(imagePayload !== undefined ? { image: imagePayload } : {}),
+        },
+        {
+          onSuccess: () => {
+            setPendingAvatarBlob(null);
+            setAvatarRemoved(false);
+            toast({
+              title: 'Success',
+              description: 'Your profile has been updated successfully.',
+            });
+            setIsEditing(false);
+          },
+          onError: (error) => {
+            console.error('Error updating profile:', error);
+            toast({
+              title: 'Error',
+              description: 'Failed to update profile. Please try again.',
+              variant: 'destructive',
+            });
+          },
+        }
+      );
+    } catch (error) {
+      console.error('Error uploading profile picture:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to upload profile picture.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -137,7 +188,7 @@ export function MyProfile({ onBack }: MyProfileProps) {
                     aria-label="Open profile picture"
                   >
                     <Avatar className="h-20 w-20 cursor-pointer">
-                      <AvatarImage src={profileImage} alt={profileData.name} />
+                      <AvatarImage key={profileImage} src={profileImage} alt={profileData.name} />
                       <AvatarFallback className="text-lg bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 text-white">
                         {profileData.name
                           ?.split(' ')
@@ -151,6 +202,7 @@ export function MyProfile({ onBack }: MyProfileProps) {
                 <DialogContent className="max-w-xl p-4">
                   <DialogTitle className="sr-only">Profile picture</DialogTitle>
                   <Image
+                    key={profileImage}
                     src={profileImage}
                     alt={profileData.name || 'Profile picture'}
                     width={800}
@@ -183,12 +235,7 @@ export function MyProfile({ onBack }: MyProfileProps) {
                     </label>
                   </Button>
                   {profileData.image && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setProfileData((prev) => ({ ...prev, image: null }))}
-                    >
+                    <Button type="button" variant="ghost" size="sm" onClick={handleRemoveImage}>
                       <Trash2 className="h-4 w-4" />
                       Remove
                     </Button>

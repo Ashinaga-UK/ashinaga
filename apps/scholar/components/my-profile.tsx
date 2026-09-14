@@ -1,6 +1,11 @@
 'use client';
 
 import {
+  fileToProfileImageBlob,
+  PROFILE_IMAGE_CONTENT_TYPE,
+} from '@workspace/ui/lib/profile-image';
+import { toSafeHttpUrl } from '@workspace/ui/lib/safe-href';
+import {
   AlertTriangle,
   Calendar,
   Camera,
@@ -18,14 +23,12 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
-import {
-  getMyProfile,
-  type ScholarProfile,
-  type UpdateProfileData,
-  updateMyProfile,
-} from '../lib/api/profile';
+import { uploadAvatarBlob } from '../lib/api-client';
+import { type ScholarProfile, type UpdateProfileData, updateMyProfile } from '../lib/api/profile';
+import { useScholarSession } from '../lib/scholar-session';
 import { Alert, AlertDescription } from './ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from './ui/dialog';
@@ -34,58 +37,73 @@ import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Textarea } from './ui/textarea';
 
+function toFormData(data: ScholarProfile): UpdateProfileData {
+  return {
+    image: data.image || null,
+    phone: data.phone || '',
+    dateOfBirth: data.dateOfBirth || '',
+    gender: data.gender || undefined,
+    nationality: data.nationality || '',
+    location: data.location || '',
+    addressHomeCountry: data.addressHomeCountry || '',
+    passportExpirationDate: data.passportExpirationDate || '',
+    visaExpirationDate: data.visaExpirationDate || '',
+    emergencyContactCountryOfStudy: data.emergencyContactCountryOfStudy || '',
+    emergencyContactHomeCountry: data.emergencyContactHomeCountry || '',
+    program: data.program || '',
+    university: data.university || '',
+    year: data.year || '',
+    startDate: data.startDate ? new Date(data.startDate).toISOString().split('T')[0] : '',
+    graduationDate: data.graduationDate
+      ? new Date(data.graduationDate).toISOString().split('T')[0]
+      : '',
+    universityId: data.universityId || '',
+    dietaryInformation: data.dietaryInformation || '',
+    kokorozashi: data.kokorozashi || '',
+    longTermCareerPlan: data.longTermCareerPlan || '',
+    postGraduationPlan: data.postGraduationPlan || '',
+    bio: data.bio || '',
+    intendedUniversity: data.intendedUniversity || '',
+    intendedCourse: data.intendedCourse || '',
+    degreePathway: data.degreePathway || '',
+    majorCategory: data.majorCategory || '',
+    fieldOfStudy: data.fieldOfStudy || '',
+  };
+}
+
 export function MyProfile() {
-  const [profile, setProfile] = useState<ScholarProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { profile, profileStatus, applyProfile } = useScholarSession();
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [formData, setFormData] = useState<UpdateProfileData>({});
-
-  const loadProfile = async () => {
-    try {
-      const data = await getMyProfile();
-      setProfile(data);
-      // Initialize form data with current profile values
-      setFormData({
-        image: data.image || null,
-        phone: data.phone || '',
-        dateOfBirth: data.dateOfBirth || '',
-        gender: data.gender || undefined,
-        nationality: data.nationality || '',
-        location: data.location || '',
-        addressHomeCountry: data.addressHomeCountry || '',
-        passportExpirationDate: data.passportExpirationDate || '',
-        visaExpirationDate: data.visaExpirationDate || '',
-        emergencyContactCountryOfStudy: data.emergencyContactCountryOfStudy || '',
-        emergencyContactHomeCountry: data.emergencyContactHomeCountry || '',
-        program: data.program || '',
-        university: data.university || '',
-        year: data.year || '',
-        startDate: data.startDate ? new Date(data.startDate).toISOString().split('T')[0] : '',
-        graduationDate: data.graduationDate
-          ? new Date(data.graduationDate).toISOString().split('T')[0]
-          : '',
-        universityId: data.universityId || '',
-        dietaryInformation: data.dietaryInformation || '',
-        kokorozashi: data.kokorozashi || '',
-        longTermCareerPlan: data.longTermCareerPlan || '',
-        postGraduationPlan: data.postGraduationPlan || '',
-        bio: data.bio || '',
-      });
-    } catch (err) {
-      setError('Failed to load profile. Please try again.');
-      console.error('Error loading profile:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [pendingAvatarBlob, setPendingAvatarBlob] = useState<Blob | null>(null);
+  const [avatarRemoved, setAvatarRemoved] = useState(false);
+  const [formHydrated, setFormHydrated] = useState(false);
+  const loading = profileStatus === 'loading' || !formHydrated;
 
   useEffect(() => {
-    loadProfile();
-  }, []);
+    if (profile && !editing) {
+      setFormData(toFormData(profile));
+      setPendingAvatarBlob(null);
+      setAvatarRemoved(false);
+      setFormHydrated(true);
+    }
+    if (profileStatus === 'error') {
+      setError('Failed to load profile. Please try again.');
+      setFormHydrated(true);
+    }
+  }, [profile, profileStatus, editing]);
+
+  useEffect(() => {
+    return () => {
+      if (typeof formData.image === 'string' && formData.image.startsWith('blob:')) {
+        URL.revokeObjectURL(formData.image);
+      }
+    };
+  }, [formData.image]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,8 +113,21 @@ export function MyProfile() {
     setSuccess(false);
 
     try {
-      const updatedProfile = await updateMyProfile(formData);
-      setProfile(updatedProfile);
+      const payload: UpdateProfileData = { ...formData };
+      if (avatarRemoved) {
+        payload.image = null;
+      } else if (pendingAvatarBlob) {
+        if (pendingAvatarBlob.type !== PROFILE_IMAGE_CONTENT_TYPE) {
+          throw new Error('Profile picture must be JPEG');
+        }
+        payload.image = await uploadAvatarBlob(pendingAvatarBlob);
+      } else {
+        delete payload.image;
+      }
+      const updatedProfile = await updateMyProfile(payload);
+      applyProfile(updatedProfile);
+      setPendingAvatarBlob(null);
+      setAvatarRemoved(false);
       setSuccess(true);
       setEditing(false);
       setTimeout(() => setSuccess(false), 3000);
@@ -110,60 +141,47 @@ export function MyProfile() {
 
   const handleCancel = () => {
     setEditing(false);
-    // Reset form data to current profile values
-    if (profile) {
-      setFormData({
-        image: profile.image || null,
-        phone: profile.phone || '',
-        dateOfBirth: profile.dateOfBirth || '',
-        gender: profile.gender || undefined,
-        nationality: profile.nationality || '',
-        location: profile.location || '',
-        addressHomeCountry: profile.addressHomeCountry || '',
-        passportExpirationDate: profile.passportExpirationDate || '',
-        visaExpirationDate: profile.visaExpirationDate || '',
-        emergencyContactCountryOfStudy: profile.emergencyContactCountryOfStudy || '',
-        emergencyContactHomeCountry: profile.emergencyContactHomeCountry || '',
-        program: profile.program || '',
-        university: profile.university || '',
-        year: profile.year || '',
-        startDate: profile.startDate ? new Date(profile.startDate).toISOString().split('T')[0] : '',
-        graduationDate: profile.graduationDate
-          ? new Date(profile.graduationDate).toISOString().split('T')[0]
-          : '',
-        universityId: profile.universityId || '',
-        dietaryInformation: profile.dietaryInformation || '',
-        kokorozashi: profile.kokorozashi || '',
-        longTermCareerPlan: profile.longTermCareerPlan || '',
-        postGraduationPlan: profile.postGraduationPlan || '',
-        bio: profile.bio || '',
-      });
+    if (typeof formData.image === 'string' && formData.image.startsWith('blob:')) {
+      URL.revokeObjectURL(formData.image);
     }
+    if (profile) {
+      setFormData(toFormData(profile));
+    }
+    setPendingAvatarBlob(null);
+    setAvatarRemoved(false);
+    setImageError(null);
   };
 
-  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     setImageError(null);
 
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      setImageError('Please choose an image file.');
-      return;
+    try {
+      const blob = await fileToProfileImageBlob(file);
+      if (typeof formData.image === 'string' && formData.image.startsWith('blob:')) {
+        URL.revokeObjectURL(formData.image);
+      }
+      const previewUrl = URL.createObjectURL(blob);
+      setPendingAvatarBlob(blob);
+      setAvatarRemoved(false);
+      setFormData((current) => ({ ...current, image: previewUrl }));
+    } catch (err) {
+      setImageError(
+        err instanceof Error ? err.message : 'Could not read that image. Please try another file.'
+      );
     }
+  };
 
-    if (file.size > 2 * 1024 * 1024) {
-      setImageError('Please choose an image smaller than 2MB.');
-      return;
+  const handleRemoveImage = () => {
+    if (typeof formData.image === 'string' && formData.image.startsWith('blob:')) {
+      URL.revokeObjectURL(formData.image);
     }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      setFormData((current) => ({ ...current, image: reader.result as string }));
-    };
-    reader.onerror = () => setImageError('Could not read that image. Please try another file.');
-    reader.readAsDataURL(file);
+    setPendingAvatarBlob(null);
+    setAvatarRemoved(true);
+    setFormData((current) => ({ ...current, image: null }));
   };
 
   if (loading) {
@@ -188,7 +206,7 @@ export function MyProfile() {
     );
   }
 
-  const profileImage = formData.image || profile.image;
+  const profileImage = formData.image ?? profile.image;
 
   return (
     <div className="space-y-6">
@@ -248,7 +266,7 @@ export function MyProfile() {
                       aria-label="Open profile picture"
                     >
                       <Avatar className="h-20 w-20 cursor-pointer">
-                        <AvatarImage src={profileImage} alt={profile.name} />
+                        <AvatarImage key={profileImage} src={profileImage} alt={profile.name} />
                         <AvatarFallback className="text-lg bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 text-white">
                           {profile.name
                             ?.split(' ')
@@ -262,6 +280,7 @@ export function MyProfile() {
                   <DialogContent className="max-w-xl p-4">
                     <DialogTitle className="sr-only">Profile picture</DialogTitle>
                     <Image
+                      key={profileImage}
                       src={profileImage}
                       alt={profile.name || 'Profile picture'}
                       width={800}
@@ -285,6 +304,14 @@ export function MyProfile() {
               <div>
                 <p className="font-medium text-foreground">{profile.name}</p>
                 <p className="text-sm text-muted-foreground">{profile.email}</p>
+                {profile.programStage === 'prep_year' && (
+                  <Badge
+                    variant="default"
+                    className="mt-2 bg-ashinaga-green-600 hover:bg-ashinaga-green-700"
+                  >
+                    Prep Year Candidate
+                  </Badge>
+                )}
                 {editing && (
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <Button asChild variant="outline" size="sm">
@@ -293,13 +320,8 @@ export function MyProfile() {
                         Upload Photo
                       </label>
                     </Button>
-                    {(formData.image || profile.image) && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setFormData((current) => ({ ...current, image: null }))}
-                      >
+                    {profileImage && (
+                      <Button type="button" variant="ghost" size="sm" onClick={handleRemoveImage}>
                         <Trash2 className="h-4 w-4" />
                         Remove
                       </Button>
@@ -330,6 +352,15 @@ export function MyProfile() {
                 <Input
                   id="aaiScholarId"
                   value={profile.aaiScholarId || 'Not assigned'}
+                  disabled
+                  className="bg-muted"
+                />
+              </div>
+              <div>
+                <Label htmlFor="programStage">Program Stage</Label>
+                <Input
+                  id="programStage"
+                  value={profile.programStage === 'prep_year' ? 'Prep Year Candidate' : 'Scholar'}
                   disabled
                   className="bg-muted"
                 />
@@ -519,113 +550,255 @@ export function MyProfile() {
           </CardContent>
         </Card>
 
-        {/* Academic Information */}
-        <Card className="border-ashinaga-teal-100 dark:border-border">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-foreground">
-              <GraduationCap className="h-5 w-5" />
-              Academic Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="program">Program of Study</Label>
-              <Input
-                id="program"
-                value={formData.program}
-                onChange={(e) => setFormData({ ...formData, program: e.target.value })}
-                disabled={!editing}
-                placeholder="e.g., Bachelor of Science in Computer Science"
-              />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="university">University</Label>
-                <Select
-                  value={formData.university}
-                  onValueChange={(value) => setFormData({ ...formData, university: value })}
-                  disabled={!editing}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select university" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Imperial College London">Imperial College London</SelectItem>
-                    <SelectItem value="University of Edinburgh">University of Edinburgh</SelectItem>
-                    <SelectItem value="LSE">London School of Economics</SelectItem>
-                    <SelectItem value="Cambridge University">Cambridge University</SelectItem>
-                    <SelectItem value="Oxford University">Oxford University</SelectItem>
-                    <SelectItem value="UCL">University College London</SelectItem>
-                    <SelectItem value="University of York">University of York</SelectItem>
-                    <SelectItem value="University of Warwick">University of Warwick</SelectItem>
-                    <SelectItem value="University of Central Lancashire">
-                      University of Central Lancashire
-                    </SelectItem>
-                    <SelectItem value="University of East Anglia">
-                      University of East Anglia
-                    </SelectItem>
-                    <SelectItem value="University of Manchester">
-                      University of Manchester
-                    </SelectItem>
-                    <SelectItem value="University of Leeds">University of Leeds</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="year">Academic Year</Label>
-                <Select
-                  value={formData.year}
-                  onValueChange={(value) => setFormData({ ...formData, year: value })}
-                  disabled={!editing}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select academic year" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Pre-University">Pre-University</SelectItem>
-                    <SelectItem value="Foundation">Foundation</SelectItem>
-                    <SelectItem value="Year 1">Year 1</SelectItem>
-                    <SelectItem value="Year 2">Year 2</SelectItem>
-                    <SelectItem value="Year 3">Year 3</SelectItem>
-                    <SelectItem value="Year 4">Year 4</SelectItem>
-                    <SelectItem value="Year 5">Year 5</SelectItem>
-                    <SelectItem value="Postgraduate">Postgraduate</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="startDate">Start Date</Label>
-                <Input
-                  id="startDate"
-                  type="date"
-                  value={formData.startDate}
-                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                  disabled={!editing}
-                />
-              </div>
-              <div>
-                <Label htmlFor="graduationDate">Graduation Date</Label>
-                <Input
-                  id="graduationDate"
-                  type="date"
-                  value={formData.graduationDate}
-                  onChange={(e) => setFormData({ ...formData, graduationDate: e.target.value })}
-                  disabled={!editing}
-                />
-              </div>
-              <div>
-                <Label htmlFor="universityId">University ID</Label>
-                <Input
-                  id="universityId"
-                  value={formData.universityId}
-                  onChange={(e) => setFormData({ ...formData, universityId: e.target.value })}
-                  disabled={!editing}
-                  placeholder="Your student ID number"
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {profile.programStage === 'prep_year' ? (
+          <>
+            <Card className="border-ashinaga-teal-100 dark:border-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-foreground">
+                  <GraduationCap className="h-5 w-5" />
+                  Intended Pathway
+                </CardTitle>
+                <CardDescription>Not yet enrolled at university.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="intendedUniversity">Intended University</Label>
+                    <Input
+                      id="intendedUniversity"
+                      value={formData.intendedUniversity}
+                      onChange={(e) =>
+                        setFormData({ ...formData, intendedUniversity: e.target.value })
+                      }
+                      disabled={!editing}
+                      placeholder="University you intend to attend"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="intendedCourse">Intended Course</Label>
+                    <Input
+                      id="intendedCourse"
+                      value={formData.intendedCourse}
+                      onChange={(e) => setFormData({ ...formData, intendedCourse: e.target.value })}
+                      disabled={!editing}
+                      placeholder="Intended degree or course"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label htmlFor="degreePathway">Degree Pathway</Label>
+                    <Input
+                      id="degreePathway"
+                      value={formData.degreePathway}
+                      onChange={(e) => setFormData({ ...formData, degreePathway: e.target.value })}
+                      disabled={!editing}
+                      placeholder="e.g. Foundation Year, Direct Entry"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            {(profile.platformSetups?.length ?? 0) > 0 && (
+              <Card className="border-ashinaga-teal-100 dark:border-border">
+                <CardHeader>
+                  <CardTitle className="text-foreground">Platform setup</CardTitle>
+                  <CardDescription>
+                    Status of your required platform accounts. Staff update these on your behalf.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {profile.platformSetups?.map((setup) => {
+                    const safeUrl = toSafeHttpUrl(setup.signpostingUrl);
+                    return (
+                      <div
+                        key={setup.platformId}
+                        className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-medium text-foreground">{setup.name}</p>
+                          {safeUrl ? (
+                            <a
+                              href={safeUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-ashinaga-teal-700 underline-offset-2 hover:underline dark:text-ashinaga-teal-400"
+                            >
+                              {setup.signpostingUrl}
+                            </a>
+                          ) : setup.signpostingUrl ? (
+                            <p className="text-sm text-muted-foreground truncate">
+                              {setup.signpostingUrl}
+                            </p>
+                          ) : null}
+                        </div>
+                        <Badge
+                          variant={
+                            setup.status === 'yes'
+                              ? 'default'
+                              : setup.status === 'no'
+                                ? 'outline'
+                                : 'secondary'
+                          }
+                        >
+                          {setup.status === 'yes'
+                            ? 'Yes'
+                            : setup.status === 'no'
+                              ? 'No'
+                              : 'Pending'}
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            )}
+          </>
+        ) : (
+          <>
+            <Card className="border-ashinaga-teal-100 dark:border-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-foreground">
+                  <GraduationCap className="h-5 w-5" />
+                  Academic Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="program">Program of Study</Label>
+                  <Input
+                    id="program"
+                    value={formData.program}
+                    onChange={(e) => setFormData({ ...formData, program: e.target.value })}
+                    disabled={!editing}
+                    placeholder="e.g., Bachelor of Science in Computer Science"
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="university">University</Label>
+                    <Select
+                      value={formData.university}
+                      onValueChange={(value) => setFormData({ ...formData, university: value })}
+                      disabled={!editing}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select university" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Imperial College London">
+                          Imperial College London
+                        </SelectItem>
+                        <SelectItem value="University of Edinburgh">
+                          University of Edinburgh
+                        </SelectItem>
+                        <SelectItem value="LSE">London School of Economics</SelectItem>
+                        <SelectItem value="Cambridge University">Cambridge University</SelectItem>
+                        <SelectItem value="Oxford University">Oxford University</SelectItem>
+                        <SelectItem value="UCL">University College London</SelectItem>
+                        <SelectItem value="University of York">University of York</SelectItem>
+                        <SelectItem value="University of Warwick">University of Warwick</SelectItem>
+                        <SelectItem value="University of Central Lancashire">
+                          University of Central Lancashire
+                        </SelectItem>
+                        <SelectItem value="University of East Anglia">
+                          University of East Anglia
+                        </SelectItem>
+                        <SelectItem value="University of Manchester">
+                          University of Manchester
+                        </SelectItem>
+                        <SelectItem value="University of Leeds">University of Leeds</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="year">Academic Year</Label>
+                    <Select
+                      value={formData.year}
+                      onValueChange={(value) => setFormData({ ...formData, year: value })}
+                      disabled={!editing}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select academic year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Foundation">Foundation</SelectItem>
+                        <SelectItem value="Year 1">Year 1</SelectItem>
+                        <SelectItem value="Year 2">Year 2</SelectItem>
+                        <SelectItem value="Year 3">Year 3</SelectItem>
+                        <SelectItem value="Year 4">Year 4</SelectItem>
+                        <SelectItem value="Year 5">Year 5</SelectItem>
+                        <SelectItem value="Postgraduate">Postgraduate</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="startDate">Start Date</Label>
+                    <Input
+                      id="startDate"
+                      type="date"
+                      value={formData.startDate}
+                      onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                      disabled={!editing}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="graduationDate">Graduation Date</Label>
+                    <Input
+                      id="graduationDate"
+                      type="date"
+                      value={formData.graduationDate}
+                      onChange={(e) => setFormData({ ...formData, graduationDate: e.target.value })}
+                      disabled={!editing}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="universityId">University ID</Label>
+                    <Input
+                      id="universityId"
+                      value={formData.universityId}
+                      onChange={(e) => setFormData({ ...formData, universityId: e.target.value })}
+                      disabled={!editing}
+                      placeholder="Your student ID number"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-ashinaga-teal-100 dark:border-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-foreground">
+                  <GraduationCap className="h-5 w-5" />
+                  Destination & Pathway
+                </CardTitle>
+                <CardDescription>Update your study area and destination plans.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="majorCategory">Major Category</Label>
+                    <Input
+                      id="majorCategory"
+                      value={formData.majorCategory}
+                      onChange={(e) => setFormData({ ...formData, majorCategory: e.target.value })}
+                      disabled={!editing}
+                      placeholder="e.g. Engineering and Technology"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="fieldOfStudy">Field of Study</Label>
+                    <Input
+                      id="fieldOfStudy"
+                      value={formData.fieldOfStudy}
+                      onChange={(e) => setFormData({ ...formData, fieldOfStudy: e.target.value })}
+                      disabled={!editing}
+                      placeholder="e.g. Computer Science"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
 
         {/* Additional Information */}
         <Card className="border-ashinaga-teal-100 dark:border-border">

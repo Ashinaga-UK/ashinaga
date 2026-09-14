@@ -1,0 +1,83 @@
+name: Notification jobs
+
+# Daily 08:00 UTC for candidate due-soon reminders.
+# Monthly candidate summary runs on the 1st (UTC) inside the same job.
+# Staff digest is weekly (Monday UTC) — coordinators already use the scholar list.
+# Schedule only runs from the default branch. Matrix hits test and prod APIs.
+on:
+  schedule:
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Which API to run against'
+        required: true
+        type: choice
+        options:
+          - test
+          - prod
+          - both
+        default: both
+
+env:
+  AWS_REGION: eu-west-3
+
+jobs:
+  run:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - environment: test
+            api_url: https://api-test.ashinaga-uk.org
+          - environment: prod
+            api_url: https://api.ashinaga-uk.org
+    runs-on: ubuntu-latest
+    environment: ${{ matrix.environment }}
+    env:
+      # `matrix` is not available in a job-level `if`, so gate the steps instead.
+      SHOULD_RUN: ${{ github.event_name == 'schedule' ||
+        github.event.inputs.environment == 'both' ||
+        github.event.inputs.environment == matrix.environment }}
+    concurrency:
+      group: notification-jobs-${{ matrix.environment }}
+      cancel-in-progress: false
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+    - name: Configure AWS credentials
+      if: env.SHOULD_RUN == 'true'
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Run notification jobs (${{ matrix.environment }})
+      if: env.SHOULD_RUN == 'true'
+      env:
+        API_URL: ${{ matrix.api_url }}
+        SECRET_NAME_MATCH: ashinaga-notification-cron-secret-${{ matrix.environment }}
+      run: |
+        set -euo pipefail
+        SECRET_ARN=$(aws secretsmanager list-secrets \
+          --query "SecretList[?contains(Name, '${SECRET_NAME_MATCH}')] | sort_by(@, &CreatedDate) | [-1].ARN" \
+          --output text)
+        if [ -z "$SECRET_ARN" ] || [ "$SECRET_ARN" = "None" ]; then
+          echo "CRON_SECRET is not in Secrets Manager yet (apply terraform). Skipping."
+          exit 0
+        fi
+        CRON_SECRET=$(aws secretsmanager get-secret-value \
+          --secret-id "$SECRET_ARN" \
+          --query SecretString --output text)
+        STATUS=$(curl -sS -o /tmp/notification-jobs.json -w "%{http_code}" \
+          -X POST "${API_URL}/api/jobs/notifications" \
+          -H "X-Cron-Secret: ${CRON_SECRET}")
+        echo "HTTP ${STATUS}"
+        cat /tmp/notification-jobs.json || true
+        if [ "$STATUS" = "503" ]; then
+          echo "API has no CRON_SECRET yet (redeploy after terraform apply). Skipping."
+          exit 0
+        fi
+        test "$STATUS" = "200"

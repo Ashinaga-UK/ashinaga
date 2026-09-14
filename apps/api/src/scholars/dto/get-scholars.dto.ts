@@ -36,6 +36,25 @@ export class GetScholarsQueryDto {
   status?: 'active' | 'inactive' | 'on_hold' | 'archived';
 
   @IsOptional()
+  @IsEnum(['prep_year', 'scholar'])
+  programStage?: 'prep_year' | 'scholar';
+
+  /** Prep-year candidates whose required platforms are not all Yes. */
+  @IsOptional()
+  @IsEnum(['incomplete', 'complete'])
+  platformSetup?: 'incomplete' | 'complete';
+
+  /** Incomplete tasks by the shared UTC due-date helper. Not scoped to prep_year. */
+  @IsOptional()
+  @IsEnum(['overdue', 'due_today', 'behind'])
+  taskProgress?: 'overdue' | 'due_today' | 'behind';
+
+  /** lastActivity older than NOTIFICATION_INACTIVITY_DAYS. Null is unknown (column unused before ASH-86), not stale. */
+  @IsOptional()
+  @IsEnum(['stale'])
+  loginActivity?: 'stale';
+
+  @IsOptional()
   @IsEnum(['name', 'lastActivity', 'createdAt'])
   sortBy?: string = 'createdAt';
 
@@ -56,6 +75,7 @@ export class ScholarTasksStatsDto {
   total: number;
   completed: number;
   overdue: number;
+  dueToday: number;
 }
 
 // New DTOs for detailed scholar profile
@@ -86,6 +106,7 @@ export class TaskAttachmentDto {
 
 export class TaskResponseDto {
   responseText?: string | null;
+  linkUrl?: string | null;
   submittedAt: Date;
   attachments: TaskAttachmentDto[];
 }
@@ -106,11 +127,17 @@ export class TaskDto {
     | 'other';
   priority: 'high' | 'medium' | 'low';
   dueDate: Date;
+  phase?: string | null;
+  assignmentGroupId?: string | null;
+  requiresResponse: boolean;
+  requiresAttachment: boolean;
+  requiresLink: boolean;
   status: 'pending' | 'in_progress' | 'completed' | 'overdue';
   assignedBy: string;
   completedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  overdue: boolean;
   response?: TaskResponseDto;
 }
 
@@ -140,15 +167,32 @@ export class ScholarResponseDto {
   location?: string | null;
   bio?: string | null;
   status: 'active' | 'inactive' | 'on_hold' | 'archived';
+  programStage: 'prep_year' | 'scholar';
+  intendedUniversity?: string | null;
+  intendedCourse?: string | null;
+  degreePathway?: string | null;
   startDate: Date;
   lastActivity?: Date | null;
+  /** True when lastActivity is older than the documented inactivity window. False when unknown. */
+  staleActivity: boolean;
   goals: ScholarGoalsStatsDto;
   tasks: ScholarTasksStatsDto;
+  /** True when a prep-year candidate still has platforms that are not Yes. Null for confirmed scholars. */
+  platformSetupIncomplete: boolean | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
 // New DTO for detailed scholar profile
+export class PlatformSetupDto {
+  platformId: string;
+  slug: string;
+  name: string;
+  signpostingUrl?: string | null;
+  sortOrder: number;
+  status: 'yes' | 'no' | 'pending';
+}
+
 export class ScholarProfileDto {
   id: string;
   userId: string;
@@ -162,6 +206,10 @@ export class ScholarProfileDto {
   location?: string | null;
   bio?: string | null;
   status: 'active' | 'inactive' | 'on_hold' | 'archived';
+  programStage: 'prep_year' | 'scholar';
+  intendedUniversity?: string | null;
+  intendedCourse?: string | null;
+  degreePathway?: string | null;
   startDate: Date;
   lastActivity?: Date | null;
 
@@ -188,6 +236,7 @@ export class ScholarProfileDto {
   goals: GoalDto[];
   tasks: TaskDto[];
   documents: DocumentDto[];
+  platformSetups: PlatformSetupDto[];
   createdAt: Date;
   updatedAt: Date;
 }

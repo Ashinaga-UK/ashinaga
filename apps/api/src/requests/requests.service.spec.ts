@@ -145,11 +145,7 @@ describe('RequestsService', () => {
       { status: 'rejected', count: 3 },
     ];
 
-    function mockRequestStatsQueries({
-      isSuperAdmin,
-    }: {
-      isSuperAdmin: boolean;
-    }) {
+    function mockRequestStatsQueries({ isSuperAdmin }: { isSuperAdmin: boolean }) {
       const mockDatabase = require('../db/connection').database;
       const statsWhereMock = jest.fn().mockReturnValue({
         groupBy: jest.fn().mockResolvedValue(mockStats),

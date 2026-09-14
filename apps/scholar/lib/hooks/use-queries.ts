@@ -3,14 +3,18 @@ import {
   createRequest,
   type GetMyAnnouncementsParams,
   getMyAnnouncements,
+  getMyDocumentChecklist,
   getMyRequests,
+  getMyResources,
   getStaffList,
 } from '../api-client';
 
 // Query keys
 export const queryKeys = {
   myAnnouncements: (params?: GetMyAnnouncementsParams) => ['my-announcements', params] as const,
+  myResources: ['my-resources'] as const,
   myRequests: ['my-requests'] as const,
+  myDocuments: ['my-documents'] as const,
   staffList: ['staff-list'] as const,
 };
 
@@ -28,6 +32,23 @@ export function useMyRequests(enabled = true) {
   return useQuery({
     queryKey: queryKeys.myRequests,
     queryFn: getMyRequests,
+    enabled,
+  });
+}
+
+// My resources query
+export function useMyResources(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.myResources,
+    queryFn: getMyResources,
+    enabled,
+  });
+}
+
+export function useMyDocumentChecklist(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.myDocuments,
+    queryFn: getMyDocumentChecklist,
     enabled,
   });
 }

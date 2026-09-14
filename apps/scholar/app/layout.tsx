@@ -2,6 +2,7 @@ import { GeistMono } from 'geist/font/mono';
 import { GeistSans } from 'geist/font/sans';
 import type { Metadata } from 'next';
 import { ThemeProvider } from '../components/theme-provider';
+import { Toaster } from '../components/ui/toaster';
 import { QueryProvider } from '../lib/query-client';
 import './globals.css';
 
@@ -34,6 +35,7 @@ html {
           disableTransitionOnChange
         >
           <QueryProvider>{children}</QueryProvider>
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

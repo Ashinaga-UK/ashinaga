@@ -6,9 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a **Turborepo monorepo** with TypeScript, containing:
 
-- **apps/api** - NestJS API server using Fastify (runs on default port)
-- **apps/staff** - Next.js staff portal application (runs on port 3001)
-- **apps/scholar** - Next.js scholar portal application (runs on port 3002)
+- **apps/api** - NestJS API server using Fastify (runs on port 4000)
+- **apps/staff** - Next.js staff portal application (runs on port 4001)
+- **apps/scholar** - Next.js scholar portal application (runs on port 4002)
 - **packages/api** - Shared NestJS resources and DTOs
 - **packages/ui** - React component library
 - **packages/eslint-config** - ESLint configurations with Prettier
@@ -64,7 +64,7 @@ pnpm test:e2e     # End-to-end tests
 
 ```bash
 cd apps/staff
-pnpm dev          # Development server (port 3001)
+pnpm dev          # Development server (port 4001)
 pnpm build        # Build for production
 pnpm test:watch   # Tests in watch mode
 pnpm test:e2e     # Playwright e2e tests
@@ -74,7 +74,7 @@ pnpm test:e2e     # Playwright e2e tests
 
 ```bash
 cd apps/scholar
-pnpm dev          # Development server (port 3002)
+pnpm dev          # Development server (port 4002)
 pnpm build        # Build for production
 pnpm test:watch   # Tests in watch mode
 pnpm test:e2e     # Playwright e2e tests

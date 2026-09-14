@@ -251,7 +251,9 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
 
   const fieldError = (field: keyof TypeSpecificErrors) =>
     typeSpecificErrors[field] ? (
-      <p className="text-sm font-medium text-destructive">{typeSpecificErrors[field]}</p>
+      <p className="text-sm font-medium text-red-600 dark:text-red-400">
+        {typeSpecificErrors[field]}
+      </p>
     ) : null;
 
   const validateTypeSpecificData = () => {
@@ -1016,24 +1018,30 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
               />
 
               {selectedFiles.length > 0 && (
-                <div className="space-y-2 p-3 bg-gray-50 rounded-lg">
+                <div className="space-y-2 rounded-lg bg-muted p-3">
                   {selectedFiles.map((file, index) => {
                     const progress = uploadProgress.find((p) => p.file === file);
                     return (
                       <div
                         key={`${file.name}-${file.size}-${file.lastModified}`}
-                        className="flex items-center justify-between p-2 bg-white rounded border"
+                        className="flex items-center justify-between rounded border border-border bg-background p-2"
                       >
-                        <div className="flex items-center gap-2 flex-1">
-                          <FileText className="h-4 w-4 text-gray-500" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{file.name}</p>
-                            <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+                        <div className="flex flex-1 items-center gap-2">
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-foreground">
+                              {file.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {formatFileSize(file.size)}
+                            </p>
                             {progress && progress.status === 'uploading' && (
-                              <Progress value={progress.progress} className="h-1 mt-1" />
+                              <Progress value={progress.progress} className="mt-1 h-1" />
                             )}
                             {progress && progress.status === 'error' && (
-                              <p className="text-xs text-red-600 mt-1">{progress.error}</p>
+                              <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                                {progress.error}
+                              </p>
                             )}
                           </div>
                         </div>
@@ -1042,6 +1050,7 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
                             type="button"
                             variant="ghost"
                             size="sm"
+                            className="text-muted-foreground hover:text-foreground"
                             onClick={() => removeFile(index)}
                           >
                             <X className="h-4 w-4" />
@@ -1053,7 +1062,7 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
                 </div>
               )}
 
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 Accepted formats: PDF, Word, Excel, Text, Images. Max size: 10MB per file.
               </p>
               {fieldError('attachments')}

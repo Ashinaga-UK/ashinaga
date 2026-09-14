@@ -1,4 +1,8 @@
-import { IsArray, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { IsArray, IsNotEmpty, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { AudienceFilterDto } from '../../common/audience-filters/audience-filter.dto';
+
+export class AnnouncementFilterDto extends AudienceFilterDto {}
 
 export class CreateAnnouncementDto {
   @IsString()
@@ -10,11 +14,11 @@ export class CreateAnnouncementDto {
   content: string;
 
   @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => AnnouncementFilterDto)
+  @Transform(({ value }) => (value === null ? [] : value))
   @IsOptional()
-  filters?: Array<{
-    filterType: string;
-    filterValue: string;
-  }>;
+  filters?: AnnouncementFilterDto[];
 }
 
 export class ScholarFilterDto {

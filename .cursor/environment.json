@@ -1,0 +1,4 @@
+{
+  "install": "bash ./scripts/_docker_install.sh",
+  "start": "bash ./scripts/_docker_install.sh"
+}

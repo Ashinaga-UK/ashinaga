@@ -1,21 +1,25 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 
 // Mock the database connection before any imports that might use it
-jest.mock('../db/connection', () => ({
-  database: {
+jest.mock('../db/connection', () => {
+  const database = {
     select: jest.fn(),
     selectDistinct: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
-  },
-  getDatabase: jest.fn(() => ({
-    select: jest.fn(),
     insert: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
-  })),
-}));
+    execute: jest.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
+    transaction: jest.fn(),
+  };
+  database.transaction.mockImplementation(async (callback: (tx: typeof database) => unknown) =>
+    callback(database)
+  );
+  return {
+    database,
+    getDatabase: jest.fn(() => database),
+  };
+});
 
 // Mock task-responses schema used dynamically in getScholarProfile
 jest.mock('../db/schema/task-responses', () => ({
@@ -30,19 +34,35 @@ jest.mock('../auth/auth.config', () => ({
   },
 }));
 
+import { DocumentsService } from '../documents/documents.service';
 import { InvitationsService } from '../invitations/invitations.service';
+import { AvatarsService } from '../avatars/avatars.service';
 import type { CreateScholarDto } from './dto/create-scholar.dto';
-import { Gender } from './dto/update-scholar-profile.dto';
+import { PlatformSetupStatus } from './dto/update-platform-setup.dto';
+import { Gender, ProgramStage } from './dto/update-scholar-profile.dto';
 import { ScholarsService } from './scholars.service';
 
 describe('ScholarsService', () => {
   let service: ScholarsService;
-  let mockDatabase: { select: jest.Mock };
+  let mockDatabase: {
+    select: jest.Mock;
+    insert: jest.Mock;
+    delete: jest.Mock;
+    execute: jest.Mock;
+    transaction: jest.Mock;
+  };
   let mockInvitationsService: { createInvitation: jest.Mock };
 
   beforeEach(async () => {
     mockInvitationsService = {
       createInvitation: jest.fn(),
+    };
+    const mockDocumentsService = {
+      deleteStoredFilesForScholar: jest.fn().mockResolvedValue(undefined),
+    };
+    const mockAvatarsService = {
+      resolveImageUpdate: jest.fn().mockImplementation(async (_userId, next) => next),
+      deleteStoredAvatar: jest.fn().mockResolvedValue(undefined),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -51,6 +71,14 @@ describe('ScholarsService', () => {
         {
           provide: InvitationsService,
           useValue: mockInvitationsService,
+        },
+        {
+          provide: DocumentsService,
+          useValue: mockDocumentsService,
+        },
+        {
+          provide: AvatarsService,
+          useValue: mockAvatarsService,
         },
       ],
     }).compile();
@@ -260,6 +288,100 @@ describe('ScholarsService', () => {
       expect(mockOffset).toHaveBeenCalledWith(10);
       expect(mockLimit).toHaveBeenCalledWith(10);
     });
+
+    it('should apply incomplete platform setup filter', async () => {
+      const mockFrom = jest.fn().mockReturnThis();
+      const mockInnerJoin = jest.fn().mockReturnThis();
+      const mockWhere = jest.fn().mockReturnThis();
+      const mockOrderBy = jest.fn().mockReturnThis();
+      const mockLimit = jest.fn().mockReturnThis();
+      const mockOffset = jest.fn().mockResolvedValue([]);
+      const mockGroupBy = jest.fn().mockResolvedValue([]);
+
+      mockDatabase.select = jest.fn().mockReturnValue({
+        from: mockFrom,
+        innerJoin: mockInnerJoin,
+        where: mockWhere,
+        orderBy: mockOrderBy,
+        limit: mockLimit,
+        offset: mockOffset,
+        groupBy: mockGroupBy,
+      });
+
+      mockFrom.mockReturnThis();
+      mockInnerJoin.mockReturnThis();
+      mockWhere.mockReturnThis();
+      mockOrderBy.mockReturnThis();
+      mockLimit.mockReturnThis();
+
+      const result = await service.getScholars({ platformSetup: 'incomplete' });
+
+      expect(result.data).toEqual([]);
+      expect(mockWhere).toHaveBeenCalled();
+      // SQL shape / map semantics are locked in platform-setup.spec.ts
+    });
+
+    it('should apply complete platform setup filter', async () => {
+      const mockFrom = jest.fn().mockReturnThis();
+      const mockInnerJoin = jest.fn().mockReturnThis();
+      const mockWhere = jest.fn().mockReturnThis();
+      const mockOrderBy = jest.fn().mockReturnThis();
+      const mockLimit = jest.fn().mockReturnThis();
+      const mockOffset = jest.fn().mockResolvedValue([]);
+      const mockGroupBy = jest.fn().mockResolvedValue([]);
+
+      mockDatabase.select = jest.fn().mockReturnValue({
+        from: mockFrom,
+        innerJoin: mockInnerJoin,
+        where: mockWhere,
+        orderBy: mockOrderBy,
+        limit: mockLimit,
+        offset: mockOffset,
+        groupBy: mockGroupBy,
+      });
+
+      mockFrom.mockReturnThis();
+      mockInnerJoin.mockReturnThis();
+      mockWhere.mockReturnThis();
+      mockOrderBy.mockReturnThis();
+      mockLimit.mockReturnThis();
+
+      const result = await service.getScholars({ platformSetup: 'complete' });
+
+      expect(result.data).toEqual([]);
+      expect(mockWhere).toHaveBeenCalled();
+    });
+
+    it('should apply the overdue task-progress filter', async () => {
+      const mockFrom = jest.fn().mockReturnThis();
+      const mockInnerJoin = jest.fn().mockReturnThis();
+      const mockWhere = jest.fn().mockReturnThis();
+      const mockOrderBy = jest.fn().mockReturnThis();
+      const mockLimit = jest.fn().mockReturnThis();
+      const mockOffset = jest.fn().mockResolvedValue([]);
+      const mockGroupBy = jest.fn().mockResolvedValue([]);
+
+      mockDatabase.select = jest.fn().mockReturnValue({
+        from: mockFrom,
+        innerJoin: mockInnerJoin,
+        where: mockWhere,
+        orderBy: mockOrderBy,
+        limit: mockLimit,
+        offset: mockOffset,
+        groupBy: mockGroupBy,
+      });
+
+      mockFrom.mockReturnThis();
+      mockInnerJoin.mockReturnThis();
+      mockWhere.mockReturnThis();
+      mockOrderBy.mockReturnThis();
+      mockLimit.mockReturnThis();
+
+      const result = await service.getScholars({ taskProgress: 'overdue' });
+
+      expect(result.data).toEqual([]);
+      expect(mockWhere).toHaveBeenCalled();
+    });
   });
 
   describe('getScholar', () => {
@@ -315,6 +437,12 @@ describe('ScholarsService', () => {
         } else if (selectCallCount === 3) {
           // Third call: tasks stats
           mockGroupBy.mockResolvedValueOnce(mockTasksData);
+        } else if (selectCallCount === 4) {
+          // Fourth call: active platforms
+          mockWhere.mockResolvedValueOnce([]);
+        } else if (selectCallCount === 5) {
+          // Fifth call: yes rows
+          mockGroupBy.mockResolvedValueOnce([]);
         }
 
         return {
@@ -481,6 +609,7 @@ describe('ScholarsService', () => {
         return {
           from: mockFrom,
           innerJoin: mockInnerJoin,
+          leftJoin: mockFrom,
           where: mockWhere,
           limit: mockLimit,
           orderBy: mockOrderBy,
@@ -513,6 +642,105 @@ describe('ScholarsService', () => {
       expect(result.goals).toEqual([]);
       expect(result.tasks).toEqual([]);
       expect(result.documents).toEqual([]);
+      expect(result.platformSetups).toEqual([]);
+    });
+
+    it('should include platform setups for prep-year candidates', async () => {
+      const mockScholarRow = {
+        scholar: {
+          id: 'scholar-1',
+          userId: 'user-1',
+          phone: null,
+          program: 'Prep',
+          year: 'TBD',
+          university: 'TBD',
+          location: null,
+          bio: null,
+          status: 'active',
+          programStage: 'prep_year',
+          startDate: new Date('2026-09-01'),
+          lastActivity: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          aaiScholarId: null,
+          dateOfBirth: null,
+          gender: null,
+          nationality: null,
+          addressHomeCountry: null,
+          passportExpirationDate: null,
+          visaExpirationDate: null,
+          emergencyContactCountryOfStudy: null,
+          emergencyContactHomeCountry: null,
+          graduationDate: null,
+          universityId: null,
+          dietaryInformation: null,
+          kokorozashi: null,
+          longTermCareerPlan: null,
+          postGraduationPlan: null,
+          majorCategory: null,
+          fieldOfStudy: null,
+          intendedUniversity: null,
+          intendedCourse: null,
+          degreePathway: null,
+        },
+        user: {
+          id: 'user-1',
+          name: 'Ada Prep',
+          email: 'ada@example.com',
+          image: null,
+        },
+      };
+
+      const mockSetups = [
+        {
+          platformId: '22222222-2222-4222-8222-222222222222',
+          slug: 'coursera',
+          name: 'Coursera',
+          signpostingUrl: null,
+          sortOrder: 2,
+          status: 'pending',
+        },
+      ];
+
+      let selectCallCount = 0;
+      const mockFrom = jest.fn().mockReturnThis();
+      const mockInnerJoin = jest.fn().mockReturnThis();
+      const mockLeftJoin = jest.fn().mockReturnThis();
+      const mockWhere = jest.fn().mockReturnThis();
+      const mockLimit = jest.fn().mockReturnThis();
+      const mockOrderBy = jest.fn().mockReturnThis();
+
+      mockDatabase.select = jest.fn().mockImplementation(() => {
+        selectCallCount++;
+        if (selectCallCount === 1) {
+          mockLimit.mockResolvedValueOnce([mockScholarRow]);
+        } else if (selectCallCount === 5) {
+          mockOrderBy.mockResolvedValueOnce(mockSetups);
+        } else {
+          mockOrderBy.mockResolvedValueOnce([]);
+        }
+        return {
+          from: mockFrom,
+          innerJoin: mockInnerJoin,
+          leftJoin: mockLeftJoin,
+          where: mockWhere,
+          limit: mockLimit,
+          orderBy: mockOrderBy,
+        };
+      });
+
+      const result = await service.getScholarProfile('scholar-1');
+
+      expect(result.platformSetups).toEqual([
+        {
+          platformId: '22222222-2222-4222-8222-222222222222',
+          slug: 'coursera',
+          name: 'Coursera',
+          signpostingUrl: null,
+          sortOrder: 2,
+          status: 'pending',
+        },
+      ]);
     });
 
     it('should throw NotFoundException when scholar profile not found', async () => {
@@ -602,6 +830,210 @@ describe('ScholarsService', () => {
     });
   });
 
+  describe('updateScholarProfile', () => {
+    it('should write prep-year destination fields when provided', async () => {
+      const mockFrom = jest.fn().mockReturnThis();
+      const mockWhere = jest.fn().mockReturnThis();
+      const mockLimit = jest.fn().mockResolvedValue([{ id: 's1', userId: 'u1' }]);
+
+      mockDatabase.select = jest.fn().mockReturnValue({
+        from: mockFrom,
+        where: mockWhere,
+        limit: mockLimit,
+      });
+
+      const mockSet = jest.fn().mockReturnThis();
+      const mockUpdateWhere = jest.fn().mockResolvedValue(undefined);
+      mockDatabase.update = jest.fn().mockReturnValue({
+        set: mockSet,
+        where: mockUpdateWhere,
+      });
+
+      mockFrom.mockReturnThis();
+      mockWhere.mockReturnThis();
+
+      const profileSpy = jest.spyOn(service, 'getScholarProfileByUserId').mockResolvedValueOnce({
+        id: 's1',
+        userId: 'u1',
+        name: 'Test Scholar',
+        email: 't@x.com',
+        program: 'CS',
+        year: 'Year 1',
+        university: 'MIT',
+        status: 'active',
+        programStage: 'prep_year',
+        intendedUniversity: 'University of Edinburgh',
+        intendedCourse: 'Computer Science',
+        degreePathway: 'Foundation Year',
+        startDate: new Date(),
+        goals: [],
+        tasks: [],
+        documents: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as Awaited<ReturnType<ScholarsService['getScholarProfileByUserId']>>);
+
+      const result = await service.updateScholarProfile('u1', {
+        majorCategory: 'Engineering and Technology',
+        fieldOfStudy: 'Computer Science',
+        programStage: ProgramStage.PREP_YEAR,
+        intendedUniversity: 'University of Edinburgh',
+        intendedCourse: 'Computer Science',
+        degreePathway: 'Foundation Year',
+      });
+
+      expect(mockDatabase.update).toHaveBeenCalled();
+      expect(mockSet).toHaveBeenCalledWith(
+        expect.objectContaining({
+          majorCategory: 'Engineering and Technology',
+          fieldOfStudy: 'Computer Science',
+          programStage: 'prep_year',
+          intendedUniversity: 'University of Edinburgh',
+          intendedCourse: 'Computer Science',
+          degreePathway: 'Foundation Year',
+        })
+      );
+      expect(profileSpy).toHaveBeenCalledWith('u1');
+      expect(result.programStage).toBe('prep_year');
+      expect(result.intendedUniversity).toBe('University of Edinburgh');
+      profileSpy.mockRestore();
+    });
+
+    it('should not write programStage when it is omitted', async () => {
+      const mockFrom = jest.fn().mockReturnThis();
+      const mockWhere = jest.fn().mockReturnThis();
+      const mockLimit = jest.fn().mockResolvedValue([{ id: 's1', userId: 'u1' }]);
+
+      mockDatabase.select = jest.fn().mockReturnValue({
+        from: mockFrom,
+        where: mockWhere,
+        limit: mockLimit,
+      });
+
+      const mockSet = jest.fn().mockReturnThis();
+      const mockUpdateWhere = jest.fn().mockResolvedValue(undefined);
+      mockDatabase.update = jest.fn().mockReturnValue({
+        set: mockSet,
+        where: mockUpdateWhere,
+      });
+
+      const profileSpy = jest.spyOn(service, 'getScholarProfileByUserId').mockResolvedValueOnce({
+        id: 's1',
+        userId: 'u1',
+        name: 'Test Scholar',
+        email: 't@x.com',
+        program: 'CS',
+        year: 'Year 1',
+        university: 'MIT',
+        status: 'active',
+        programStage: 'scholar',
+        startDate: new Date(),
+        goals: [],
+        tasks: [],
+        documents: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as Awaited<ReturnType<ScholarsService['getScholarProfileByUserId']>>);
+
+      await service.updateScholarProfile('u1', {
+        phone: '+123',
+      });
+
+      const setArg = mockSet.mock.calls[0][0];
+      expect(setArg).toEqual(expect.objectContaining({ phone: '+123' }));
+      expect(setArg).not.toHaveProperty('programStage');
+      profileSpy.mockRestore();
+    });
+
+    it('should transition prep_year to scholar when staff sets programStage', async () => {
+      const mockFrom = jest.fn().mockReturnThis();
+      const mockWhere = jest.fn().mockReturnThis();
+      const mockLimit = jest.fn().mockResolvedValue([
+        {
+          id: 's1',
+          userId: 'u1',
+          programStage: 'prep_year',
+          university: 'TBD',
+          year: 'TBD',
+        },
+      ]);
+
+      mockDatabase.select = jest.fn().mockReturnValue({
+        from: mockFrom,
+        where: mockWhere,
+        limit: mockLimit,
+      });
+
+      const mockSet = jest.fn().mockReturnThis();
+      const mockUpdateWhere = jest.fn().mockResolvedValue(undefined);
+      mockDatabase.update = jest.fn().mockReturnValue({
+        set: mockSet,
+        where: mockUpdateWhere,
+      });
+
+      const profileSpy = jest.spyOn(service, 'getScholarProfileByUserId').mockResolvedValueOnce({
+        id: 's1',
+        userId: 'u1',
+        name: 'Test Scholar',
+        email: 't@x.com',
+        program: 'CS',
+        year: 'Year 1',
+        university: 'MIT',
+        status: 'active',
+        programStage: 'scholar',
+        startDate: new Date(),
+        goals: [],
+        tasks: [],
+        documents: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as Awaited<ReturnType<ScholarsService['getScholarProfileByUserId']>>);
+
+      const result = await service.updateScholarProfile('u1', {
+        programStage: ProgramStage.SCHOLAR,
+        university: 'University of Edinburgh',
+        year: 'Year 1',
+      });
+
+      expect(mockSet).toHaveBeenCalledWith(
+        expect.objectContaining({
+          programStage: 'scholar',
+          university: 'University of Edinburgh',
+          year: 'Year 1',
+        })
+      );
+      expect(result.programStage).toBe('scholar');
+      profileSpy.mockRestore();
+    });
+
+    it('should reject prep_year to scholar when university or year is a placeholder', async () => {
+      const mockFrom = jest.fn().mockReturnThis();
+      const mockWhere = jest.fn().mockReturnThis();
+      const mockLimit = jest.fn().mockResolvedValue([
+        {
+          id: 's1',
+          userId: 'u1',
+          programStage: 'prep_year',
+          university: 'TBD',
+          year: 'TBD',
+        },
+      ]);
+
+      mockDatabase.select = jest.fn().mockReturnValue({
+        from: mockFrom,
+        where: mockWhere,
+        limit: mockLimit,
+      });
+
+      await expect(
+        service.updateScholarProfile('u1', {
+          programStage: ProgramStage.SCHOLAR,
+        })
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(mockDatabase.update).not.toHaveBeenCalled();
+    });
+  });
+
   describe('exportAllScholarsCSV', () => {
     it('should return CSV string with headers and scholar data', async () => {
       const mockFrom = jest.fn().mockReturnThis();
@@ -615,6 +1047,10 @@ describe('ScholarsService', () => {
             program: 'CS',
             year: 'Y1',
             university: 'MIT',
+            programStage: 'prep_year',
+            intendedUniversity: 'Oxford',
+            intendedCourse: 'Medicine',
+            degreePathway: 'Undergraduate',
             location: 'Boston',
             aaiScholarId: null,
             dateOfBirth: null,
@@ -658,6 +1094,10 @@ describe('ScholarsService', () => {
       expect(result).toContain('"Name"');
       expect(result).toContain('"Email"');
       expect(result).toContain('"Status"');
+      expect(result).toContain('"University"');
+      expect(result).toContain('"Program Stage"');
+      expect(result).toContain('prep_year');
+      expect(result).toContain('Oxford');
       expect(result).toContain('Alice');
       expect(result).toContain('alice@example.com');
       expect(result).toContain('"ID"');
@@ -737,7 +1177,7 @@ describe('ScholarsService', () => {
         status: 'archived',
         startDate: new Date().toISOString(),
         goals: { total: 0, completed: 0, inProgress: 0, pending: 0 },
-        tasks: { total: 0, completed: 0, overdue: 0 },
+        tasks: { total: 0, completed: 0, overdue: 0, dueToday: 0 },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       } as Awaited<ReturnType<ScholarsService['getScholar']>>);
@@ -806,7 +1246,119 @@ describe('ScholarsService', () => {
 
       await service.deleteScholar('s1');
 
-      expect(mockDatabase.delete).toHaveBeenCalledTimes(6);
+      expect(mockDatabase.delete).toHaveBeenCalledTimes(7);
+    });
+  });
+
+  describe('updatePlatformSetup', () => {
+    const pgExecuteShape = {
+      rows: [{ id: 'scholar-1', program_stage: 'prep_year' }],
+      rowCount: 1,
+    };
+
+    function mockLockThenPlatform(
+      scholarRows: Array<{ id: string; programStage: string }>,
+      platformRows: Array<{ id: string }>
+    ) {
+      const mockFor = jest.fn();
+      let selectCallCount = 0;
+      mockDatabase.execute = jest.fn().mockResolvedValue(pgExecuteShape);
+      mockDatabase.select = jest.fn().mockImplementation(() => {
+        selectCallCount++;
+        if (selectCallCount === 1) {
+          const chain = {
+            from: jest.fn(),
+            where: jest.fn(),
+            for: mockFor,
+          };
+          chain.from.mockReturnValue(chain);
+          chain.where.mockReturnValue(chain);
+          // Row is only available after .for('update').limit() — not from execute()[0]
+          mockFor.mockImplementation((strength: string) => {
+            expect(strength).toBe('update');
+            return {
+              limit: jest.fn().mockResolvedValue(scholarRows),
+            };
+          });
+          return chain;
+        }
+        const platformChain = {
+          from: jest.fn(),
+          where: jest.fn(),
+          limit: jest.fn().mockResolvedValue(platformRows),
+        };
+        platformChain.from.mockReturnValue(platformChain);
+        platformChain.where.mockReturnValue(platformChain);
+        return platformChain;
+      });
+      return { mockFor };
+    }
+
+    it('should upsert platform setup for a prep-year scholar', async () => {
+      const mockOnConflict = jest.fn().mockResolvedValue(undefined);
+      const mockValues = jest.fn().mockReturnValue({ onConflictDoUpdate: mockOnConflict });
+      const { mockFor } = mockLockThenPlatform(
+        [{ id: 'scholar-1', programStage: 'prep_year' }],
+        [{ id: 'platform-coursera' }]
+      );
+      mockDatabase.insert = jest.fn().mockReturnValue({ values: mockValues });
+
+      const profileSpy = jest.spyOn(service, 'getScholarProfile').mockResolvedValueOnce({
+        id: 'scholar-1',
+        platformSetups: [{ slug: 'coursera', status: 'yes' }],
+      } as Awaited<ReturnType<ScholarsService['getScholarProfile']>>);
+
+      const result = await service.updatePlatformSetup(
+        'scholar-1',
+        { slug: 'coursera', status: PlatformSetupStatus.YES },
+        'staff-1'
+      );
+
+      expect(mockDatabase.transaction).toHaveBeenCalled();
+      expect(mockFor).toHaveBeenCalledWith('update');
+      // node-postgres execute() is { rows }, so [0] must not be how we read the lock
+      expect(pgExecuteShape[0]).toBeUndefined();
+      expect(mockDatabase.insert).toHaveBeenCalled();
+      expect(mockOnConflict).toHaveBeenCalled();
+      expect(result.id).toBe('scholar-1');
+      profileSpy.mockRestore();
+    });
+
+    it('should reject confirmed scholars', async () => {
+      mockLockThenPlatform([{ id: 'scholar-1', programStage: 'scholar' }], []);
+
+      await expect(
+        service.updatePlatformSetup(
+          'scholar-1',
+          { slug: 'coursera', status: PlatformSetupStatus.YES },
+          'staff-1'
+        )
+      ).rejects.toThrow(BadRequestException);
+      expect(mockDatabase.insert).not.toHaveBeenCalled();
+    });
+
+    it('should 404 unknown platform slugs', async () => {
+      mockLockThenPlatform([{ id: 'scholar-1', programStage: 'prep_year' }], []);
+
+      await expect(
+        service.updatePlatformSetup(
+          'scholar-1',
+          { slug: 'unknown', status: PlatformSetupStatus.YES },
+          'staff-1'
+        )
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should 404 when the locked scholar row is missing', async () => {
+      mockLockThenPlatform([], []);
+
+      await expect(
+        service.updatePlatformSetup(
+          'missing',
+          { slug: 'coursera', status: PlatformSetupStatus.YES },
+          'staff-1'
+        )
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });

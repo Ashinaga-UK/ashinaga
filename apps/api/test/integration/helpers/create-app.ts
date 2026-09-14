@@ -1,4 +1,4 @@
-import { ValidationPipe } from '@nestjs/common';
+import { ForbiddenException, UnauthorizedException, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { FastifyAdapter } from '@nestjs/platform-fastify';
@@ -6,13 +6,14 @@ import { Test } from '@nestjs/testing';
 import { AppModule } from '../../../src/app.module';
 import { AuthGuard } from '../../../src/auth/auth.guard';
 import { StaffGuard } from '../../../src/auth/staff.guard';
+import { ObjectStorageService } from '../../../src/storage/object-storage';
 
 /**
  * Create a Nest application instance for integration tests.
  * Uses Fastify (same as production) and applies global validation pipe.
  */
 export async function createIntegrationApp(): Promise<NestFastifyApplication> {
-  const adapter = new FastifyAdapter();
+  const adapter = new FastifyAdapter({ bodyLimit: 5 * 1024 * 1024 });
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, adapter, {
     logger: ['error', 'warn'],
   });
@@ -54,7 +55,9 @@ interface AuthenticatedApp {
  * Create a Nest app for integration tests with AuthGuard and StaffGuard overridden so
  * test code can set the "current user" without going through Better Auth.
  */
-export async function createAuthenticatedIntegrationApp(): Promise<AuthenticatedApp> {
+export async function createAuthenticatedIntegrationApp(options?: {
+  objectStorage?: Partial<ObjectStorageService>;
+}): Promise<AuthenticatedApp> {
   let currentUser: TestUser | null = null;
   const auth: AuthContext = {
     setUser: (user) => {
@@ -63,16 +66,19 @@ export async function createAuthenticatedIntegrationApp(): Promise<Authenticated
     getUser: () => currentUser,
   };
 
-  const adapter = new FastifyAdapter();
+  const adapter = new FastifyAdapter({ bodyLimit: 5 * 1024 * 1024 });
 
-  const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+  // These mirror the real guards' failure modes: no session is 401, a session
+  // belonging to the wrong role is 403. Returning `false` instead would collapse
+  // both to 403 and hide which one an endpoint actually produces in production.
+  const moduleBuilder = Test.createTestingModule({ imports: [AppModule] })
     .overrideGuard(AuthGuard)
     .useValue({
       canActivate: (context: {
         switchToHttp: () => { getRequest: () => Record<string, unknown> };
       }) => {
         const req = context.switchToHttp().getRequest();
-        if (!currentUser) return false;
+        if (!currentUser) throw new UnauthorizedException('User not authenticated');
         req.user = { ...currentUser };
         return true;
       },
@@ -83,13 +89,20 @@ export async function createAuthenticatedIntegrationApp(): Promise<Authenticated
         switchToHttp: () => { getRequest: () => Record<string, unknown> };
       }) => {
         const req = context.switchToHttp().getRequest();
-        if (!currentUser) return false;
-        if (currentUser.userType !== 'staff') return false;
+        if (!currentUser) throw new UnauthorizedException('User not authenticated');
+        if (currentUser.userType !== 'staff') {
+          throw new ForbiddenException('Access restricted to staff members only');
+        }
         req.user = { ...currentUser };
         return true;
       },
-    })
-    .compile();
+    });
+
+  if (options?.objectStorage) {
+    moduleBuilder.overrideProvider(ObjectStorageService).useValue(options.objectStorage);
+  }
+
+  const moduleRef = await moduleBuilder.compile();
 
   const app = moduleRef.createNestApplication<NestFastifyApplication>(adapter, {
     logger: ['error', 'warn'],

@@ -4,6 +4,7 @@ import type {
   GetScholarsResponseDto,
   ScholarResponseDto,
 } from './dto/get-scholars.dto';
+import { ProgramStage } from './dto/update-scholar-profile.dto';
 import { ScholarsController } from './scholars.controller';
 import { ScholarsService } from './scholars.service';
 
@@ -14,6 +15,9 @@ describe('ScholarsController', () => {
   const mockScholarsService = {
     getScholars: jest.fn(),
     getScholar: jest.fn(),
+    updateScholarProfile: jest.fn(),
+    updateScholarProfileByScholarId: jest.fn(),
+    updatePlatformSetup: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -54,6 +58,7 @@ describe('ScholarsController', () => {
             status: 'active',
             startDate: new Date('2023-01-01'),
             lastActivity: new Date('2025-01-01'),
+            staleActivity: true,
             goals: {
               total: 4,
               completed: 2,
@@ -122,6 +127,57 @@ describe('ScholarsController', () => {
       expect(service.getScholars).toHaveBeenCalledWith(query);
       expect(service.getScholars).toHaveBeenCalledTimes(1);
     });
+
+    it('should pass platformSetup filter to the service', async () => {
+      const mockResponse: GetScholarsResponseDto = {
+        data: [],
+        pagination: {
+          page: 1,
+          limit: 20,
+          totalItems: 0,
+          totalPages: 0,
+          hasNext: false,
+          hasPrev: false,
+        },
+      };
+
+      mockScholarsService.getScholars.mockResolvedValue(mockResponse);
+
+      const query: GetScholarsQueryDto = {
+        programStage: 'prep_year',
+        platformSetup: 'incomplete',
+      };
+
+      const result = await controller.getScholars(query);
+
+      expect(result).toEqual(mockResponse);
+      expect(service.getScholars).toHaveBeenCalledWith(query);
+    });
+
+    it('should pass loginActivity filter to the service', async () => {
+      const mockResponse: GetScholarsResponseDto = {
+        data: [],
+        pagination: {
+          page: 1,
+          limit: 20,
+          totalItems: 0,
+          totalPages: 0,
+          hasNext: false,
+          hasPrev: false,
+        },
+      };
+
+      mockScholarsService.getScholars.mockResolvedValue(mockResponse);
+
+      const query: GetScholarsQueryDto = {
+        loginActivity: 'stale',
+      };
+
+      const result = await controller.getScholars(query);
+
+      expect(result).toEqual(mockResponse);
+      expect(service.getScholars).toHaveBeenCalledWith(query);
+    });
   });
 
   describe('getScholar', () => {
@@ -141,6 +197,7 @@ describe('ScholarsController', () => {
         status: 'active',
         startDate: new Date('2023-01-01'),
         lastActivity: new Date('2025-01-01'),
+        staleActivity: true,
         goals: {
           total: 4,
           completed: 2,
@@ -182,6 +239,7 @@ describe('ScholarsController', () => {
         status: 'active',
         startDate: new Date('2023-09-01'),
         lastActivity: null,
+        staleActivity: false,
         goals: {
           total: 0,
           completed: 0,
@@ -204,6 +262,75 @@ describe('ScholarsController', () => {
 
       expect(result).toEqual(mockScholar);
       expect(service.getScholar).toHaveBeenCalledWith(scholarId);
+    });
+  });
+
+  describe('updateMyProfile', () => {
+    it('forwards scholar self-updates without programStage on the DTO', async () => {
+      mockScholarsService.updateScholarProfile.mockResolvedValue({
+        id: 's1',
+        programStage: 'prep_year',
+      });
+
+      await controller.updateMyProfile({ user: { id: 'user-1' } }, { phone: '+123' });
+
+      expect(service.updateScholarProfile).toHaveBeenCalledWith('user-1', {
+        phone: '+123',
+      });
+    });
+  });
+
+  describe('updateScholarProfileByStaff', () => {
+    it('should allow staff to set programStage', async () => {
+      mockScholarsService.updateScholarProfileByScholarId.mockResolvedValue({
+        id: 'scholar-1',
+        programStage: 'scholar',
+      });
+
+      await controller.updateScholarProfileByStaff('scholar-1', {
+        programStage: ProgramStage.SCHOLAR,
+      });
+
+      expect(service.updateScholarProfileByScholarId).toHaveBeenCalledWith('scholar-1', {
+        programStage: ProgramStage.SCHOLAR,
+      });
+    });
+
+    it('accepts UpdateStaffScholarProfileDto without image field', async () => {
+      mockScholarsService.updateScholarProfileByScholarId.mockResolvedValue({
+        id: 'scholar-1',
+      });
+
+      await controller.updateScholarProfileByStaff('scholar-1', {
+        phone: '+123',
+      });
+
+      expect(service.updateScholarProfileByScholarId).toHaveBeenCalledWith('scholar-1', {
+        phone: '+123',
+      });
+      const passed = mockScholarsService.updateScholarProfileByScholarId.mock.calls[0][1];
+      expect(passed).not.toHaveProperty('image');
+    });
+  });
+
+  describe('updatePlatformSetup', () => {
+    it('should forward staff platform setup updates', async () => {
+      mockScholarsService.updatePlatformSetup.mockResolvedValue({
+        id: 'scholar-1',
+        programStage: 'prep_year',
+      });
+
+      await controller.updatePlatformSetup(
+        'scholar-1',
+        { slug: 'coursera', status: 'yes' as const },
+        { user: { id: 'staff-1' } }
+      );
+
+      expect(service.updatePlatformSetup).toHaveBeenCalledWith(
+        'scholar-1',
+        { slug: 'coursera', status: 'yes' },
+        'staff-1'
+      );
     });
   });
 });

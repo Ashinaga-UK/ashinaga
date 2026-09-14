@@ -1,16 +1,60 @@
 'use client';
 
-import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail, User } from 'lucide-react';
+import { DEGREE_PATHWAY_OPTIONS } from '@workspace/ui';
+import {
+  AlertCircle,
+  Check,
+  ChevronsUpDown,
+  Eye,
+  EyeOff,
+  Loader2,
+  Lock,
+  Mail,
+  User,
+} from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type React from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { fetchAPI } from '../lib/api-client';
 import { signIn } from '../lib/auth-client';
+import { mergeUniqueOptions } from '../lib/merge-options';
+import { cn } from '../lib/utils';
 import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from './ui/command';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+
+const DEFAULT_UNIVERSITY_OPTIONS = [
+  'Imperial College London',
+  'University of Edinburgh',
+  'LSE',
+  'Cambridge University',
+  'Oxford University',
+  'UCL',
+  'University of York',
+  'University of Warwick',
+  'University of Central Lancashire',
+  'University of East Anglia',
+  'University of Manchester',
+  'University of Leeds',
+] as const;
+
+const COURSE_OPTIONS = [
+  'Computer Science',
+  'Medicine',
+  'Engineering',
+  'Economics',
+  'Law',
+  'Business',
+  'Psychology',
+  'Environmental Science',
+  'Mathematics',
+  'International Relations',
+] as const;
 
 interface ScholarData {
   name?: string;
@@ -20,14 +64,117 @@ interface ScholarData {
   location?: string;
   phone?: string;
   bio?: string;
+  intendedUniversity?: string;
+  intendedCourse?: string;
+  degreePathway?: string;
+  /** Programme stage: 'prep_year' or 'scholar' */
+  programStage?: 'prep_year' | 'scholar';
+  /** Intended destination (only meaningful when programStage = prep_year) */
 }
-
 interface InvitationData {
   id: string;
   email: string;
   userType: string;
   scholarData: ScholarData | null;
   expiresAt: string;
+}
+
+function SearchableValueField({
+  id,
+  value,
+  options,
+  placeholder,
+  searchPlaceholder,
+  emptyText,
+  onChange,
+  invalid,
+}: {
+  id: string;
+  value: string;
+  options: readonly string[];
+  placeholder: string;
+  searchPlaceholder: string;
+  emptyText: string;
+  onChange: (value: string) => void;
+  invalid?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState(value);
+
+  useEffect(() => {
+    if (!open) {
+      setSearch(value);
+    }
+  }, [open, value]);
+
+  const filteredOptions = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return options;
+    return options.filter((option) => option.toLowerCase().includes(term));
+  }, [options, search]);
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) {
+          setSearch(value);
+        }
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          id={id}
+          variant="outline"
+          aria-expanded={open}
+          aria-haspopup="listbox"
+          className={cn(
+            'w-full justify-between font-normal',
+            invalid && 'border-destructive focus-visible:ring-destructive'
+          )}
+          aria-invalid={invalid || undefined}
+        >
+          <span className={cn('truncate', !value && 'text-muted-foreground')}>
+            {value || placeholder}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+        <Command shouldFilter={false}>
+          <CommandInput
+            placeholder={searchPlaceholder}
+            value={search}
+            onValueChange={(nextValue) => {
+              setSearch(nextValue);
+              onChange(nextValue);
+            }}
+          />
+          <CommandList>
+            <CommandEmpty>{search.trim() ? `Using "${search.trim()}"` : emptyText}</CommandEmpty>
+            {filteredOptions.map((option) => (
+              <CommandItem
+                key={option}
+                value={option}
+                onSelect={() => {
+                  setSearch(option);
+                  onChange(option);
+                  setOpen(false);
+                }}
+              >
+                <Check
+                  className={cn('mr-2 h-4 w-4', value === option ? 'opacity-100' : 'opacity-0')}
+                />
+                {option}
+              </CommandItem>
+            ))}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 export function SignupPage() {
@@ -46,6 +193,9 @@ export function SignupPage() {
     location: '',
     phone: '',
     bio: '',
+    intendedUniversity: '',
+    intendedCourse: '',
+    degreePathway: '',
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -53,7 +203,41 @@ export function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<{
+    intendedUniversity?: string;
+    intendedCourse?: string;
+    degreePathway?: string;
+  }>({});
   const [invitationData, setInvitationData] = useState<InvitationData | null>(null);
+  const prefilledScholarData = invitationData?.scholarData;
+  const [universityOptions, setUniversityOptions] = useState<readonly string[]>(
+    DEFAULT_UNIVERSITY_OPTIONS
+  );
+  const [courseOptions, setCourseOptions] = useState<readonly string[]>(COURSE_OPTIONS);
+
+  useEffect(() => {
+    fetchAPI<{
+      programs: string[];
+      universities: string[];
+      intendedUniversities: string[];
+      intendedCourses: string[];
+    }>('/api/scholars/filters')
+      .then((filters) => {
+        setUniversityOptions(
+          mergeUniqueOptions(
+            DEFAULT_UNIVERSITY_OPTIONS,
+            filters.universities,
+            filters.intendedUniversities
+          )
+        );
+        setCourseOptions(
+          mergeUniqueOptions(COURSE_OPTIONS, filters.programs, filters.intendedCourses)
+        );
+      })
+      .catch(() => {
+        // Keep the local fallbacks if the catalog is unavailable during signup.
+      });
+  }, []);
 
   // Validate token and pre-fill form on mount
   useEffect(() => {
@@ -87,6 +271,9 @@ export function SignupPage() {
                 location: data.scholarData.location || '',
                 phone: data.scholarData.phone || '',
                 bio: data.scholarData.bio || '',
+                intendedUniversity: data.scholarData.intendedUniversity || '',
+                intendedCourse: data.scholarData.intendedCourse || '',
+                degreePathway: data.scholarData.degreePathway || '',
               }
             : {}),
         }));
@@ -117,6 +304,11 @@ export function SignupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    const nextFieldErrors: {
+      intendedUniversity?: string;
+      intendedCourse?: string;
+      degreePathway?: string;
+    } = {};
 
     // Validation
     if (!formData.name.trim()) {
@@ -144,6 +336,25 @@ export function SignupPage() {
       return;
     }
 
+    if (prefilledScholarData?.programStage === 'prep_year') {
+      if (!formData.intendedUniversity.trim()) {
+        nextFieldErrors.intendedUniversity = 'Intended university is required';
+      }
+
+      if (!formData.intendedCourse.trim()) {
+        nextFieldErrors.intendedCourse = 'Intended course is required';
+      }
+
+      if (!formData.degreePathway.trim()) {
+        nextFieldErrors.degreePathway = 'Degree pathway is required';
+      }
+    }
+
+    setFieldErrors(nextFieldErrors);
+    if (Object.keys(nextFieldErrors).length > 0) {
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -160,6 +371,9 @@ export function SignupPage() {
           password: formData.password,
           name: formData.name,
           invitationToken: token,
+          intendedUniversity: formData.intendedUniversity || undefined,
+          intendedCourse: formData.intendedCourse || undefined,
+          degreePathway: formData.degreePathway || undefined,
           // No need to send scholar data - it's already in the invitation
         }),
       });
@@ -183,9 +397,9 @@ export function SignupPage() {
       } else {
         setError(signupData.error || 'Failed to create account. Please try again.');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Signup error:', error);
-      setError(error.message || 'An error occurred during sign up');
+      setError(error instanceof Error ? error.message : 'An error occurred during sign up');
     } finally {
       setIsLoading(false);
     }
@@ -277,6 +491,149 @@ export function SignupPage() {
                 className="bg-muted"
               />
             </div>
+
+            {prefilledScholarData?.programStage === 'prep_year' && (
+              <div className="space-y-4 rounded-lg border border-border bg-muted/30 p-4">
+                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <User className="h-4 w-4" />
+                  Prep-Year Details
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {prefilledScholarData.intendedUniversity ||
+                  prefilledScholarData.intendedCourse ||
+                  prefilledScholarData.degreePathway
+                    ? 'These details have been pre-set by your administrator.'
+                    : 'Complete the fields below to finish onboarding.'}
+                </p>
+
+                {/* Intended University */}
+                <div className="space-y-2">
+                  <Label htmlFor="intendedUniversity">
+                    Intended University{' '}
+                    {prefilledScholarData.intendedUniversity ? (
+                      <span className="text-sm text-muted-foreground">(Locked)</span>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">*</span>
+                    )}
+                  </Label>
+                  {prefilledScholarData.intendedUniversity ? (
+                    <Input
+                      id="intendedUniversity"
+                      value={formData.intendedUniversity}
+                      readOnly
+                      disabled={isLoading}
+                      className="bg-muted"
+                    />
+                  ) : (
+                    <SearchableValueField
+                      id="intendedUniversity"
+                      value={formData.intendedUniversity}
+                      options={universityOptions}
+                      placeholder="Select or type a university"
+                      searchPlaceholder="Start typing a university..."
+                      emptyText="No universities match. Keep typing to enter a custom one."
+                      onChange={(value) => {
+                        setFormData((prev) => ({ ...prev, intendedUniversity: value }));
+                        setFieldErrors((prev) => ({ ...prev, intendedUniversity: undefined }));
+                      }}
+                      invalid={Boolean(fieldErrors.intendedUniversity)}
+                    />
+                  )}
+                  {fieldErrors.intendedUniversity && (
+                    <p className="text-sm text-destructive">{fieldErrors.intendedUniversity}</p>
+                  )}
+                </div>
+
+                {/* Intended Course */}
+                <div className="space-y-2">
+                  <Label htmlFor="intendedCourse">
+                    Intended Course{' '}
+                    {prefilledScholarData.intendedCourse ? (
+                      <span className="text-sm text-muted-foreground">(Locked)</span>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">*</span>
+                    )}
+                  </Label>
+                  {prefilledScholarData.intendedCourse ? (
+                    <Input
+                      id="intendedCourse"
+                      value={formData.intendedCourse}
+                      readOnly
+                      disabled={isLoading}
+                      className="bg-muted"
+                    />
+                  ) : (
+                    <SearchableValueField
+                      id="intendedCourse"
+                      value={formData.intendedCourse}
+                      options={courseOptions}
+                      placeholder="Select or type a course"
+                      searchPlaceholder="Start typing a course..."
+                      emptyText="No courses match. Keep typing to enter a custom one."
+                      onChange={(value) => {
+                        setFormData((prev) => ({ ...prev, intendedCourse: value }));
+                        setFieldErrors((prev) => ({ ...prev, intendedCourse: undefined }));
+                      }}
+                      invalid={Boolean(fieldErrors.intendedCourse)}
+                    />
+                  )}
+                  {fieldErrors.intendedCourse && (
+                    <p className="text-sm text-destructive">{fieldErrors.intendedCourse}</p>
+                  )}
+                </div>
+
+                {/* Degree Pathway */}
+                <div className="space-y-2">
+                  <Label htmlFor="degreePathway">
+                    Degree Pathway{' '}
+                    {prefilledScholarData.degreePathway ? (
+                      <span className="text-sm text-muted-foreground">(Locked)</span>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">*</span>
+                    )}
+                  </Label>
+                  {prefilledScholarData.degreePathway ? (
+                    <Input
+                      id="degreePathway"
+                      value={formData.degreePathway}
+                      readOnly
+                      disabled={isLoading}
+                      className="bg-muted"
+                    />
+                  ) : (
+                    <Select
+                      value={formData.degreePathway}
+                      onValueChange={(value) => {
+                        setFormData((prev) => ({ ...prev, degreePathway: value }));
+                        setFieldErrors((prev) => ({ ...prev, degreePathway: undefined }));
+                      }}
+                    >
+                      <SelectTrigger
+                        id="degreePathway"
+                        aria-invalid={Boolean(fieldErrors.degreePathway) || undefined}
+                        className={
+                          fieldErrors.degreePathway
+                            ? 'border-destructive focus:ring-destructive'
+                            : undefined
+                        }
+                      >
+                        <SelectValue placeholder="Select degree pathway" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DEGREE_PATHWAY_OPTIONS.map((option) => (
+                          <SelectItem key={option} value={option}>
+                            {option}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {fieldErrors.degreePathway && (
+                    <p className="text-sm text-destructive">{fieldErrors.degreePathway}</p>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Password Fields */}
             <div className="space-y-2">

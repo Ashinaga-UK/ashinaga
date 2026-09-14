@@ -192,6 +192,7 @@ function InvitationList({ userType }: InvitationListProps) {
             {filtered.map((inv) => {
               const expires = new Date(inv.expiresAt);
               const isPending = inv.status === 'pending';
+              const canResend = inv.status === 'pending' || inv.status === 'expired';
               return (
                 <li key={inv.id} className="rounded-lg border p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -229,7 +230,7 @@ function InvitationList({ userType }: InvitationListProps) {
                       type="button"
                       variant="outline"
                       size="sm"
-                      disabled={!isPending || busyId !== null}
+                      disabled={!canResend || busyId !== null}
                       onClick={() => handleResend(inv.id)}
                     >
                       {busyId === inv.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Resend'}
@@ -261,6 +262,7 @@ function InvitationList({ userType }: InvitationListProps) {
               {filtered.map((inv) => {
                 const expires = new Date(inv.expiresAt);
                 const isPending = inv.status === 'pending';
+                const canResend = inv.status === 'pending' || inv.status === 'expired';
                 return (
                   <li
                     key={inv.id}
@@ -286,7 +288,7 @@ function InvitationList({ userType }: InvitationListProps) {
                         type="button"
                         variant="outline"
                         size="sm"
-                        disabled={!isPending || busyId !== null}
+                        disabled={!canResend || busyId !== null}
                         onClick={() => handleResend(inv.id)}
                       >
                         {busyId === inv.id ? (

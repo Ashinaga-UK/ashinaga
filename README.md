@@ -46,9 +46,9 @@ This monorepo uses Turborepo and these tools are set up:
 ### Apps and Packages
 
     ├── apps
-    │   ├── api                       # NestJS API server with PostgreSQL
-    │   ├── staff                     # Next.js staff portal (port 3001)
-    │   └── scholar                   # Next.js scholar portal (port 3002)
+    │   ├── api                       # NestJS API server with PostgreSQL (port 4000)
+    │   ├── staff                     # Next.js staff portal (port 4001)
+    │   └── scholar                   # Next.js scholar portal (port 4002)
     └── packages
         ├── @workspace/jest-config         # Jest configurations
         ├── @workspace/typescript-config   # TypeScript configurations

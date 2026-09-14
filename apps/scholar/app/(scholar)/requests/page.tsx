@@ -13,7 +13,7 @@ export default function RequestsPage() {
   return (
     <div className="p-6 space-y-4">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold text-foreground">My Requests</h2>
+        <h2 className="hidden text-2xl font-bold text-foreground md:block">My Requests</h2>
         <NewRequestDialog
           trigger={
             <Button className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700">

@@ -8,6 +8,7 @@ export const scholarStatusEnum = pgEnum('scholar_status', [
   'archived',
 ]);
 export const genderEnum = pgEnum('gender', ['male', 'female', 'other', 'prefer_not_to_say']);
+export const programStageEnum = pgEnum('program_stage', ['prep_year', 'scholar']);
 
 export const scholars = pgTable('scholars', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -59,6 +60,12 @@ export const scholars = pgTable('scholars', {
   // New fields - Academic categorization (matching Insightly)
   majorCategory: text('major_category'), // Business-Related, Engineering and Technology, etc.
   fieldOfStudy: text('field_of_study'), // Computer Science, Medicine, etc.
+
+  // New fields - Prep Year programme stage (ASH-79)
+  programStage: programStageEnum('program_stage').notNull().default('scholar'),
+  intendedUniversity: text('intended_university'), // Planned university (prep candidate)
+  intendedCourse: text('intended_course'), // Planned course (prep candidate)
+  degreePathway: text('degree_pathway'), // e.g. Undergraduate, Foundation, etc.
 
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),

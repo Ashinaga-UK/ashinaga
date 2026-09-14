@@ -174,5 +174,152 @@ export async function getStaffList(): Promise<StaffMember[]> {
   return fetchAPI<StaffMember[]>('/api/users/staff');
 }
 
+// Resources
+export type ResourceType = 'Guide' | 'Handbook' | 'Template';
+export type ResourceCategory = 'LDF' | 'Handbook' | 'Proposal' | 'Support';
+
+export type ResourceSourceType = 'url' | 'file';
+
+export interface Resource {
+  id: string;
+  title: string;
+  description: string;
+  type: ResourceType;
+  category: ResourceCategory;
+  sourceType: ResourceSourceType;
+  url: string | null;
+  fileName: string | null;
+  status: 'live';
+  filters: Array<{ type: string; value: string }>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getMyResources(): Promise<Resource[]> {
+  return fetchAPI<Resource[]>('/api/resources/my-resources');
+}
+
+export async function getResourceDownloadUrl(
+  resourceId: string,
+  disposition: 'attachment' | 'inline' = 'attachment'
+): Promise<{ downloadUrl: string }> {
+  const query = disposition === 'inline' ? '?disposition=inline' : '';
+  return fetchAPI<{ downloadUrl: string }>(`/api/resources/${resourceId}/download${query}`);
+}
+
+export interface RequiredDocumentType {
+  id: string;
+  slug: string;
+  label: string;
+  description: string | null;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+export interface RequiredDocumentFile {
+  id: string;
+  typeId: string;
+  typeSlug?: string;
+  typeLabel?: string;
+  fileName: string;
+  fileMimeType: string;
+  fileSizeBytes: number;
+  uploadedAt: string;
+}
+
+export interface RequiredDocumentChecklistItem {
+  type: RequiredDocumentType;
+  status: 'submitted' | 'missing';
+  file: RequiredDocumentFile | null;
+}
+
+export interface RequiredDocumentChecklist {
+  scholarId: string;
+  items: RequiredDocumentChecklistItem[];
+}
+
+export async function getMyDocumentChecklist(): Promise<RequiredDocumentChecklist> {
+  return fetchAPI<RequiredDocumentChecklist>('/api/documents/my-checklist');
+}
+
+export async function createDocumentUploadUrl(data: {
+  typeId: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+}): Promise<{ uploadUrl: string; fields: Record<string, string>; fileKey: string }> {
+  return fetchAPI<{ uploadUrl: string; fields: Record<string, string>; fileKey: string }>(
+    '/api/documents/upload-url',
+    {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+export async function createAvatarUploadUrl(data: {
+  fileType: string;
+  fileSize: number;
+}): Promise<{ uploadUrl: string; fields: Record<string, string>; fileKey: string }> {
+  return fetchAPI<{ uploadUrl: string; fields: Record<string, string>; fileKey: string }>(
+    '/api/avatars/upload-url',
+    {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+export async function uploadAvatarBlob(blob: Blob): Promise<string> {
+  const { uploadUrl, fields, fileKey } = await createAvatarUploadUrl({
+    fileType: 'image/jpeg',
+    fileSize: blob.size,
+  });
+
+  const formData = new FormData();
+  for (const [key, value] of Object.entries(fields)) {
+    formData.append(key, value);
+  }
+  formData.append('file', blob, 'avatar.jpg');
+
+  const uploadResponse = await fetch(uploadUrl, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!uploadResponse.ok) {
+    throw new Error('Failed to upload profile picture');
+  }
+
+  return fileKey;
+}
+
+export async function confirmDocumentUpload(data: {
+  typeId: string;
+  pendingFileKey: string;
+  fileName: string;
+  fileMimeType: string;
+  fileSizeBytes: number;
+}): Promise<RequiredDocumentFile> {
+  return fetchAPI<RequiredDocumentFile>('/api/documents', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteMyDocument(fileId: string): Promise<{ success: boolean }> {
+  return fetchAPI<{ success: boolean }>(`/api/documents/${fileId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function getRequiredDocumentDownloadUrl(
+  fileId: string,
+  disposition: 'attachment' | 'inline' = 'attachment'
+): Promise<{ downloadUrl: string }> {
+  const query = disposition === 'inline' ? '?disposition=inline' : '';
+  return fetchAPI<{ downloadUrl: string }>(`/api/documents/${fileId}/download${query}`);
+}
+
 // Export the fetchAPI function and any other API functions as needed
 export { fetchAPI };

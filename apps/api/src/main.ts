@@ -12,8 +12,10 @@ async function bootstrap() {
   logger.log(`Starting API in ${process.env.NODE_ENV || 'development'} mode`);
   logger.log(`Port: ${process.env.PORT || 3000}`);
 
+  // Default Fastify bodyLimit is 1MB, which rejects typical profile-picture data URLs.
   const fastifyAdapter = new FastifyAdapter({
     logger: true, // Enable Fastify's built-in logger
+    bodyLimit: 5 * 1024 * 1024,
   });
 
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, fastifyAdapter, {

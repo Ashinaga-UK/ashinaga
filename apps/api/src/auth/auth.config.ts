@@ -1,9 +1,11 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { resolveAvatarSrc } from '../avatars/avatar-files';
 import { eq } from 'drizzle-orm';
 import { getDatabase } from '../db/connection';
 import * as schema from '../db/schema';
 import { EmailService } from '../email/email.service';
+import { touchScholarLastActivity } from '../scholars/scholar-activity';
 
 // Create email service instance
 const emailService = new EmailService();
@@ -256,6 +258,7 @@ If you didn't request this, you can ignore this email.
 
             const result = {
               ...user,
+              image: resolveAvatarSrc(user.image, user.id),
               phone: staffData.phone || null,
               department: department || null,
               role: jobTitle || null,
@@ -265,7 +268,10 @@ If you didn't request this, you can ignore this email.
             return result;
           }
         }
-        return user;
+        return {
+          ...user,
+          image: resolveAvatarSrc(user.image, user.id),
+        };
       },
     },
     signUp: {
@@ -380,6 +386,9 @@ If you didn't request this, you can ignore this email.
         return true;
       },
       after: async ({ user }) => {
+        if (user.userType === 'scholar') {
+          await touchScholarLastActivity(user.id);
+        }
         // Add staff data to user object after sign in
         if (user.userType === 'staff') {
           const db = getDatabase();

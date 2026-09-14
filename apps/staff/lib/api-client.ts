@@ -14,6 +14,7 @@ export interface ScholarTasksStats {
   total: number;
   completed: number;
   overdue: number;
+  dueToday: number;
 }
 
 export interface Scholar {
@@ -29,10 +30,16 @@ export interface Scholar {
   location?: string | null;
   bio?: string | null;
   status: 'active' | 'inactive' | 'on_hold' | 'archived';
+  programStage: 'prep_year' | 'scholar';
+  intendedUniversity?: string | null;
+  intendedCourse?: string | null;
+  degreePathway?: string | null;
   startDate: string;
   lastActivity?: string | null;
+  staleActivity?: boolean;
   goals: ScholarGoalsStats;
   tasks: ScholarTasksStats;
+  platformSetupIncomplete?: boolean | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -65,6 +72,7 @@ export interface TaskAttachment {
 
 export interface TaskResponse {
   responseText?: string | null;
+  linkUrl?: string | null;
   submittedAt: string;
   attachments: TaskAttachment[];
 }
@@ -82,11 +90,17 @@ export interface Task {
     | 'other';
   priority: 'high' | 'medium' | 'low';
   dueDate: string;
+  phase?: string | null;
+  assignmentGroupId?: string | null;
+  requiresResponse: boolean;
+  requiresAttachment: boolean;
+  requiresLink: boolean;
   status: 'pending' | 'in_progress' | 'completed';
   assignedBy: string;
   completedAt?: string | null;
   createdAt: string;
   updatedAt: string;
+  overdue: boolean;
   response?: TaskResponse;
 }
 
@@ -103,6 +117,56 @@ export interface Document {
   updatedAt: string;
 }
 
+export type PlatformSetupStatus = 'yes' | 'no' | 'pending';
+
+export interface PlatformSetup {
+  platformId: string;
+  slug: string;
+  name: string;
+  signpostingUrl?: string | null;
+  sortOrder: number;
+  status: PlatformSetupStatus;
+}
+
+export interface AnnualUpdate {
+  id: string;
+  scholarId: string;
+  academicYear: string;
+  status: 'draft' | 'submitted';
+  highlights: string | null;
+  partTimeJobs: string | null;
+  extracurriculars: string | null;
+  leadershipRolesDescription: string | null;
+  leadershipRolesCount: number | null;
+  payItForwardDescription: string | null;
+  payItForwardCount: number | null;
+  subSaharanAfricaActivitiesDescription: string | null;
+  subSaharanAfricaActivitiesCount: number | null;
+  independentInternshipsCount: number | null;
+  internshipsInAfricaSummary: string | null;
+  internshipsElsewhereSummary: string | null;
+  completedAshinagaAfricaInternship: boolean | null;
+  academicYearAverageClassification: string | null;
+  academicYearWeightedGrade: string | null;
+  submittedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AnnualUpdateReportRow {
+  id: string;
+  scholarId: string;
+  academicYear: string;
+  status: 'draft' | 'submitted';
+  submittedAt: string | null;
+  updatedAt: string;
+  scholarName: string;
+  scholarEmail: string;
+  aaiScholarId: string | null;
+  scholarYear: string;
+  university: string;
+}
+
 export interface ScholarProfile {
   id: string;
   userId: string;
@@ -116,6 +180,10 @@ export interface ScholarProfile {
   location?: string | null;
   bio?: string | null;
   status: 'active' | 'inactive' | 'on_hold' | 'archived';
+  programStage: 'prep_year' | 'scholar';
+  intendedUniversity?: string | null;
+  intendedCourse?: string | null;
+  degreePathway?: string | null;
   startDate: string;
   lastActivity?: string | null;
   aaiScholarId?: string | null;
@@ -138,6 +206,7 @@ export interface ScholarProfile {
   goals: Goal[];
   tasks: Task[];
   documents: Document[];
+  platformSetups?: PlatformSetup[];
   createdAt: string;
   updatedAt: string;
 }
@@ -166,6 +235,10 @@ export interface UpdateScholarProfileData {
   bio?: string;
   majorCategory?: string;
   fieldOfStudy?: string;
+  programStage?: 'prep_year' | 'scholar';
+  intendedUniversity?: string;
+  intendedCourse?: string;
+  degreePathway?: string;
 }
 
 export interface PaginationMeta {
@@ -190,6 +263,10 @@ export interface GetScholarsParams {
   year?: string;
   university?: string;
   status?: 'active' | 'inactive' | 'on_hold' | 'archived';
+  programStage?: 'prep_year' | 'scholar';
+  platformSetup?: 'incomplete' | 'complete';
+  taskProgress?: 'overdue' | 'due_today' | 'behind';
+  loginActivity?: 'stale';
   sortBy?: 'name' | 'lastActivity' | 'createdAt';
   sortOrder?: 'asc' | 'desc';
 }
@@ -274,12 +351,106 @@ export async function getScholars(params?: GetScholarsParams): Promise<GetSchola
   return fetchAPI<GetScholarsResponse>(endpoint);
 }
 
+export async function getAllActiveScholars(): Promise<Scholar[]> {
+  const scholars: Scholar[] = [];
+  let page = 1;
+  let hasNext = true;
+
+  while (hasNext && page <= 50) {
+    const response = await getScholars({
+      page,
+      limit: 100,
+      status: 'active',
+      sortBy: 'name',
+      sortOrder: 'asc',
+    });
+    scholars.push(...response.data);
+    hasNext = response.pagination.hasNext;
+    page += 1;
+  }
+
+  return scholars;
+}
+
 export async function getScholar(id: string): Promise<Scholar> {
   return fetchAPI<Scholar>(`/api/scholars/${id}`);
 }
 
 export async function getScholarProfile(id: string): Promise<ScholarProfile> {
   return fetchAPI<ScholarProfile>(`/api/scholars/${id}/profile`);
+}
+
+export async function updateScholarPlatformSetup(
+  scholarId: string,
+  data: { slug: string; status: PlatformSetupStatus }
+): Promise<ScholarProfile> {
+  return fetchAPI<ScholarProfile>(`/api/scholars/${scholarId}/platform-setup`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getAnnualUpdatesByScholar(scholarId: string): Promise<AnnualUpdate[]> {
+  return fetchAPI<AnnualUpdate[]>(`/api/annual-updates/scholar/${scholarId}`);
+}
+
+export async function getAnnualUpdatesReport(): Promise<AnnualUpdateReportRow[]> {
+  return fetchAPI<AnnualUpdateReportRow[]>('/api/annual-updates');
+}
+
+async function downloadCsvFile(
+  endpoint: string,
+  filename: string,
+  errorMessage: string,
+  options: RequestInit = {}
+): Promise<void> {
+  const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace(/\/$/, '');
+  const res = await fetch(`${baseUrl}${endpoint}`, {
+    ...options,
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    throw new Error(errorMessage);
+  }
+
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+export async function downloadScholarAnnualReviewsCSV(
+  scholarId: string,
+  scholarName: string
+): Promise<void> {
+  await downloadCsvFile(
+    `/api/annual-updates/scholar/${scholarId}/export/csv`,
+    `${scholarName.replace(/\s+/g, '_')}_Annual_Reviews.csv`,
+    'Failed to download annual reviews CSV'
+  );
+}
+
+export async function downloadAnnualReviewsCSV(annualUpdateIds?: string[]): Promise<void> {
+  await downloadCsvFile(
+    '/api/annual-updates/export/csv',
+    `${annualUpdateIds ? 'annual-reviews-filtered' : 'annual-reviews-export'}-${new Date()
+      .toISOString()
+      .slice(0, 10)}.csv`,
+    'Failed to download annual reviews CSV',
+    annualUpdateIds
+      ? {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ annualUpdateIds }),
+        }
+      : { method: 'GET' }
+  );
 }
 
 export async function updateScholarProfile(
@@ -295,16 +466,11 @@ export async function updateScholarProfile(
 
 /** Trigger download of all scholars CSV (staff). */
 export async function downloadAllScholarsCSV(): Promise<void> {
-  const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace(/\/$/, '');
-  const url = `${baseUrl}/api/scholars/export/csv`;
-  const res = await fetch(url, { credentials: 'include' });
-  if (!res.ok) throw new Error('Failed to download scholars CSV');
-  const blob = await res.blob();
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `scholars-export-${new Date().toISOString().slice(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(a.href);
+  await downloadCsvFile(
+    '/api/scholars/export/csv',
+    `scholars-export-${new Date().toISOString().slice(0, 10)}.csv`,
+    'Failed to download scholars CSV'
+  );
 }
 
 export async function archiveScholar(scholarId: string): Promise<Scholar> {
@@ -571,6 +737,8 @@ export interface ScholarFilterOptions {
   programs: string[];
   years: string[];
   universities: string[];
+  intendedUniversities: string[];
+  intendedCourses: string[];
 }
 
 export async function getFilterOptions(): Promise<ScholarFilterOptions> {
@@ -617,21 +785,14 @@ export interface CreateTaskData {
   priority?: 'high' | 'medium' | 'low';
   dueDate: string;
   scholarId: string;
+  phase?: string;
+  requiresResponse?: boolean;
+  requiresAttachment?: boolean;
+  requiresLink?: boolean;
 }
 
-export async function createTask(data: CreateTaskData): Promise<{
-  id: string;
-  title: string;
-  description?: string;
-  type: string;
-  priority: string;
-  dueDate: string;
-  status: string;
-  scholarId: string;
-  assignedBy: string;
-  createdAt: string;
-}> {
-  return fetchAPI('/api/tasks', {
+export async function createTask(data: CreateTaskData): Promise<Task> {
+  return fetchAPI<Task>('/api/tasks', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -646,7 +807,12 @@ export interface CreateBulkTasksData {
   type: CreateTaskData['type'];
   priority?: 'high' | 'medium' | 'low';
   dueDate: string;
-  scholarIds: string[];
+  scholarIds?: string[];
+  programStage?: 'prep_year';
+  phase?: string;
+  requiresResponse?: boolean;
+  requiresAttachment?: boolean;
+  requiresLink?: boolean;
 }
 
 export async function createBulkTasks(
@@ -677,6 +843,10 @@ export interface UpdateTaskData {
     | 'other';
   priority?: 'high' | 'medium' | 'low';
   dueDate?: string;
+  phase?: string | null;
+  requiresResponse?: boolean;
+  requiresAttachment?: boolean;
+  requiresLink?: boolean;
 }
 
 export async function updateTask(taskId: string, data: UpdateTaskData): Promise<Task> {
@@ -706,6 +876,10 @@ export interface TaskTitleSuggestion {
     | 'feedback_submission'
     | 'other';
   priority: 'high' | 'medium' | 'low';
+  phase?: string | null;
+  requiresResponse?: boolean;
+  requiresAttachment?: boolean;
+  requiresLink?: boolean;
   lastUsedAt: string;
   useCount: number;
 }
@@ -748,6 +922,10 @@ export interface CreateScholarData {
   bio?: string;
   majorCategory?: string;
   fieldOfStudy?: string;
+  programStage?: 'prep_year' | 'scholar';
+  intendedUniversity?: string;
+  intendedCourse?: string;
+  degreePathway?: string;
 }
 
 export async function createScholar(data: CreateScholarData): Promise<{
@@ -788,13 +966,49 @@ export interface CreateInvitationResponse {
   sentAt: string;
 }
 
-export async function createStaffInvitation(email: string): Promise<CreateInvitationResponse> {
+export interface StaffInvitationOptions {
+  /** Defaults to `staff` so existing invite dialogs keep working. */
+  userType?: 'staff' | 'scholar';
+  /** Programme stage: 'prep_year' or 'scholar' */
+  programStage?: 'prep_year' | 'scholar';
+  /** Intended destination (only meaningful when programStage = prep_year) */
+  intendedUniversity?: string;
+  intendedCourse?: string;
+  degreePathway?: string;
+}
+
+/** Create an invitation. Defaults to staff invites unless userType is overridden. */
+export async function createStaffInvitation(
+  email: string,
+  options: StaffInvitationOptions = {}
+): Promise<CreateInvitationResponse> {
+  const body: {
+    email: string;
+    userType: 'staff' | 'scholar';
+    scholarData?: {
+      programStage?: 'prep_year' | 'scholar';
+      intendedUniversity?: string;
+      intendedCourse?: string;
+      degreePathway?: string;
+    };
+  } = {
+    email,
+    userType: options.userType ?? 'staff',
+  };
+  if (body.userType === 'scholar' && options.programStage) {
+    body.scholarData = {
+      programStage: options.programStage,
+      intendedUniversity: options.intendedUniversity,
+      intendedCourse: options.intendedCourse,
+      degreePathway: options.degreePathway,
+    };
+  }
   return fetchAPI<CreateInvitationResponse>('/api/invitations', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ email, userType: 'staff' }),
+    body: JSON.stringify(body),
   });
 }
 
@@ -819,6 +1033,499 @@ export async function resendInvitation(
 
 export async function cancelInvitation(invitationId: string): Promise<{ message: string }> {
   return fetchAPI<{ message: string }>(`/api/invitations/${invitationId}`, {
+    method: 'DELETE',
+  });
+}
+
+// Resources
+export type ResourceType = 'Guide' | 'Handbook' | 'Template';
+export type ResourceCategory = 'LDF' | 'Handbook' | 'Proposal' | 'Support';
+export type ResourceStatus = 'draft' | 'live';
+export type ResourceSourceType = 'url' | 'file';
+
+export interface ResourceFilter {
+  type: string;
+  value: string;
+}
+
+export interface Resource {
+  id: string;
+  title: string;
+  description: string;
+  type: ResourceType;
+  category: ResourceCategory;
+  sourceType: ResourceSourceType;
+  url: string | null;
+  fileName: string | null;
+  fileMimeType: string | null;
+  fileSizeBytes: number | null;
+  status: ResourceStatus;
+  filters: ResourceFilter[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ResourceFilterOptions {
+  programs: string[];
+  years: string[];
+  universities: string[];
+  locations: string[];
+  statuses: string[];
+}
+
+export interface SaveResourceData {
+  title: string;
+  description: string;
+  type: ResourceType;
+  category: ResourceCategory;
+  sourceType?: ResourceSourceType;
+  url?: string;
+  pendingFileKey?: string;
+  fileName?: string;
+  fileMimeType?: string;
+  fileSizeBytes?: number;
+  status?: ResourceStatus;
+  filters?: Array<{
+    filterType: string;
+    filterValue: string;
+  }>;
+}
+
+export async function getResources(): Promise<Resource[]> {
+  return fetchAPI<Resource[]>('/api/resources');
+}
+
+export async function createResource(data: SaveResourceData): Promise<Resource> {
+  return fetchAPI<Resource>('/api/resources', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateResource(
+  resourceId: string,
+  data: Partial<SaveResourceData>
+): Promise<Resource> {
+  return fetchAPI<Resource>(`/api/resources/${resourceId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteResource(resourceId: string): Promise<{ success: boolean }> {
+  return fetchAPI<{ success: boolean }>(`/api/resources/${resourceId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function getResourceFilterOptions(): Promise<ResourceFilterOptions> {
+  return fetchAPI<ResourceFilterOptions>('/api/resources/filter-options');
+}
+
+export async function createResourceUploadUrl(data: {
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+}): Promise<{ uploadUrl: string; fields: Record<string, string>; fileKey: string }> {
+  return fetchAPI<{ uploadUrl: string; fields: Record<string, string>; fileKey: string }>(
+    '/api/resources/upload-url',
+    {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+export async function createAvatarUploadUrl(data: {
+  fileType: string;
+  fileSize: number;
+}): Promise<{ uploadUrl: string; fields: Record<string, string>; fileKey: string }> {
+  return fetchAPI<{ uploadUrl: string; fields: Record<string, string>; fileKey: string }>(
+    '/api/avatars/upload-url',
+    {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+export async function uploadAvatarBlob(blob: Blob): Promise<string> {
+  const { uploadUrl, fields, fileKey } = await createAvatarUploadUrl({
+    fileType: 'image/jpeg',
+    fileSize: blob.size,
+  });
+
+  const formData = new FormData();
+  for (const [key, value] of Object.entries(fields)) {
+    formData.append(key, value);
+  }
+  formData.append('file', blob, 'avatar.jpg');
+
+  const uploadResponse = await fetch(uploadUrl, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!uploadResponse.ok) {
+    throw new Error('Failed to upload profile picture');
+  }
+
+  return fileKey;
+}
+
+export async function getResourceDownloadUrl(
+  resourceId: string,
+  disposition: 'attachment' | 'inline' = 'attachment'
+): Promise<{ downloadUrl: string }> {
+  const query = disposition === 'inline' ? '?disposition=inline' : '';
+  return fetchAPI<{ downloadUrl: string }>(`/api/resources/${resourceId}/download${query}`);
+}
+
+export interface RequiredDocumentType {
+  id: string;
+  slug: string;
+  label: string;
+  description: string | null;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+export interface RequiredDocumentFileSummary {
+  id: string;
+  fileName: string;
+  uploadedAt: string;
+}
+
+export interface RequiredDocumentCohortItem {
+  typeId: string;
+  status: 'submitted' | 'missing';
+  file: RequiredDocumentFileSummary | null;
+}
+
+export interface RequiredDocumentCohortScholar {
+  scholarId: string;
+  name: string;
+  email: string;
+  items: RequiredDocumentCohortItem[];
+}
+
+export interface RequiredDocumentCohort {
+  types: RequiredDocumentType[];
+  scholars: RequiredDocumentCohortScholar[];
+}
+
+export interface RequiredDocumentChecklistItem {
+  type: RequiredDocumentType;
+  status: 'submitted' | 'missing';
+  file: {
+    id: string;
+    typeId: string;
+    fileName: string;
+    fileMimeType: string;
+    fileSizeBytes: number;
+    uploadedAt: string;
+  } | null;
+}
+
+export interface RequiredDocumentChecklist {
+  scholarId: string;
+  items: RequiredDocumentChecklistItem[];
+}
+
+export async function getRequiredDocumentTypes(): Promise<RequiredDocumentType[]> {
+  return fetchAPI<RequiredDocumentType[]>('/api/documents/types');
+}
+
+export async function createRequiredDocumentType(data: {
+  label: string;
+  description?: string;
+}): Promise<RequiredDocumentType> {
+  return fetchAPI<RequiredDocumentType>('/api/documents/types', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateRequiredDocumentType(
+  typeId: string,
+  data: { label?: string; description?: string; isActive?: boolean; sortOrder?: number }
+): Promise<RequiredDocumentType> {
+  return fetchAPI<RequiredDocumentType>(`/api/documents/types/${typeId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getRequiredDocumentCohort(
+  missingTypeId?: string
+): Promise<RequiredDocumentCohort> {
+  const query = missingTypeId ? `?missingTypeId=${encodeURIComponent(missingTypeId)}` : '';
+  return fetchAPI<RequiredDocumentCohort>(`/api/documents/cohort${query}`);
+}
+
+export type PrepTaskCohortState =
+  | 'not_started'
+  | 'in_progress'
+  | 'completed'
+  | 'overdue'
+  | 'unassigned';
+
+export type PrepTaskCohortStatus = 'pending' | 'in_progress' | 'completed';
+
+export interface PrepTaskCohortFilters {
+  phase?: string;
+  scholarId?: string;
+  assignmentGroupId?: string;
+  columnKey?: string;
+  state?: PrepTaskCohortState;
+}
+
+export interface PrepTaskCohortColumn {
+  key: string;
+  title: string;
+  phase: string | null;
+  dueDate: string;
+  assignmentGroupId: string | null;
+  requiresResponse: boolean;
+  requiresAttachment: boolean;
+  requiresLink: boolean;
+}
+
+export interface PrepTaskCohortCell {
+  columnKey: string;
+  taskId: string | null;
+  status: PrepTaskCohortStatus | null;
+  overdue: boolean;
+  completedAt: string | null;
+}
+
+export interface PrepTaskCohort {
+  columns: PrepTaskCohortColumn[];
+  scholars: Array<{
+    scholarId: string;
+    name: string;
+    email: string;
+    status: 'active' | 'inactive' | 'on_hold' | 'archived';
+    cells: PrepTaskCohortCell[];
+  }>;
+  summary: {
+    scholarCount: number;
+    columnCount: number;
+    overdueCount: number;
+    completedCount: number;
+  };
+  filterOptions: {
+    phases: string[];
+    columns: Array<{ key: string; title: string; phase: string | null }>;
+    scholars: Array<{ scholarId: string; name: string }>;
+  };
+}
+
+export async function getPrepTaskCohort(
+  filters: PrepTaskCohortFilters = {}
+): Promise<PrepTaskCohort> {
+  const params = new URLSearchParams();
+  if (filters.phase) params.set('phase', filters.phase);
+  if (filters.scholarId) params.set('scholarId', filters.scholarId);
+  if (filters.assignmentGroupId) params.set('assignmentGroupId', filters.assignmentGroupId);
+  if (filters.columnKey) params.set('columnKey', filters.columnKey);
+  if (filters.state) params.set('state', filters.state);
+  const query = params.toString();
+  return fetchAPI<PrepTaskCohort>(`/api/tasks/cohort${query ? `?${query}` : ''}`);
+}
+
+export type PrepYearDocumentStatus = 'submitted' | 'missing';
+export type PrepYearPlatformStatus = 'yes' | 'no' | 'pending';
+
+export interface PrepYearReportFilters {
+  phase?: string;
+  scholarId?: string;
+}
+
+export interface PrepYearReportDocumentType {
+  id: string;
+  slug: string;
+  label: string;
+}
+
+export interface PrepYearReportPlatform {
+  id: string;
+  slug: string;
+  name: string;
+}
+
+export interface PrepYearReportRow {
+  scholarId: string;
+  name: string;
+  email: string;
+  status: 'active' | 'inactive' | 'on_hold' | 'archived';
+  intendedUniversity: string | null;
+  intendedCourse: string | null;
+  degreePathway: string | null;
+  assignedCount: number;
+  completedCount: number;
+  overdueCount: number;
+  completionRate: number | null;
+  documents: Record<string, PrepYearDocumentStatus>;
+  platforms: Record<string, PrepYearPlatformStatus>;
+}
+
+export interface PrepYearReport {
+  documentTypes: PrepYearReportDocumentType[];
+  platforms: PrepYearReportPlatform[];
+  scholars: PrepYearReportRow[];
+  summary: {
+    scholarCount: number;
+    overdueCount: number;
+    missingDocumentCount: number;
+    completedTaskCount: number;
+  };
+  filterOptions: {
+    phases: string[];
+    scholars: Array<{ scholarId: string; name: string }>;
+  };
+}
+
+function prepYearReportQuery(filters: PrepYearReportFilters = {}): string {
+  const params = new URLSearchParams();
+  if (filters.phase) params.set('phase', filters.phase);
+  if (filters.scholarId) params.set('scholarId', filters.scholarId);
+  const query = params.toString();
+  return query ? `?${query}` : '';
+}
+
+export async function getPrepYearReport(
+  filters: PrepYearReportFilters = {}
+): Promise<PrepYearReport> {
+  return fetchAPI<PrepYearReport>(`/api/prep-year/report${prepYearReportQuery(filters)}`);
+}
+
+export async function downloadPrepYearReportCSV(
+  filters: PrepYearReportFilters = {}
+): Promise<void> {
+  await downloadCsvFile(
+    `/api/prep-year/report/csv${prepYearReportQuery(filters)}`,
+    `prep-year-cohort-report-${new Date().toISOString().slice(0, 10)}.csv`,
+    'Failed to download Prep Year cohort report CSV'
+  );
+}
+
+export async function getScholarRequiredDocuments(
+  scholarId: string
+): Promise<RequiredDocumentChecklist> {
+  return fetchAPI<RequiredDocumentChecklist>(`/api/documents/scholar/${scholarId}`);
+}
+
+export async function getRequiredDocumentDownloadUrl(
+  fileId: string,
+  disposition: 'attachment' | 'inline' = 'attachment'
+): Promise<{ downloadUrl: string }> {
+  const query = disposition === 'inline' ? '?disposition=inline' : '';
+  return fetchAPI<{ downloadUrl: string }>(`/api/documents/${fileId}/download${query}`);
+}
+
+export interface CoordinatorNote {
+  id: string;
+  scholarId: string;
+  body: string;
+  createdBy: string | null;
+  authorName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CoordinatorMeetingUpdate {
+  id: string;
+  scholarId: string;
+  meetingDate: string;
+  notes: string | null;
+  concern: string | null;
+  furtherAction: string | null;
+  createdBy: string | null;
+  authorName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getCoordinatorNotes(scholarId: string): Promise<CoordinatorNote[]> {
+  return fetchAPI<CoordinatorNote[]>(`/api/scholars/${scholarId}/coordinator-notes`);
+}
+
+export async function createCoordinatorNote(
+  scholarId: string,
+  data: { body: string }
+): Promise<CoordinatorNote> {
+  return fetchAPI<CoordinatorNote>(`/api/scholars/${scholarId}/coordinator-notes`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateCoordinatorNote(
+  scholarId: string,
+  noteId: string,
+  data: { body: string }
+): Promise<CoordinatorNote> {
+  return fetchAPI<CoordinatorNote>(`/api/scholars/${scholarId}/coordinator-notes/${noteId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteCoordinatorNote(
+  scholarId: string,
+  noteId: string
+): Promise<{ success: boolean }> {
+  return fetchAPI<{ success: boolean }>(`/api/scholars/${scholarId}/coordinator-notes/${noteId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function getCoordinatorMeetingUpdates(
+  scholarId: string
+): Promise<CoordinatorMeetingUpdate[]> {
+  return fetchAPI<CoordinatorMeetingUpdate[]>(`/api/scholars/${scholarId}/meeting-updates`);
+}
+
+export async function createCoordinatorMeetingUpdate(
+  scholarId: string,
+  data: {
+    meetingDate: string;
+    notes?: string;
+    concern?: string;
+    furtherAction?: string;
+  }
+): Promise<CoordinatorMeetingUpdate> {
+  return fetchAPI<CoordinatorMeetingUpdate>(`/api/scholars/${scholarId}/meeting-updates`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateCoordinatorMeetingUpdate(
+  scholarId: string,
+  updateId: string,
+  data: {
+    meetingDate?: string;
+    notes?: string;
+    concern?: string;
+    furtherAction?: string;
+  }
+): Promise<CoordinatorMeetingUpdate> {
+  return fetchAPI<CoordinatorMeetingUpdate>(
+    `/api/scholars/${scholarId}/meeting-updates/${updateId}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+export async function deleteCoordinatorMeetingUpdate(
+  scholarId: string,
+  updateId: string
+): Promise<{ success: boolean }> {
+  return fetchAPI<{ success: boolean }>(`/api/scholars/${scholarId}/meeting-updates/${updateId}`, {
     method: 'DELETE',
   });
 }
@@ -850,4 +1557,98 @@ export async function removeStaffMember(
   return fetchAPI<{ success: boolean; alreadyInactive: boolean }>(`/api/users/staff/${userId}`, {
     method: 'DELETE',
   });
+}
+
+export type ProposalStatus = 'draft' | 'submitted' | 'changes_requested' | 'approved';
+
+export interface ProposalInboxItem {
+  scholarId: string;
+  scholarName: string;
+  stepKey: string;
+  stepTitle: string;
+  stageLabel: string | null;
+  submittedAt: string | null;
+}
+
+export interface ProposalComment {
+  id: string;
+  body: string;
+  authorName: string;
+  createdAt: string;
+}
+
+export interface ProposalResource {
+  id: string;
+  title: string;
+  description: string;
+  sourceType: 'url' | 'file';
+  url: string | null;
+}
+
+export interface ProposalStepView {
+  key: string;
+  title: string;
+  sortOrder: number;
+  available: boolean;
+  status: ProposalStatus | null;
+  body: string | null;
+  stageLabel: string | null;
+  fileName: string | null;
+  comments: ProposalComment[];
+  resources: ProposalResource[];
+  submittedAt: string | null;
+  reviewedAt: string | null;
+}
+
+export interface ProposalTimeline {
+  catalog: Array<{ key: string; title: string; sortOrder: number }>;
+  currentStepKey: string;
+  steps: ProposalStepView[];
+}
+
+export async function getProposalInbox(): Promise<ProposalInboxItem[]> {
+  return fetchAPI<ProposalInboxItem[]>('/api/proposals');
+}
+
+export async function getScholarProposal(scholarId: string): Promise<ProposalTimeline> {
+  return fetchAPI<ProposalTimeline>(`/api/proposals/scholars/${scholarId}`);
+}
+
+export async function reviewProposalStep(
+  scholarId: string,
+  stepKey: string,
+  data: { action: 'approve' | 'request_changes'; comment?: string }
+): Promise<ProposalTimeline> {
+  return fetchAPI<ProposalTimeline>(
+    `/api/proposals/scholars/${scholarId}/steps/${stepKey}/review`,
+    {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+export async function addStaffProposalComment(
+  scholarId: string,
+  stepKey: string,
+  body: string
+): Promise<ProposalComment> {
+  return fetchAPI<ProposalComment>(
+    `/api/proposals/scholars/${scholarId}/steps/${stepKey}/comments`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ body }),
+    }
+  );
+}
+
+export async function getScholarProposalFileDownloadUrl(
+  scholarId: string,
+  stepKey: string,
+  disposition: 'attachment' | 'inline' = 'attachment'
+): Promise<{ downloadUrl: string }> {
+  const query = disposition === 'inline' ? '?disposition=inline' : '';
+  return fetchAPI<{ downloadUrl: string }>(
+    `/api/proposals/scholars/${scholarId}/steps/${stepKey}/file${query}`
+  );
 }

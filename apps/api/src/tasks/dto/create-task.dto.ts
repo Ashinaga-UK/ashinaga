@@ -1,4 +1,13 @@
-import { IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  IsBoolean,
+  IsDateString,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
+import { TASK_TYPES, type TaskType } from '../task-evidence';
 
 export class CreateTaskDto {
   @IsNotEmpty()
@@ -10,21 +19,8 @@ export class CreateTaskDto {
   description?: string;
 
   @IsNotEmpty()
-  @IsEnum([
-    'document_upload',
-    'form_completion',
-    'meeting_attendance',
-    'goal_update',
-    'feedback_submission',
-    'other',
-  ])
-  type:
-    | 'document_upload'
-    | 'form_completion'
-    | 'meeting_attendance'
-    | 'goal_update'
-    | 'feedback_submission'
-    | 'other';
+  @IsEnum(TASK_TYPES)
+  type: TaskType;
 
   @IsOptional()
   @IsEnum(['high', 'medium', 'low'])
@@ -37,4 +33,20 @@ export class CreateTaskDto {
   @IsNotEmpty()
   @IsUUID()
   scholarId: string;
+
+  @IsOptional()
+  @IsString()
+  phase?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  requiresResponse?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  requiresAttachment?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  requiresLink?: boolean;
 }

@@ -52,6 +52,8 @@ jobs:
       NEXT_PUBLIC_SCHOLAR_APP_URL: http://localhost:4002
       STAFF_APP_URL_API: http://localhost:4001
       SCHOLAR_APP_URL_API: http://localhost:4002
+      S3_BUCKET_NAME: test-bucket
+      AWS_REGION: eu-west-3
 
     steps:
       - name: Checkout code

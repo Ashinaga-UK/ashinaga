@@ -10,6 +10,9 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Pool } from 'pg';
 
 export default async function globalSetup(): Promise<void> {
+  process.env.S3_BUCKET_NAME = process.env.S3_BUCKET_NAME || 'test-bucket';
+  process.env.AWS_REGION = process.env.AWS_REGION || 'eu-west-3';
+
   // Defaults for CI (GitHub Actions postgres service)
   if (process.env.CI === 'true') {
     process.env.NODE_ENV = process.env.NODE_ENV || 'test';

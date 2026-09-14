@@ -269,10 +269,16 @@ jobs:
         # Set SSL to production mode for RDS connection
         export NODE_ENV="production"
         
-        # Run the migration
+        echo "Checking journal timestamps before migrate..."
+        node "${GITHUB_WORKSPACE}/scripts/check-migration-journal.mjs"
+
         pnpm db:migrate
-        
-        echo "Database migrations completed successfully!"
+
+        echo "Verifying every journaled migration was recorded..."
+        APPLIED=$(PGPASSWORD="$DB_PASSWORD" PGSSLMODE=require psql \
+          -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
+          -tAc "SELECT created_at FROM drizzle.__drizzle_migrations")
+        printf '%s\n' "$APPLIED" | node "${GITHUB_WORKSPACE}/scripts/assert-applied-migrations.mjs"
 
     - name: Update App Runner service
       run: |
@@ -332,6 +338,8 @@ jobs:
         BETTER_AUTH_SECRET=$(get_secret_value "ashinaga-auth-secret-${ENVIRONMENT}")
         echo "Fetching Resend API key..."
         RESEND_API_KEY=$(get_secret_value "ashinaga-resend-api-key-${ENVIRONMENT}")
+        echo "Fetching notification cron secret (optional until terraform apply)..."
+        CRON_SECRET=$(get_secret_value "ashinaga-notification-cron-secret-${ENVIRONMENT}" || true)
 
         # Get database connection details
         echo "Getting database configuration..."
@@ -380,6 +388,7 @@ jobs:
           --arg auth_url "$BETTER_AUTH_URL" \
           --arg cors_origins "$CORS_ORIGINS" \
           --arg resend_api_key "$RESEND_API_KEY" \
+          --arg cron_secret "${CRON_SECRET:-}" \
           --arg email_from "noreply@ashinaga-uk.org" \
           --arg staff_app_url "$STAFF_APP_URL" \
           --arg scholar_app_url "$SCHOLAR_APP_URL" \
@@ -404,6 +413,12 @@ jobs:
                   "BETTER_AUTH_URL": $auth_url,
                   "CORS_ORIGINS": $cors_origins,
                   "RESEND_API_KEY": $resend_api_key,
+                  "CRON_SECRET": $cron_secret,
+                  "NOTIFICATION_REMINDER_DAYS": "2",
+                  "NOTIFICATION_INACTIVITY_DAYS": "14",
+                  "NOTIFICATION_MONTHLY_DAY": "1",
+                  "NOTIFICATION_ACTIVITY_TOUCH_HOURS": "6",
+                  "NOTIFICATION_STAFF_DIGEST_WEEKDAY": "1",
                   "EMAIL_FROM": $email_from,
                   "STAFF_APP_URL": $staff_app_url,
                   "SCHOLAR_APP_URL": $scholar_app_url,
