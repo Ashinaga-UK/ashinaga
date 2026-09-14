@@ -31,10 +31,10 @@ describe('AvatarsController', () => {
       fileKey: 'avatars/pending/u/x.jpg',
     });
 
-    const result = await controller.createUploadUrl(
-      { user: { id: 'user-1' } } as any,
-      { fileType: 'image/jpeg', fileSize: 1000 }
-    );
+    const result = await controller.createUploadUrl({ user: { id: 'user-1' } } as any, {
+      fileType: 'image/jpeg',
+      fileSize: 1000,
+    });
 
     expect(avatarsService.createUploadUrl).toHaveBeenCalledWith('user-1', {
       fileType: 'image/jpeg',

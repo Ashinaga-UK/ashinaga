@@ -1,14 +1,6 @@
 'use client';
 
-import {
-  AlertCircle,
-  Calendar,
-  CheckCircle,
-  Circle,
-  Clock,
-  ListTodo,
-  Loader2,
-} from 'lucide-react';
+import { AlertCircle, Calendar, CheckCircle, Circle, Clock, ListTodo, Loader2 } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
 import type { Task } from '../lib/api/tasks';
 import { completeTask, getMyTasks, updateTaskStatus } from '../lib/api/tasks';
@@ -195,9 +187,7 @@ export function MyTasks() {
               {task.title}
             </h3>
           </div>
-          {task.description && (
-            <p className="text-sm text-muted-foreground">{task.description}</p>
-          )}
+          {task.description && <p className="text-sm text-muted-foreground">{task.description}</p>}
           <div className="flex flex-wrap items-center gap-2 text-sm">
             {getPriorityBadge(task.priority)}
             {getTaskTypeBadge(task.type)}

@@ -194,98 +194,98 @@ export function BulkTaskAssignment({
 
         <div className="min-h-0 flex-1 space-y-6 overflow-y-auto pr-1">
           {!isPrepCohort ? (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Assignment Target</CardTitle>
-              <CardDescription>
-                {`This task will be assigned to ${targetCount} scholar${targetCount === 1 ? '' : 's'}`}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="secondary">
-                  {`${targetCount} Scholar${targetCount === 1 ? '' : 's'}`}
-                </Badge>
-                <span className="text-sm text-muted-foreground">
-                  {selectedScholarIds && selectedScholarIds.length > 0
-                    ? 'Selected from table'
-                    : 'All currently filtered scholars'}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Assignment Target</CardTitle>
+                <CardDescription>
+                  {`This task will be assigned to ${targetCount} scholar${targetCount === 1 ? '' : 's'}`}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="secondary">
+                    {`${targetCount} Scholar${targetCount === 1 ? '' : 's'}`}
+                  </Badge>
+                  <span className="text-sm text-muted-foreground">
+                    {selectedScholarIds && selectedScholarIds.length > 0
+                      ? 'Selected from table'
+                      : 'All currently filtered scholars'}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
           ) : null}
 
           {/* Task Details */}
           <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
             <div className="space-y-2">
-                <Label htmlFor="taskTitle">Task Title *</Label>
-                <Input
-                  id="taskTitle"
-                  value={taskTitle}
-                  onChange={(e) => setTaskTitle(e.target.value)}
-                  placeholder="Enter task title"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="dueDate">Due Date *</Label>
-                <Input
-                  id="dueDate"
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="taskType">Task Type</Label>
-                <Select
-                  value={taskType}
-                  onValueChange={(v) => {
-                    const nextType = v as TaskType;
-                    setTaskType(nextType);
-                    const defaults = evidenceDefaultsForType(nextType);
-                    setRequiresResponse(defaults.requiresResponse);
-                    setRequiresAttachment(defaults.requiresAttachment);
-                    setRequiresLink(defaults.requiresLink);
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select task type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="document_upload">Document Upload</SelectItem>
-                    <SelectItem value="form_completion">Form Completion</SelectItem>
-                    <SelectItem value="meeting_attendance">Meeting Attendance</SelectItem>
-                    <SelectItem value="goal_update">Goal Update</SelectItem>
-                    <SelectItem value="feedback_submission">Feedback Submission</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="priority">Priority</Label>
-                <Select value={priority} onValueChange={(v) => setPriority(v as Priority)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select priority" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="low">Low</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="taskDescription">Task Description *</Label>
-                <Textarea
-                  id="taskDescription"
-                  value={taskDescription}
-                  onChange={(e) => setTaskDescription(e.target.value)}
-                  placeholder="Provide detailed instructions for the scholars"
-                  rows={4}
-                  className="min-h-24 resize-none overflow-y-auto"
-                />
-              </div>
+              <Label htmlFor="taskTitle">Task Title *</Label>
+              <Input
+                id="taskTitle"
+                value={taskTitle}
+                onChange={(e) => setTaskTitle(e.target.value)}
+                placeholder="Enter task title"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="dueDate">Due Date *</Label>
+              <Input
+                id="dueDate"
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="taskType">Task Type</Label>
+              <Select
+                value={taskType}
+                onValueChange={(v) => {
+                  const nextType = v as TaskType;
+                  setTaskType(nextType);
+                  const defaults = evidenceDefaultsForType(nextType);
+                  setRequiresResponse(defaults.requiresResponse);
+                  setRequiresAttachment(defaults.requiresAttachment);
+                  setRequiresLink(defaults.requiresLink);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select task type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="document_upload">Document Upload</SelectItem>
+                  <SelectItem value="form_completion">Form Completion</SelectItem>
+                  <SelectItem value="meeting_attendance">Meeting Attendance</SelectItem>
+                  <SelectItem value="goal_update">Goal Update</SelectItem>
+                  <SelectItem value="feedback_submission">Feedback Submission</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="priority">Priority</Label>
+              <Select value={priority} onValueChange={(v) => setPriority(v as Priority)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="low">Low</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="taskDescription">Task Description *</Label>
+              <Textarea
+                id="taskDescription"
+                value={taskDescription}
+                onChange={(e) => setTaskDescription(e.target.value)}
+                placeholder="Provide detailed instructions for the scholars"
+                rows={4}
+                className="min-h-24 resize-none overflow-y-auto"
+              />
+            </div>
           </div>
 
           <TaskEvidenceFields

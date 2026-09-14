@@ -10,9 +10,7 @@ describe('fileToProfileImageDataUrl', () => {
 
   it('rejects non-image files', async () => {
     const file = new File(['not-an-image'], 'notes.txt', { type: 'text/plain' });
-    await expect(fileToProfileImageDataUrl(file)).rejects.toThrow(
-      'Please choose an image file.'
-    );
+    await expect(fileToProfileImageDataUrl(file)).rejects.toThrow('Please choose an image file.');
   });
 
   it('rejects source files larger than 25MB', async () => {

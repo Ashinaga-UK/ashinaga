@@ -243,11 +243,7 @@ export function PrepCohortReport({
       </div>
 
       {scholars.length > 0 ? (
-        <div
-          className="prep-cohort-print-cards"
-          data-testid="prep-report-print"
-          aria-hidden="true"
-        >
+        <div className="prep-cohort-print-cards" data-testid="prep-report-print" aria-hidden="true">
           {scholars.map((row) => (
             <article
               key={row.scholarId}
@@ -334,9 +330,7 @@ export function PrepCohortReport({
                   })}
                   {platforms.map((platform) => {
                     const status = row.platforms[platform.id] ?? 'pending';
-                    return (
-                      <TableCell key={platform.id}>{platformStatusLabel(status)}</TableCell>
-                    );
+                    return <TableCell key={platform.id}>{platformStatusLabel(status)}</TableCell>;
                   })}
                 </TableRow>
               ))

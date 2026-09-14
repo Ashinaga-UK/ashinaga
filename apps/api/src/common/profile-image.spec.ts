@@ -12,7 +12,10 @@ describe('validateProfileImage', () => {
 
   it('allows a pending avatar key owned by the user', () => {
     expect(() =>
-      validateProfileImage(`avatars/pending/${userId}/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.jpg`, userId)
+      validateProfileImage(
+        `avatars/pending/${userId}/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.jpg`,
+        userId
+      )
     ).not.toThrow();
   });
 

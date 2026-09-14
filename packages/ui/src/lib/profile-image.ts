@@ -12,8 +12,7 @@ function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () =>
-      reject(new Error('Could not read that image. Please try another file.'));
+    reader.onerror = () => reject(new Error('Could not read that image. Please try another file.'));
     reader.readAsDataURL(file);
   });
 }

@@ -30,10 +30,7 @@ describe('AvatarsService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        AvatarsService,
-        { provide: ObjectStorageService, useValue: objectStorage },
-      ],
+      providers: [AvatarsService, { provide: ObjectStorageService, useValue: objectStorage }],
     }).compile();
 
     service = module.get(AvatarsService);
@@ -121,8 +118,7 @@ describe('AvatarsService', () => {
     database.select.mockReturnValue({
       from: () => ({
         where: () => ({
-          limit: () =>
-            Promise.resolve([{ id: userId, image: 'https://api.dicebear.com/x.png' }]),
+          limit: () => Promise.resolve([{ id: userId, image: 'https://api.dicebear.com/x.png' }]),
         }),
       }),
     });

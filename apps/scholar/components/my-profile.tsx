@@ -321,12 +321,7 @@ export function MyProfile() {
                       </label>
                     </Button>
                     {profileImage && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleRemoveImage}
-                      >
+                      <Button type="button" variant="ghost" size="sm" onClick={handleRemoveImage}>
                         <Trash2 className="h-4 w-4" />
                         Remove
                       </Button>
@@ -644,7 +639,11 @@ export function MyProfile() {
                                 : 'secondary'
                           }
                         >
-                          {setup.status === 'yes' ? 'Yes' : setup.status === 'no' ? 'No' : 'Pending'}
+                          {setup.status === 'yes'
+                            ? 'Yes'
+                            : setup.status === 'no'
+                              ? 'No'
+                              : 'Pending'}
                         </Badge>
                       </div>
                     );

@@ -40,19 +40,19 @@ describe('isTaskOverdue', () => {
   });
 
   it('falls back to due-date comparison when overdue is absent', () => {
-    expect(
-      isTaskOverdue({ dueDate: '2026-09-02T00:00:00.000Z', status: 'pending' }, now)
-    ).toBe(true);
-    expect(
-      isTaskOverdue({ dueDate: '2026-09-03T00:00:00.000Z', status: 'pending' }, now)
-    ).toBe(false);
+    expect(isTaskOverdue({ dueDate: '2026-09-02T00:00:00.000Z', status: 'pending' }, now)).toBe(
+      true
+    );
+    expect(isTaskOverdue({ dueDate: '2026-09-03T00:00:00.000Z', status: 'pending' }, now)).toBe(
+      false
+    );
   });
 });
 
 describe('isTaskDueToday', () => {
   it('returns false for completed tasks', () => {
-    expect(
-      isTaskDueToday({ dueDate: '2026-09-03T00:00:00.000Z', status: 'completed' }, now)
-    ).toBe(false);
+    expect(isTaskDueToday({ dueDate: '2026-09-03T00:00:00.000Z', status: 'completed' }, now)).toBe(
+      false
+    );
   });
 });
