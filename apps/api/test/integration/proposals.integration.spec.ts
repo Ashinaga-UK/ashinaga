@@ -98,7 +98,7 @@ describe('Proposals API (integration)', () => {
       .post('/api/proposals/me/steps/topic/submit')
       .send({
         body: 'My research question',
-        stageLabel: '1a',
+        stageLabel: ' 1a ',
         note: 'Ready for a look',
         ...firstFile,
       })

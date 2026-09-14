@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsIn,
   IsInt,
@@ -26,6 +26,7 @@ export class ProposalBodyDto {
   body: string;
 
   @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
   @MaxLength(8)
   @Matches(/^(\d{1,2})([a-zA-Z])?$/, {

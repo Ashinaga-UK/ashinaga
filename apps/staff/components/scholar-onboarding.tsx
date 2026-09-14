@@ -240,6 +240,7 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
   const [scholarData, setScholarData] = useState<ScholarData>(initialScholarData);
   const [csvData, setCsvData] = useState<ScholarData[]>([]);
   const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [bulkImportedCount, setBulkImportedCount] = useState(0);
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -409,14 +410,14 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
     }
 
     setIsSubmitting(false);
+    const successCount = csvData.length - failures.length;
+    setBulkImportedCount(successCount);
     if (failures.length === csvData.length) {
       setValidationErrors({ submit: failures.join(' ') });
       return;
     }
     if (failures.length > 0) {
-      setValidationErrors({
-        submit: `Imported ${csvData.length - failures.length} of ${csvData.length}. ${failures.join(' ')}`,
-      });
+      setValidationErrors({ submit: failures.join(' ') });
     }
     setStep(3);
   };
@@ -443,13 +444,18 @@ export function ScholarOnboarding({ onBack }: ScholarOnboardingProps) {
             <div className="text-center space-y-4">
               <CheckCircle className="h-16 w-16 text-green-600 mx-auto" />
               <h2 className="text-2xl font-bold text-foreground">
-                Scholars Successfully Onboarded!
+                {activeTab === 'bulk' && validationErrors.submit
+                  ? 'Import finished'
+                  : 'Scholars Successfully Onboarded!'}
               </h2>
               <p className="text-muted-foreground">
                 {activeTab === 'single'
                   ? `${scholarData.name} has been added to the system and invitation sent.`
-                  : `${csvData.length} scholars have been added to the system and invitations sent.`}
+                  : `${bulkImportedCount} scholar${bulkImportedCount === 1 ? ' has' : 's have'} been added to the system and invitations sent.`}
               </p>
+              {validationErrors.submit ? (
+                <p className="text-sm text-red-700">{validationErrors.submit}</p>
+              ) : null}
               <Button onClick={onBack} className="mt-4">
                 Return to Dashboard
               </Button>

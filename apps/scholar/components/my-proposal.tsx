@@ -154,7 +154,7 @@ export function MyProposal() {
     setError(null);
     try {
       const file = selectedFile ? await uploadProposalCompletedFile(selectedFile) : undefined;
-      const next = await submitProposalStep(current.key, trimmed, stageLabel, comment, file);
+      const next = await submitProposalStep(current.key, trimmed, stageLabel.trim(), comment, file);
       setComment('');
       setSelectedFile(null);
       applyTimeline(next);

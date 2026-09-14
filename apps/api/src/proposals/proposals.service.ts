@@ -563,16 +563,18 @@ export class ProposalsService {
     if (!isPendingProposalFileKey(input.pendingFileKey, input.scholarId)) {
       throw new BadRequestException('Invalid uploaded file');
     }
-    const mimeType = resolveProposalMimeType(input.fileName, input.fileMimeType);
-    if (!mimeType) {
-      throw new BadRequestException('Upload a PDF or Word document');
-    }
-    if (input.fileSizeBytes < 1 || input.fileSizeBytes > PROPOSAL_FILE_MAX_SIZE_BYTES) {
-      throw new BadRequestException('Upload a file smaller than 10MB');
-    }
     const uploaded = await this.objectStorage.headObject(input.pendingFileKey);
     if (!uploaded) {
       throw new BadRequestException('Uploaded file was not found. Please upload the file again.');
+    }
+    const storedType = uploaded.contentType?.split(';')[0]?.trim() || input.fileMimeType;
+    const mimeType = resolveProposalMimeType(input.fileName, storedType);
+    if (!mimeType) {
+      throw new BadRequestException('Upload a PDF or Word document');
+    }
+    const sizeBytes = uploaded.contentLength ?? input.fileSizeBytes;
+    if (sizeBytes < 1 || sizeBytes > PROPOSAL_FILE_MAX_SIZE_BYTES) {
+      throw new BadRequestException('Upload a file smaller than 10MB');
     }
     const fileKey = buildPermanentProposalFileKey(input.scholarId, input.stepKey, input.fileName);
     await this.objectStorage.copyObject(input.pendingFileKey, fileKey);
@@ -580,7 +582,7 @@ export class ProposalsService {
       fileKey,
       fileName: input.fileName,
       fileMimeType: mimeType,
-      fileSizeBytes: input.fileSizeBytes,
+      fileSizeBytes: sizeBytes,
     };
   }
 

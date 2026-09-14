@@ -72,7 +72,7 @@ describe('MyProposal', () => {
       'My research question'
     );
     expect(submit).toBeDisabled();
-    await user.type(screen.getByLabelText('Which step are you on?'), '1a');
+    await user.type(screen.getByLabelText('Which step are you on?'), ' 1a ');
     expect(submit).toBeDisabled();
     await user.upload(
       screen.getByLabelText('Completed file'),

@@ -180,6 +180,9 @@ export function TaskAssignment({
       scholar.program.toLowerCase().includes(query)
     );
   });
+  const allVisibleSelected =
+    visibleScholars.length > 0 &&
+    visibleScholars.every((scholar) => selectedScholarIds.includes(scholar.id));
   const selectedScholars = scholars.filter((scholar) => selectedScholarIds.includes(scholar.id));
   const selectedScholar = preselectedScholarId
     ? (scholars.find((s) => s.id === preselectedScholarId) ?? selectedScholars[0])
@@ -195,7 +198,18 @@ export function TaskAssignment({
   };
 
   const toggleAllScholars = (checked: boolean) => {
-    setSelectedScholarIds(checked ? scholars.map((scholar) => scholar.id) : []);
+    const visibleIds = visibleScholars.map((scholar) => scholar.id);
+    setSelectedScholarIds((current) => {
+      if (!checked) {
+        const visibleIdSet = new Set(visibleIds);
+        return current.filter((id) => !visibleIdSet.has(id));
+      }
+      const next = new Set(current);
+      for (const id of visibleIds) {
+        next.add(id);
+      }
+      return [...next];
+    });
   };
 
   const resetCreateForm = () => {
@@ -379,17 +393,10 @@ export function TaskAssignment({
                 <button
                   type="button"
                   className="text-sm font-medium text-ashinaga-teal-700 hover:underline"
-                  onClick={() =>
-                    toggleAllScholars(
-                      !scholars.every((scholar) => selectedScholarIds.includes(scholar.id))
-                    )
-                  }
-                  disabled={loadingScholars || scholars.length === 0}
+                  onClick={() => toggleAllScholars(!allVisibleSelected)}
+                  disabled={loadingScholars || visibleScholars.length === 0}
                 >
-                  {scholars.length > 0 &&
-                  scholars.every((scholar) => selectedScholarIds.includes(scholar.id))
-                    ? 'Clear all'
-                    : 'Select all'}
+                  {allVisibleSelected ? 'Clear all' : 'Select all'}
                 </button>
                 {loadingScholars ? (
                   <span className="text-sm text-muted-foreground">Loading scholars…</span>

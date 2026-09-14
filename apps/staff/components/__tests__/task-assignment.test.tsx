@@ -110,4 +110,28 @@ describe('TaskAssignment', () => {
       })
     );
   });
+
+  it('selects only the scholars currently matching the search', async () => {
+    mockGetAllActiveScholars.mockResolvedValue([
+      scholar('s1', 'Ada Enrolled', 'scholar'),
+      scholar('s2', 'Ben Prep', 'prep_year'),
+      scholar('s3', 'Cara Enrolled', 'scholar'),
+    ]);
+    const user = userEvent.setup();
+    renderDialog();
+
+    await user.click(screen.getByRole('button', { name: 'Assign Task' }));
+    expect(
+      await screen.findByRole('checkbox', { name: 'Select Ada Enrolled' })
+    ).toBeInTheDocument();
+    await user.type(screen.getByPlaceholderText('Search by name, email, or program'), 'Ada');
+    await user.click(screen.getByRole('button', { name: 'Select all' }));
+
+    expect(screen.getByRole('checkbox', { name: 'Select Ada Enrolled' })).toBeChecked();
+    expect(screen.queryByRole('checkbox', { name: 'Select Ben Prep' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('checkbox', { name: 'Select Cara Enrolled' })
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(/1 selected/)).toBeInTheDocument();
+  });
 });
