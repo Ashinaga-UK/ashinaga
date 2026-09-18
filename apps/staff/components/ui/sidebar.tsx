@@ -21,6 +21,22 @@ const SIDEBAR_WIDTH_MOBILE = '18rem';
 const SIDEBAR_WIDTH_ICON = '3rem';
 const SIDEBAR_KEYBOARD_SHORTCUT = 'b';
 
+function getSidebarOpenFromCookie(fallback: boolean): boolean {
+  if (typeof document === 'undefined') {
+    return fallback;
+  }
+
+  const match = document.cookie
+    .split('; ')
+    .find((row) => row.startsWith(`${SIDEBAR_COOKIE_NAME}=`));
+
+  if (!match) {
+    return fallback;
+  }
+
+  return match.split('=').slice(1).join('=') === 'true';
+}
+
 type SidebarContext = {
   state: 'expanded' | 'collapsed';
   open: boolean;
@@ -67,7 +83,8 @@ const SidebarProvider = React.forwardRef<
 
     // This is the internal state of the sidebar.
     // We use openProp and setOpenProp for control from outside the component.
-    const [_open, _setOpen] = React.useState(defaultOpen);
+    // StaffLayout mounts after client auth, so reading the cookie here is safe.
+    const [_open, _setOpen] = React.useState(() => getSidebarOpenFromCookie(defaultOpen));
     const open = openProp ?? _open;
     const setOpen = React.useCallback(
       (value: boolean | ((value: boolean) => boolean)) => {
