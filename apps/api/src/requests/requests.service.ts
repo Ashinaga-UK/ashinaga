@@ -16,6 +16,7 @@ import {
   users,
 } from '../db/schema';
 import { EmailService } from '../email/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateRequestDto, CreateRequestResponseDto } from './dto/create-request.dto';
 import {
   GetRequestsQueryDto,
@@ -26,7 +27,10 @@ import {
 
 @Injectable()
 export class RequestsService {
-  constructor(private readonly emailService: EmailService) {}
+  constructor(
+    private readonly emailService: EmailService,
+    private readonly notifications: NotificationsService
+  ) {}
 
   async getRequests(query: GetRequestsQueryDto, userId: string): Promise<GetRequestsResponseDto> {
     const { page = 1, limit = 20, search, type, status, priority } = query;
@@ -426,6 +430,25 @@ export class RequestsService {
       });
     }
 
+    const [scholarUser] = await database
+      .select({ name: users.name })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    const scholarName = scholarUser?.name ?? 'Scholar';
+
+    void this.notifications
+      .notifyRequestReceived({
+        requestId: newRequest.id,
+        scholarId,
+        scholarName,
+        requestType: newRequest.type,
+        assigneeIds,
+      })
+      .catch((error) => {
+        console.error('Failed to create staff request_received notifications:', error);
+      });
+
     return {
       id: newRequest.id,
       scholarId: newRequest.scholarId,
@@ -508,6 +531,20 @@ export class RequestsService {
         // Don't throw error here - we don't want email failures to break the request update
       }
     }
+
+    void this.notifications
+      .notifyRequestStatusChanged({
+        requestId,
+        scholarId: currentRequest.scholarId,
+        scholarName: user.name,
+        requestType: currentRequest.type,
+        status,
+        actorUserId: reviewedBy,
+        dedupeSuffix: `${status}:${updatedRequest.updatedAt.toISOString()}`,
+      })
+      .catch((error) => {
+        console.error('Failed to create staff request_status_changed notifications:', error);
+      });
 
     return updatedRequest;
   }
@@ -647,6 +684,20 @@ export class RequestsService {
       console.error('Failed to notify staff about scholar response:', error);
       // Don't break the response flow on email failures
     }
+
+    void this.notifications
+      .notifyRequestStatusChanged({
+        requestId,
+        scholarId: requestRow.request.scholarId,
+        scholarName: requestRow.user.name,
+        requestType: requestRow.request.type,
+        status: 'pending',
+        actorUserId: userId,
+        dedupeSuffix: `scholar_responded:${updatedRequest.updatedAt.toISOString()}`,
+      })
+      .catch((error) => {
+        console.error('Failed to create staff request reopen notifications:', error);
+      });
 
     return updatedRequest;
   }

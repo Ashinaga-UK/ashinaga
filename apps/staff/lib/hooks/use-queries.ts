@@ -19,6 +19,7 @@ import {
   getPrepTaskCohort,
   getPrepYearReport,
   getProposalInbox,
+  getRequestStats,
   getRequiredDocumentCohort,
   getRequiredDocumentTypes,
   getResourceFilterOptions,
@@ -26,7 +27,9 @@ import {
   getScholarProfile,
   getScholarProposal,
   getScholarRequiredDocuments,
+  getStaffNotificationsFeed,
   getTasksByScholar,
+  markStaffNotificationsRead,
   type PlatformSetupStatus,
   type PrepTaskCohortFilters,
   type PrepYearReportFilters,
@@ -64,6 +67,8 @@ export const queryKeys = {
   scholarMeetingUpdates: (id: string) => ['scholar', id, 'meeting-updates'] as const,
   proposalInbox: ['proposals', 'inbox'] as const,
   scholarProposal: (id: string) => ['scholar', id, 'proposal'] as const,
+  staffNotifications: (search?: string) => ['notifications', 'staff-feed', search ?? ''] as const,
+  requestStats: ['requests', 'stats'] as const,
 };
 
 // Scholar profile query
@@ -401,6 +406,37 @@ export function useUpdateScholarPlatformSetup(scholarId: string) {
       updateScholarPlatformSetup(scholarId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.scholarProfile(scholarId) });
+    },
+  });
+}
+
+export function useStaffNotificationsFeed(search = '') {
+  return useQuery({
+    queryKey: queryKeys.staffNotifications(search),
+    queryFn: () =>
+      getStaffNotificationsFeed({
+        page: 1,
+        limit: 20,
+        search: search || undefined,
+      }),
+    refetchInterval: 60_000,
+  });
+}
+
+export function useRequestStats() {
+  return useQuery({
+    queryKey: queryKeys.requestStats,
+    queryFn: getRequestStats,
+    refetchInterval: 60_000,
+  });
+}
+
+export function useMarkStaffNotificationsRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: markStaffNotificationsRead,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications', 'staff-feed'] });
     },
   });
 }

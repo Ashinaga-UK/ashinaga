@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, NotFoundException } from '@nes
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getDatabase } from '../db/connection';
 import { EmailService } from '../email/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { ObjectStorageService } from '../storage/object-storage';
 import { TasksService } from './tasks.service';
 
@@ -80,6 +81,12 @@ describe('TasksService', () => {
         TasksService,
         { provide: EmailService, useValue: emailService },
         { provide: ObjectStorageService, useValue: objectStorage },
+        {
+          provide: NotificationsService,
+          useValue: {
+            notifyTaskCompleted: jest.fn().mockResolvedValue(undefined),
+          },
+        },
       ],
     }).compile();
 
@@ -256,7 +263,8 @@ describe('TasksService', () => {
         .mockImplementationOnce(() => chain([{ id: 'scholar-1', userId: 'user-1' }]))
         .mockImplementationOnce(() =>
           chain([{ ...createdTask, requiresAttachment: false, scholarId: 'scholar-1' }])
-        ),
+        )
+        .mockImplementationOnce(() => chain([{ name: 'Ada' }])),
       transaction: jest.fn(async (cb: (trx: typeof tx) => unknown) => cb(tx)),
     };
     (getDatabase as jest.Mock).mockReturnValue(db);

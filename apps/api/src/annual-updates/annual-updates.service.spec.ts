@@ -8,6 +8,10 @@ jest.mock('../db/connection', () => ({
   getDatabase: jest.fn(() => mockDb),
 }));
 
+const mockNotifications = {
+  notifyAnnualReviewSubmitted: jest.fn().mockResolvedValue(undefined),
+};
+
 describe('AnnualUpdatesService', () => {
   let service: AnnualUpdatesService;
   let internals: AnnualUpdatesServiceInternals;
@@ -17,7 +21,8 @@ describe('AnnualUpdatesService', () => {
       insert: jest.fn(),
       select: jest.fn(),
     };
-    service = new AnnualUpdatesService();
+    mockNotifications.notifyAnnualReviewSubmitted.mockClear();
+    service = new AnnualUpdatesService(mockNotifications as never);
     internals = service as unknown as AnnualUpdatesServiceInternals;
   });
 
