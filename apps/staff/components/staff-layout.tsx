@@ -16,7 +16,9 @@ import {
   Users,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRequestStats } from '../lib/hooks/use-queries';
 import { cn } from '../lib/utils';
+import { StaffNotificationsBell } from './staff-notifications-bell';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import {
   Sidebar,
@@ -26,6 +28,7 @@ import {
   SidebarGroupContent,
   SidebarInset,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
@@ -84,6 +87,8 @@ interface StaffLayoutProps {
 
 function StaffSidebar({ activeTab, onLogout }: Pick<StaffLayoutProps, 'activeTab' | 'onLogout'>) {
   const { isMobile, setOpenMobile } = useSidebar();
+  const { data: requestStats } = useRequestStats();
+  const pendingRequests = requestStats?.pending ?? 0;
 
   return (
     <Sidebar collapsible="icon" className="print:hidden">
@@ -106,6 +111,7 @@ function StaffSidebar({ activeTab, onLogout }: Pick<StaffLayoutProps, 'activeTab
             <SidebarMenu>
               {STAFF_NAV_ITEMS.map((item) => {
                 const Icon = item.icon;
+                const showPendingBadge = item.value === 'requests' && pendingRequests > 0;
                 return (
                   <SidebarMenuItem key={item.value}>
                     <SidebarMenuButton
@@ -118,6 +124,11 @@ function StaffSidebar({ activeTab, onLogout }: Pick<StaffLayoutProps, 'activeTab
                         <span>{item.label}</span>
                       </Link>
                     </SidebarMenuButton>
+                    {showPendingBadge ? (
+                      <SidebarMenuBadge aria-label={`${pendingRequests} pending requests`}>
+                        {pendingRequests > 99 ? '99+' : pendingRequests}
+                      </SidebarMenuBadge>
+                    ) : null}
                   </SidebarMenuItem>
                 );
               })}
@@ -206,6 +217,7 @@ export function StaffLayout({
           </Link>
         </div>
         <div className="flex items-center justify-end gap-1 md:order-3 md:ml-auto">
+          <StaffNotificationsBell />
           <ThemeToggle />
           <button
             type="button"

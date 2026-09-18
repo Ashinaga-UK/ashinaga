@@ -592,6 +592,65 @@ export async function getRequestStats(): Promise<RequestStats> {
   return fetchAPI<RequestStats>('/api/requests/stats');
 }
 
+export type StaffNotificationKind =
+  | 'request_received'
+  | 'request_status_changed'
+  | 'task_completed'
+  | 'annual_review_submitted';
+
+export interface StaffNotification {
+  id: string;
+  kind: StaffNotificationKind;
+  title: string;
+  body: string;
+  scholarId: string | null;
+  scholarName: string | null;
+  entityType: string;
+  entityId: string;
+  href: string;
+  requestType: string | null;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface StaffNotificationsFeedResponse {
+  items: StaffNotification[];
+  total: number;
+  unreadCount: number;
+  page: number;
+  limit: number;
+}
+
+export async function getStaffNotificationsFeed(params?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+}): Promise<StaffNotificationsFeedResponse> {
+  const queryParams = new URLSearchParams();
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, String(value));
+      }
+    });
+  }
+  const queryString = queryParams.toString();
+  return fetchAPI<StaffNotificationsFeedResponse>(
+    `/api/notifications/staff-feed${queryString ? `?${queryString}` : ''}`
+  );
+}
+
+export async function markStaffNotificationsRead(body: {
+  ids?: string[];
+  all?: boolean;
+}): Promise<{ updated: number }> {
+  return fetchAPI<{ updated: number }>('/api/notifications/read', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
 export async function updateRequestStatus(
   requestId: string,
   status: 'approved' | 'rejected' | 'reviewed' | 'commented',

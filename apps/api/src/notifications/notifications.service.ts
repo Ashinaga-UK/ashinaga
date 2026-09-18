@@ -1,13 +1,29 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { and, eq, inArray, isNull, ne } from 'drizzle-orm';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { and, count, desc, eq, ilike, inArray, isNull, ne, or } from 'drizzle-orm';
 import { database } from '../db/connection';
-import { notificationDeliveries, scholars, staff, taskResponses, tasks, users } from '../db/schema';
+import {
+  notificationDeliveries,
+  requestAssignees,
+  scholars,
+  staff,
+  staffNotifications,
+  taskResponses,
+  tasks,
+  users,
+} from '../db/schema';
 import { EmailService } from '../email/email.service';
 import { PROPOSAL_STEPS } from '../proposals/proposal-steps';
 import { isTaskDueInCalendarDays, isTaskOverdue } from '../tasks/task-due';
+import {
+  type CreateStaffNotificationInput,
+  type GetStaffFeedQueryDto,
+  type MarkStaffNotificationsReadDto,
+  type StaffFeedResponseDto,
+  type StaffNotificationDto,
+} from './dto/staff-notifications.dto';
 import { brandedEmail, escapeHtml } from './email-layout';
 import { dueSoonWindowLabel, inactivityDays, reminderDays } from './notification-config';
-import { NOTIFICATION_KINDS } from './notification-kinds';
+import { NOTIFICATION_KINDS, STAFF_FEED_KINDS, type StaffFeedKind } from './notification-kinds';
 import {
   isMonthlySummaryDay,
   isStaleLastActivity,
@@ -77,6 +93,246 @@ export class NotificationsService {
     if (!delivered) {
       throw new Error(`Failed to send proposal feedback to ${recipient.email}`);
     }
+  }
+
+  async createStaffNotifications(rows: CreateStaffNotificationInput[]): Promise<number> {
+    if (rows.length === 0) return 0;
+
+    const values = rows.map((row) => ({
+      recipientUserId: row.recipientUserId,
+      kind: row.kind,
+      title: row.title,
+      body: row.body,
+      scholarId: row.scholarId ?? null,
+      scholarName: row.scholarName ?? null,
+      entityType: row.entityType,
+      entityId: row.entityId,
+      href: row.href,
+      requestType: row.requestType ?? null,
+      dedupeSuffix: row.dedupeSuffix ?? '',
+    }));
+
+    const inserted = await database
+      .insert(staffNotifications)
+      .values(values)
+      .onConflictDoNothing()
+      .returning({ id: staffNotifications.id });
+
+    return inserted.length;
+  }
+
+  async getStaffFeed(userId: string, query: GetStaffFeedQueryDto): Promise<StaffFeedResponseDto> {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const offset = (page - 1) * limit;
+    const search = query.search?.trim();
+
+    const conditions = [eq(staffNotifications.recipientUserId, userId)];
+    if (search) {
+      const pattern = `%${search}%`;
+      conditions.push(
+        or(
+          ilike(staffNotifications.scholarName, pattern),
+          ilike(staffNotifications.requestType, pattern),
+          ilike(staffNotifications.kind, pattern),
+          ilike(staffNotifications.title, pattern)
+        )!
+      );
+    }
+    const whereClause = and(...conditions);
+
+    const [items, totalRow, unreadRow] = await Promise.all([
+      database
+        .select()
+        .from(staffNotifications)
+        .where(whereClause)
+        .orderBy(desc(staffNotifications.createdAt))
+        .limit(limit)
+        .offset(offset),
+      database.select({ value: count() }).from(staffNotifications).where(whereClause),
+      database
+        .select({ value: count() })
+        .from(staffNotifications)
+        .where(
+          and(eq(staffNotifications.recipientUserId, userId), isNull(staffNotifications.readAt))
+        ),
+    ]);
+
+    return {
+      items: items.map(toStaffNotificationDto),
+      total: Number(totalRow[0]?.value ?? 0),
+      unreadCount: Number(unreadRow[0]?.value ?? 0),
+      page,
+      limit,
+    };
+  }
+
+  async markStaffNotificationsRead(
+    userId: string,
+    dto: MarkStaffNotificationsReadDto
+  ): Promise<{ updated: number }> {
+    const markAll = dto.all === true;
+    const ids = dto.ids ?? [];
+
+    if (markAll === Boolean(ids.length)) {
+      throw new BadRequestException('Provide either ids or all: true, not both or neither');
+    }
+
+    const now = new Date();
+    const conditions = [
+      eq(staffNotifications.recipientUserId, userId),
+      isNull(staffNotifications.readAt),
+    ];
+    if (!markAll) {
+      conditions.push(inArray(staffNotifications.id, ids));
+    }
+
+    const updated = await database
+      .update(staffNotifications)
+      .set({ readAt: now })
+      .where(and(...conditions))
+      .returning({ id: staffNotifications.id });
+
+    return { updated: updated.length };
+  }
+
+  async notifyRequestReceived(input: {
+    requestId: string;
+    scholarId: string;
+    scholarName: string;
+    requestType: string;
+    assigneeIds: string[];
+  }): Promise<void> {
+    const recipients = await this.requestAudienceUserIds(input.assigneeIds);
+    const typeLabel = formatRequestType(input.requestType);
+    const href = buildRequestHref(input.scholarName, input.requestId, 'pending');
+
+    await this.createStaffNotifications(
+      recipients.map((recipientUserId) => ({
+        recipientUserId,
+        kind: STAFF_FEED_KINDS.requestReceived,
+        title: `New request from ${input.scholarName}`,
+        body: `${input.scholarName} submitted a ${typeLabel} request`,
+        scholarId: input.scholarId,
+        scholarName: input.scholarName,
+        entityType: 'request',
+        entityId: input.requestId,
+        href,
+        requestType: input.requestType,
+        dedupeSuffix: 'created',
+      }))
+    );
+  }
+
+  async notifyRequestStatusChanged(input: {
+    requestId: string;
+    scholarId: string;
+    scholarName: string;
+    requestType: string;
+    status: string;
+    actorUserId?: string | null;
+    dedupeSuffix: string;
+  }): Promise<void> {
+    const assigneeIds = await this.requestAssigneeUserIds(input.requestId);
+    let recipients = await this.requestAudienceUserIds(assigneeIds);
+    if (input.actorUserId) {
+      recipients = recipients.filter((id) => id !== input.actorUserId);
+    }
+
+    const typeLabel = formatRequestType(input.requestType);
+    const statusLabel = formatStatus(input.status);
+    const href = buildRequestHref(input.scholarName, input.requestId);
+
+    await this.createStaffNotifications(
+      recipients.map((recipientUserId) => ({
+        recipientUserId,
+        kind: STAFF_FEED_KINDS.requestStatusChanged,
+        title: `Request ${statusLabel} for ${input.scholarName}`,
+        body: `${input.scholarName}'s ${typeLabel} request is now ${statusLabel}`,
+        scholarId: input.scholarId,
+        scholarName: input.scholarName,
+        entityType: 'request',
+        entityId: input.requestId,
+        href,
+        requestType: input.requestType,
+        dedupeSuffix: input.dedupeSuffix,
+      }))
+    );
+  }
+
+  async notifyTaskCompleted(input: {
+    taskId: string;
+    taskTitle: string;
+    scholarId: string;
+    scholarName: string;
+  }): Promise<void> {
+    const recipients = await this.activeStaffUserIds();
+    const href = `/?tab=scholars&view=scholar-profile&scholarId=${encodeURIComponent(input.scholarId)}&scholarTab=tasks`;
+
+    await this.createStaffNotifications(
+      recipients.map((recipientUserId) => ({
+        recipientUserId,
+        kind: STAFF_FEED_KINDS.taskCompleted,
+        title: `${input.scholarName} completed a task`,
+        body: `${input.scholarName} completed "${input.taskTitle}"`,
+        scholarId: input.scholarId,
+        scholarName: input.scholarName,
+        entityType: 'task',
+        entityId: input.taskId,
+        href,
+        dedupeSuffix: 'completed',
+      }))
+    );
+  }
+
+  async notifyAnnualReviewSubmitted(input: {
+    annualUpdateId: string;
+    scholarId: string;
+    scholarName: string;
+    academicYear: string;
+  }): Promise<void> {
+    const recipients = await this.activeStaffUserIds();
+    const href = `/?tab=scholars&view=scholar-profile&scholarId=${encodeURIComponent(input.scholarId)}&scholarTab=annual-reviews`;
+
+    await this.createStaffNotifications(
+      recipients.map((recipientUserId) => ({
+        recipientUserId,
+        kind: STAFF_FEED_KINDS.annualReviewSubmitted,
+        title: `${input.scholarName} submitted annual review`,
+        body: `${input.scholarName} submitted their ${input.academicYear} annual review`,
+        scholarId: input.scholarId,
+        scholarName: input.scholarName,
+        entityType: 'annual_update',
+        entityId: input.annualUpdateId,
+        href,
+        dedupeSuffix: input.academicYear,
+      }))
+    );
+  }
+
+  private async requestAssigneeUserIds(requestId: string): Promise<string[]> {
+    const rows = await database
+      .select({ userId: requestAssignees.userId })
+      .from(requestAssignees)
+      .where(eq(requestAssignees.requestId, requestId));
+    return rows.map((row) => row.userId);
+  }
+
+  private async requestAudienceUserIds(assigneeIds: string[]): Promise<string[]> {
+    const superAdmins = await database
+      .select({ userId: staff.userId })
+      .from(staff)
+      .where(and(eq(staff.isActive, true), eq(staff.isSuperAdmin, true)));
+
+    return Array.from(new Set([...assigneeIds, ...superAdmins.map((row) => row.userId)]));
+  }
+
+  private async activeStaffUserIds(): Promise<string[]> {
+    const rows = await database
+      .select({ userId: staff.userId })
+      .from(staff)
+      .where(eq(staff.isActive, true));
+    return rows.map((row) => row.userId);
   }
 
   private async sendDueSoonReminders(now: Date): Promise<number> {
@@ -339,6 +595,41 @@ export class NotificationsService {
       return false;
     }
   }
+}
+
+function toStaffNotificationDto(row: typeof staffNotifications.$inferSelect): StaffNotificationDto {
+  return {
+    id: row.id,
+    kind: row.kind as StaffFeedKind,
+    title: row.title,
+    body: row.body,
+    scholarId: row.scholarId,
+    scholarName: row.scholarName,
+    entityType: row.entityType,
+    entityId: row.entityId,
+    href: row.href,
+    requestType: row.requestType,
+    readAt: row.readAt,
+    createdAt: row.createdAt,
+  };
+}
+
+function buildRequestHref(scholarName: string, requestId: string, status?: string): string {
+  const params = new URLSearchParams({
+    tab: 'requests',
+    search: scholarName,
+    requestId,
+  });
+  if (status) params.set('status', status);
+  return `/?${params.toString()}`;
+}
+
+function formatRequestType(type: string): string {
+  return type.replace(/_/g, ' ');
+}
+
+function formatStatus(status: string): string {
+  return status.replace(/_/g, ' ');
 }
 
 function audienceNoun(programStage: ScholarAudience | string): string {
