@@ -15,7 +15,11 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getFilableAcademicYears, toCanonicalAcademicYear } from '../lib/academic-year';
+import {
+  getDefaultAcademicYear,
+  getFilableAcademicYears,
+  toCanonicalAcademicYear,
+} from '../lib/academic-year';
 import {
   type AnnualUpdate,
   type AnnualUpdatePayload,
@@ -273,8 +277,9 @@ function validateForm(form: FormState, requireComplete: boolean): FormValidation
 }
 
 export function MyAnnualReview() {
-  const [filableAcademicYears] = useState(getFilableAcademicYears);
-  const [form, setForm] = useState<FormState>(() => createEmptyForm(filableAcademicYears[0]));
+  const [filableAcademicYears] = useState(() => getFilableAcademicYears());
+  const defaultAcademicYear = filableAcademicYears[0] ?? getDefaultAcademicYear();
+  const [form, setForm] = useState<FormState>(() => createEmptyForm(defaultAcademicYear));
   const [annualUpdate, setAnnualUpdate] = useState<AnnualUpdate | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -314,8 +319,8 @@ export function MyAnnualReview() {
   }, []);
 
   useEffect(() => {
-    loadAnnualUpdate(filableAcademicYears[0]);
-  }, [filableAcademicYears, loadAnnualUpdate]);
+    loadAnnualUpdate(defaultAcademicYear);
+  }, [defaultAcademicYear, loadAnnualUpdate]);
 
   useEffect(() => {
     if (!message) {
