@@ -14,11 +14,16 @@ jest.mock('../../lib/api/annual-updates', () => ({
   submitAnnualUpdate: (...args: unknown[]) => mockSubmitAnnualUpdate(...args),
 }));
 
+jest.mock('../../lib/academic-year', () => ({
+  getFilableAcademicYears: () => ['2025/2026', '2024/2025', '2023/2024', '2022/2023'],
+  toCanonicalAcademicYear: (value: string) => (value === '2025/26' ? '2025/2026' : value),
+}));
+
 function createAnnualUpdate(overrides: Partial<AnnualUpdate> = {}): AnnualUpdate {
   return {
     id: 'review-1',
     scholarId: 'scholar-1',
-    academicYear: '2026/27',
+    academicYear: '2025/2026',
     status: 'draft',
     highlights: 'A highlight',
     partTimeJobs: null,
@@ -42,6 +47,15 @@ function createAnnualUpdate(overrides: Partial<AnnualUpdate> = {}): AnnualUpdate
   };
 }
 
+async function openAcademicYearOptions() {
+  fireEvent.pointerDown(screen.getByRole('combobox', { name: 'Academic year' }), {
+    pointerId: 1,
+    button: 0,
+  });
+  fireEvent.click(screen.getByRole('combobox', { name: 'Academic year' }));
+  return screen.findByRole('option', { name: '2024/2025' });
+}
+
 describe('MyAnnualReview', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -50,6 +64,9 @@ describe('MyAnnualReview', () => {
     mockSaveAnnualUpdateDraft.mockImplementation(async () =>
       createAnnualUpdate({ status: 'draft' })
     );
+    HTMLElement.prototype.hasPointerCapture = jest.fn();
+    HTMLElement.prototype.releasePointerCapture = jest.fn();
+    HTMLElement.prototype.scrollIntoView = jest.fn();
   });
 
   it('uses the requested copy and puts count questions before descriptions', async () => {
@@ -98,8 +115,82 @@ describe('MyAnnualReview', () => {
     ).not.toContain('(Enter a number)');
   });
 
+  it('uses a year dropdown defaulting to the completed teaching year', async () => {
+    render(<MyAnnualReview />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: 'Academic year' })).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('textbox', { name: 'Academic year' })).not.toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Academic year' })).not.toBeDisabled();
+    expect(mockGetMyAnnualUpdate).toHaveBeenCalledWith('2025/2026');
+    expect(mockGetMyDraftAnnualUpdate).not.toHaveBeenCalled();
+
+    await openAcademicYearOptions();
+
+    expect(screen.getByRole('option', { name: '2025/2026' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: '2024/2025' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: '2026/2027' })).not.toBeInTheDocument();
+  });
+
+  it('loads only the selected academic year', async () => {
+    mockGetMyAnnualUpdate.mockImplementation(async (academicYear: string) => {
+      if (academicYear === '2024/2025') {
+        return createAnnualUpdate({
+          academicYear: '2024/2025',
+          status: 'draft',
+          highlights: 'Older year draft',
+        });
+      }
+
+      return null;
+    });
+
+    render(<MyAnnualReview />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: 'Academic year' })).toBeInTheDocument();
+    });
+
+    await openAcademicYearOptions();
+    fireEvent.click(screen.getByRole('option', { name: '2024/2025' }));
+
+    await waitFor(() => {
+      expect(mockGetMyAnnualUpdate).toHaveBeenCalledWith('2024/2025');
+    });
+
+    expect(mockGetMyDraftAnnualUpdate).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Resumed your draft/)).not.toBeInTheDocument();
+    expect(await screen.findByText('2024/2025 Annual Review')).toBeInTheDocument();
+  });
+
+  it('opens a legacy YYYY/YY submitted row from the canonical year', async () => {
+    mockGetMyAnnualUpdate.mockResolvedValue(
+      createAnnualUpdate({
+        academicYear: '2025/26',
+        status: 'submitted',
+        submittedAt: '2026-08-20T00:00:00.000Z',
+        highlights: 'Legacy year answers',
+      })
+    );
+
+    render(<MyAnnualReview />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Your annual review has been submitted and can no longer be edited.')
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'View responses' }));
+
+    expect(screen.getByRole('combobox', { name: 'Academic year' })).not.toBeDisabled();
+    expect(screen.getByDisplayValue('Legacy year answers')).toBeDisabled();
+  });
+
   it('loads an existing draft folded', async () => {
-    mockGetMyDraftAnnualUpdate.mockResolvedValue(createAnnualUpdate({ status: 'draft' }));
+    mockGetMyAnnualUpdate.mockResolvedValue(createAnnualUpdate({ status: 'draft' }));
 
     render(<MyAnnualReview />);
 
@@ -111,6 +202,7 @@ describe('MyAnnualReview', () => {
     expect(
       screen.getByText('Your draft is saved. Continue editing whenever you are ready.')
     ).toBeInTheDocument();
+    expect(mockGetMyDraftAnnualUpdate).not.toHaveBeenCalled();
   });
 
   it('folds the form after a draft is saved', async () => {

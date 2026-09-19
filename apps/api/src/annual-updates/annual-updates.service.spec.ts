@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException } from '@nes
 import { AnnualUpdatesService } from './annual-updates.service';
 import type { UpsertAnnualUpdateDto } from './dto/upsert-annual-update.dto';
 
-let mockDb: { insert: jest.Mock; select: jest.Mock };
+let mockDb: { insert: jest.Mock; select: jest.Mock; update: jest.Mock };
 
 jest.mock('../db/connection', () => ({
   getDatabase: jest.fn(() => mockDb),
@@ -16,6 +16,7 @@ describe('AnnualUpdatesService', () => {
     mockDb = {
       insert: jest.fn(),
       select: jest.fn(),
+      update: jest.fn(),
     };
     service = new AnnualUpdatesService();
     internals = service as unknown as AnnualUpdatesServiceInternals;
@@ -233,21 +234,31 @@ describe('AnnualUpdatesService', () => {
     });
   });
 
+  describe('getMyAnnualUpdate', () => {
+    it('returns a legacy YYYY/YY row when asking for YYYY/YYYY', async () => {
+      const legacyRow = createAnnualUpdate({ academicYear: '2025/26', status: 'draft' });
+      mockScholarThenAnnualUpdates([legacyRow]);
+
+      await expect(service.getMyAnnualUpdate('user-1', '2025/2026')).resolves.toBe(legacyRow);
+    });
+  });
+
   describe('upsertAnnualUpdate', () => {
     it('uses the scholar/academic-year unique target for conflict-safe upserts', async () => {
       const annualUpdate = {
         id: 'annual-update-1',
         scholarId: 'scholar-1',
-        academicYear: '2025/26',
+        academicYear: '2025/2026',
         status: 'draft',
       };
+      mockSelectAnnualUpdates([]);
       const returning = jest.fn().mockResolvedValue([annualUpdate]);
       const onConflictDoUpdate = jest.fn().mockReturnValue({ returning });
       const values = jest.fn().mockReturnValue({ onConflictDoUpdate });
       mockDb.insert.mockReturnValue({ values });
 
       await expect(
-        internals.upsertAnnualUpdate('scholar-1', { academicYear: '2025/26' }, 'draft')
+        internals.upsertAnnualUpdate('scholar-1', { academicYear: '2025/2026' }, 'draft')
       ).resolves.toBe(annualUpdate);
 
       expect(onConflictDoUpdate).toHaveBeenCalledWith(
@@ -255,7 +266,7 @@ describe('AnnualUpdatesService', () => {
           target: expect.any(Array),
           set: expect.objectContaining({
             scholarId: 'scholar-1',
-            academicYear: '2025/26',
+            academicYear: '2025/2026',
             status: 'draft',
           }),
           setWhere: expect.any(Object),
@@ -263,14 +274,72 @@ describe('AnnualUpdatesService', () => {
       );
     });
 
+    it('writes YYYY/YYYY even when the payload uses a legacy YYYY/YY label', async () => {
+      mockSelectAnnualUpdates([]);
+      const returning = jest.fn().mockResolvedValue([{ academicYear: '2025/2026' }]);
+      const onConflictDoUpdate = jest.fn().mockReturnValue({ returning });
+      const values = jest.fn().mockReturnValue({ onConflictDoUpdate });
+      mockDb.insert.mockReturnValue({ values });
+
+      await internals.upsertAnnualUpdate('scholar-1', { academicYear: '2025/26' }, 'draft');
+
+      expect(values).toHaveBeenCalledWith(
+        expect.objectContaining({
+          academicYear: '2025/2026',
+        })
+      );
+    });
+
+    it('updates a legacy YYYY/YY draft instead of inserting a second year row', async () => {
+      const existing = createAnnualUpdate({
+        id: 'annual-update-1',
+        academicYear: '2025/26',
+        status: 'draft',
+      });
+      mockSelectAnnualUpdates([existing]);
+      const updated = { ...existing, academicYear: '2025/2026' };
+      const returning = jest.fn().mockResolvedValue([updated]);
+      const where = jest.fn().mockReturnValue({ returning });
+      const set = jest.fn().mockReturnValue({ where });
+      mockDb.update.mockReturnValue({ set });
+
+      await expect(
+        internals.upsertAnnualUpdate('scholar-1', { academicYear: '2025/2026' }, 'draft')
+      ).resolves.toBe(updated);
+
+      expect(set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          academicYear: '2025/2026',
+          status: 'draft',
+        })
+      );
+      expect(mockDb.insert).not.toHaveBeenCalled();
+    });
+
+    it('conflicts when a legacy YYYY/YY row is already submitted', async () => {
+      mockSelectAnnualUpdates([
+        createAnnualUpdate({
+          academicYear: '2025/26',
+          status: 'submitted',
+        }),
+      ]);
+
+      await expect(
+        internals.upsertAnnualUpdate('scholar-1', { academicYear: '2025/2026' }, 'draft')
+      ).rejects.toThrow(ConflictException);
+      expect(mockDb.insert).not.toHaveBeenCalled();
+      expect(mockDb.update).not.toHaveBeenCalled();
+    });
+
     it('throws a clean conflict when the upsert cannot update a submitted row', async () => {
+      mockSelectAnnualUpdates([]);
       const returning = jest.fn().mockResolvedValue([]);
       const onConflictDoUpdate = jest.fn().mockReturnValue({ returning });
       const values = jest.fn().mockReturnValue({ onConflictDoUpdate });
       mockDb.insert.mockReturnValue({ values });
 
       await expect(
-        internals.upsertAnnualUpdate('scholar-1', { academicYear: '2025/26' }, 'draft')
+        internals.upsertAnnualUpdate('scholar-1', { academicYear: '2025/2026' }, 'draft')
       ).rejects.toThrow(ConflictException);
     });
   });
@@ -365,6 +434,30 @@ function createAnnualUpdate(overrides: Partial<AnnualUpdateFixture> = {}): Annua
     updatedAt: now,
     ...overrides,
   };
+}
+
+function mockSelectAnnualUpdates(rows: unknown[]) {
+  const limit = jest.fn().mockResolvedValue(rows);
+  const orderBy = jest.fn().mockReturnValue({ limit });
+  const where = jest.fn().mockReturnValue({ orderBy });
+  mockDb.select.mockReturnValue({
+    from: jest.fn().mockReturnValue({ where }),
+  });
+}
+
+function mockScholarThenAnnualUpdates(rows: unknown[]) {
+  const scholarWhere = jest.fn().mockResolvedValue([{ id: 'scholar-1', userId: 'user-1' }]);
+  const annualUpdateLimit = jest.fn().mockResolvedValue(rows);
+  const annualUpdateOrderBy = jest.fn().mockReturnValue({ limit: annualUpdateLimit });
+  const annualUpdateWhere = jest.fn().mockReturnValue({ orderBy: annualUpdateOrderBy });
+
+  mockDb.select
+    .mockReturnValueOnce({
+      from: jest.fn().mockReturnValue({ where: scholarWhere }),
+    })
+    .mockReturnValueOnce({
+      from: jest.fn().mockReturnValue({ where: annualUpdateWhere }),
+    });
 }
 
 function createCompletePayload(
