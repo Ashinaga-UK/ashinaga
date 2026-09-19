@@ -11,6 +11,7 @@ import { annualUpdates } from '../db/schema/annual-updates';
 import { scholars } from '../db/schema/scholars';
 import { users } from '../db/schema/users';
 import { escapeCsvValue } from '../utils/csv';
+import { academicYearLookupValues, toCanonicalAcademicYear } from './academic-year';
 import { UpsertAnnualUpdateDto } from './dto/upsert-annual-update.dto';
 
 const LIMITED_RESPONSE_WORD_LIMIT = 150;
@@ -46,20 +47,17 @@ export class AnnualUpdatesService {
   async getMyAnnualUpdate(userId: string, academicYear?: string) {
     const scholar = await this.getScholarForUser(userId);
 
-    const query = this.db
+    if (academicYear) {
+      return this.findAnnualUpdateForYear(scholar.id, academicYear);
+    }
+
+    const [annualUpdate] = await this.db
       .select()
       .from(annualUpdates)
-      .where(
-        academicYear
-          ? and(
-              eq(annualUpdates.scholarId, scholar.id),
-              eq(annualUpdates.academicYear, academicYear)
-            )
-          : eq(annualUpdates.scholarId, scholar.id)
-      )
-      .orderBy(desc(annualUpdates.createdAt));
+      .where(eq(annualUpdates.scholarId, scholar.id))
+      .orderBy(desc(annualUpdates.createdAt))
+      .limit(1);
 
-    const [annualUpdate] = await query.limit(1);
     return annualUpdate ?? null;
   }
 
@@ -238,14 +236,30 @@ export class AnnualUpdatesService {
     status: 'draft' | 'submitted'
   ) {
     const now = new Date();
+    const academicYear = toCanonicalAcademicYear(dto.academicYear);
+    const existing = await this.findAnnualUpdateForYear(scholarId, academicYear);
     const values = {
       ...this.toAnnualUpdateValues(dto),
       scholarId,
-      academicYear: dto.academicYear,
+      academicYear,
       status,
       submittedAt: status === 'submitted' ? now : null,
       updatedAt: now,
     };
+
+    if (existing) {
+      if (existing.status === 'submitted') {
+        throw new ConflictException('This annual review has already been submitted and is final.');
+      }
+
+      const [updated] = await this.db
+        .update(annualUpdates)
+        .set(values)
+        .where(eq(annualUpdates.id, existing.id))
+        .returning();
+
+      return updated;
+    }
 
     const [annualUpdate] = await this.db
       .insert(annualUpdates)
@@ -262,6 +276,22 @@ export class AnnualUpdatesService {
     }
 
     return annualUpdate;
+  }
+
+  private async findAnnualUpdateForYear(scholarId: string, academicYear: string) {
+    const [annualUpdate] = await this.db
+      .select()
+      .from(annualUpdates)
+      .where(
+        and(
+          eq(annualUpdates.scholarId, scholarId),
+          inArray(annualUpdates.academicYear, academicYearLookupValues(academicYear))
+        )
+      )
+      .orderBy(desc(annualUpdates.createdAt))
+      .limit(1);
+
+    return annualUpdate ?? null;
   }
 
   private async getScholarForUser(userId: string) {

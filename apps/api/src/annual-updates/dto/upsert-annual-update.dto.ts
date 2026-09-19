@@ -9,15 +9,15 @@ import {
   Min,
   ValidateIf,
 } from 'class-validator';
+import { ACADEMIC_YEAR_PATTERN } from '../academic-year';
 
 export const ANNUAL_UPDATE_COUNT_MAX = 1000;
-export const ACADEMIC_YEAR_PATTERN = /^\d{4}\/\d{2}$/;
 
 export class UpsertAnnualUpdateDto {
   @IsString()
   @IsNotEmpty()
   @Matches(ACADEMIC_YEAR_PATTERN, {
-    message: 'academicYear must be in YYYY/YY format',
+    message: 'academicYear must be in YYYY/YYYY format',
   })
   academicYear: string;
 
