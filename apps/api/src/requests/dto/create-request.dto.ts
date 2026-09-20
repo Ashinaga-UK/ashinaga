@@ -1,18 +1,15 @@
 import {
   ArrayMinSize,
   IsArray,
-  IsEnum,
+  IsIn,
   IsNotEmpty,
   IsOptional,
   IsString,
   IsUUID,
 } from 'class-validator';
+import { REQUEST_TYPES, type RequestType } from '../request-types';
 
-export type RequestType =
-  | 'extenuating_circumstances'
-  | 'summer_funding_request'
-  | 'summer_funding_report'
-  | 'requirement_submission';
+export type { RequestType } from '../request-types';
 
 // Type-specific form data interfaces
 export interface ExtenuatingCircumstancesFormData {
@@ -51,12 +48,7 @@ export type FormData =
   | RequirementSubmissionFormData;
 
 export class CreateRequestDto {
-  @IsEnum([
-    'extenuating_circumstances',
-    'summer_funding_request',
-    'summer_funding_report',
-    'requirement_submission',
-  ])
+  @IsIn(REQUEST_TYPES)
   @IsNotEmpty()
   type: RequestType;
 
@@ -67,7 +59,7 @@ export class CreateRequestDto {
   @IsOptional()
   formData?: FormData;
 
-  @IsEnum(['high', 'medium', 'low'])
+  @IsIn(['high', 'medium', 'low'])
   @IsOptional()
   priority?: 'high' | 'medium' | 'low';
 

@@ -9,7 +9,7 @@ import { and, eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
 import request from 'supertest';
-import { requestAssignees } from '../../src/db/schema';
+import { requestAssignees, requests as requestRecords } from '../../src/db/schema';
 import { type AuthContext, createAuthenticatedIntegrationApp } from './helpers/create-app';
 import {
   cleanupSeeded,
@@ -124,6 +124,123 @@ describe('Requests API – multi-assignee (integration)', () => {
         .from(requestAssignees)
         .where(eq(requestAssignees.requestId, res.body.id));
       expect(joinRows).toHaveLength(2);
+    });
+
+    it.each(['summer_funding_report', 'requirement_submission', 'others'])(
+      'rejects scholar creation of the staff-only %s type',
+      async (type) => {
+        const res = await createRequestAs(scholar.userId, scholar.email, 'scholar', {
+          type,
+          description:
+            'This request type must not be created directly by a scholar through the API.',
+          priority: 'medium',
+          assigneeIds: [staffA.userId],
+        });
+
+        expect(res.status).toBe(400);
+      }
+    );
+  });
+
+  describe('POST /api/requests/staff', () => {
+    it('allows staff to create an Other request for a selected scholar', async () => {
+      auth.setUser({ id: staffA.userId, email: staffA.email, userType: 'staff' });
+
+      const res = await request(app.getHttpServer()).post('/api/requests/staff').send({
+        scholarId: scholar.scholarId,
+        description: 'Staff-created request for a situation outside the standard categories.',
+        priority: 'low',
+      });
+
+      expect(res.status).toBe(201);
+      expect(res.body).toMatchObject({
+        scholarId: scholar.scholarId,
+        type: 'others',
+        priority: 'low',
+        status: 'pending',
+        assigneeIds: [staffA.userId],
+      });
+      createdRequestIds.push(res.body.id);
+    });
+
+    it('rejects scholar access to the staff creation endpoint', async () => {
+      auth.setUser({ id: scholar.userId, email: scholar.email, userType: 'scholar' });
+
+      await request(app.getHttpServer())
+        .post('/api/requests/staff')
+        .send({
+          scholarId: scholar.scholarId,
+          description: 'A scholar must not be able to use the staff-only creation endpoint.',
+        })
+        .expect(403);
+    });
+  });
+
+  describe('GET /api/requests/my-requests visibility', () => {
+    it('hides legacy and staff-only request types from scholars but keeps them for staff', async () => {
+      const inserted = await db
+        .insert(requestRecords)
+        .values([
+          {
+            scholarId: scholar.scholarId,
+            type: 'extenuating_circumstances',
+            description: 'Scholar-visible request created for request type visibility testing.',
+            assignedTo: staffA.userId,
+          },
+          {
+            scholarId: scholar.scholarId,
+            type: 'summer_funding_report',
+            description: 'Legacy summer funding report that must remain available to staff.',
+            assignedTo: staffA.userId,
+          },
+          {
+            scholarId: scholar.scholarId,
+            type: 'requirement_submission',
+            description: 'Legacy requirement submission that must remain available to staff.',
+            assignedTo: staffA.userId,
+          },
+          {
+            scholarId: scholar.scholarId,
+            type: 'others',
+            description: 'Staff-only Other request that scholars must not see.',
+            assignedTo: staffA.userId,
+          },
+        ])
+        .returning({ id: requestRecords.id, type: requestRecords.type });
+
+      createdRequestIds.push(...inserted.map((row) => row.id));
+      await db.insert(requestAssignees).values(
+        inserted.map((row) => ({
+          requestId: row.id,
+          userId: staffA.userId,
+        }))
+      );
+
+      auth.setUser({ id: scholar.userId, email: scholar.email, userType: 'scholar' });
+      const scholarResponse = await request(app.getHttpServer())
+        .get('/api/requests/my-requests')
+        .expect(200);
+      const scholarIds = scholarResponse.body.map((row: { id: string }) => row.id);
+
+      expect(scholarIds).toContain(inserted[0]?.id);
+      expect(scholarIds).not.toContain(inserted[1]?.id);
+      expect(scholarIds).not.toContain(inserted[2]?.id);
+      expect(scholarIds).not.toContain(inserted[3]?.id);
+
+      auth.setUser({
+        id: superAdmin.userId,
+        email: superAdmin.email,
+        userType: 'staff',
+      });
+      const staffResponse = await request(app.getHttpServer())
+        .get('/api/requests')
+        .query({ page: 1, limit: 100 })
+        .expect(200);
+      const staffIds = staffResponse.body.data.map((row: { id: string }) => row.id);
+
+      for (const row of inserted) {
+        expect(staffIds).toContain(row.id);
+      }
     });
   });
 

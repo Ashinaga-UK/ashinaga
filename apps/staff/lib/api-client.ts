@@ -526,7 +526,8 @@ export interface Request {
     | 'extenuating_circumstances'
     | 'summer_funding_request'
     | 'summer_funding_report'
-    | 'requirement_submission';
+    | 'requirement_submission'
+    | 'others';
   description: string;
   formData?: Record<string, unknown> | null;
   priority: 'high' | 'medium' | 'low';
@@ -551,7 +552,8 @@ export interface GetRequestsParams {
     | 'extenuating_circumstances'
     | 'summer_funding_request'
     | 'summer_funding_report'
-    | 'requirement_submission';
+    | 'requirement_submission'
+    | 'others';
   status?: 'pending' | 'approved' | 'rejected' | 'reviewed' | 'commented';
   priority?: 'high' | 'medium' | 'low';
   sortBy?: 'submittedDate' | 'status' | 'priority' | 'createdAt';
@@ -578,6 +580,22 @@ export async function getRequests(params?: GetRequestsParams): Promise<GetReques
   const endpoint = `/api/requests${queryString ? `?${queryString}` : ''}`;
 
   return fetchAPI<GetRequestsResponse>(endpoint);
+}
+
+export interface CreateStaffRequestData {
+  scholarId: string;
+  description: string;
+  priority?: 'high' | 'medium' | 'low';
+}
+
+export async function createStaffRequest(data: CreateStaffRequestData): Promise<{ id: string }> {
+  return fetchAPI<{ id: string }>('/api/requests/staff', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
 }
 
 export interface RequestStats {

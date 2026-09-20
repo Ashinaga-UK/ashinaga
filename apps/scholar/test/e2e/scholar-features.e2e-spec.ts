@@ -7,6 +7,21 @@
 import { expect, test } from '@playwright/test';
 
 test.describe('Scholar Portal – new request multi-assignee', () => {
+  test('only offers the two scholar request types', async ({ page }) => {
+    await page.goto('/requests');
+    await page.getByRole('button', { name: /New Request/i }).click();
+
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('combobox').first().click();
+
+    await expect(page.getByRole('option', { name: 'Extenuating Circumstances' })).toBeVisible();
+    await expect(page.getByRole('option', { name: 'Summer Funding Request' })).toBeVisible();
+    await expect(page.getByRole('option', { name: 'Summer Funding Report' })).toHaveCount(0);
+    await expect(page.getByRole('option', { name: 'Requirement Submission' })).toHaveCount(0);
+    await expect(page.getByRole('option', { name: 'Others' })).toHaveCount(0);
+  });
+
   test('shows a multi-select checkbox list of staff members on the new request form', async ({
     page,
   }) => {
