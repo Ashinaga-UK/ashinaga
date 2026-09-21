@@ -169,7 +169,11 @@ function SearchableValueField({
             }}
           />
           <CommandList>
-            <CommandEmpty>{search.trim() ? `Using "${search.trim()}"` : emptyText}</CommandEmpty>
+            {filteredOptions.length === 0 && (
+              <CommandEmpty>
+                {allowCustomValue && search.trim() ? `Using "${search.trim()}"` : emptyText}
+              </CommandEmpty>
+            )}
             {filteredOptions.map((option) => (
               <CommandItem
                 key={option}

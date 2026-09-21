@@ -59,7 +59,9 @@ describe('SignupPage intended course', () => {
     const coursePicker = await screen.findByLabelText(/Intended Course/);
     await user.click(coursePicker);
     await user.type(screen.getByPlaceholderText('Search courses...'), 'Marine Robotics');
-    await user.click(await screen.findByText('Other'));
+    expect(screen.getByRole('option', { name: 'Other' })).toBeInTheDocument();
+    expect(screen.queryByText(/Using "/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('option', { name: 'Other' }));
 
     const customCourseInput = screen.getByLabelText('Specific course name');
     expect(customCourseInput).toBeInTheDocument();
@@ -80,5 +82,41 @@ describe('SignupPage intended course', () => {
       invitationToken: 'prep-token',
       intendedCourse: 'Marine Robotics',
     });
+  });
+
+  it('still offers a typed university when that field allows a custom value', async () => {
+    mockFetchAPI.mockImplementation(async (endpoint: string) => {
+      if (endpoint === '/api/scholars/filters') {
+        return {
+          programs: [],
+          universities: [],
+          intendedUniversities: [],
+          intendedCourses: [],
+        };
+      }
+
+      return {
+        id: 'invitation-1',
+        email: 'candidate@example.com',
+        userType: 'scholar',
+        scholarData: {
+          name: 'Prep Candidate',
+          programStage: 'prep_year',
+          degreePathway: 'Foundation Year',
+        },
+        expiresAt: '2026-10-01T00:00:00.000Z',
+      };
+    });
+
+    const user = userEvent.setup();
+    render(<SignupPage />);
+
+    await user.click(await screen.findByLabelText(/Intended University/));
+    await user.type(
+      screen.getByPlaceholderText('Start typing a university...'),
+      'Atlantis Institute'
+    );
+
+    expect(await screen.findByText('Using "Atlantis Institute"')).toBeInTheDocument();
   });
 });
