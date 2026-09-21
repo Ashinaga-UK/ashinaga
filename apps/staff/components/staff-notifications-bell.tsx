@@ -48,8 +48,8 @@ function NotificationsPanel({ onNavigate }: { onNavigate: () => void }) {
     useStaffNotificationsFeed(deferredSearch);
   const markRead = useMarkStaffNotificationsRead();
 
-  const items = data?.pages.flatMap((page) => page.items) ?? [];
-  const unreadCount = data?.pages[0]?.unreadCount ?? 0;
+  const items = data?.pages?.flatMap((page) => page.items) ?? [];
+  const unreadCount = data?.pages?.[0]?.unreadCount ?? 0;
 
   const handleItemClick = async (notification: StaffNotification) => {
     onNavigate();
@@ -199,7 +199,7 @@ function BellButton({ unreadCount, className }: { unreadCount: number; className
 export function StaffNotificationsBell() {
   const { isMobile } = useSidebar();
   const { data } = useStaffNotificationsFeed();
-  const unreadCount = data?.pages[0]?.unreadCount ?? 0;
+  const unreadCount = data?.pages?.[0]?.unreadCount ?? 0;
   const [open, setOpen] = useState(false);
 
   const trigger = (

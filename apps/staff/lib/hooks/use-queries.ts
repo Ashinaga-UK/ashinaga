@@ -427,6 +427,9 @@ export function useStaffNotificationsFeed(search = '') {
       }),
     initialPageParam: 1,
     getNextPageParam: (lastPage) => {
+      if (!lastPage?.items || lastPage.items.length === 0) {
+        return undefined;
+      }
       const loaded = lastPage.page * lastPage.limit;
       return loaded < lastPage.total ? lastPage.page + 1 : undefined;
     },
