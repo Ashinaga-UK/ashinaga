@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, desc, eq, inArray, ne } from 'drizzle-orm';
+import { and, desc, eq, inArray, ne, sql } from 'drizzle-orm';
 import { getDatabase } from '../db/connection';
 import { annualUpdates } from '../db/schema/annual-updates';
 import { scholars } from '../db/schema/scholars';
@@ -302,7 +302,11 @@ export class AnnualUpdatesService {
           inArray(annualUpdates.academicYear, academicYearLookupValues(academicYear))
         )
       )
-      .orderBy(desc(annualUpdates.createdAt))
+      .orderBy(
+        desc(sql`case when ${annualUpdates.status} = 'submitted' then 1 else 0 end`),
+        desc(annualUpdates.updatedAt),
+        desc(annualUpdates.createdAt)
+      )
       .limit(1);
 
     return annualUpdate ?? null;
