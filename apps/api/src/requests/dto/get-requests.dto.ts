@@ -1,5 +1,5 @@
 import { Transform, Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
 
 export class GetRequestsQueryDto {
   @IsOptional()
@@ -18,6 +18,10 @@ export class GetRequestsQueryDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @IsOptional()
+  @IsUUID()
+  requestId?: string;
 
   @IsOptional()
   @IsEnum([

@@ -13,6 +13,7 @@ import { taskAttachments, taskResponses } from '../db/schema/task-responses';
 import { tasks } from '../db/schema/tasks';
 import { staff, users } from '../db/schema/users';
 import { EmailService } from '../email/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { ObjectStorageService } from '../storage/object-storage';
 import { AttachmentDto, CompleteTaskDto } from './dto/complete-task.dto';
 import { CreateBulkTasksDto } from './dto/create-bulk-tasks.dto';
@@ -32,7 +33,8 @@ import {
 export class TasksService {
   constructor(
     private readonly emailService: EmailService,
-    private readonly objectStorage: ObjectStorageService
+    private readonly objectStorage: ObjectStorageService,
+    private readonly notifications: NotificationsService
   ) {}
 
   private get db() {
@@ -601,6 +603,24 @@ export class TasksService {
         responseId,
       };
     });
+
+    const [scholarUser] = await this.db
+      .select({ name: users.name })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    void this.notifications
+      .notifyTaskCompleted({
+        taskId,
+        taskTitle: task.title,
+        scholarId: scholar.id,
+        scholarName: scholarUser?.name ?? 'Scholar',
+        completedAt: result.task.completedAt ?? new Date(),
+      })
+      .catch((error) => {
+        console.error('Failed to create staff task_completed notifications:', error);
+      });
 
     return result;
   }

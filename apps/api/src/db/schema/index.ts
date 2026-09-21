@@ -12,6 +12,7 @@ export * from './requests';
 export * from './required-documents';
 export * from './resources';
 export * from './scholars';
+export * from './staff-notifications';
 export * from './task-responses';
 export * from './tasks';
 export * from './users';

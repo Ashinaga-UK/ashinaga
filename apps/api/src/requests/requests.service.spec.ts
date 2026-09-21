@@ -1,6 +1,7 @@
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
 import { EmailService } from '../email/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { RequestsService } from './requests.service';
 
 // Mock the database module
@@ -13,6 +14,11 @@ describe('RequestsService', () => {
     sendRequestStatusNotification: jest.fn(),
   };
 
+  const mockNotifications = {
+    notifyRequestReceived: jest.fn().mockResolvedValue(undefined),
+    notifyRequestStatusChanged: jest.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -20,6 +26,10 @@ describe('RequestsService', () => {
         {
           provide: EmailService,
           useValue: mockEmailService,
+        },
+        {
+          provide: NotificationsService,
+          useValue: mockNotifications,
         },
       ],
     }).compile();

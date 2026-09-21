@@ -10,6 +10,7 @@ import { getDatabase } from '../db/connection';
 import { annualUpdates } from '../db/schema/annual-updates';
 import { scholars } from '../db/schema/scholars';
 import { users } from '../db/schema/users';
+import { NotificationsService } from '../notifications/notifications.service';
 import { escapeCsvValue } from '../utils/csv';
 import { academicYearLookupValues, toCanonicalAcademicYear } from './academic-year';
 import { UpsertAnnualUpdateDto } from './dto/upsert-annual-update.dto';
@@ -20,6 +21,8 @@ type AnnualUpdate = typeof annualUpdates.$inferSelect;
 @Injectable()
 export class AnnualUpdatesService {
   private db = getDatabase();
+
+  constructor(private readonly notifications: NotificationsService) {}
 
   async getAnnualUpdatesReport() {
     const rows = await this.db
@@ -237,7 +240,26 @@ export class AnnualUpdatesService {
     this.validateRequiredFields(dto);
     this.validateWordLimits(dto);
 
-    return this.upsertAnnualUpdate(scholar.id, dto, 'submitted');
+    const annualUpdate = await this.upsertAnnualUpdate(scholar.id, dto, 'submitted');
+
+    const [scholarUser] = await this.db
+      .select({ name: users.name })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    void this.notifications
+      .notifyAnnualReviewSubmitted({
+        annualUpdateId: annualUpdate.id,
+        scholarId: scholar.id,
+        scholarName: scholarUser?.name ?? 'Scholar',
+        academicYear: annualUpdate.academicYear,
+      })
+      .catch((error) => {
+        console.error('Failed to create staff annual_review_submitted notifications:', error);
+      });
+
+    return annualUpdate;
   }
 
   private async upsertAnnualUpdate(

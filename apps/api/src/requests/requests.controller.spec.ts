@@ -77,6 +77,7 @@ describe('RequestsController', () => {
         page: 2,
         limit: 10,
         search: 'test',
+        requestId: '11111111-1111-4111-8111-111111111111',
         type: 'summer_funding_request' as const,
         status: 'pending' as const,
         priority: 'high' as const,

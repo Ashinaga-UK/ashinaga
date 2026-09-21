@@ -1,5 +1,7 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactElement } from 'react';
 import { StaffLayout } from '../staff-layout';
 
 jest.mock(
@@ -21,6 +23,25 @@ jest.mock('@workspace/ui', () => ({
   ThemeToggle: () => null,
 }));
 
+jest.mock('../../lib/api-client', () => ({
+  getStaffNotificationsFeed: jest.fn().mockResolvedValue({
+    items: [],
+    total: 0,
+    unreadCount: 0,
+    page: 1,
+    limit: 20,
+  }),
+  getRequestStats: jest.fn().mockResolvedValue({
+    total: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+    reviewed: 0,
+    commented: 0,
+  }),
+  markStaffNotificationsRead: jest.fn().mockResolvedValue({ updated: 0 }),
+}));
+
 function getSidebar() {
   return document.querySelector('[data-side="left"]') as HTMLElement;
 }
@@ -29,9 +50,19 @@ function getToggle() {
   return document.querySelector('[data-sidebar="trigger"]') as HTMLButtonElement;
 }
 
+function renderWithProviders(ui: ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+}
+
 describe('StaffLayout', () => {
   const renderLayout = (onLogout = jest.fn()) =>
-    render(
+    renderWithProviders(
       <StaffLayout
         activeTab="overview"
         onLogout={onLogout}
@@ -71,6 +102,7 @@ describe('StaffLayout', () => {
       'href',
       '/?tab=invitations'
     );
+    expect(screen.getByRole('button', { name: 'Notifications' })).toBeInTheDocument();
     expect(screen.getByText('Staff content')).toBeInTheDocument();
   });
 
@@ -92,7 +124,7 @@ describe('StaffLayout', () => {
   });
 
   it('shows a back control away from overview', () => {
-    render(
+    renderWithProviders(
       <StaffLayout
         activeTab="scholars"
         onLogout={jest.fn()}
