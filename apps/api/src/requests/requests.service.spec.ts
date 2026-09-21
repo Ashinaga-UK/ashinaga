@@ -267,6 +267,7 @@ describe('RequestsService', () => {
         ...currentRequest,
         status: 'commented',
         reviewComment: 'Please provide more information',
+        updatedAt: new Date('2026-09-22T00:00:00.000Z'),
       };
 
       mockDatabase.select = jest.fn().mockReturnValue({
