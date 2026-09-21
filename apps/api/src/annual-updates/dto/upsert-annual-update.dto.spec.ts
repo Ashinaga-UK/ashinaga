@@ -117,8 +117,8 @@ describe('UpsertAnnualUpdateDto', () => {
     );
   });
 
-  it.each(['2025', '2025/2026', '25/26', '2025-26'])(
-    'rejects invalid academic year format: %s',
+  it.each(['2025', '25/26', '2025-26', '2025/202', '2025/2027', '2025/27'])(
+    'rejects invalid or non-consecutive academic year: %s',
     async (academicYear) => {
       const errors = await validateDto({ academicYear });
 
@@ -127,13 +127,19 @@ describe('UpsertAnnualUpdateDto', () => {
           expect.objectContaining({
             property: 'academicYear',
             constraints: expect.objectContaining({
-              matches: expect.any(String),
+              isConsecutiveAcademicYear: expect.stringMatching(/YYYY\/YYYY or YYYY\/YY/),
             }),
           }),
         ])
       );
     }
   );
+
+  it.each(['2025/2026', '2025/26'])('accepts academic year format: %s', async (academicYear) => {
+    const errors = await validateDto({ academicYear });
+
+    expect(errors).toHaveLength(0);
+  });
 
   it('accepts omitted Ashinaga internship answers', async () => {
     const errors = await validateDto({ academicYear: '2025/26' });
