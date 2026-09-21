@@ -7,6 +7,7 @@ import {
   downloadAnnualReviewsCSV,
   getAnnualUpdatesReport,
 } from '../lib/api-client';
+import { toCanonicalAcademicYear } from '../lib/academic-year';
 import { Alert, AlertDescription } from './ui/alert';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -36,7 +37,12 @@ export function AnnualReviewsReport({ onViewScholarAnnualReviews }: AnnualReview
 
       try {
         const data = await getAnnualUpdatesReport();
-        setAnnualReviews(data);
+        setAnnualReviews(
+          data.map((review) => ({
+            ...review,
+            academicYear: toCanonicalAcademicYear(review.academicYear),
+          }))
+        );
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load annual reviews');
       } finally {

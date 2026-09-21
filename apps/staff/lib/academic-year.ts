@@ -1,5 +1,3 @@
-export const ACADEMIC_YEAR_PATTERN = /^\d{4}\/(?:\d{4}|\d{2})$/;
-
 export function isValidAcademicYear(value: string): boolean {
   const match = /^(\d{4})\/(\d{2}|\d{4})$/.exec(value.trim());
   if (!match) {
@@ -25,15 +23,4 @@ export function toCanonicalAcademicYear(value: string) {
 
   const startYear = Number(match[1]);
   return `${startYear}/${startYear + 1}`;
-}
-
-export function academicYearLookupValues(value: string) {
-  const canonical = toCanonicalAcademicYear(value);
-  const match = /^(\d{4})\/(\d{4})$/.exec(canonical);
-  if (!match || !isValidAcademicYear(value)) {
-    return [value];
-  }
-
-  const legacy = `${match[1]}/${match[2].slice(-2)}`;
-  return canonical === legacy ? [canonical] : [canonical, legacy];
 }

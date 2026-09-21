@@ -280,6 +280,9 @@ export function MyAnnualReview() {
   const [filableAcademicYears] = useState(() => getFilableAcademicYears());
   const defaultAcademicYear = filableAcademicYears[0] ?? getDefaultAcademicYear();
   const [form, setForm] = useState<FormState>(() => createEmptyForm(defaultAcademicYear));
+  const [baselineForm, setBaselineForm] = useState<FormState>(() =>
+    createEmptyForm(defaultAcademicYear)
+  );
   const [annualUpdate, setAnnualUpdate] = useState<AnnualUpdate | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -306,8 +309,10 @@ export function MyAnnualReview() {
     setError(null);
     try {
       const data = await getMyAnnualUpdate(academicYear);
+      const nextForm = toFormState(data, academicYear);
       setAnnualUpdate(data);
-      setForm(toFormState(data, academicYear));
+      setForm(nextForm);
+      setBaselineForm(nextForm);
       setIsFormOpen(!data);
       setMessage(null);
     } catch (loadError) {
@@ -317,6 +322,24 @@ export function MyAnnualReview() {
       setLoading(false);
     }
   }, []);
+
+  const handleAcademicYearChange = (academicYear: string) => {
+    if (academicYear === form.academicYear) {
+      return;
+    }
+
+    const isDirty = JSON.stringify(form) !== JSON.stringify(baselineForm);
+    if (isDirty) {
+      const confirmed = window.confirm(
+        'You have unsaved changes. Switch academic year and discard them?'
+      );
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    void loadAnnualUpdate(academicYear);
+  };
 
   useEffect(() => {
     loadAnnualUpdate(defaultAcademicYear);
@@ -351,6 +374,7 @@ export function MyAnnualReview() {
     try {
       const saved = await saveAnnualUpdateDraft(toPayload(form));
       setAnnualUpdate(saved);
+      setBaselineForm(form);
       setMessage('Draft saved.');
       foldForm();
     } catch (saveError) {
@@ -381,6 +405,7 @@ export function MyAnnualReview() {
     try {
       const submitted = await submitAnnualUpdate(toPayload(form));
       setAnnualUpdate(submitted);
+      setBaselineForm(form);
       setMissingFields([]);
       setMessage(null);
       foldForm();
@@ -544,9 +569,7 @@ export function MyAnnualReview() {
                 <RequiredLabel htmlFor="academicYear">Academic year</RequiredLabel>
                 <Select
                   value={form.academicYear}
-                  onValueChange={(academicYear) => {
-                    void loadAnnualUpdate(academicYear);
-                  }}
+                  onValueChange={handleAcademicYearChange}
                   disabled={saving}
                 >
                   <SelectTrigger

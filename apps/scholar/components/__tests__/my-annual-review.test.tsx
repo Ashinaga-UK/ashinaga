@@ -165,6 +165,40 @@ describe('MyAnnualReview', () => {
     expect(await screen.findByText('2024/2025 Annual Review')).toBeInTheDocument();
   });
 
+  it('confirms before switching year when the form is dirty', async () => {
+    const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(false);
+
+    render(<MyAnnualReview />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: 'Academic year' })).toBeInTheDocument();
+    });
+
+    const highlights = document.getElementById('highlights');
+    expect(highlights).not.toBeNull();
+    fireEvent.change(highlights as HTMLElement, { target: { value: 'Unsaved highlight' } });
+
+    mockGetMyAnnualUpdate.mockClear();
+    await openAcademicYearOptions();
+    fireEvent.click(screen.getByRole('option', { name: '2024/2025' }));
+
+    expect(confirmSpy).toHaveBeenCalledWith(
+      'You have unsaved changes. Switch academic year and discard them?'
+    );
+    expect(mockGetMyAnnualUpdate).not.toHaveBeenCalledWith('2024/2025');
+    expect(screen.getByRole('combobox', { name: 'Academic year' })).toHaveTextContent('2025/2026');
+
+    confirmSpy.mockReturnValue(true);
+    await openAcademicYearOptions();
+    fireEvent.click(screen.getByRole('option', { name: '2024/2025' }));
+
+    await waitFor(() => {
+      expect(mockGetMyAnnualUpdate).toHaveBeenCalledWith('2024/2025');
+    });
+
+    confirmSpy.mockRestore();
+  });
+
   it('opens a legacy YYYY/YY submitted row from the canonical year', async () => {
     mockGetMyAnnualUpdate.mockResolvedValue(
       createAnnualUpdate({

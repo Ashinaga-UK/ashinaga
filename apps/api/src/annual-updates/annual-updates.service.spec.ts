@@ -113,7 +113,7 @@ describe('AnnualUpdatesService', () => {
         expect.objectContaining({
           id: 'annual-update-1',
           scholarName: 'Test Scholar',
-          academicYear: '2025/26',
+          academicYear: '2025/2026',
           status: 'submitted',
         })
       );
@@ -239,7 +239,10 @@ describe('AnnualUpdatesService', () => {
       const legacyRow = createAnnualUpdate({ academicYear: '2025/26', status: 'draft' });
       mockScholarThenAnnualUpdates([legacyRow]);
 
-      await expect(service.getMyAnnualUpdate('user-1', '2025/2026')).resolves.toBe(legacyRow);
+      await expect(service.getMyAnnualUpdate('user-1', '2025/2026')).resolves.toEqual({
+        ...legacyRow,
+        academicYear: '2025/2026',
+      });
     });
   });
 
@@ -259,7 +262,7 @@ describe('AnnualUpdatesService', () => {
 
       await expect(
         internals.upsertAnnualUpdate('scholar-1', { academicYear: '2025/2026' }, 'draft')
-      ).resolves.toBe(annualUpdate);
+      ).resolves.toEqual(annualUpdate);
 
       expect(onConflictDoUpdate).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -305,7 +308,7 @@ describe('AnnualUpdatesService', () => {
 
       await expect(
         internals.upsertAnnualUpdate('scholar-1', { academicYear: '2025/2026' }, 'draft')
-      ).resolves.toBe(updated);
+      ).resolves.toEqual(updated);
 
       expect(set).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -313,6 +316,25 @@ describe('AnnualUpdatesService', () => {
           status: 'draft',
         })
       );
+      expect(where).toHaveBeenCalled();
+      expect(mockDb.insert).not.toHaveBeenCalled();
+    });
+
+    it('conflicts when an existing-row update races a concurrent submit', async () => {
+      const existing = createAnnualUpdate({
+        id: 'annual-update-1',
+        academicYear: '2025/2026',
+        status: 'draft',
+      });
+      mockSelectAnnualUpdates([existing]);
+      const returning = jest.fn().mockResolvedValue([]);
+      const where = jest.fn().mockReturnValue({ returning });
+      const set = jest.fn().mockReturnValue({ where });
+      mockDb.update.mockReturnValue({ set });
+
+      await expect(
+        internals.upsertAnnualUpdate('scholar-1', { academicYear: '2025/2026' }, 'draft')
+      ).rejects.toThrow(ConflictException);
       expect(mockDb.insert).not.toHaveBeenCalled();
     });
 
@@ -363,7 +385,10 @@ describe('AnnualUpdatesService', () => {
         from: draftFrom,
       });
 
-      await expect(service.getMyDraftAnnualUpdate('user-1')).resolves.toBe(draft);
+      await expect(service.getMyDraftAnnualUpdate('user-1')).resolves.toEqual({
+        ...draft,
+        academicYear: '2024/2025',
+      });
     });
   });
 });

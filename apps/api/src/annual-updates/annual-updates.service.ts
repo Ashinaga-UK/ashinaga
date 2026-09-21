@@ -41,14 +41,19 @@ export class AnnualUpdatesService {
       .innerJoin(users, eq(scholars.userId, users.id))
       .orderBy(desc(annualUpdates.createdAt));
 
-    return rows;
+    return rows.map((row) => ({
+      ...row,
+      academicYear: toCanonicalAcademicYear(row.academicYear),
+    }));
   }
 
   async getMyAnnualUpdate(userId: string, academicYear?: string) {
     const scholar = await this.getScholarForUser(userId);
 
     if (academicYear) {
-      return this.findAnnualUpdateForYear(scholar.id, academicYear);
+      return this.withCanonicalAcademicYear(
+        await this.findAnnualUpdateForYear(scholar.id, academicYear)
+      );
     }
 
     const [annualUpdate] = await this.db
@@ -58,7 +63,7 @@ export class AnnualUpdatesService {
       .orderBy(desc(annualUpdates.createdAt))
       .limit(1);
 
-    return annualUpdate ?? null;
+    return this.withCanonicalAcademicYear(annualUpdate ?? null);
   }
 
   async getMyDraftAnnualUpdate(userId: string) {
@@ -71,7 +76,7 @@ export class AnnualUpdatesService {
       .orderBy(desc(annualUpdates.updatedAt))
       .limit(1);
 
-    return annualUpdate ?? null;
+    return this.withCanonicalAcademicYear(annualUpdate ?? null);
   }
 
   async getAnnualUpdatesForScholar(scholarId: string) {
@@ -81,7 +86,12 @@ export class AnnualUpdatesService {
       .where(eq(annualUpdates.scholarId, scholarId))
       .orderBy(desc(annualUpdates.createdAt));
 
-    return rows.map((annualUpdate) => this.hideDraftAnswersForStaff(annualUpdate));
+    return rows.map((annualUpdate) =>
+      this.hideDraftAnswersForStaff({
+        ...annualUpdate,
+        academicYear: toCanonicalAcademicYear(annualUpdate.academicYear),
+      })
+    );
   }
 
   async exportAnnualUpdatesCsv(scholarId?: string, annualUpdateIds?: string[]): Promise<string> {
@@ -132,7 +142,7 @@ export class AnnualUpdatesService {
           row.year,
           row.university,
           row.location,
-          annualUpdate.academicYear,
+          toCanonicalAcademicYear(annualUpdate.academicYear),
           annualUpdate.status,
           this.formatCsvDate(annualUpdate.submittedAt),
           this.formatCsvDate(annualUpdate.updatedAt),
@@ -255,10 +265,14 @@ export class AnnualUpdatesService {
       const [updated] = await this.db
         .update(annualUpdates)
         .set(values)
-        .where(eq(annualUpdates.id, existing.id))
+        .where(and(eq(annualUpdates.id, existing.id), ne(annualUpdates.status, 'submitted')))
         .returning();
 
-      return updated;
+      if (!updated) {
+        throw new ConflictException('This annual review has already been submitted and is final.');
+      }
+
+      return this.withCanonicalAcademicYear(updated);
     }
 
     const [annualUpdate] = await this.db
@@ -275,7 +289,7 @@ export class AnnualUpdatesService {
       throw new ConflictException('This annual review has already been submitted and is final.');
     }
 
-    return annualUpdate;
+    return this.withCanonicalAcademicYear(annualUpdate);
   }
 
   private async findAnnualUpdateForYear(scholarId: string, academicYear: string) {
@@ -292,6 +306,17 @@ export class AnnualUpdatesService {
       .limit(1);
 
     return annualUpdate ?? null;
+  }
+
+  private withCanonicalAcademicYear(annualUpdate: AnnualUpdate | null) {
+    if (!annualUpdate) {
+      return null;
+    }
+
+    return {
+      ...annualUpdate,
+      academicYear: toCanonicalAcademicYear(annualUpdate.academicYear),
+    };
   }
 
   private async getScholarForUser(userId: string) {

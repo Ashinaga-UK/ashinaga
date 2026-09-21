@@ -4,20 +4,19 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  Matches,
   Max,
   Min,
   ValidateIf,
 } from 'class-validator';
-import { ACADEMIC_YEAR_PATTERN } from '../academic-year';
+import { IsConsecutiveAcademicYear } from './is-consecutive-academic-year';
 
 export const ANNUAL_UPDATE_COUNT_MAX = 1000;
 
 export class UpsertAnnualUpdateDto {
   @IsString()
   @IsNotEmpty()
-  @Matches(ACADEMIC_YEAR_PATTERN, {
-    message: 'academicYear must be in YYYY/YYYY format',
+  @IsConsecutiveAcademicYear({
+    message: 'academicYear must be a consecutive teaching year in YYYY/YYYY or YYYY/YY format',
   })
   academicYear: string;
 

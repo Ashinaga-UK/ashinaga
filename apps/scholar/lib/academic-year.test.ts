@@ -47,4 +47,9 @@ describe('toCanonicalAcademicYear', () => {
   it('keeps a canonical YYYY/YYYY label', () => {
     expect(toCanonicalAcademicYear('2025/2026')).toBe('2025/2026');
   });
+
+  it('does not rewrite non-consecutive years', () => {
+    expect(toCanonicalAcademicYear('2025/27')).toBe('2025/27');
+    expect(toCanonicalAcademicYear('2025/2028')).toBe('2025/2028');
+  });
 });
