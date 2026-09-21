@@ -315,14 +315,30 @@ function StaffDashboardContent() {
         sortBy: 'submittedDate',
         sortOrder: 'desc',
       });
-      setRequests(response.data);
+
+      let nextRequests = response.data;
+      if (
+        highlightedRequestId &&
+        !nextRequests.some((request) => request.id === highlightedRequestId)
+      ) {
+        const targeted = await getRequests({
+          requestId: highlightedRequestId,
+          limit: 1,
+        });
+        const match = targeted.data[0];
+        if (match) {
+          nextRequests = [match, ...nextRequests];
+        }
+      }
+
+      setRequests(nextRequests);
     } catch (err) {
       setRequestsError(err instanceof Error ? err.message : 'Failed to load requests');
       console.error('Error fetching requests:', err);
     } finally {
       setRequestsLoading(false);
     }
-  }, [requestCategoryFilter, requestStatusFilter, deferredRequestSearch]);
+  }, [highlightedRequestId, requestCategoryFilter, requestStatusFilter, deferredRequestSearch]);
 
   useEffect(() => {
     if (!highlightedRequestId || requestsLoading) return;

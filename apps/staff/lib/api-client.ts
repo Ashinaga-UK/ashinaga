@@ -546,6 +546,7 @@ export interface GetRequestsParams {
   page?: number;
   limit?: number;
   search?: string;
+  requestId?: string;
   type?:
     | 'extenuating_circumstances'
     | 'summer_funding_request'

@@ -205,7 +205,7 @@ export class NotificationsService {
   }): Promise<void> {
     const recipients = await this.requestAudienceUserIds(input.assigneeIds);
     const typeLabel = formatRequestType(input.requestType);
-    const href = buildRequestHref(input.scholarName, input.requestId, 'pending');
+    const href = buildRequestHref(input.scholarName, input.requestId);
 
     await this.createStaffNotifications(
       recipients.map((recipientUserId) => ({

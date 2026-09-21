@@ -33,7 +33,7 @@ export class RequestsService {
   ) {}
 
   async getRequests(query: GetRequestsQueryDto, userId: string): Promise<GetRequestsResponseDto> {
-    const { page = 1, limit = 20, search, type, status, priority } = query;
+    const { page = 1, limit = 20, search, type, status, priority, requestId } = query;
 
     const offset = (page - 1) * limit;
 
@@ -52,6 +52,10 @@ export class RequestsService {
         .from(requestAssignees)
         .where(eq(requestAssignees.userId, userId));
       whereConditions.push(inArray(requests.id, assignedRequestIds));
+    }
+
+    if (requestId) {
+      whereConditions.push(eq(requests.id, requestId));
     }
 
     if (search) {
