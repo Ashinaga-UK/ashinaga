@@ -586,8 +586,12 @@ export class RequestsService {
       metadata: JSON.stringify({ reviewedBy, reviewDate: new Date() }),
     });
 
-    // Send email notification for approved, rejected, or commented statuses
-    if (status === 'approved' || status === 'rejected' || status === 'commented') {
+    // Only notify scholars about request types they can access in the portal.
+    const scholarCanAccessRequest = SCHOLAR_VISIBLE_REQUEST_TYPES.includes(currentRequest.type);
+    if (
+      scholarCanAccessRequest &&
+      (status === 'approved' || status === 'rejected' || status === 'commented')
+    ) {
       try {
         await this.emailService.sendRequestStatusNotification(
           user.email,
