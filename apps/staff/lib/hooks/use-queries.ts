@@ -1,4 +1,10 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import {
   addStaffProposalComment,
   archiveScholar,
@@ -411,14 +417,19 @@ export function useUpdateScholarPlatformSetup(scholarId: string) {
 }
 
 export function useStaffNotificationsFeed(search = '') {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: queryKeys.staffNotifications(search),
-    queryFn: () =>
+    queryFn: ({ pageParam }) =>
       getStaffNotificationsFeed({
-        page: 1,
+        page: pageParam,
         limit: 20,
         search: search || undefined,
       }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      const loaded = lastPage.page * lastPage.limit;
+      return loaded < lastPage.total ? lastPage.page + 1 : undefined;
+    },
     refetchInterval: 60_000,
   });
 }

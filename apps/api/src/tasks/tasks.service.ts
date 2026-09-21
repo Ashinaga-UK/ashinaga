@@ -616,6 +616,7 @@ export class TasksService {
         taskTitle: task.title,
         scholarId: scholar.id,
         scholarName: scholarUser?.name ?? 'Scholar',
+        completedAt: result.task.completedAt ?? new Date(),
       })
       .catch((error) => {
         console.error('Failed to create staff task_completed notifications:', error);

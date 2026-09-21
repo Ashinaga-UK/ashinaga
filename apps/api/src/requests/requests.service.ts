@@ -532,19 +532,21 @@ export class RequestsService {
       }
     }
 
-    void this.notifications
-      .notifyRequestStatusChanged({
-        requestId,
-        scholarId: currentRequest.scholarId,
-        scholarName: user.name,
-        requestType: currentRequest.type,
-        status,
-        actorUserId: reviewedBy,
-        dedupeSuffix: `${status}:${updatedRequest.updatedAt.toISOString()}`,
-      })
-      .catch((error) => {
-        console.error('Failed to create staff request_status_changed notifications:', error);
-      });
+    if (currentRequest.status !== status) {
+      void this.notifications
+        .notifyRequestStatusChanged({
+          requestId,
+          scholarId: currentRequest.scholarId,
+          scholarName: user.name,
+          requestType: currentRequest.type,
+          status,
+          actorUserId: reviewedBy,
+          dedupeSuffix: `${status}:${updatedRequest.updatedAt.toISOString()}`,
+        })
+        .catch((error) => {
+          console.error('Failed to create staff request_status_changed notifications:', error);
+        });
+    }
 
     return updatedRequest;
   }

@@ -1,5 +1,6 @@
 'use client';
 
+import { useQueryClient } from '@tanstack/react-query';
 import {
   AlertCircle,
   FileText,
@@ -65,7 +66,7 @@ import {
   type ScholarStats,
 } from '../lib/api-client';
 import { signOut, useSession } from '../lib/auth-client';
-import { useAnnouncements } from '../lib/hooks/use-queries';
+import { queryKeys, useAnnouncements } from '../lib/hooks/use-queries';
 import { cn } from '../lib/utils';
 
 const REQUEST_STATUS_FILTERS = [
@@ -132,6 +133,7 @@ function StaffDashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const session = useSession();
+  const queryClient = useQueryClient();
 
   // Get values from URL or use defaults
   const tabFromUrl = searchParams.get('tab') || 'overview';
@@ -242,7 +244,11 @@ function StaffDashboardContent() {
     setScholarProfileTab(isScholarProfileTab(newScholarTab) ? newScholarTab : 'profile');
     if (newTab === 'requests') {
       setRequestSearch(newRequestSearch);
-      if (isRequestStatusFilter(newRequestStatus)) {
+      if (newRequestId) {
+        // Deep-links must surface the target row — clear filters that can hide it.
+        setRequestCategoryFilter('all');
+        setRequestStatusFilter('all');
+      } else if (isRequestStatusFilter(newRequestStatus)) {
         setRequestStatusFilter(newRequestStatus);
       } else if (!newRequestStatus) {
         // Keep local filter when URL has no status (manual filter changes)
@@ -391,6 +397,7 @@ function StaffDashboardContent() {
     console.log('Request updated:', { requestId, status, comment });
     fetchRequests();
     fetchRequestStats();
+    void queryClient.invalidateQueries({ queryKey: queryKeys.requestStats });
   };
 
   const navigateToScholars = () => {

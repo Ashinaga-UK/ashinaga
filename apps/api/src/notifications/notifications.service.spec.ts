@@ -212,4 +212,59 @@ describe('NotificationsService', () => {
       limit: 20,
     });
   });
+
+  it('dedupes task_completed notifications by completion timestamp', async () => {
+    const createSpy = jest.spyOn(service, 'createStaffNotifications').mockResolvedValue(1);
+    jest
+      .spyOn(
+        service as never as { activeStaffUserIds: () => Promise<string[]> },
+        'activeStaffUserIds'
+      )
+      .mockResolvedValue(['staff-1']);
+    const completedAt = new Date('2026-09-21T12:00:00.000Z');
+
+    await service.notifyTaskCompleted({
+      taskId: 'task-1',
+      taskTitle: 'Essay',
+      scholarId: 'scholar-1',
+      scholarName: 'Ada',
+      completedAt,
+    });
+
+    expect(createSpy).toHaveBeenCalledWith([
+      expect.objectContaining({
+        recipientUserId: 'staff-1',
+        kind: STAFF_FEED_KINDS.taskCompleted,
+        dedupeSuffix: completedAt.toISOString(),
+      }),
+    ]);
+
+    createSpy.mockRestore();
+  });
+
+  it('keeps only active staff when building request notification audiences', async () => {
+    const whereResults = [[{ userId: 'active-assignee' }], [{ userId: 'super-admin' }]];
+    let whereCall = 0;
+    const selectMock = database.select as jest.Mock;
+    const previousImpl = selectMock.getMockImplementation();
+    selectMock.mockImplementation(() => ({
+      from: jest.fn(() => ({
+        where: jest.fn(() => Promise.resolve(whereResults[whereCall++] ?? [])),
+      })),
+    }));
+
+    try {
+      const recipients = await (
+        service as never as { requestAudienceUserIds: (ids: string[]) => Promise<string[]> }
+      ).requestAudienceUserIds(['active-assignee', 'inactive-assignee']);
+
+      expect(recipients.sort()).toEqual(['active-assignee', 'super-admin'].sort());
+    } finally {
+      if (previousImpl) {
+        selectMock.mockImplementation(previousImpl);
+      } else {
+        selectMock.mockReset();
+      }
+    }
+  });
 });

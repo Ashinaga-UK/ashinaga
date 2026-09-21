@@ -265,6 +265,7 @@ export class NotificationsService {
     taskTitle: string;
     scholarId: string;
     scholarName: string;
+    completedAt: Date;
   }): Promise<void> {
     const recipients = await this.activeStaffUserIds();
     const href = `/?tab=scholars&view=scholar-profile&scholarId=${encodeURIComponent(input.scholarId)}&scholarTab=tasks`;
@@ -280,7 +281,7 @@ export class NotificationsService {
         entityType: 'task',
         entityId: input.taskId,
         href,
-        dedupeSuffix: 'completed',
+        dedupeSuffix: input.completedAt.toISOString(),
       }))
     );
   }
@@ -319,12 +320,26 @@ export class NotificationsService {
   }
 
   private async requestAudienceUserIds(assigneeIds: string[]): Promise<string[]> {
+    const uniqueAssigneeIds = [...new Set(assigneeIds.filter(Boolean))];
+    const activeAssignees =
+      uniqueAssigneeIds.length === 0
+        ? []
+        : await database
+            .select({ userId: staff.userId })
+            .from(staff)
+            .where(and(eq(staff.isActive, true), inArray(staff.userId, uniqueAssigneeIds)));
+
     const superAdmins = await database
       .select({ userId: staff.userId })
       .from(staff)
       .where(and(eq(staff.isActive, true), eq(staff.isSuperAdmin, true)));
 
-    return Array.from(new Set([...assigneeIds, ...superAdmins.map((row) => row.userId)]));
+    return Array.from(
+      new Set([
+        ...activeAssignees.map((row) => row.userId),
+        ...superAdmins.map((row) => row.userId),
+      ])
+    );
   }
 
   private async activeStaffUserIds(): Promise<string[]> {
