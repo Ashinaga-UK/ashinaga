@@ -244,6 +244,37 @@ describe('Requests API – multi-assignee (integration)', () => {
     });
   });
 
+  describe('POST /api/requests/:id/respond visibility', () => {
+    it.each(['summer_funding_report', 'requirement_submission', 'others'] as const)(
+      'rejects scholar responses to hidden %s requests',
+      async (type) => {
+        const [hiddenRequest] = await db
+          .insert(requestRecords)
+          .values({
+            scholarId: scholar.scholarId,
+            type,
+            description: 'Hidden request used to verify scholar response access controls.',
+            status: 'commented',
+            assignedTo: staffA.userId,
+          })
+          .returning({ id: requestRecords.id });
+
+        if (!hiddenRequest) throw new Error('Expected the hidden request to be created');
+        createdRequestIds.push(hiddenRequest.id);
+        await db.insert(requestAssignees).values({
+          requestId: hiddenRequest.id,
+          userId: staffA.userId,
+        });
+        auth.setUser({ id: scholar.userId, email: scholar.email, userType: 'scholar' });
+
+        await request(app.getHttpServer())
+          .post(`/api/requests/${hiddenRequest.id}/respond`)
+          .send({ comment: 'A scholar must not be able to respond to this hidden request.' })
+          .expect(403);
+      }
+    );
+  });
+
   describe('GET /api/requests', () => {
     let requestForAB: string;
     let requestForBOnly: string;

@@ -687,6 +687,10 @@ export class RequestsService {
       throw new ForbiddenException('You can only respond to your own requests');
     }
 
+    if (!SCHOLAR_VISIBLE_REQUEST_TYPES.includes(requestRow.request.type)) {
+      throw new ForbiddenException('This request type is not available in the scholar portal');
+    }
+
     if (requestRow.request.archived) {
       throw new BadRequestException('Cannot respond to an archived request');
     }

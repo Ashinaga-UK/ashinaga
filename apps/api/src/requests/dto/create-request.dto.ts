@@ -7,7 +7,7 @@ import {
   IsString,
   IsUUID,
 } from 'class-validator';
-import { REQUEST_TYPES, type RequestType } from '../request-types';
+import { type RequestType, SCHOLAR_CREATABLE_REQUEST_TYPES } from '../request-types';
 
 export type { RequestType } from '../request-types';
 
@@ -48,7 +48,7 @@ export type FormData =
   | RequirementSubmissionFormData;
 
 export class CreateRequestDto {
-  @IsIn(REQUEST_TYPES)
+  @IsIn(SCHOLAR_CREATABLE_REQUEST_TYPES)
   @IsNotEmpty()
   type: RequestType;
 
