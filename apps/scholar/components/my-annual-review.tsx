@@ -16,10 +16,14 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  getDefaultAcademicYear,
+  getFilableAcademicYears,
+  toCanonicalAcademicYear,
+} from '../lib/academic-year';
+import {
   type AnnualUpdate,
   type AnnualUpdatePayload,
   getMyAnnualUpdate,
-  getMyDraftAnnualUpdate,
   saveAnnualUpdateDraft,
   submitAnnualUpdate,
 } from '../lib/api/annual-updates';
@@ -72,42 +76,40 @@ const REQUIRED_FIELD_LABELS: Record<keyof FormState, string> = {
   academicYearWeightedGrade: 'Academic year weighted grade',
 };
 
-function getDefaultAcademicYear() {
-  const now = new Date();
-  const startYear = now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear() - 1;
-  return `${startYear}/${String(startYear + 1).slice(-2)}`;
+function createEmptyForm(academicYear: string): FormState {
+  return {
+    academicYear,
+    highlights: '',
+    partTimeJobs: '',
+    extracurriculars: '',
+    leadershipRolesDescription: '',
+    leadershipRolesCount: '',
+    payItForwardDescription: '',
+    payItForwardCount: '',
+    subSaharanAfricaActivitiesDescription: '',
+    subSaharanAfricaActivitiesCount: '',
+    independentInternshipsCount: '',
+    internshipsInAfricaSummary: '',
+    internshipsElsewhereSummary: '',
+    completedAshinagaAfricaInternship: 'not_answered',
+    academicYearAverageClassification: '',
+    academicYearWeightedGrade: '',
+  };
 }
-
-const emptyForm: FormState = {
-  academicYear: getDefaultAcademicYear(),
-  highlights: '',
-  partTimeJobs: '',
-  extracurriculars: '',
-  leadershipRolesDescription: '',
-  leadershipRolesCount: '',
-  payItForwardDescription: '',
-  payItForwardCount: '',
-  subSaharanAfricaActivitiesDescription: '',
-  subSaharanAfricaActivitiesCount: '',
-  independentInternshipsCount: '',
-  internshipsInAfricaSummary: '',
-  internshipsElsewhereSummary: '',
-  completedAshinagaAfricaInternship: 'not_answered',
-  academicYearAverageClassification: '',
-  academicYearWeightedGrade: '',
-};
 
 function countWords(value: string) {
   return value.trim().split(/\s+/).filter(Boolean).length;
 }
 
 function toFormState(update: AnnualUpdate | null, academicYear: string): FormState {
+  const canonicalYear = toCanonicalAcademicYear(academicYear);
+
   if (!update) {
-    return { ...emptyForm, academicYear };
+    return createEmptyForm(canonicalYear);
   }
 
   return {
-    academicYear: update.academicYear,
+    academicYear: canonicalYear,
     highlights: update.highlights ?? '',
     partTimeJobs: update.partTimeJobs ?? '',
     extracurriculars: update.extracurriculars ?? '',
@@ -275,14 +277,18 @@ function validateForm(form: FormState, requireComplete: boolean): FormValidation
 }
 
 export function MyAnnualReview() {
-  const [form, setForm] = useState<FormState>(emptyForm);
+  const [filableAcademicYears] = useState(() => getFilableAcademicYears());
+  const defaultAcademicYear = filableAcademicYears[0] ?? getDefaultAcademicYear();
+  const [form, setForm] = useState<FormState>(() => createEmptyForm(defaultAcademicYear));
+  const [baselineForm, setBaselineForm] = useState<FormState>(() =>
+    createEmptyForm(defaultAcademicYear)
+  );
   const [annualUpdate, setAnnualUpdate] = useState<AnnualUpdate | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [missingFields, setMissingFields] = useState<string[]>([]);
-  const [initialAcademicYear] = useState(emptyForm.academicYear);
   const [isFormOpen, setIsFormOpen] = useState(true);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -303,23 +309,12 @@ export function MyAnnualReview() {
     setError(null);
     try {
       const data = await getMyAnnualUpdate(academicYear);
-      if (data) {
-        setAnnualUpdate(data);
-        setForm(toFormState(data, academicYear));
-        setMessage(null);
-        setIsFormOpen(false);
-        return;
-      }
-
-      const draft = await getMyDraftAnnualUpdate();
-      setAnnualUpdate(draft);
-      setForm(toFormState(draft, draft?.academicYear ?? academicYear));
-      setIsFormOpen(!draft);
-      setMessage(
-        draft && draft.academicYear !== academicYear
-          ? `Resumed your draft for ${draft.academicYear}.`
-          : null
-      );
+      const nextForm = toFormState(data, academicYear);
+      setAnnualUpdate(data);
+      setForm(nextForm);
+      setBaselineForm(nextForm);
+      setIsFormOpen(!data);
+      setMessage(null);
     } catch (loadError) {
       console.error('Failed to load annual review:', loadError);
       setError('Could not load your annual review.');
@@ -328,9 +323,27 @@ export function MyAnnualReview() {
     }
   }, []);
 
+  const handleAcademicYearChange = (academicYear: string) => {
+    if (academicYear === form.academicYear) {
+      return;
+    }
+
+    const isDirty = JSON.stringify(form) !== JSON.stringify(baselineForm);
+    if (isDirty) {
+      const confirmed = window.confirm(
+        'You have unsaved changes. Switch academic year and discard them?'
+      );
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    void loadAnnualUpdate(academicYear);
+  };
+
   useEffect(() => {
-    loadAnnualUpdate(initialAcademicYear);
-  }, [initialAcademicYear, loadAnnualUpdate]);
+    loadAnnualUpdate(defaultAcademicYear);
+  }, [defaultAcademicYear, loadAnnualUpdate]);
 
   useEffect(() => {
     if (!message) {
@@ -361,6 +374,7 @@ export function MyAnnualReview() {
     try {
       const saved = await saveAnnualUpdateDraft(toPayload(form));
       setAnnualUpdate(saved);
+      setBaselineForm(form);
       setMessage('Draft saved.');
       foldForm();
     } catch (saveError) {
@@ -391,6 +405,7 @@ export function MyAnnualReview() {
     try {
       const submitted = await submitAnnualUpdate(toPayload(form));
       setAnnualUpdate(submitted);
+      setBaselineForm(form);
       setMissingFields([]);
       setMessage(null);
       foldForm();
@@ -552,13 +567,26 @@ export function MyAnnualReview() {
             <div className="space-y-6">
               <div className="grid gap-2">
                 <RequiredLabel htmlFor="academicYear">Academic year</RequiredLabel>
-                <Input
-                  id="academicYear"
+                <Select
                   value={form.academicYear}
-                  readOnly
-                  disabled
-                  className="md:max-w-xs bg-muted"
-                />
+                  onValueChange={handleAcademicYearChange}
+                  disabled={saving}
+                >
+                  <SelectTrigger
+                    id="academicYear"
+                    aria-label="Academic year"
+                    className="md:max-w-xs"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filableAcademicYears.map((academicYear) => (
+                      <SelectItem key={academicYear} value={academicYear}>
+                        {academicYear}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <LongTextField
