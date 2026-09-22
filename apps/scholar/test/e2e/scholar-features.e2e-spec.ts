@@ -89,6 +89,9 @@ test.describe('Scholar Portal – collapsible sidebar', () => {
   }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/dashboard');
+    await expect(page.getByRole('heading', { name: 'Ashinaga Scholar Portal' })).toBeVisible({
+      timeout: 15_000,
+    });
     await page.getByRole('button', { name: 'Toggle sidebar' }).click();
     await expect(page.getByRole('button', { name: 'Close menu' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'My Requests', exact: true })).toBeVisible();
