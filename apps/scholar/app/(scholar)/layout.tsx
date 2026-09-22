@@ -1,13 +1,24 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { ScholarLayout } from '../../components/scholar-layout';
 import { signOut, useSession } from '../../lib/auth-client';
 
 export default function ScholarRootLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { data: session, isPending } = useSession();
+  const { data: session, isPending, refetch } = useSession();
+  const refetchSession = useRef(refetch);
+  refetchSession.current = refetch;
+
+  // useSession can miss the first response and stay pending. Ask again once.
+  useEffect(() => {
+    if (!isPending) return;
+    const timeout = window.setTimeout(() => {
+      void refetchSession.current();
+    }, 1000);
+    return () => window.clearTimeout(timeout);
+  }, [isPending]);
 
   const user = session?.user;
   const isAuthenticated = !!user;
