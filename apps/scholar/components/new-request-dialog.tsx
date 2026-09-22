@@ -39,12 +39,7 @@ import { useToast } from './ui/use-toast';
 // Form schema for the base request
 const baseSchema = z
   .object({
-    type: z.enum([
-      'extenuating_circumstances',
-      'summer_funding_request',
-      'summer_funding_report',
-      'requirement_submission',
-    ]),
+    type: z.enum(['extenuating_circumstances', 'summer_funding_request']),
     description: z
       .string()
       .trim()
@@ -83,9 +78,6 @@ type TypeSpecificErrors = Partial<
     | 'otherFundingAmount'
     | 'travelInsuranceAcknowledged'
     | 'informationTruthful'
-    | 'activitySummary'
-    | 'learningOutcomes'
-    | 'submissionType'
     | 'attachments',
     string
   >
@@ -114,10 +106,6 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
   const [additionalNotes, setAdditionalNotes] = useState<string>('');
   const [travelInsuranceAcknowledged, setTravelInsuranceAcknowledged] = useState(false);
   const [informationTruthful, setInformationTruthful] = useState(false);
-  const [activitySummary, setActivitySummary] = useState<string>('');
-  const [learningOutcomes, setLearningOutcomes] = useState<string>('');
-  const [challengesFaced, setChallengesFaced] = useState<string>('');
-  const [submissionType, setSubmissionType] = useState<string>('');
   const [riskOfNotCarryingOut, setRiskOfNotCarryingOut] = useState<string>('');
   const [riskDetails, setRiskDetails] = useState<string>('');
   const [typeSpecificErrors, setTypeSpecificErrors] = useState<TypeSpecificErrors>({});
@@ -167,23 +155,6 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
       return `Summer funding request: ${activityTypeLabels[activityType] || 'summer activity'}`;
     }
 
-    if (type === 'summer_funding_report') {
-      return 'Summer funding report';
-    }
-
-    if (type === 'requirement_submission') {
-      const submissionTypeLabels: Record<string, string> = {
-        ashinaga_proposal: 'Ashinaga Proposal',
-        transcript: 'Transcript',
-        tenancy_agreement: 'Tenancy Agreement',
-        other: 'Other requirement',
-      };
-
-      return `Requirement submission: ${
-        submissionTypeLabels[submissionType] || 'supporting document'
-      }`;
-    }
-
     return trimmedDescription;
   };
 
@@ -220,10 +191,6 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
     setAdditionalNotes('');
     setTravelInsuranceAcknowledged(false);
     setInformationTruthful(false);
-    setActivitySummary('');
-    setLearningOutcomes('');
-    setChallengesFaced('');
-    setSubmissionType('');
     setRiskOfNotCarryingOut('');
     setRiskDetails('');
     setTypeSpecificErrors({});
@@ -302,27 +269,6 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
       }
     }
 
-    if (type === 'summer_funding_report') {
-      if (activitySummary.trim().length < 50) {
-        errors.activitySummary =
-          'Activity summary must be at least 50 characters. Include what you did, where, and when.';
-      }
-      if (learningOutcomes.trim().length < 50) {
-        errors.learningOutcomes =
-          'Learning outcomes must be at least 50 characters. Describe what changed in your skills, plans, or understanding.';
-      }
-    }
-
-    if (type === 'requirement_submission') {
-      if (!submissionType) {
-        errors.submissionType = 'Select the type of requirement you are submitting.';
-      }
-      if (selectedFiles.length === 0) {
-        errors.attachments =
-          'Attach the document or file that satisfies this requirement before submitting.';
-      }
-    }
-
     setTypeSpecificErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -343,18 +289,6 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
           additionalNotes: additionalNotes || undefined,
           travelInsuranceAcknowledged,
           informationTruthful,
-        };
-      case 'summer_funding_report':
-        return {
-          activitySummary,
-          learningOutcomes,
-          challengesFaced: challengesFaced || undefined,
-          additionalNotes: additionalNotes || undefined,
-        };
-      case 'requirement_submission':
-        return {
-          submissionType,
-          additionalNotes: additionalNotes || undefined,
         };
       default:
         return undefined;
@@ -430,8 +364,6 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
   const requestTypeOptions = [
     { value: 'extenuating_circumstances', label: 'Extenuating Circumstances' },
     { value: 'summer_funding_request', label: 'Summer Funding Request' },
-    { value: 'summer_funding_report', label: 'Summer Funding Report' },
-    { value: 'requirement_submission', label: 'Requirement Submission' },
   ];
 
   const priorityOptions = [
@@ -688,131 +620,6 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
           </div>
         );
 
-      case 'summer_funding_report':
-        return (
-          <div className="space-y-4 border-t pt-4">
-            <h4 className="font-medium text-sm">Summer Funding Report</h4>
-            <p className="text-sm text-muted-foreground">
-              Please provide a report on your summer activity and learning outcomes.
-            </p>
-
-            <div className="space-y-2">
-              <Label>Activity summary {requiredLabel}</Label>
-              <p className="text-sm text-muted-foreground">
-                Summarise what you did, where the activity took place, and the dates covered.
-              </p>
-              <Textarea
-                placeholder="Describe what you did during your summer activity..."
-                value={activitySummary}
-                onChange={(e) => {
-                  setActivitySummary(e.target.value);
-                  clearTypeSpecificError('activitySummary');
-                }}
-                className="min-h-[100px] resize-none"
-              />
-              <p className="text-sm text-muted-foreground">Minimum 50 characters</p>
-              {fieldError('activitySummary')}
-            </div>
-
-            <div className="space-y-2">
-              <Label>Learning outcomes {requiredLabel}</Label>
-              <p className="text-sm text-muted-foreground">
-                Describe what you learned and how the experience affected your plans or skills.
-              </p>
-              <Textarea
-                placeholder="For example: I developed lab skills and confirmed my interest in..."
-                value={learningOutcomes}
-                onChange={(e) => {
-                  setLearningOutcomes(e.target.value);
-                  clearTypeSpecificError('learningOutcomes');
-                }}
-                className="min-h-[80px] resize-none"
-              />
-              {fieldError('learningOutcomes')}
-            </div>
-
-            <div className="space-y-2">
-              <Label>Challenges faced {optionalLabel}</Label>
-              <Textarea
-                placeholder="Were there any challenges you faced?"
-                value={challengesFaced}
-                onChange={(e) => setChallengesFaced(e.target.value)}
-                className="resize-none"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Additional notes {optionalLabel}</Label>
-              <Textarea
-                placeholder="Any other comments or reflections..."
-                value={additionalNotes}
-                onChange={(e) => setAdditionalNotes(e.target.value)}
-                className="resize-none"
-              />
-            </div>
-          </div>
-        );
-
-      case 'requirement_submission':
-        return (
-          <div className="space-y-4 border-t pt-4">
-            <h4 className="font-medium text-sm">Requirement Submission</h4>
-            <p className="text-sm text-muted-foreground">
-              Submit required documents or materials. Please attach the relevant files.
-            </p>
-
-            <div className="space-y-2">
-              <Label>Submission type {requiredLabel}</Label>
-              <p className="text-sm text-muted-foreground">
-                Choose the requirement that matches the document or material you are uploading.
-              </p>
-              <RadioGroup
-                value={submissionType}
-                onValueChange={(value) => {
-                  setSubmissionType(value);
-                  clearTypeSpecificError('submissionType');
-                }}
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="ashinaga_proposal" id="ashinaga_proposal" />
-                  <label htmlFor="ashinaga_proposal" className="text-sm">
-                    Ashinaga Proposal
-                  </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="transcript" id="transcript" />
-                  <label htmlFor="transcript" className="text-sm">
-                    Transcript
-                  </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="tenancy_agreement" id="tenancy_agreement" />
-                  <label htmlFor="tenancy_agreement" className="text-sm">
-                    Tenancy Agreement
-                  </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="other" id="other_submission" />
-                  <label htmlFor="other_submission" className="text-sm">
-                    Other
-                  </label>
-                </div>
-              </RadioGroup>
-              {fieldError('submissionType')}
-            </div>
-
-            <div className="space-y-2">
-              <Label>Additional notes {optionalLabel}</Label>
-              <Textarea
-                placeholder="Any additional information about this submission..."
-                value={additionalNotes}
-                onChange={(e) => setAdditionalNotes(e.target.value)}
-                className="resize-none"
-              />
-            </div>
-          </div>
-        );
-
       default:
         return null;
     }
@@ -924,9 +731,11 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
                             return (
                               <label
                                 key={staff.id}
+                                htmlFor={`request-assignee-${staff.id}`}
                                 className="flex items-start gap-2 cursor-pointer text-sm"
                               >
                                 <Checkbox
+                                  id={`request-assignee-${staff.id}`}
                                   checked={checked}
                                   onCheckedChange={() => toggle(staff.id)}
                                   className="mt-0.5"
@@ -988,10 +797,7 @@ export function NewRequestDialog({ trigger, onSuccess }: NewRequestDialogProps) 
               <div className="flex items-center justify-between">
                 <div className="text-sm font-medium">
                   Attachments{' '}
-                  {selectedType === 'summer_funding_request' ||
-                  selectedType === 'requirement_submission'
-                    ? requiredLabel
-                    : optionalLabel}
+                  {selectedType === 'summer_funding_request' ? requiredLabel : optionalLabel}
                 </div>
                 <Button
                   type="button"

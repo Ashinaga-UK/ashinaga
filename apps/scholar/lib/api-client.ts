@@ -108,7 +108,8 @@ export interface Request {
     | 'extenuating_circumstances'
     | 'summer_funding_request'
     | 'summer_funding_report'
-    | 'requirement_submission';
+    | 'requirement_submission'
+    | 'others';
   description: string;
   formData?: Record<string, any> | null;
   priority: 'high' | 'medium' | 'low';
@@ -129,11 +130,7 @@ export async function getMyRequests(): Promise<Request[]> {
 }
 
 export interface CreateRequestData {
-  type:
-    | 'extenuating_circumstances'
-    | 'summer_funding_request'
-    | 'summer_funding_report'
-    | 'requirement_submission';
+  type: 'extenuating_circumstances' | 'summer_funding_request';
   description: string;
   formData?: Record<string, any>;
   priority?: 'high' | 'medium' | 'low';

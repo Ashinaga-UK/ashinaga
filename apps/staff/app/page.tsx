@@ -41,6 +41,7 @@ import {
 } from '../components/scholar-profile';
 import { StaffInviteDialog } from '../components/staff-invite-dialog';
 import { StaffLayout } from '../components/staff-layout';
+import { StaffOtherRequestDialog } from '../components/staff-other-request-dialog';
 import { TaskAssignment } from '../components/task-assignment';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -301,7 +302,8 @@ function StaffDashboardContent() {
                 | 'extenuating_circumstances'
                 | 'summer_funding_request'
                 | 'summer_funding_report'
-                | 'requirement_submission')
+                | 'requirement_submission'
+                | 'others')
             : undefined,
         status:
           requestStatusFilter !== 'all'
@@ -772,6 +774,7 @@ function StaffDashboardContent() {
                           <SelectItem value="requirement_submission">
                             Requirement Submission
                           </SelectItem>
+                          <SelectItem value="others">Others</SelectItem>
                         </SelectContent>
                       </Select>
                       <Select value={requestStatusFilter} onValueChange={setRequestStatusFilter}>
@@ -788,6 +791,12 @@ function StaffDashboardContent() {
                         </SelectContent>
                       </Select>
                     </div>
+                    <StaffOtherRequestDialog
+                      onSuccess={() => {
+                        void fetchRequests();
+                        void fetchRequestStats();
+                      }}
+                    />
                   </div>
                   <CardContent className="p-4 sm:p-5">
                     {requestsLoading ? (

@@ -18,12 +18,14 @@ import {
 import { EmailService } from '../email/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateRequestDto, CreateRequestResponseDto } from './dto/create-request.dto';
+import { CreateStaffRequestDto } from './dto/create-staff-request.dto';
 import {
   GetRequestsQueryDto,
   GetRequestsResponseDto,
   PaginationMetaDto,
   RequestResponseDto,
 } from './dto/get-requests.dto';
+import { SCHOLAR_CREATABLE_REQUEST_TYPES, SCHOLAR_VISIBLE_REQUEST_TYPES } from './request-types';
 
 @Injectable()
 export class RequestsService {
@@ -305,7 +307,13 @@ export class RequestsService {
       .from(requests)
       .innerJoin(scholars, eq(requests.scholarId, scholars.id))
       .innerJoin(users, eq(scholars.userId, users.id))
-      .where(and(eq(requests.scholarId, scholarId), eq(requests.archived, false)))
+      .where(
+        and(
+          eq(requests.scholarId, scholarId),
+          eq(requests.archived, false),
+          inArray(requests.type, [...SCHOLAR_VISIBLE_REQUEST_TYPES])
+        )
+      )
       .orderBy(desc(requests.submittedDate));
 
     // Get attachments, audit logs and assignees for all requests
@@ -376,6 +384,12 @@ export class RequestsService {
 
     if (!scholar || scholar.length === 0) {
       throw new NotFoundException('Scholar not found for this user');
+    }
+
+    if (!SCHOLAR_CREATABLE_REQUEST_TYPES.includes(createRequestDto.type)) {
+      throw new BadRequestException(
+        'Scholars can only create extenuating circumstances or summer funding requests'
+      );
     }
 
     const scholarId = scholar[0].id;
@@ -467,6 +481,59 @@ export class RequestsService {
     };
   }
 
+  async createStaffRequest(
+    createRequestDto: CreateStaffRequestDto,
+    staffUserId: string
+  ): Promise<CreateRequestResponseDto> {
+    const [scholar] = await database
+      .select({ id: scholars.id })
+      .from(scholars)
+      .where(eq(scholars.id, createRequestDto.scholarId))
+      .limit(1);
+
+    if (!scholar) {
+      throw new NotFoundException('Scholar not found');
+    }
+
+    const [newRequest] = await database
+      .insert(requests)
+      .values({
+        scholarId: scholar.id,
+        type: 'others',
+        description: createRequestDto.description.trim(),
+        priority: createRequestDto.priority || 'medium',
+        status: 'pending',
+        assignedTo: staffUserId,
+      })
+      .returning();
+
+    await database.insert(requestAssignees).values({
+      requestId: newRequest.id,
+      userId: staffUserId,
+    });
+
+    await database.insert(requestAuditLogs).values({
+      requestId: newRequest.id,
+      action: 'created',
+      performedBy: staffUserId,
+      newStatus: 'pending',
+      comment: 'Other request created by staff',
+    });
+
+    return {
+      id: newRequest.id,
+      scholarId: newRequest.scholarId,
+      type: newRequest.type,
+      description: newRequest.description,
+      priority: newRequest.priority,
+      status: newRequest.status,
+      submittedDate: newRequest.submittedDate,
+      assigneeIds: [staffUserId],
+      createdAt: newRequest.createdAt,
+      updatedAt: newRequest.updatedAt,
+    };
+  }
+
   async updateRequestStatus(
     requestId: string,
     status: 'approved' | 'rejected' | 'reviewed' | 'commented',
@@ -519,8 +586,12 @@ export class RequestsService {
       metadata: JSON.stringify({ reviewedBy, reviewDate: new Date() }),
     });
 
-    // Send email notification for approved, rejected, or commented statuses
-    if (status === 'approved' || status === 'rejected' || status === 'commented') {
+    // Only notify scholars about request types they can access in the portal.
+    const scholarCanAccessRequest = SCHOLAR_VISIBLE_REQUEST_TYPES.includes(currentRequest.type);
+    if (
+      scholarCanAccessRequest &&
+      (status === 'approved' || status === 'rejected' || status === 'commented')
+    ) {
       try {
         await this.emailService.sendRequestStatusNotification(
           user.email,
@@ -614,6 +685,10 @@ export class RequestsService {
 
     if (requestRow.request.scholarId !== scholar.id) {
       throw new ForbiddenException('You can only respond to your own requests');
+    }
+
+    if (!SCHOLAR_VISIBLE_REQUEST_TYPES.includes(requestRow.request.type)) {
+      throw new ForbiddenException('This request type is not available in the scholar portal');
     }
 
     if (requestRow.request.archived) {

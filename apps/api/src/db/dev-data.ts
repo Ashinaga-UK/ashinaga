@@ -159,7 +159,8 @@ type RequestType =
   | 'extenuating_circumstances'
   | 'summer_funding_request'
   | 'summer_funding_report'
-  | 'requirement_submission';
+  | 'requirement_submission'
+  | 'others';
 type RequestPriority = 'high' | 'medium' | 'low';
 type RequestStatus = 'pending' | 'approved' | 'rejected' | 'reviewed' | 'commented';
 

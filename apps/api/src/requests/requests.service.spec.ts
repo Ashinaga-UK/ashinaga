@@ -2,6 +2,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
 import { EmailService } from '../email/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import type { RequestType } from './request-types';
 import { RequestsService } from './requests.service';
 
 // Mock the database module
@@ -251,5 +252,84 @@ describe('RequestsService', () => {
         commented: 0,
       });
     });
+  });
+
+  describe('updateRequestStatus notifications', () => {
+    function mockStatusUpdate(type: RequestType) {
+      const mockDatabase = require('../db/connection').database;
+      const currentRequest = {
+        id: 'request-1',
+        type,
+        status: 'pending',
+        description: 'Request description',
+      };
+      const updatedRequest = {
+        ...currentRequest,
+        status: 'commented',
+        reviewComment: 'Please provide more information',
+        updatedAt: new Date('2026-09-22T00:00:00.000Z'),
+      };
+
+      mockDatabase.select = jest.fn().mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          innerJoin: jest.fn().mockReturnValue({
+            innerJoin: jest.fn().mockReturnValue({
+              where: jest.fn().mockReturnValue({
+                limit: jest.fn().mockResolvedValue([
+                  {
+                    request: currentRequest,
+                    scholar: { id: 'scholar-1' },
+                    user: {
+                      id: 'scholar-user-1',
+                      name: 'Test Scholar',
+                      email: 'scholar@example.com',
+                    },
+                  },
+                ]),
+              }),
+            }),
+          }),
+        }),
+      });
+      mockDatabase.update = jest.fn().mockReturnValue({
+        set: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            returning: jest.fn().mockResolvedValue([updatedRequest]),
+          }),
+        }),
+      });
+      mockDatabase.insert = jest.fn().mockReturnValue({
+        values: jest.fn().mockResolvedValue(undefined),
+      });
+    }
+
+    it('emails scholars for request types visible in their portal', async () => {
+      mockStatusUpdate('summer_funding_request');
+
+      await service.updateRequestStatus(
+        'request-1',
+        'commented',
+        'Please provide more information',
+        'staff-1'
+      );
+
+      expect(mockEmailService.sendRequestStatusNotification).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(['summer_funding_report', 'requirement_submission', 'others'] as const)(
+      'does not email scholars for hidden %s requests',
+      async (type) => {
+        mockStatusUpdate(type);
+
+        await service.updateRequestStatus(
+          'request-1',
+          'commented',
+          'Please provide more information',
+          'staff-1'
+        );
+
+        expect(mockEmailService.sendRequestStatusNotification).not.toHaveBeenCalled();
+      }
+    );
   });
 });
