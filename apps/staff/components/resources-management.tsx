@@ -155,6 +155,13 @@ function resolveResourceMimeType(file: File): string | null {
   return RESOURCE_MIME_BY_EXTENSION[extension] ?? null;
 }
 
+const RESOURCE_FILE_VALIDATION_MESSAGE =
+  'File type not supported. Accepted formats: PDF, Word, Excel, PowerPoint. Maximum size: 10MB.';
+
+function isResourceUploadValidationError(error: unknown) {
+  return error instanceof Error && error.message.startsWith('API Error: 400');
+}
+
 function getFilterValues(filterType: string, options: ResourceFilterOptions) {
   switch (filterType) {
     case 'program':
@@ -235,6 +242,7 @@ function ResourceDialog({
   );
   const [formData, setFormData] = useState<ResourceFormData>(() => getResourceFormData(resource));
   const [uploading, setUploading] = useState(false);
+  const [fileValidationError, setFileValidationError] = useState<string | null>(null);
   const [pendingUpload, setPendingUpload] = useState<{
     pendingFileKey: string;
     fileName: string;
@@ -262,6 +270,7 @@ function ResourceDialog({
     setFilterType('program');
     setFilterValue('');
     setPendingUpload(null);
+    setFileValidationError(null);
   }, [open, resourceId]);
 
   const reset = () => {
@@ -270,16 +279,21 @@ function ResourceDialog({
     setFilterType('program');
     setFilterValue('');
     setPendingUpload(null);
+    setFileValidationError(null);
   };
 
   const handleFileChosen = async (file: File) => {
     setUploading(true);
+    setFileValidationError(null);
+    let rejectedByValidation = false;
     try {
       const fileType = resolveResourceMimeType(file);
       if (!fileType) {
+        rejectedByValidation = true;
         throw new Error('Please choose a PDF, Word, Excel, or PowerPoint file.');
       }
       if (file.size < 1 || file.size > 10 * 1024 * 1024) {
+        rejectedByValidation = true;
         throw new Error('Please choose a file smaller than 10MB.');
       }
 
@@ -310,6 +324,9 @@ function ResourceDialog({
       });
     } catch (error) {
       setPendingUpload(null);
+      if (rejectedByValidation || isResourceUploadValidationError(error)) {
+        setFileValidationError(RESOURCE_FILE_VALIDATION_MESSAGE);
+      }
       toast({
         title: 'Could not upload document',
         description: getResourceErrorMessage(error),
@@ -336,6 +353,9 @@ function ResourceDialog({
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (formData.sourceType === 'file' && fileValidationError) {
+      return;
+    }
     if (!isEditing && formData.sourceType === 'file' && !pendingUpload) {
       toast({
         title: 'Upload a document first',
@@ -473,7 +493,10 @@ function ResourceDialog({
                   <Button
                     type="button"
                     variant={formData.sourceType === 'url' ? 'default' : 'outline'}
-                    onClick={() => setFormData((current) => ({ ...current, sourceType: 'url' }))}
+                    onClick={() => {
+                      setFormData((current) => ({ ...current, sourceType: 'url' }));
+                      setFileValidationError(null);
+                    }}
                   >
                     External URL
                   </Button>
@@ -498,6 +521,8 @@ function ResourceDialog({
                   type="file"
                   accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
                   disabled={uploading}
+                  aria-invalid={fileValidationError !== null}
+                  aria-describedby={fileValidationError ? 'resource-file-error' : undefined}
                   onChange={(event) => {
                     const file = event.target.files?.[0];
                     if (file) {
@@ -505,6 +530,11 @@ function ResourceDialog({
                     }
                   }}
                 />
+                {fileValidationError ? (
+                  <p id="resource-file-error" role="alert" className="text-sm text-destructive">
+                    {fileValidationError}
+                  </p>
+                ) : null}
                 <p className="text-xs text-muted-foreground">
                   {uploading
                     ? 'Uploading…'
@@ -682,7 +712,14 @@ function ResourceDialog({
           </div>
 
           <DialogFooter>
-            <Button type="submit" disabled={submitting || uploading}>
+            <Button
+              type="submit"
+              disabled={
+                submitting ||
+                uploading ||
+                (formData.sourceType === 'file' && fileValidationError !== null)
+              }
+            >
               {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
               {isEditing ? 'Update resource' : 'Save resource'}
             </Button>
