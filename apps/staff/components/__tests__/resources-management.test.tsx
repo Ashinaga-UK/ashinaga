@@ -253,6 +253,62 @@ describe('ResourcesManagement', () => {
     );
   });
 
+  it('does not treat an unrelated upload 400 as a file validation error', async () => {
+    mockCreateResourceUploadUrl.mockRejectedValue(
+      new Error('API Error: 400 - {"message":"fileName should not be empty"}')
+    );
+    renderResources();
+    await openCreateUpload();
+    chooseDocument(fileWithSize('notes.pdf', 'application/pdf'));
+
+    await waitFor(() =>
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Could not upload document',
+          variant: 'destructive',
+        })
+      )
+    );
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save resource' })).toBeEnabled();
+  });
+
+  it('ignores an older upload failure after a newer file succeeds', async () => {
+    const pending: Array<{
+      resolve: (value: unknown) => void;
+      reject: (error: unknown) => void;
+    }> = [];
+    mockCreateResourceUploadUrl.mockImplementation(
+      () =>
+        new Promise((resolve, reject) => {
+          pending.push({ resolve, reject });
+        })
+    );
+    mockUploadFetch(true);
+    renderResources();
+    await openCreateUpload();
+
+    chooseDocument(fileWithSize('first.pdf', 'application/pdf'));
+    chooseDocument(fileWithSize('second.pdf', 'application/pdf'));
+    await waitFor(() => expect(pending).toHaveLength(2));
+
+    pending[1]?.resolve({
+      uploadUrl: 'https://uploads.example/second',
+      fields: {},
+      fileKey: 'resources/pending/second',
+    });
+    expect(await screen.findByText('second.pdf')).toBeInTheDocument();
+
+    await act(async () => {
+      pending[0]?.reject(new Error('API Error: 400 - {"message":"File size exceeds 10MB limit"}'));
+    });
+
+    expect(screen.getByText('second.pdf')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save resource' })).toBeEnabled();
+    expect(mockToast).not.toHaveBeenCalled();
+  });
+
   it('does not block save when the file is valid but storage upload fails', async () => {
     mockCreateResourceUploadUrl.mockResolvedValue({
       uploadUrl: 'https://uploads.example/resource',

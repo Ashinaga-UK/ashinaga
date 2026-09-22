@@ -159,7 +159,17 @@ const RESOURCE_FILE_VALIDATION_MESSAGE =
   'File type not supported. Accepted formats: PDF, Word, Excel, PowerPoint. Maximum size: 10MB.';
 
 function isResourceUploadValidationError(error: unknown) {
-  return error instanceof Error && error.message.startsWith('API Error: 400');
+  if (!(error instanceof Error) || !error.message.startsWith('API Error: 400')) {
+    return false;
+  }
+
+  return (
+    error.message.includes('is not allowed') ||
+    error.message.includes('exceeds 10MB') ||
+    error.message.includes('fileType must be one of the following values') ||
+    error.message.includes('fileSize must not be greater than') ||
+    error.message.includes('fileSize must not be less than')
+  );
 }
 
 function getFilterValues(filterType: string, options: ResourceFilterOptions) {
@@ -252,6 +262,7 @@ function ResourceDialog({
   const resourceRef = useRef(resource);
   resourceRef.current = resource;
   const resourceId = resource?.id;
+  const fileChoiceRef = useRef(0);
 
   const availableFilterValues = getFilterValues(filterType, filterOptions);
   const hasFilterValues = availableFilterValues.length > 0;
@@ -283,6 +294,8 @@ function ResourceDialog({
   };
 
   const handleFileChosen = async (file: File) => {
+    const choiceId = ++fileChoiceRef.current;
+    const isCurrentChoice = () => choiceId === fileChoiceRef.current;
     setUploading(true);
     setFileValidationError(null);
     let rejectedByValidation = false;
@@ -316,6 +329,7 @@ function ResourceDialog({
       if (!uploadResponse.ok) {
         throw new Error('Could not upload the document. Please try again.');
       }
+      if (!isCurrentChoice()) return;
       setPendingUpload({
         pendingFileKey: fileKey,
         fileName: file.name,
@@ -323,6 +337,7 @@ function ResourceDialog({
         fileSizeBytes: file.size,
       });
     } catch (error) {
+      if (!isCurrentChoice()) return;
       setPendingUpload(null);
       if (rejectedByValidation || isResourceUploadValidationError(error)) {
         setFileValidationError(RESOURCE_FILE_VALIDATION_MESSAGE);
@@ -333,7 +348,9 @@ function ResourceDialog({
         variant: 'destructive',
       });
     } finally {
-      setUploading(false);
+      if (isCurrentChoice()) {
+        setUploading(false);
+      }
     }
   };
 
