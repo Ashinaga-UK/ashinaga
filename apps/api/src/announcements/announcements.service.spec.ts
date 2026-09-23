@@ -2,6 +2,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
 import { database } from '../db/connection';
 import { EmailService } from '../email/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { AnnouncementsService } from './announcements.service';
 
 // Mock the database module
@@ -27,6 +28,12 @@ describe('AnnouncementsService', () => {
         {
           provide: EmailService,
           useValue: mockEmailService,
+        },
+        {
+          provide: NotificationsService,
+          useValue: {
+            notifyAnnouncementCreated: jest.fn().mockResolvedValue(undefined),
+          },
         },
       ],
     }).compile();

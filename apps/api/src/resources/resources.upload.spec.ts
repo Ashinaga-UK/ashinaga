@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { database } from '../db/connection';
+import { NotificationsService } from '../notifications/notifications.service';
 import { ObjectStorageService } from '../storage/object-storage';
 import { ResourcesService } from './resources.service';
 
@@ -30,6 +31,12 @@ describe('ResourcesService file uploads', () => {
         {
           provide: ObjectStorageService,
           useValue: objectStorage,
+        },
+        {
+          provide: NotificationsService,
+          useValue: {
+            notifyResourceLive: jest.fn().mockResolvedValue(undefined),
+          },
         },
       ],
     }).compile();

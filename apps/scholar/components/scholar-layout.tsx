@@ -19,6 +19,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ScholarSessionProvider, useScholarSession } from '../lib/scholar-session';
 import { cn } from '../lib/utils';
+import { ScholarNotificationsBell } from './scholar-notifications-bell';
 import {
   Sidebar,
   SidebarContent,
@@ -203,7 +204,8 @@ function ScholarHeader({ programStage }: { programStage: ProgramStage | null }) 
           </h1>
         </Link>
       </div>
-      <div className="flex items-center justify-end md:order-3 md:ml-auto">
+      <div className="flex items-center justify-end gap-1 md:order-3 md:ml-auto">
+        <ScholarNotificationsBell />
         <ThemeToggle />
       </div>
     </header>

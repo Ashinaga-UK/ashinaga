@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
@@ -8,6 +9,17 @@ const navState = { pathname: '' };
 
 jest.mock('../../lib/api/profile', () => ({
   getMyProfile: (...args: unknown[]) => mockGetMyProfile(...args),
+}));
+
+jest.mock('../../lib/api-client', () => ({
+  getScholarNotificationsFeed: jest.fn().mockResolvedValue({
+    items: [],
+    total: 0,
+    unreadCount: 0,
+    page: 1,
+    limit: 20,
+  }),
+  markScholarNotificationsRead: jest.fn().mockResolvedValue({ updated: 0 }),
 }));
 
 jest.mock('next-themes', () => ({
@@ -33,7 +45,17 @@ function getToggle() {
 }
 
 async function renderLayout(children: ReactNode = <p>Dashboard content</p>, onLogout = jest.fn()) {
-  const result = render(<ScholarLayout onLogout={onLogout}>{children}</ScholarLayout>);
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+  const result = render(
+    <QueryClientProvider client={queryClient}>
+      <ScholarLayout onLogout={onLogout}>{children}</ScholarLayout>
+    </QueryClientProvider>
+  );
   await waitFor(() => expect(mockGetMyProfile).toHaveBeenCalled());
 
   let heading = 'Ashinaga Scholar Portal';
@@ -67,6 +89,7 @@ describe('ScholarLayout', () => {
       '/annual-review'
     );
     expect(screen.getByRole('link', { name: 'Resources' })).toHaveAttribute('href', '/resources');
+    expect(screen.getByRole('button', { name: 'Notifications' })).toBeInTheDocument();
     expect(screen.getByText('Dashboard content')).toBeInTheDocument();
     expect(getToggle()).toBeInTheDocument();
   });
@@ -166,7 +189,17 @@ describe('ScholarLayout', () => {
     navState.pathname = '/proposal';
     mockGetMyProfile.mockReturnValue(new Promise(() => {}));
 
-    render(<ScholarLayout onLogout={jest.fn()}>content</ScholarLayout>);
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ScholarLayout onLogout={jest.fn()}>content</ScholarLayout>
+      </QueryClientProvider>
+    );
     await waitFor(() => expect(mockGetMyProfile).toHaveBeenCalled());
 
     expect(screen.queryByRole('link', { name: 'My Proposal' })).not.toBeInTheDocument();

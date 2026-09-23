@@ -6,6 +6,7 @@ import { buildResourceAudienceVisibilitySql } from '../common/audience-filters/a
 import { getScholarAudienceFilterOptions } from '../common/audience-filters/audience-filter-options';
 import { database } from '../db/connection';
 import { resourceFilters, resources, scholars, users } from '../db/schema';
+import { NotificationsService } from '../notifications/notifications.service';
 import { ObjectStorageService } from '../storage/object-storage';
 import { CreateResourceDto, ResourceFilterDto } from './dto/create-resource.dto';
 import { UpdateResourceDto } from './dto/update-resource.dto';
@@ -34,7 +35,10 @@ type ResourceFilterWriter = Pick<typeof database, 'delete' | 'insert'>;
 export class ResourcesService {
   private readonly logger = new Logger(ResourcesService.name);
 
-  constructor(private readonly objectStorage: ObjectStorageService) {}
+  constructor(
+    private readonly objectStorage: ObjectStorageService,
+    private readonly notifications: NotificationsService
+  ) {}
 
   async createUploadUrl(input: { fileName: string; fileType: string; fileSize: number }) {
     this.assertAllowedUpload(input.fileType, input.fileSize);
@@ -101,6 +105,7 @@ export class ResourcesService {
         });
 
         await this.deleteStoredObject(pendingFileKey, 'pending resource upload');
+        await this.notifyIfResourceLive(resource, filters);
         return this.formatResource(resource, this.formatFilters(filters));
       } catch (error) {
         await this.deleteStoredObject(fileKey, 'copied resource file after create failure');
@@ -133,6 +138,7 @@ export class ResourcesService {
       return created;
     });
 
+    await this.notifyIfResourceLive(resource, filters);
     return this.formatResource(resource, this.formatFilters(filters));
   }
 
@@ -251,6 +257,18 @@ export class ResourcesService {
         filters !== undefined
           ? this.formatFilters(filters)
           : await this.getResourceFilters(resourceId);
+
+      const becameLive = existing.status !== 'live' && updated.status === 'live';
+      if (becameLive) {
+        await this.notifyIfResourceLive(
+          updated,
+          nextFilters.map((filter) => ({
+            filterType: filter.type,
+            filterValue: filter.value,
+          }))
+        );
+      }
+
       return this.formatResource(updated, nextFilters);
     } catch (error) {
       if (nextFileKey) {
@@ -541,6 +559,28 @@ export class ResourcesService {
       type: filter.filterType,
       value: filter.filterValue,
     }));
+  }
+
+  private async notifyIfResourceLive(
+    resource: typeof resources.$inferSelect,
+    filters: ResourceFilterDto[]
+  ): Promise<void> {
+    if (resource.status !== 'live' || resource.archived) {
+      return;
+    }
+
+    try {
+      await this.notifications.notifyResourceLive({
+        resourceId: resource.id,
+        title: resource.title,
+        filters,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to create resource live inbox notifications for ${resource.id}`,
+        error
+      );
+    }
   }
 
   private async deleteStoredObject(fileKey: string, label: string): Promise<void> {

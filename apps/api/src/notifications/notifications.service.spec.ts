@@ -2,7 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { database } from '../db/connection';
 import { EmailService } from '../email/email.service';
-import { STAFF_FEED_KINDS } from './notification-kinds';
+import { SCHOLAR_FEED_KINDS, STAFF_FEED_KINDS } from './notification-kinds';
 import { NotificationsService } from './notifications.service';
 
 const insertReturning = jest.fn();
@@ -260,6 +260,113 @@ describe('NotificationsService', () => {
 
       expect(recipients.sort()).toEqual(['active-assignee', 'super-admin'].sort());
     } finally {
+      if (previousImpl) {
+        selectMock.mockImplementation(previousImpl);
+      } else {
+        selectMock.mockReset();
+      }
+    }
+  });
+
+  it('inserts scholar feed rows with conflict-safe dedupe', async () => {
+    insertReturning.mockResolvedValue([{ id: 'sn1' }]);
+
+    const created = await service.createScholarNotifications([
+      {
+        recipientUserId: 'scholar-user-1',
+        kind: SCHOLAR_FEED_KINDS.taskAssigned,
+        title: 'New task assigned',
+        body: 'Submit transcript',
+        entityType: 'task',
+        entityId: 'task-1',
+        href: '/tasks',
+      },
+    ]);
+
+    expect(created).toBe(1);
+    expect(database.insert).toHaveBeenCalled();
+  });
+
+  it('loads the scholar feed with unreadCount for the current user', async () => {
+    const createdAt = new Date('2026-09-23T12:00:00.000Z');
+    feedSelectResult.mockResolvedValue([
+      {
+        id: 'sn1',
+        kind: SCHOLAR_FEED_KINDS.resourceLive,
+        title: 'New resource available',
+        body: 'Handbook',
+        entityType: 'resource',
+        entityId: 'resource-1',
+        href: '/resources',
+        readAt: null,
+        createdAt,
+      },
+    ]);
+    countResult.mockResolvedValueOnce([{ value: 1 }]).mockResolvedValueOnce([{ value: 2 }]);
+
+    await expect(service.getScholarFeed('scholar-user-1', { page: 1, limit: 20 })).resolves.toEqual({
+      items: [
+        expect.objectContaining({
+          id: 'sn1',
+          kind: SCHOLAR_FEED_KINDS.resourceLive,
+          body: 'Handbook',
+          readAt: null,
+        }),
+      ],
+      total: 1,
+      unreadCount: 2,
+      page: 1,
+      limit: 20,
+    });
+  });
+
+  it('marks selected unread scholar notifications as read', async () => {
+    updateReturning.mockResolvedValue([{ id: 'sn1' }]);
+
+    await expect(
+      service.markScholarNotificationsRead('scholar-user-1', { ids: ['sn1'] })
+    ).resolves.toEqual({ updated: 1 });
+    expect(database.update).toHaveBeenCalled();
+  });
+
+  it('builds task assignment notifications for each assigned scholar', async () => {
+    const createSpy = jest.spyOn(service, 'createScholarNotifications').mockResolvedValue(1);
+    const selectMock = database.select as jest.Mock;
+    const previousImpl = selectMock.getMockImplementation();
+    selectMock.mockImplementation(() => ({
+      from: jest.fn(() => ({
+        where: jest.fn(() =>
+          Promise.resolve([
+            { scholarId: 'scholar-1', userId: 'user-1' },
+            { scholarId: 'scholar-2', userId: 'user-2' },
+          ])
+        ),
+      })),
+    }));
+
+    try {
+      await service.notifyTaskAssigned({
+        assignments: [
+          { taskId: 'task-1', scholarId: 'scholar-1', title: 'Essay' },
+          { taskId: 'task-2', scholarId: 'scholar-2', title: 'Essay' },
+        ],
+      });
+
+      expect(createSpy).toHaveBeenCalledWith([
+        expect.objectContaining({
+          recipientUserId: 'user-1',
+          kind: SCHOLAR_FEED_KINDS.taskAssigned,
+          entityId: 'task-1',
+          href: '/tasks',
+        }),
+        expect.objectContaining({
+          recipientUserId: 'user-2',
+          kind: SCHOLAR_FEED_KINDS.taskAssigned,
+          entityId: 'task-2',
+        }),
+      ]);
+    } finally {
+      createSpy.mockRestore();
       if (previousImpl) {
         selectMock.mockImplementation(previousImpl);
       } else {

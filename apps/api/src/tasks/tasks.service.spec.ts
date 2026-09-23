@@ -85,6 +85,7 @@ describe('TasksService', () => {
           provide: NotificationsService,
           useValue: {
             notifyTaskCompleted: jest.fn().mockResolvedValue(undefined),
+            notifyTaskAssigned: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],
