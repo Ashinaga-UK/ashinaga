@@ -1,7 +1,15 @@
 'use client';
 
 import { formatDistanceToNow } from 'date-fns';
-import { Bell, CheckCheck, CheckSquare, Library, Loader2, MessageSquare, Search } from 'lucide-react';
+import {
+  Bell,
+  CheckCheck,
+  CheckSquare,
+  Library,
+  Loader2,
+  MessageSquare,
+  Search,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useDeferredValue, useState } from 'react';
 import type { ScholarNotification, ScholarNotificationKind } from '../lib/api-client';

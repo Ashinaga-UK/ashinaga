@@ -20,10 +20,7 @@ export const scholarNotifications = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    index('scholar_notifications_recipient_created_idx').on(
-      table.recipientUserId,
-      table.createdAt
-    ),
+    index('scholar_notifications_recipient_created_idx').on(table.recipientUserId, table.createdAt),
     index('scholar_notifications_recipient_unread_idx')
       .on(table.recipientUserId)
       .where(sql`${table.readAt} IS NULL`),
