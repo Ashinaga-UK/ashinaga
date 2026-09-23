@@ -4,10 +4,12 @@ import { MyAnnualReview } from '../my-annual-review';
 
 const mockGetMyAnnualUpdate = jest.fn();
 const mockGetMyDraftAnnualUpdate = jest.fn();
+const mockGetAnnualReviewCopy = jest.fn();
 const mockSaveAnnualUpdateDraft = jest.fn();
 const mockSubmitAnnualUpdate = jest.fn();
 
 jest.mock('../../lib/api/annual-updates', () => ({
+  getAnnualReviewCopy: (...args: unknown[]) => mockGetAnnualReviewCopy(...args),
   getMyAnnualUpdate: (...args: unknown[]) => mockGetMyAnnualUpdate(...args),
   getMyDraftAnnualUpdate: (...args: unknown[]) => mockGetMyDraftAnnualUpdate(...args),
   saveAnnualUpdateDraft: (...args: unknown[]) => mockSaveAnnualUpdateDraft(...args),
@@ -61,6 +63,7 @@ describe('MyAnnualReview', () => {
     jest.clearAllMocks();
     mockGetMyAnnualUpdate.mockResolvedValue(null);
     mockGetMyDraftAnnualUpdate.mockResolvedValue(null);
+    mockGetAnnualReviewCopy.mockResolvedValue({ version: 1, strings: {}, canEdit: false });
     mockSaveAnnualUpdateDraft.mockImplementation(async () =>
       createAnnualUpdate({ status: 'draft' })
     );
@@ -113,6 +116,24 @@ describe('MyAnnualReview', () => {
       screen.getByText(/How many pay-it-forward activities have you taken part in this year/)
         .textContent
     ).not.toContain('(Enter a number)');
+  });
+
+  it('renders Annual Review copy returned by the API', async () => {
+    mockGetAnnualReviewCopy.mockResolvedValue({
+      version: 2,
+      strings: {
+        'sections.yearOverview.title': 'Your year in review',
+        'questions.highlights.prompt': 'What are you most proud of this year?',
+        'helpers.numberHint': '(Use digits only)',
+      },
+      canEdit: false,
+    });
+
+    render(<MyAnnualReview />);
+
+    expect(await screen.findByText('Your year in review')).toBeInTheDocument();
+    expect(screen.getByLabelText(/What are you most proud of this year/i)).toBeInTheDocument();
+    expect(screen.getAllByText('(Use digits only)').length).toBeGreaterThan(0);
   });
 
   it('uses a year dropdown defaulting to the completed teaching year', async () => {

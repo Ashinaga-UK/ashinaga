@@ -21,8 +21,14 @@ import {
   toCanonicalAcademicYear,
 } from '../lib/academic-year';
 import {
+  type AnnualReviewCopy,
+  DEFAULT_ANNUAL_REVIEW_COPY,
+  mergeAnnualReviewCopy,
+} from '../lib/annual-review-copy';
+import {
   type AnnualUpdate,
   type AnnualUpdatePayload,
+  getAnnualReviewCopy,
   getMyAnnualUpdate,
   saveAnnualUpdateDraft,
   submitAnnualUpdate,
@@ -279,6 +285,9 @@ function validateForm(form: FormState, requireComplete: boolean): FormValidation
 export function MyAnnualReview() {
   const [filableAcademicYears] = useState(() => getFilableAcademicYears());
   const defaultAcademicYear = filableAcademicYears[0] ?? getDefaultAcademicYear();
+  const [copy, setCopy] = useState<AnnualReviewCopy>(() =>
+    mergeAnnualReviewCopy(DEFAULT_ANNUAL_REVIEW_COPY)
+  );
   const [form, setForm] = useState<FormState>(() => createEmptyForm(defaultAcademicYear));
   const [baselineForm, setBaselineForm] = useState<FormState>(() =>
     createEmptyForm(defaultAcademicYear)
@@ -344,6 +353,14 @@ export function MyAnnualReview() {
   useEffect(() => {
     loadAnnualUpdate(defaultAcademicYear);
   }, [defaultAcademicYear, loadAnnualUpdate]);
+
+  useEffect(() => {
+    getAnnualReviewCopy()
+      .then((response) => setCopy(mergeAnnualReviewCopy(response.strings)))
+      .catch((copyError) => {
+        console.warn('Could not load annual review copy; using defaults.', copyError);
+      });
+  }, []);
 
   useEffect(() => {
     if (!message) {
@@ -561,12 +578,14 @@ export function MyAnnualReview() {
         <>
           <ReviewSection
             icon={Sparkles}
-            title="Year Overview"
-            description="This review is for the academic year shown below. Share important moments you would like Ashinaga to know about."
+            title={copy['sections.yearOverview.title']}
+            description={copy['sections.yearOverview.description']}
           >
             <div className="space-y-6">
               <div className="grid gap-2">
-                <RequiredLabel htmlFor="academicYear">Academic year</RequiredLabel>
+                <RequiredLabel htmlFor="academicYear">
+                  {copy['questions.academicYear.prompt']}
+                </RequiredLabel>
                 <Select
                   value={form.academicYear}
                   onValueChange={handleAcademicYearChange}
@@ -574,7 +593,7 @@ export function MyAnnualReview() {
                 >
                   <SelectTrigger
                     id="academicYear"
-                    aria-label="Academic year"
+                    aria-label={copy['questions.academicYear.prompt']}
                     className="md:max-w-xs"
                   >
                     <SelectValue />
@@ -591,7 +610,7 @@ export function MyAnnualReview() {
 
               <LongTextField
                 id="highlights"
-                label="Please describe any highlights; such as distinctions, awards, accomplishments, projects, or anything you are particularly proud of."
+                label={copy['questions.highlights.prompt']}
                 required
                 value={form.highlights}
                 disabled={saving || isSubmitted}
@@ -602,13 +621,13 @@ export function MyAnnualReview() {
 
           <ReviewSection
             icon={BriefcaseBusiness}
-            title="Work And Activities"
-            description="Share employment, extracurriculars, personal projects, clubs, and other activities from the year."
+            title={copy['sections.workAndActivities.title']}
+            description={copy['sections.workAndActivities.description']}
           >
             <div className="space-y-6">
               <LongTextField
                 id="partTimeJobs"
-                label="Over the last year, have you had any part-time job(s)? Please briefly describe them."
+                label={copy['questions.partTimeJobs.prompt']}
                 required
                 value={form.partTimeJobs}
                 disabled={saving || isSubmitted}
@@ -617,7 +636,7 @@ export function MyAnnualReview() {
 
               <LongTextField
                 id="extracurriculars"
-                label="Extracurriculars: What activities did you get involved in, such as hobbies, personal projects, clubs, etc.?"
+                label={copy['questions.extracurriculars.prompt']}
                 required
                 value={form.extracurriculars}
                 disabled={saving || isSubmitted}
@@ -628,22 +647,23 @@ export function MyAnnualReview() {
 
           <ReviewSection
             icon={HandHeart}
-            title="Leadership and Impact"
-            description="Summarise your leadership roles and the ways you have passed kindness forward this year."
+            title={copy['sections.leadershipAndImpact.title']}
+            description={copy['sections.leadershipAndImpact.description']}
           >
             <div className="space-y-6">
               <NumberField
                 id="leadershipRolesCount"
-                label="How many leadership roles have you held this year?"
+                label={copy['questions.leadershipRolesCount.prompt']}
                 required
                 value={form.leadershipRolesCount}
                 disabled={saving || isSubmitted}
+                numberHint={copy['helpers.numberHint']}
                 onChange={(value) => updateField('leadershipRolesCount', value)}
               />
 
               <LongTextField
                 id="leadershipRolesDescription"
-                label="Leadership roles description: Describe the roles, organisations, events, etc."
+                label={copy['questions.leadershipRolesDescription.prompt']}
                 required
                 value={form.leadershipRolesDescription}
                 disabled={saving || isSubmitted}
@@ -653,17 +673,18 @@ export function MyAnnualReview() {
 
               <NumberField
                 id="payItForwardCount"
-                label="How many pay-it-forward activities have you taken part in this year? (Defined as passing on the kindness you have received, above and beyond everyday kindness, with no expectation of return.)"
+                label={copy['questions.payItForwardCount.prompt']}
                 required
                 value={form.payItForwardCount}
                 disabled={saving || isSubmitted}
+                numberHint={copy['helpers.numberHint']}
                 showEnterNumberHint={false}
                 onChange={(value) => updateField('payItForwardCount', value)}
               />
 
               <LongTextField
                 id="payItForwardDescription"
-                label="How have you paid it forward this year? Describe the activities."
+                label={copy['questions.payItForwardDescription.prompt']}
                 required
                 value={form.payItForwardDescription}
                 disabled={saving || isSubmitted}
@@ -675,22 +696,23 @@ export function MyAnnualReview() {
 
           <ReviewSection
             icon={Globe2}
-            title="Africa Engagement And Internships"
-            description="Capture sub-Saharan Africa-related activities and internship experience."
+            title={copy['sections.africaEngagementAndInternships.title']}
+            description={copy['sections.africaEngagementAndInternships.description']}
           >
             <div className="space-y-6">
               <NumberField
                 id="subSaharanAfricaActivitiesCount"
-                label="How many sub-Saharan Africa-related activities this year?"
+                label={copy['questions.subSaharanAfricaActivitiesCount.prompt']}
                 required
                 value={form.subSaharanAfricaActivitiesCount}
                 disabled={saving || isSubmitted}
+                numberHint={copy['helpers.numberHint']}
                 onChange={(value) => updateField('subSaharanAfricaActivitiesCount', value)}
               />
 
               <LongTextField
                 id="subSaharanAfricaActivitiesDescription"
-                label="What activities connected to sub-Saharan Africa have you been involved in? Describe the role, organisation, event, etc."
+                label={copy['questions.subSaharanAfricaActivitiesDescription.prompt']}
                 required
                 value={form.subSaharanAfricaActivitiesDescription}
                 disabled={saving || isSubmitted}
@@ -700,16 +722,17 @@ export function MyAnnualReview() {
 
               <NumberField
                 id="independentInternshipsCount"
-                label="How many independently secured internships did you complete this year? Total number anywhere in the world."
+                label={copy['questions.independentInternshipsCount.prompt']}
                 required
                 value={form.independentInternshipsCount}
                 disabled={saving || isSubmitted}
+                numberHint={copy['helpers.numberHint']}
                 onChange={(value) => updateField('independentInternshipsCount', value)}
               />
 
               <LongTextField
                 id="internshipsInAfricaSummary"
-                label="Internships in Africa summary: Describe the positions, roles, etc."
+                label={copy['questions.internshipsInAfricaSummary.prompt']}
                 required
                 value={form.internshipsInAfricaSummary}
                 disabled={saving || isSubmitted}
@@ -718,7 +741,7 @@ export function MyAnnualReview() {
 
               <LongTextField
                 id="internshipsElsewhereSummary"
-                label="Internships in UK, or elsewhere except Africa summary: Describe the positions, roles, etc."
+                label={copy['questions.internshipsElsewhereSummary.prompt']}
                 required
                 value={form.internshipsElsewhereSummary}
                 disabled={saving || isSubmitted}
@@ -727,7 +750,7 @@ export function MyAnnualReview() {
 
               <div className="grid gap-2">
                 <RequiredLabel>
-                  Did you complete your Ashinaga 8-week internship in sub-Saharan Africa this year?
+                  {copy['questions.completedAshinagaAfricaInternship.prompt']}
                 </RequiredLabel>
                 <Select
                   value={form.completedAshinagaAfricaInternship}
@@ -751,14 +774,13 @@ export function MyAnnualReview() {
 
           <ReviewSection
             icon={BookOpen}
-            title="Academic Results"
-            description="Record your classification and weighted grade for the academic year."
+            title={copy['sections.academicResults.title']}
+            description={copy['sections.academicResults.description']}
           >
             <div className="space-y-6">
               <div className="grid gap-2">
                 <RequiredLabel htmlFor="academicYearAverageClassification">
-                  What was your academic year average? Please input according to classification,
-                  e.g. 1st, 2:1, 2:2, 3rd.
+                  {copy['questions.academicYearAverageClassification.prompt']}
                 </RequiredLabel>
                 <Input
                   id="academicYearAverageClassification"
@@ -773,8 +795,7 @@ export function MyAnnualReview() {
 
               <div className="grid gap-2">
                 <RequiredLabel htmlFor="academicYearWeightedGrade">
-                  What is your year average weighted grade for the academic year? For example, 70% /
-                  64%.
+                  {copy['questions.academicYearWeightedGrade.prompt']}
                 </RequiredLabel>
                 <Input
                   id="academicYearWeightedGrade"
@@ -888,6 +909,7 @@ function NumberField({
   value,
   disabled,
   onChange,
+  numberHint,
   showEnterNumberHint = true,
 }: {
   id: string;
@@ -896,10 +918,11 @@ function NumberField({
   value: string;
   disabled: boolean;
   onChange: (value: string) => void;
+  numberHint: string;
   showEnterNumberHint?: boolean;
 }) {
   const hint = showEnterNumberHint ? (
-    <span className="font-normal text-muted-foreground">(Enter a number)</span>
+    <span className="font-normal text-muted-foreground">{numberHint}</span>
   ) : null;
 
   return (

@@ -1,3 +1,4 @@
+import type { AnnualReviewCopy } from '../annual-review-copy';
 import { fetchAPI } from '../api-client';
 
 export type AnnualUpdateStatus = 'draft' | 'submitted';
@@ -44,6 +45,16 @@ export interface AnnualUpdatePayload {
   completedAshinagaAfricaInternship?: boolean;
   academicYearAverageClassification?: string;
   academicYearWeightedGrade?: string;
+}
+
+export interface AnnualReviewCopyResponse {
+  version: number;
+  strings: AnnualReviewCopy;
+  canEdit: boolean;
+}
+
+export async function getAnnualReviewCopy(): Promise<AnnualReviewCopyResponse> {
+  return fetchAPI<AnnualReviewCopyResponse>('/api/annual-updates/copy');
 }
 
 export async function getMyAnnualUpdate(academicYear: string): Promise<AnnualUpdate | null> {

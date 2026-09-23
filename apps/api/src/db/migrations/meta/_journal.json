@@ -218,6 +218,13 @@
       "when": 1790030625163,
       "tag": "0030_woozy_phalanx",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1790149256065,
+      "tag": "0031_striped_deathbird",
+      "breakpoints": true
     }
   ]
 }
