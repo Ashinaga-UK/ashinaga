@@ -89,6 +89,9 @@ test.describe('Scholar Portal – collapsible sidebar', () => {
   }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/dashboard');
+    // Session bootstrap can leave the layout on "Loading..." briefly (or longer under CI
+    // load). Wait it out before asserting chrome that only mounts after auth resolves.
+    await expect(page.getByText('Loading...')).toHaveCount(0, { timeout: 30_000 });
     await expect(page.getByRole('heading', { name: 'Ashinaga Scholar Portal' })).toBeVisible({
       timeout: 15_000,
     });
