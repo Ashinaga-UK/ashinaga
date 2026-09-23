@@ -563,7 +563,7 @@ export class ResourcesService {
 
   private async notifyIfResourceLive(
     resource: typeof resources.$inferSelect,
-    filters: ResourceFilterDto[]
+    filters: Array<{ filterType: string; filterValue: string }>
   ): Promise<void> {
     if (resource.status !== 'live' || resource.archived) {
       return;
