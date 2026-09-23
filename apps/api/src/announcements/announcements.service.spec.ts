@@ -16,10 +16,14 @@ const mockDatabase = database as unknown as {
 
 describe('AnnouncementsService', () => {
   let service: AnnouncementsService;
+  let notifications: { notifyAnnouncementCreated: jest.Mock };
 
   beforeEach(async () => {
     const mockEmailService = {
       sendAnnouncementEmail: jest.fn().mockResolvedValue(undefined),
+    };
+    notifications = {
+      notifyAnnouncementCreated: jest.fn().mockResolvedValue(undefined),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -31,9 +35,7 @@ describe('AnnouncementsService', () => {
         },
         {
           provide: NotificationsService,
-          useValue: {
-            notifyAnnouncementCreated: jest.fn().mockResolvedValue(undefined),
-          },
+          useValue: notifications,
         },
       ],
     }).compile();
@@ -53,18 +55,32 @@ describe('AnnouncementsService', () => {
         updatedAt: new Date(),
       };
 
-      mockDatabase.insert = jest.fn().mockReturnValue({
-        values: jest.fn().mockReturnValue({
-          returning: jest.fn().mockResolvedValue([mockAnnouncement]),
-        }),
-      });
+      mockDatabase.insert = jest
+        .fn()
+        .mockReturnValueOnce({
+          values: jest.fn().mockReturnValue({
+            returning: jest.fn().mockResolvedValue([mockAnnouncement]),
+          }),
+        })
+        .mockReturnValueOnce({
+          values: jest.fn().mockResolvedValue(undefined),
+        });
 
-      // Mock for createRecipientRecords
-      mockDatabase.select = jest.fn().mockReturnValue({
-        from: jest.fn().mockReturnValue({
-          where: jest.fn().mockResolvedValue([]),
-        }),
-      });
+      // createRecipientRecords then sendAnnouncementEmails
+      mockDatabase.select = jest
+        .fn()
+        .mockReturnValueOnce({
+          from: jest.fn().mockReturnValue({
+            where: jest.fn().mockResolvedValue([{ id: 'scholar-1' }, { id: 'scholar-2' }]),
+          }),
+        })
+        .mockReturnValueOnce({
+          from: jest.fn().mockReturnValue({
+            innerJoin: jest.fn().mockReturnValue({
+              where: jest.fn().mockResolvedValue([]),
+            }),
+          }),
+        });
 
       const createDto = {
         title: 'Test Announcement',
@@ -76,6 +92,11 @@ describe('AnnouncementsService', () => {
 
       expect(result).toEqual(mockAnnouncement);
       expect(mockDatabase.insert).toHaveBeenCalled();
+      expect(notifications.notifyAnnouncementCreated).toHaveBeenCalledWith({
+        announcementId: '1',
+        title: 'Test Announcement',
+        scholarIds: ['scholar-1', 'scholar-2'],
+      });
     });
   });
 

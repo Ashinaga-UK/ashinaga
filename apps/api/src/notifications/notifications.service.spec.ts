@@ -304,20 +304,22 @@ describe('NotificationsService', () => {
     ]);
     countResult.mockResolvedValueOnce([{ value: 1 }]).mockResolvedValueOnce([{ value: 2 }]);
 
-    await expect(service.getScholarFeed('scholar-user-1', { page: 1, limit: 20 })).resolves.toEqual({
-      items: [
-        expect.objectContaining({
-          id: 'sn1',
-          kind: SCHOLAR_FEED_KINDS.resourceLive,
-          body: 'Handbook',
-          readAt: null,
-        }),
-      ],
-      total: 1,
-      unreadCount: 2,
-      page: 1,
-      limit: 20,
-    });
+    await expect(service.getScholarFeed('scholar-user-1', { page: 1, limit: 20 })).resolves.toEqual(
+      {
+        items: [
+          expect.objectContaining({
+            id: 'sn1',
+            kind: SCHOLAR_FEED_KINDS.resourceLive,
+            body: 'Handbook',
+            readAt: null,
+          }),
+        ],
+        total: 1,
+        unreadCount: 2,
+        page: 1,
+        limit: 20,
+      }
+    );
   });
 
   it('marks selected unread scholar notifications as read', async () => {
@@ -365,6 +367,152 @@ describe('NotificationsService', () => {
           entityId: 'task-2',
         }),
       ]);
+    } finally {
+      createSpy.mockRestore();
+      if (previousImpl) {
+        selectMock.mockImplementation(previousImpl);
+      } else {
+        selectMock.mockReset();
+      }
+    }
+  });
+
+  it('notifies the full resource audience with a per-publish suffix', async () => {
+    const createSpy = jest.spyOn(service, 'createScholarNotifications').mockResolvedValue(2);
+    const selectMock = database.select as jest.Mock;
+    const previousImpl = selectMock.getMockImplementation();
+    selectMock.mockImplementation(() => ({
+      from: jest.fn(() => ({
+        where: jest.fn(() => Promise.resolve([{ userId: 'user-1' }, { userId: 'user-2' }])),
+      })),
+    }));
+
+    try {
+      await service.notifyResourceLive({
+        resourceId: 'resource-1',
+        title: 'Handbook',
+        filters: [{ filterType: 'program', filterValue: 'Medicine' }],
+        dedupeSuffix: 'live:2026-09-23T12:00:00.000Z',
+      });
+
+      expect(createSpy).toHaveBeenCalledWith([
+        expect.objectContaining({
+          recipientUserId: 'user-1',
+          kind: SCHOLAR_FEED_KINDS.resourceLive,
+          dedupeSuffix: 'live:2026-09-23T12:00:00.000Z',
+        }),
+        expect.objectContaining({
+          recipientUserId: 'user-2',
+          kind: SCHOLAR_FEED_KINDS.resourceLive,
+          dedupeSuffix: 'live:2026-09-23T12:00:00.000Z',
+        }),
+      ]);
+    } finally {
+      createSpy.mockRestore();
+      if (previousImpl) {
+        selectMock.mockImplementation(previousImpl);
+      } else {
+        selectMock.mockReset();
+      }
+    }
+  });
+
+  it('notifies only newly matched scholars when resource audience widens', async () => {
+    const createSpy = jest.spyOn(service, 'createScholarNotifications').mockResolvedValue(1);
+    const selectMock = database.select as jest.Mock;
+    const previousImpl = selectMock.getMockImplementation();
+    let audienceCall = 0;
+    selectMock.mockImplementation(() => ({
+      from: jest.fn(() => ({
+        where: jest.fn(() => {
+          audienceCall += 1;
+          // First call = next audience, second = previous audience
+          if (audienceCall === 1) {
+            return Promise.resolve([{ userId: 'user-1' }, { userId: 'user-2' }]);
+          }
+          return Promise.resolve([{ userId: 'user-1' }]);
+        }),
+      })),
+    }));
+
+    try {
+      await service.notifyResourceLive({
+        resourceId: 'resource-1',
+        title: 'Handbook',
+        filters: [],
+        previousFilters: [{ filterType: 'program', filterValue: 'Medicine' }],
+        dedupeSuffix: 'live:2026-09-23T13:00:00.000Z',
+      });
+
+      expect(createSpy).toHaveBeenCalledWith([
+        expect.objectContaining({
+          recipientUserId: 'user-2',
+          kind: SCHOLAR_FEED_KINDS.resourceLive,
+          dedupeSuffix: 'live:2026-09-23T13:00:00.000Z',
+        }),
+      ]);
+    } finally {
+      createSpy.mockRestore();
+      if (previousImpl) {
+        selectMock.mockImplementation(previousImpl);
+      } else {
+        selectMock.mockReset();
+      }
+    }
+  });
+
+  it('notifies all scholars when resource filters are empty', async () => {
+    const createSpy = jest.spyOn(service, 'createScholarNotifications').mockResolvedValue(2);
+    const selectMock = database.select as jest.Mock;
+    const previousImpl = selectMock.getMockImplementation();
+    selectMock.mockImplementation(() => ({
+      from: jest.fn(() => ({
+        // empty filters → where(undefined) still called by drizzle in our code
+        where: jest.fn(() => Promise.resolve([{ userId: 'user-1' }, { userId: 'user-2' }])),
+      })),
+    }));
+
+    try {
+      await service.notifyResourceLive({
+        resourceId: 'resource-1',
+        title: 'Everyone Handbook',
+        filters: [],
+        dedupeSuffix: 'live:2026-09-23T15:00:00.000Z',
+      });
+
+      expect(createSpy).toHaveBeenCalledWith([
+        expect.objectContaining({ recipientUserId: 'user-1' }),
+        expect.objectContaining({ recipientUserId: 'user-2' }),
+      ]);
+    } finally {
+      createSpy.mockRestore();
+      if (previousImpl) {
+        selectMock.mockImplementation(previousImpl);
+      } else {
+        selectMock.mockReset();
+      }
+    }
+  });
+
+  it('skips resource notifications when the audience is empty', async () => {
+    const createSpy = jest.spyOn(service, 'createScholarNotifications').mockResolvedValue(0);
+    const selectMock = database.select as jest.Mock;
+    const previousImpl = selectMock.getMockImplementation();
+    selectMock.mockImplementation(() => ({
+      from: jest.fn(() => ({
+        where: jest.fn(() => Promise.resolve([])),
+      })),
+    }));
+
+    try {
+      await service.notifyResourceLive({
+        resourceId: 'resource-1',
+        title: 'Handbook',
+        filters: [{ filterType: 'program', filterValue: 'No Match' }],
+        dedupeSuffix: 'live:2026-09-23T14:00:00.000Z',
+      });
+
+      expect(createSpy).not.toHaveBeenCalled();
     } finally {
       createSpy.mockRestore();
       if (previousImpl) {

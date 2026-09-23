@@ -202,6 +202,12 @@ export class ResourcesService {
 
     let nextFileKey: string | undefined;
     const previousFileKey = existing.fileKey;
+    const previousAudienceFilters = (
+      filters !== undefined ? await this.getResourceFilters(resourceId) : []
+    ).map((filter) => ({
+      filterType: filter.type,
+      filterValue: filter.value,
+    }));
 
     if (replacingFile && pendingFileKey && fileName && fileMimeType && fileSizeBytes != null) {
       const copied = await this.copyPendingUpload({
@@ -258,15 +264,20 @@ export class ResourcesService {
           ? this.formatFilters(filters)
           : await this.getResourceFilters(resourceId);
 
+      const nextAudienceFilters = nextFilters.map((filter) => ({
+        filterType: filter.type,
+        filterValue: filter.value,
+      }));
       const becameLive = existing.status !== 'live' && updated.status === 'live';
+      const stayedLive = existing.status === 'live' && updated.status === 'live';
+      const filtersChanged = filters !== undefined;
+
       if (becameLive) {
-        await this.notifyIfResourceLive(
-          updated,
-          nextFilters.map((filter) => ({
-            filterType: filter.type,
-            filterValue: filter.value,
-          }))
-        );
+        await this.notifyIfResourceLive(updated, nextAudienceFilters);
+      } else if (stayedLive && filtersChanged) {
+        await this.notifyIfResourceLive(updated, nextAudienceFilters, {
+          previousFilters: previousAudienceFilters,
+        });
       }
 
       return this.formatResource(updated, nextFilters);
@@ -563,7 +574,10 @@ export class ResourcesService {
 
   private async notifyIfResourceLive(
     resource: typeof resources.$inferSelect,
-    filters: Array<{ filterType: string; filterValue: string }>
+    filters: Array<{ filterType: string; filterValue: string }>,
+    options?: {
+      previousFilters?: Array<{ filterType: string; filterValue: string }>;
+    }
   ): Promise<void> {
     if (resource.status !== 'live' || resource.archived) {
       return;
@@ -574,6 +588,8 @@ export class ResourcesService {
         resourceId: resource.id,
         title: resource.title,
         filters,
+        dedupeSuffix: `live:${new Date().toISOString()}`,
+        previousFilters: options?.previousFilters,
       });
     } catch (error) {
       this.logger.error(

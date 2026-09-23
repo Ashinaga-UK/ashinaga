@@ -209,7 +209,7 @@ export class TasksService {
       )
       .returning();
 
-    void this.notifyScholarsOfAssignment(
+    await this.notifyScholarsOfAssignment(
       [{ taskId: task.id, scholarId: task.scholarId }],
       assignedBy,
       {
@@ -268,7 +268,7 @@ export class TasksService {
 
     const inserted = await this.db.insert(tasks).values(rows).returning();
 
-    void this.notifyScholarsOfAssignment(
+    await this.notifyScholarsOfAssignment(
       inserted.map((task) => ({ taskId: task.id, scholarId: task.scholarId })),
       assignedBy,
       {

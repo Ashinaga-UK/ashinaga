@@ -35,8 +35,8 @@ import { dueSoonWindowLabel, inactivityDays, reminderDays } from './notification
 import {
   NOTIFICATION_KINDS,
   SCHOLAR_FEED_KINDS,
-  STAFF_FEED_KINDS,
   type ScholarFeedKind,
+  STAFF_FEED_KINDS,
   type StaffFeedKind,
 } from './notification-kinds';
 import {
@@ -384,10 +384,7 @@ export class NotificationsService {
         .select({ value: count() })
         .from(scholarNotifications)
         .where(
-          and(
-            eq(scholarNotifications.recipientUserId, userId),
-            isNull(scholarNotifications.readAt)
-          )
+          and(eq(scholarNotifications.recipientUserId, userId), isNull(scholarNotifications.readAt))
         ),
     ]);
 
@@ -491,8 +488,20 @@ export class NotificationsService {
     resourceId: string;
     title: string;
     filters: Array<{ filterType: string; filterValue: string }>;
+    dedupeSuffix: string;
+    previousFilters?: Array<{ filterType: string; filterValue: string }> | null;
   }): Promise<void> {
-    const recipientUserIds = await this.scholarUserIdsMatchingAudience(input.filters);
+    const nextRecipientUserIds = await this.scholarUserIdsMatchingAudience(input.filters);
+    let recipientUserIds = nextRecipientUserIds;
+
+    if (input.previousFilters !== undefined && input.previousFilters !== null) {
+      const previousRecipientUserIds = await this.scholarUserIdsMatchingAudience(
+        input.previousFilters
+      );
+      const previousSet = new Set(previousRecipientUserIds);
+      recipientUserIds = nextRecipientUserIds.filter((userId) => !previousSet.has(userId));
+    }
+
     if (recipientUserIds.length === 0) return;
 
     await this.createScholarNotifications(
@@ -504,7 +513,7 @@ export class NotificationsService {
         entityType: 'resource',
         entityId: input.resourceId,
         href: '/resources',
-        dedupeSuffix: 'live',
+        dedupeSuffix: input.dedupeSuffix,
       }))
     );
   }
