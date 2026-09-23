@@ -22,6 +22,7 @@ import {
   useState,
 } from 'react';
 import { AnnouncementCreator } from '../components/announcement-creator';
+import { AnnualReviewCopyEditor } from '../components/annual-review-copy-editor';
 import { AnnualReviewsReport } from '../components/annual-reviews-report';
 import { InvitationsManagement } from '../components/invitations-management';
 import { LoginPage } from '../components/login-page';
@@ -727,6 +728,7 @@ function StaffDashboardContent() {
 
             {activeTab === 'annual-reviews' && (
               <div className="space-y-6">
+                <AnnualReviewCopyEditor />
                 <Card>
                   <CardContent className="p-4 sm:p-5">
                     <AnnualReviewsReport

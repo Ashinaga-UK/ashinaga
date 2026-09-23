@@ -167,6 +167,12 @@ export interface AnnualUpdateReportRow {
   university: string;
 }
 
+export interface AnnualReviewCopyResponse {
+  version: number;
+  strings: Record<string, string>;
+  canEdit: boolean;
+}
+
 export interface ScholarProfile {
   id: string;
   userId: string;
@@ -395,6 +401,20 @@ export async function updateScholarPlatformSetup(
 
 export async function getAnnualUpdatesByScholar(scholarId: string): Promise<AnnualUpdate[]> {
   return fetchAPI<AnnualUpdate[]>(`/api/annual-updates/scholar/${scholarId}`);
+}
+
+export async function getAnnualReviewCopy(): Promise<AnnualReviewCopyResponse> {
+  return fetchAPI<AnnualReviewCopyResponse>('/api/annual-updates/copy');
+}
+
+export async function updateAnnualReviewCopy(
+  version: number,
+  strings: Record<string, string>
+): Promise<AnnualReviewCopyResponse> {
+  return fetchAPI<AnnualReviewCopyResponse>('/api/annual-updates/copy', {
+    method: 'PUT',
+    body: JSON.stringify({ version, strings }),
+  });
 }
 
 export async function getAnnualUpdatesReport(): Promise<AnnualUpdateReportRow[]> {

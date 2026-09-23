@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
+import { DEFAULT_ANNUAL_REVIEW_COPY } from './annual-review-copy';
 import { AnnualUpdatesService } from './annual-updates.service';
 import type { UpsertAnnualUpdateDto } from './dto/upsert-annual-update.dto';
 
@@ -25,6 +26,35 @@ describe('AnnualUpdatesService', () => {
     mockNotifications.notifyAnnualReviewSubmitted.mockClear();
     service = new AnnualUpdatesService(mockNotifications as never);
     internals = service as unknown as AnnualUpdatesServiceInternals;
+  });
+
+  describe('annual review copy', () => {
+    it('only allows staff admins to update the copy', async () => {
+      await expect(
+        service.updateAnnualReviewCopy('user-1', 'viewer', {
+          version: 1,
+          strings: DEFAULT_ANNUAL_REVIEW_COPY,
+        })
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(mockDb.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects a stale copy version', async () => {
+      mockDb.update.mockReturnValue({
+        set: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            returning: jest.fn().mockResolvedValue([]),
+          }),
+        }),
+      });
+
+      await expect(
+        service.updateAnnualReviewCopy('user-1', 'admin', {
+          version: 1,
+          strings: DEFAULT_ANNUAL_REVIEW_COPY,
+        })
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
   });
 
   describe('CSV helpers', () => {

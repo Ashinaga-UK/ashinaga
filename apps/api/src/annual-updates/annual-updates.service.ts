@@ -7,12 +7,15 @@ import {
 } from '@nestjs/common';
 import { and, desc, eq, inArray, ne, sql } from 'drizzle-orm';
 import { getDatabase } from '../db/connection';
+import { annualReviewCopy } from '../db/schema/annual-review-copy';
 import { annualUpdates } from '../db/schema/annual-updates';
 import { scholars } from '../db/schema/scholars';
-import { users } from '../db/schema/users';
+import { staff, users } from '../db/schema/users';
 import { NotificationsService } from '../notifications/notifications.service';
 import { escapeCsvValue } from '../utils/csv';
 import { academicYearLookupValues, toCanonicalAcademicYear } from './academic-year';
+import { mergeAnnualReviewCopy, validateAnnualReviewCopyStrings } from './annual-review-copy';
+import type { UpdateAnnualReviewCopyDto } from './dto/update-annual-review-copy.dto';
 import { UpsertAnnualUpdateDto } from './dto/upsert-annual-update.dto';
 
 const LIMITED_RESPONSE_WORD_LIMIT = 150;
@@ -23,6 +26,80 @@ export class AnnualUpdatesService {
   private db = getDatabase();
 
   constructor(private readonly notifications: NotificationsService) {}
+
+  async getAnnualReviewCopy(userId: string, userType?: string) {
+    const [copy] = await this.db.select().from(annualReviewCopy).limit(1);
+    let canEdit = false;
+
+    if (userType === 'staff') {
+      const [staffMember] = await this.db
+        .select({ role: staff.role, isActive: staff.isActive })
+        .from(staff)
+        .where(eq(staff.userId, userId))
+        .limit(1);
+      canEdit = staffMember?.isActive === true && staffMember.role === 'admin';
+    }
+
+    return {
+      version: copy?.version ?? 0,
+      strings: mergeAnnualReviewCopy(copy?.strings),
+      canEdit,
+    };
+  }
+
+  async updateAnnualReviewCopy(
+    userId: string,
+    staffRole: string | undefined,
+    dto: UpdateAnnualReviewCopyDto
+  ) {
+    if (staffRole !== 'admin') {
+      throw new ForbiddenException('Only staff admins can edit annual review copy');
+    }
+
+    let strings: Record<string, string>;
+    try {
+      strings = validateAnnualReviewCopyStrings(dto.strings);
+    } catch (error) {
+      throw new BadRequestException(error instanceof Error ? error.message : 'Invalid form copy');
+    }
+
+    if (dto.version === 0) {
+      const [created] = await this.db
+        .insert(annualReviewCopy)
+        .values({
+          id: 1,
+          version: 1,
+          strings,
+          updatedBy: userId,
+          updatedAt: new Date(),
+        })
+        .onConflictDoNothing()
+        .returning();
+
+      if (created) {
+        return { ...created, strings: mergeAnnualReviewCopy(created.strings), canEdit: true };
+      }
+    } else {
+      const [updated] = await this.db
+        .update(annualReviewCopy)
+        .set({
+          version: dto.version + 1,
+          strings,
+          updatedBy: userId,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(annualReviewCopy.id, 1), eq(annualReviewCopy.version, dto.version)))
+        .returning();
+
+      if (updated) {
+        return { ...updated, strings: mergeAnnualReviewCopy(updated.strings), canEdit: true };
+      }
+    }
+
+    throw new ConflictException(
+      'Annual review copy changed since you opened it. Reload and try again.'
+    );
+  }
 
   async getAnnualUpdatesReport() {
     const rows = await this.db
