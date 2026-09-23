@@ -49,11 +49,20 @@ export const DEFAULT_ANNUAL_REVIEW_COPY = {
 
 export type AnnualReviewCopy = Record<keyof typeof DEFAULT_ANNUAL_REVIEW_COPY, string>;
 
+const ANNUAL_REVIEW_COPY_KEYS = Object.keys(
+  DEFAULT_ANNUAL_REVIEW_COPY
+) as (keyof typeof DEFAULT_ANNUAL_REVIEW_COPY)[];
+
 export function mergeAnnualReviewCopy(
   value: Partial<Record<keyof AnnualReviewCopy, string>> | null | undefined
 ): AnnualReviewCopy {
-  return {
-    ...DEFAULT_ANNUAL_REVIEW_COPY,
-    ...value,
-  };
+  const merged = {} as AnnualReviewCopy;
+  for (const key of ANNUAL_REVIEW_COPY_KEYS) {
+    const storedValue = value?.[key];
+    merged[key] =
+      typeof storedValue === 'string' && storedValue.trim() !== ''
+        ? storedValue
+        : DEFAULT_ANNUAL_REVIEW_COPY[key];
+  }
+  return merged;
 }

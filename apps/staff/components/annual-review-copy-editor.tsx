@@ -218,7 +218,7 @@ export function AnnualReviewCopyEditor() {
                 <DialogTitle>Edit Annual Review form copy</DialogTitle>
                 <DialogDescription>
                   Publishing changes the wording scholars see the next time they open the form,
-                  including reviews already in progress.
+                  including drafts and reviews they have already submitted.
                 </DialogDescription>
               </DialogHeader>
 
