@@ -466,7 +466,7 @@ export function RequestsQueue({ onReviewed }: RequestsQueueProps) {
                 <SelectItem value="all">All Statuses</SelectItem>
                 {REQUEST_STATUSES.map((requestStatus) => (
                   <SelectItem key={requestStatus} value={requestStatus}>
-                    {requestStatus[0].toUpperCase() + requestStatus.slice(1)}
+                    {requestStatus.charAt(0).toUpperCase() + requestStatus.slice(1)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -527,6 +527,7 @@ export function RequestsQueue({ onReviewed }: RequestsQueueProps) {
                   return;
                 }
                 const [nextSortBy, nextOrder] = value.split(':');
+                if (!nextSortBy || (nextOrder !== 'asc' && nextOrder !== 'desc')) return;
                 replaceQuery({ sortBy: nextSortBy, sortOrder: nextOrder });
               }}
             >
