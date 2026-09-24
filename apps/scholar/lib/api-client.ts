@@ -318,5 +318,60 @@ export async function getRequiredDocumentDownloadUrl(
   return fetchAPI<{ downloadUrl: string }>(`/api/documents/${fileId}/download${query}`);
 }
 
+export type ScholarNotificationKind =
+  | 'task_assigned'
+  | 'resource_live'
+  | 'announcement_created';
+
+export interface ScholarNotification {
+  id: string;
+  kind: ScholarNotificationKind;
+  title: string;
+  body: string;
+  entityType: string;
+  entityId: string;
+  href: string;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface ScholarNotificationsFeedResponse {
+  items: ScholarNotification[];
+  total: number;
+  unreadCount: number;
+  page: number;
+  limit: number;
+}
+
+export async function getScholarNotificationsFeed(params?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+}): Promise<ScholarNotificationsFeedResponse> {
+  const queryParams = new URLSearchParams();
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, String(value));
+      }
+    });
+  }
+  const queryString = queryParams.toString();
+  return fetchAPI<ScholarNotificationsFeedResponse>(
+    `/api/notifications/scholar-feed${queryString ? `?${queryString}` : ''}`
+  );
+}
+
+export async function markScholarNotificationsRead(body: {
+  ids?: string[];
+  all?: boolean;
+}): Promise<{ updated: number }> {
+  return fetchAPI<{ updated: number }>('/api/notifications/scholar-read', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
 // Export the fetchAPI function and any other API functions as needed
 export { fetchAPI };

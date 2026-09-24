@@ -225,6 +225,13 @@
       "when": 1790149256065,
       "tag": "0031_striped_deathbird",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1790201281958,
+      "tag": "0032_sloppy_starhawk",
+      "breakpoints": true
     }
   ]
 }

@@ -15,3 +15,11 @@ export const STAFF_FEED_KINDS = {
 } as const;
 
 export type StaffFeedKind = (typeof STAFF_FEED_KINDS)[keyof typeof STAFF_FEED_KINDS];
+
+export const SCHOLAR_FEED_KINDS = {
+  taskAssigned: 'task_assigned',
+  resourceLive: 'resource_live',
+  announcementCreated: 'announcement_created',
+} as const;
+
+export type ScholarFeedKind = (typeof SCHOLAR_FEED_KINDS)[keyof typeof SCHOLAR_FEED_KINDS];

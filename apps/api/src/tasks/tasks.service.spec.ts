@@ -14,6 +14,10 @@ describe('TasksService', () => {
   let service: TasksService;
   let emailService: { sendTaskAssignmentNotification: jest.Mock };
   let objectStorage: { headObject: jest.Mock };
+  let notifications: {
+    notifyTaskCompleted: jest.Mock;
+    notifyTaskAssigned: jest.Mock;
+  };
 
   const createdTask = {
     id: 'task-1',
@@ -76,6 +80,11 @@ describe('TasksService', () => {
         .mockResolvedValue({ contentLength: 12, contentType: 'application/pdf' }),
     };
 
+    notifications = {
+      notifyTaskCompleted: jest.fn().mockResolvedValue(undefined),
+      notifyTaskAssigned: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TasksService,
@@ -83,9 +92,7 @@ describe('TasksService', () => {
         { provide: ObjectStorageService, useValue: objectStorage },
         {
           provide: NotificationsService,
-          useValue: {
-            notifyTaskCompleted: jest.fn().mockResolvedValue(undefined),
-          },
+          useValue: notifications,
         },
       ],
     }).compile();
@@ -135,6 +142,15 @@ describe('TasksService', () => {
         assignmentGroupId: null,
       })
     );
+    expect(notifications.notifyTaskAssigned).toHaveBeenCalledWith({
+      assignments: [
+        {
+          taskId: 'task-1',
+          scholarId: 'scholar-1',
+          title: 'Submit transcript',
+        },
+      ],
+    });
   });
 
   it('rejects task create from a non-staff user', async () => {
@@ -158,8 +174,8 @@ describe('TasksService', () => {
 
   it('creates a cohort of tasks for active prep-year scholars', async () => {
     const insertReturning = jest.fn().mockResolvedValue([
-      { ...createdTask, assignmentGroupId: 'group-1' },
-      { ...createdTask, id: 'task-2', assignmentGroupId: 'group-1' },
+      { ...createdTask, id: 'task-1', scholarId: 'prep-1', assignmentGroupId: 'group-1' },
+      { ...createdTask, id: 'task-2', scholarId: 'prep-2', assignmentGroupId: 'group-1' },
     ]);
     const db = {
       insert: jest.fn().mockReturnValue({
@@ -196,6 +212,20 @@ describe('TasksService', () => {
     expect(rows[0].assignmentGroupId).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
     );
+    expect(notifications.notifyTaskAssigned).toHaveBeenCalledWith({
+      assignments: [
+        {
+          taskId: 'task-1',
+          scholarId: 'prep-1',
+          title: 'Orientation checklist',
+        },
+        {
+          taskId: 'task-2',
+          scholarId: 'prep-2',
+          title: 'Orientation checklist',
+        },
+      ],
+    });
   });
 
   it('rejects cohort assign when scholarIds are also sent', async () => {

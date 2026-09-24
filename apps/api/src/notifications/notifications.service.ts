@@ -1,9 +1,11 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { and, count, desc, eq, ilike, inArray, isNull, ne, or } from 'drizzle-orm';
+import { and, count, desc, eq, ilike, inArray, isNull, ne, or, sql } from 'drizzle-orm';
+import { matchAnyNormalizedValue } from '../common/audience-filters/audience-filter.sql';
 import { database } from '../db/connection';
 import {
   notificationDeliveries,
   requestAssignees,
+  scholarNotifications,
   scholars,
   staff,
   staffNotifications,
@@ -15,6 +17,13 @@ import { EmailService } from '../email/email.service';
 import { PROPOSAL_STEPS } from '../proposals/proposal-steps';
 import { isTaskDueInCalendarDays, isTaskOverdue } from '../tasks/task-due';
 import {
+  type CreateScholarNotificationInput,
+  type GetScholarFeedQueryDto,
+  type MarkScholarNotificationsReadDto,
+  type ScholarFeedResponseDto,
+  type ScholarNotificationDto,
+} from './dto/scholar-notifications.dto';
+import {
   type CreateStaffNotificationInput,
   type GetStaffFeedQueryDto,
   type MarkStaffNotificationsReadDto,
@@ -23,7 +32,13 @@ import {
 } from './dto/staff-notifications.dto';
 import { brandedEmail, escapeHtml } from './email-layout';
 import { dueSoonWindowLabel, inactivityDays, reminderDays } from './notification-config';
-import { NOTIFICATION_KINDS, STAFF_FEED_KINDS, type StaffFeedKind } from './notification-kinds';
+import {
+  NOTIFICATION_KINDS,
+  SCHOLAR_FEED_KINDS,
+  type ScholarFeedKind,
+  STAFF_FEED_KINDS,
+  type StaffFeedKind,
+} from './notification-kinds';
 import {
   isMonthlySummaryDay,
   isStaleLastActivity,
@@ -309,6 +324,230 @@ export class NotificationsService {
         dedupeSuffix: input.academicYear,
       }))
     );
+  }
+
+  async createScholarNotifications(rows: CreateScholarNotificationInput[]): Promise<number> {
+    if (rows.length === 0) return 0;
+
+    const values = rows.map((row) => ({
+      recipientUserId: row.recipientUserId,
+      kind: row.kind,
+      title: row.title,
+      body: row.body,
+      entityType: row.entityType,
+      entityId: row.entityId,
+      href: row.href,
+      dedupeSuffix: row.dedupeSuffix ?? '',
+    }));
+
+    const inserted = await database
+      .insert(scholarNotifications)
+      .values(values)
+      .onConflictDoNothing()
+      .returning({ id: scholarNotifications.id });
+
+    return inserted.length;
+  }
+
+  async getScholarFeed(
+    userId: string,
+    query: GetScholarFeedQueryDto
+  ): Promise<ScholarFeedResponseDto> {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const offset = (page - 1) * limit;
+    const search = query.search?.trim();
+
+    const conditions = [eq(scholarNotifications.recipientUserId, userId)];
+    if (search) {
+      const pattern = `%${search}%`;
+      conditions.push(
+        or(
+          ilike(scholarNotifications.kind, pattern),
+          ilike(scholarNotifications.title, pattern),
+          ilike(scholarNotifications.body, pattern)
+        )!
+      );
+    }
+    const whereClause = and(...conditions);
+
+    const [items, totalRow, unreadRow] = await Promise.all([
+      database
+        .select()
+        .from(scholarNotifications)
+        .where(whereClause)
+        .orderBy(desc(scholarNotifications.createdAt))
+        .limit(limit)
+        .offset(offset),
+      database.select({ value: count() }).from(scholarNotifications).where(whereClause),
+      database
+        .select({ value: count() })
+        .from(scholarNotifications)
+        .where(
+          and(eq(scholarNotifications.recipientUserId, userId), isNull(scholarNotifications.readAt))
+        ),
+    ]);
+
+    return {
+      items: items.map(toScholarNotificationDto),
+      total: Number(totalRow[0]?.value ?? 0),
+      unreadCount: Number(unreadRow[0]?.value ?? 0),
+      page,
+      limit,
+    };
+  }
+
+  async markScholarNotificationsRead(
+    userId: string,
+    dto: MarkScholarNotificationsReadDto
+  ): Promise<{ updated: number }> {
+    const markAll = dto.all === true;
+    const ids = dto.ids ?? [];
+
+    if (markAll === Boolean(ids.length)) {
+      throw new BadRequestException('Provide either ids or all: true, not both or neither');
+    }
+
+    const now = new Date();
+    const conditions = [
+      eq(scholarNotifications.recipientUserId, userId),
+      isNull(scholarNotifications.readAt),
+    ];
+    if (!markAll) {
+      conditions.push(inArray(scholarNotifications.id, ids));
+    }
+
+    const updated = await database
+      .update(scholarNotifications)
+      .set({ readAt: now })
+      .where(and(...conditions))
+      .returning({ id: scholarNotifications.id });
+
+    return { updated: updated.length };
+  }
+
+  async notifyTaskAssigned(input: {
+    assignments: Array<{ taskId: string; scholarId: string; title: string }>;
+  }): Promise<void> {
+    if (input.assignments.length === 0) return;
+
+    const scholarIds = Array.from(new Set(input.assignments.map((row) => row.scholarId)));
+    const recipients = await database
+      .select({ scholarId: scholars.id, userId: scholars.userId })
+      .from(scholars)
+      .where(inArray(scholars.id, scholarIds));
+    const userIdByScholarId = new Map(recipients.map((row) => [row.scholarId, row.userId]));
+
+    await this.createScholarNotifications(
+      input.assignments.flatMap((assignment) => {
+        const recipientUserId = userIdByScholarId.get(assignment.scholarId);
+        if (!recipientUserId) return [];
+        return [
+          {
+            recipientUserId,
+            kind: SCHOLAR_FEED_KINDS.taskAssigned,
+            title: 'New task assigned',
+            body: assignment.title,
+            entityType: 'task',
+            entityId: assignment.taskId,
+            href: '/tasks',
+            dedupeSuffix: '',
+          },
+        ];
+      })
+    );
+  }
+
+  async notifyAnnouncementCreated(input: {
+    announcementId: string;
+    title: string;
+    scholarIds: string[];
+  }): Promise<void> {
+    if (input.scholarIds.length === 0) return;
+
+    const recipients = await database
+      .select({ userId: scholars.userId })
+      .from(scholars)
+      .where(inArray(scholars.id, input.scholarIds));
+
+    await this.createScholarNotifications(
+      recipients.map((recipient) => ({
+        recipientUserId: recipient.userId,
+        kind: SCHOLAR_FEED_KINDS.announcementCreated,
+        title: 'New announcement',
+        body: input.title,
+        entityType: 'announcement',
+        entityId: input.announcementId,
+        href: '/announcements',
+        dedupeSuffix: '',
+      }))
+    );
+  }
+
+  async notifyResourceLive(input: {
+    resourceId: string;
+    title: string;
+    filters: Array<{ filterType: string; filterValue: string }>;
+    dedupeSuffix: string;
+    previousFilters?: Array<{ filterType: string; filterValue: string }> | null;
+  }): Promise<void> {
+    const nextRecipientUserIds = await this.scholarUserIdsMatchingAudience(input.filters);
+    let recipientUserIds = nextRecipientUserIds;
+
+    if (input.previousFilters !== undefined && input.previousFilters !== null) {
+      const previousRecipientUserIds = await this.scholarUserIdsMatchingAudience(
+        input.previousFilters
+      );
+      const previousSet = new Set(previousRecipientUserIds);
+      recipientUserIds = nextRecipientUserIds.filter((userId) => !previousSet.has(userId));
+    }
+
+    if (recipientUserIds.length === 0) return;
+
+    await this.createScholarNotifications(
+      recipientUserIds.map((recipientUserId) => ({
+        recipientUserId,
+        kind: SCHOLAR_FEED_KINDS.resourceLive,
+        title: 'New resource available',
+        body: input.title,
+        entityType: 'resource',
+        entityId: input.resourceId,
+        href: '/resources',
+        dedupeSuffix: input.dedupeSuffix,
+      }))
+    );
+  }
+
+  private async scholarUserIdsMatchingAudience(
+    filters: Array<{ filterType: string; filterValue: string }>
+  ): Promise<string[]> {
+    const filtersByType = new Map<string, string[]>();
+    for (const filter of filters) {
+      const values = filtersByType.get(filter.filterType) ?? [];
+      values.push(filter.filterValue);
+      filtersByType.set(filter.filterType, values);
+    }
+
+    const scholarColumns = {
+      year: scholars.year,
+      program: scholars.program,
+      university: scholars.university,
+      status: scholars.status,
+      location: scholars.location,
+    };
+    const whereConditions = Array.from(filtersByType.entries()).map(([type, values]) => {
+      const column = scholarColumns[type as keyof typeof scholarColumns];
+      if (!column) return sql`FALSE`;
+      return matchAnyNormalizedValue(column, values);
+    });
+
+    const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
+    const matching = await database
+      .select({ userId: scholars.userId })
+      .from(scholars)
+      .where(whereClause);
+
+    return matching.map((row) => row.userId);
   }
 
   private async requestAssigneeUserIds(requestId: string): Promise<string[]> {
@@ -624,6 +863,22 @@ function toStaffNotificationDto(row: typeof staffNotifications.$inferSelect): St
     entityId: row.entityId,
     href: row.href,
     requestType: row.requestType,
+    readAt: row.readAt,
+    createdAt: row.createdAt,
+  };
+}
+
+function toScholarNotificationDto(
+  row: typeof scholarNotifications.$inferSelect
+): ScholarNotificationDto {
+  return {
+    id: row.id,
+    kind: row.kind as ScholarFeedKind,
+    title: row.title,
+    body: row.body,
+    entityType: row.entityType,
+    entityId: row.entityId,
+    href: row.href,
     readAt: row.readAt,
     createdAt: row.createdAt,
   };

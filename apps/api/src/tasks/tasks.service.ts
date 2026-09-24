@@ -97,7 +97,7 @@ export class TasksService {
   }
 
   private async notifyScholarsOfAssignment(
-    scholarIds: string[],
+    assignments: Array<{ taskId: string; scholarId: string }>,
     assignedBy: string,
     taskInfo: {
       title: string;
@@ -107,8 +107,9 @@ export class TasksService {
       dueDate: Date;
     }
   ): Promise<void> {
-    if (scholarIds.length === 0) return;
+    if (assignments.length === 0) return;
 
+    const scholarIds = Array.from(new Set(assignments.map((row) => row.scholarId)));
     const recipients = await this.db
       .select({
         scholarId: scholars.id,
@@ -127,8 +128,19 @@ export class TasksService {
 
     const assignerName = assigner?.name ?? null;
 
-    await Promise.allSettled(
-      recipients.map((recipient) =>
+    await Promise.allSettled([
+      this.notifications
+        .notifyTaskAssigned({
+          assignments: assignments.map((row) => ({
+            taskId: row.taskId,
+            scholarId: row.scholarId,
+            title: taskInfo.title,
+          })),
+        })
+        .catch((error) => {
+          console.error('Failed to create task assignment inbox notifications:', error);
+        }),
+      ...recipients.map((recipient) =>
         this.emailService
           .sendTaskAssignmentNotification(
             recipient.email,
@@ -143,8 +155,8 @@ export class TasksService {
           .catch((error) => {
             console.error(`Failed to send task assignment email to ${recipient.email}:`, error);
           })
-      )
-    );
+      ),
+    ]);
   }
 
   private async assertTaskAttachments(
@@ -197,13 +209,17 @@ export class TasksService {
       )
       .returning();
 
-    void this.notifyScholarsOfAssignment([task.scholarId], assignedBy, {
-      title: task.title,
-      description: task.description,
-      type: task.type,
-      priority: task.priority,
-      dueDate: task.dueDate,
-    });
+    await this.notifyScholarsOfAssignment(
+      [{ taskId: task.id, scholarId: task.scholarId }],
+      assignedBy,
+      {
+        title: task.title,
+        description: task.description,
+        type: task.type,
+        priority: task.priority,
+        dueDate: task.dueDate,
+      }
+    );
 
     return this.withOverdue(task);
   }
@@ -252,13 +268,17 @@ export class TasksService {
 
     const inserted = await this.db.insert(tasks).values(rows).returning();
 
-    void this.notifyScholarsOfAssignment(uniqueScholarIds, assignedBy, {
-      title: dto.title,
-      description: dto.description ?? null,
-      type: dto.type,
-      priority: dto.priority || 'medium',
-      dueDate,
-    });
+    await this.notifyScholarsOfAssignment(
+      inserted.map((task) => ({ taskId: task.id, scholarId: task.scholarId })),
+      assignedBy,
+      {
+        title: dto.title,
+        description: dto.description ?? null,
+        type: dto.type,
+        priority: dto.priority || 'medium',
+        dueDate,
+      }
+    );
 
     return { created: inserted.length, tasks: inserted.map((task) => this.withOverdue(task)) };
   }
