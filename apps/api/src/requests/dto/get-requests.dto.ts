@@ -1,5 +1,6 @@
 import { Transform, Type } from 'class-transformer';
 import {
+  IsDateString,
   IsEnum,
   IsIn,
   IsInt,
@@ -34,6 +35,26 @@ export class GetRequestsQueryDto {
   requestId?: string;
 
   @IsOptional()
+  @IsUUID()
+  scholarId?: string;
+
+  @IsOptional()
+  @IsString()
+  program?: string;
+
+  @IsOptional()
+  @IsString()
+  year?: string;
+
+  @IsOptional()
+  @IsDateString()
+  submittedFrom?: string;
+
+  @IsOptional()
+  @IsDateString()
+  submittedTo?: string;
+
+  @IsOptional()
   @IsIn(REQUEST_TYPES)
   type?: RequestType;
 
@@ -46,8 +67,8 @@ export class GetRequestsQueryDto {
   priority?: 'high' | 'medium' | 'low';
 
   @IsOptional()
-  @IsEnum(['submittedDate', 'status', 'priority', 'createdAt'])
-  sortBy?: string = 'submittedDate';
+  @IsEnum(['submittedDate', 'scholarName', 'type', 'status', 'priority', 'createdAt'])
+  sortBy?: 'submittedDate' | 'scholarName' | 'type' | 'status' | 'priority' | 'createdAt';
 
   @IsOptional()
   @IsEnum(['asc', 'desc'])
