@@ -11,12 +11,15 @@ export default function ScholarRootLayout({ children }: { children: React.ReactN
   const refetchSession = useRef(refetch);
   refetchSession.current = refetch;
 
-  // useSession can miss a response and stay pending (seen in CI e2e on mobile
-  // navigations). Keep asking until the client leaves the pending state.
+  // useSession can miss the first response and stay pending. Keep asking
+  // until it settles; one retry is not enough when the first request is lost.
   useEffect(() => {
     if (!isPending) return;
+    let attempts = 0;
     const interval = window.setInterval(() => {
+      attempts += 1;
       void refetchSession.current();
+      if (attempts >= 8) window.clearInterval(interval);
     }, 1000);
     return () => window.clearInterval(interval);
   }, [isPending]);
