@@ -17,6 +17,7 @@ import { AnnualReviewsReport } from '../components/annual-reviews-report';
 import { InvitationsManagement } from '../components/invitations-management';
 import { LoginPage } from '../components/login-page';
 import { MyProfile } from '../components/my-profile';
+import { PlatformLinksEditor } from '../components/platform-links-editor';
 import { PrepCohortReport } from '../components/prep-cohort-report';
 import { PrepDocumentsTracker } from '../components/prep-documents-tracker';
 import { PrepTasksTracker } from '../components/prep-tasks-tracker';
@@ -635,6 +636,7 @@ function StaffDashboardContent() {
 
             {activeTab === 'prep-reports' && (
               <div className="space-y-6">
+                <PlatformLinksEditor />
                 <Card className="print:border-0 print:shadow-none">
                   <CardContent className="p-4 sm:p-5 print:p-0">
                     <PrepCohortReport
