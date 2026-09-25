@@ -1,5 +1,6 @@
 // Export all schemas and types
 export * from './announcements';
+export * from './annual-review-copy';
 export * from './annual-updates';
 export * from './coordinator-notes';
 export * from './documents';
@@ -12,6 +13,8 @@ export * from './requests';
 export * from './required-documents';
 export * from './resources';
 export * from './scholars';
+export * from './scholar-notifications';
+export * from './staff-notifications';
 export * from './task-responses';
 export * from './tasks';
 export * from './users';

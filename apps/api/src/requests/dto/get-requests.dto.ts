@@ -1,5 +1,15 @@
 import { Transform, Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  Min,
+} from 'class-validator';
+import { REQUEST_TYPES, type RequestType } from '../request-types';
 
 export class GetRequestsQueryDto {
   @IsOptional()
@@ -20,17 +30,12 @@ export class GetRequestsQueryDto {
   search?: string;
 
   @IsOptional()
-  @IsEnum([
-    'extenuating_circumstances',
-    'summer_funding_request',
-    'summer_funding_report',
-    'requirement_submission',
-  ])
-  type?:
-    | 'extenuating_circumstances'
-    | 'summer_funding_request'
-    | 'summer_funding_report'
-    | 'requirement_submission';
+  @IsUUID()
+  requestId?: string;
+
+  @IsOptional()
+  @IsIn(REQUEST_TYPES)
+  type?: RequestType;
 
   @IsOptional()
   @IsEnum(['pending', 'approved', 'rejected', 'reviewed', 'commented'])
@@ -81,11 +86,7 @@ export class RequestResponseDto {
   scholarId: string;
   scholarName: string;
   scholarEmail: string;
-  type:
-    | 'extenuating_circumstances'
-    | 'summer_funding_request'
-    | 'summer_funding_report'
-    | 'requirement_submission';
+  type: RequestType;
   description: string;
   formData?: Record<string, any> | null;
   priority: 'high' | 'medium' | 'low';

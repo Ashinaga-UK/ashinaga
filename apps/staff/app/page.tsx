@@ -1,5 +1,6 @@
 'use client';
 
+import { useQueryClient } from '@tanstack/react-query';
 import {
   AlertCircle,
   FileText,
@@ -11,8 +12,17 @@ import {
   Users,
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { forwardRef, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  forwardRef,
+  Suspense,
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { AnnouncementCreator } from '../components/announcement-creator';
+import { AnnualReviewCopyEditor } from '../components/annual-review-copy-editor';
 import { AnnualReviewsReport } from '../components/annual-reviews-report';
 import { InvitationsManagement } from '../components/invitations-management';
 import { LoginPage } from '../components/login-page';
@@ -33,10 +43,12 @@ import {
 } from '../components/scholar-profile';
 import { StaffInviteDialog } from '../components/staff-invite-dialog';
 import { StaffLayout } from '../components/staff-layout';
+import { StaffOtherRequestDialog } from '../components/staff-other-request-dialog';
 import { TaskAssignment } from '../components/task-assignment';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
+import { Input } from '../components/ui/input';
 import {
   Select,
   SelectContent,
@@ -57,8 +69,20 @@ import {
   type ScholarStats,
 } from '../lib/api-client';
 import { signOut, useSession } from '../lib/auth-client';
-import { useAnnouncements } from '../lib/hooks/use-queries';
+import { queryKeys, useAnnouncements } from '../lib/hooks/use-queries';
 import { cn } from '../lib/utils';
+
+const REQUEST_STATUS_FILTERS = [
+  'pending',
+  'approved',
+  'rejected',
+  'reviewed',
+  'commented',
+] as const;
+
+function isRequestStatusFilter(value: string): value is (typeof REQUEST_STATUS_FILTERS)[number] {
+  return (REQUEST_STATUS_FILTERS as readonly string[]).includes(value);
+}
 
 type StaffDashboardView =
   | 'dashboard'
@@ -112,12 +136,16 @@ function StaffDashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const session = useSession();
+  const queryClient = useQueryClient();
 
   // Get values from URL or use defaults
   const tabFromUrl = searchParams.get('tab') || 'overview';
   const viewFromUrl = searchParams.get('view') || 'dashboard';
   const scholarIdFromUrl = searchParams.get('scholarId');
   const scholarTabFromUrl = searchParams.get('scholarTab') || 'profile';
+  const requestSearchFromUrl = searchParams.get('search') || '';
+  const requestStatusFromUrl = searchParams.get('status') || '';
+  const requestIdFromUrl = searchParams.get('requestId');
 
   const [activeTab, setActiveTab] = useState(tabFromUrl);
   const [currentView, setCurrentView] = useState<StaffDashboardView>(
@@ -128,7 +156,12 @@ function StaffDashboardContent() {
     isScholarProfileTab(scholarTabFromUrl) ? scholarTabFromUrl : 'profile'
   );
   const [requestCategoryFilter, setRequestCategoryFilter] = useState('all');
-  const [requestStatusFilter, setRequestStatusFilter] = useState('all');
+  const [requestStatusFilter, setRequestStatusFilter] = useState(() =>
+    isRequestStatusFilter(requestStatusFromUrl) ? requestStatusFromUrl : 'all'
+  );
+  const [requestSearch, setRequestSearch] = useState(requestSearchFromUrl);
+  const deferredRequestSearch = useDeferredValue(requestSearch.trim());
+  const [highlightedRequestId, setHighlightedRequestId] = useState<string | null>(requestIdFromUrl);
   const [announcementYearFilter, setAnnouncementYearFilter] = useState('all');
   const [announcementProgramFilter, setAnnouncementProgramFilter] = useState('all');
   const [announcementUniversityFilter, setAnnouncementUniversityFilter] = useState('all');
@@ -197,6 +230,9 @@ function StaffDashboardContent() {
     const newView = searchParams.get('view') || 'dashboard';
     const newScholarId = searchParams.get('scholarId');
     const newScholarTab = searchParams.get('scholarTab') || 'profile';
+    const newRequestSearch = searchParams.get('search') || '';
+    const newRequestStatus = searchParams.get('status') || '';
+    const newRequestId = searchParams.get('requestId');
 
     setActiveTab(newTab);
     setCurrentView(
@@ -209,6 +245,19 @@ function StaffDashboardContent() {
     );
     setSelectedScholarId(newScholarId);
     setScholarProfileTab(isScholarProfileTab(newScholarTab) ? newScholarTab : 'profile');
+    if (newTab === 'requests') {
+      setRequestSearch(newRequestSearch);
+      if (newRequestId) {
+        // Deep-links must surface the target row — clear filters that can hide it.
+        setRequestCategoryFilter('all');
+        setRequestStatusFilter('all');
+      } else if (isRequestStatusFilter(newRequestStatus)) {
+        setRequestStatusFilter(newRequestStatus);
+      } else if (!newRequestStatus) {
+        // Keep local filter when URL has no status (manual filter changes)
+      }
+      setHighlightedRequestId(newRequestId);
+    }
   }, [searchParams]);
 
   const _getPriorityColor = (priority: string) => {
@@ -248,13 +297,15 @@ function StaffDashboardContent() {
     setRequestsError(null);
     try {
       const response = await getRequests({
+        search: deferredRequestSearch || undefined,
         type:
           requestCategoryFilter !== 'all'
             ? (requestCategoryFilter as
                 | 'extenuating_circumstances'
                 | 'summer_funding_request'
                 | 'summer_funding_report'
-                | 'requirement_submission')
+                | 'requirement_submission'
+                | 'others')
             : undefined,
         status:
           requestStatusFilter !== 'all'
@@ -268,14 +319,39 @@ function StaffDashboardContent() {
         sortBy: 'submittedDate',
         sortOrder: 'desc',
       });
-      setRequests(response.data);
+
+      let nextRequests = response.data;
+      if (
+        highlightedRequestId &&
+        !nextRequests.some((request) => request.id === highlightedRequestId)
+      ) {
+        const targeted = await getRequests({
+          requestId: highlightedRequestId,
+          limit: 1,
+        });
+        const match = targeted.data[0];
+        if (match) {
+          nextRequests = [match, ...nextRequests];
+        }
+      }
+
+      setRequests(nextRequests);
     } catch (err) {
       setRequestsError(err instanceof Error ? err.message : 'Failed to load requests');
       console.error('Error fetching requests:', err);
     } finally {
       setRequestsLoading(false);
     }
-  }, [requestCategoryFilter, requestStatusFilter]);
+  }, [highlightedRequestId, requestCategoryFilter, requestStatusFilter, deferredRequestSearch]);
+
+  useEffect(() => {
+    if (!highlightedRequestId || requestsLoading) return;
+    const frame = requestAnimationFrame(() => {
+      const el = document.getElementById(`request-${highlightedRequestId}`);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [highlightedRequestId, requestsLoading]);
 
   const fetchScholarStats = useCallback(async () => {
     setScholarStatsLoading(true);
@@ -341,6 +417,7 @@ function StaffDashboardContent() {
     console.log('Request updated:', { requestId, status, comment });
     fetchRequests();
     fetchRequestStats();
+    void queryClient.invalidateQueries({ queryKey: queryKeys.requestStats });
   };
 
   const navigateToScholars = () => {
@@ -653,6 +730,7 @@ function StaffDashboardContent() {
 
             {activeTab === 'annual-reviews' && (
               <div className="space-y-6">
+                <AnnualReviewCopyEditor />
                 <Card>
                   <CardContent className="p-4 sm:p-5">
                     <AnnualReviewsReport
@@ -672,6 +750,13 @@ function StaffDashboardContent() {
                 <Card>
                   <div className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                      <Input
+                        value={requestSearch}
+                        onChange={(event) => setRequestSearch(event.target.value)}
+                        placeholder="Search by student name"
+                        className="w-full sm:w-[220px]"
+                        aria-label="Search requests by student name"
+                      />
                       <Select
                         value={requestCategoryFilter}
                         onValueChange={setRequestCategoryFilter}
@@ -693,6 +778,7 @@ function StaffDashboardContent() {
                           <SelectItem value="requirement_submission">
                             Requirement Submission
                           </SelectItem>
+                          <SelectItem value="others">Others</SelectItem>
                         </SelectContent>
                       </Select>
                       <Select value={requestStatusFilter} onValueChange={setRequestStatusFilter}>
@@ -709,6 +795,12 @@ function StaffDashboardContent() {
                         </SelectContent>
                       </Select>
                     </div>
+                    <StaffOtherRequestDialog
+                      onSuccess={() => {
+                        void fetchRequests();
+                        void fetchRequestStats();
+                      }}
+                    />
                   </div>
                   <CardContent className="p-4 sm:p-5">
                     {requestsLoading ? (
@@ -742,11 +834,20 @@ function StaffDashboardContent() {
                     ) : (
                       <div className="space-y-4">
                         {requests.map((request) => (
-                          <RequestManagement
+                          <div
                             key={request.id}
-                            request={request}
-                            onStatusUpdate={handleRequestStatusUpdate}
-                          />
+                            id={`request-${request.id}`}
+                            className={cn(
+                              'rounded-lg transition-colors',
+                              highlightedRequestId === request.id &&
+                                'ring-2 ring-brand ring-offset-2 ring-offset-background'
+                            )}
+                          >
+                            <RequestManagement
+                              request={request}
+                              onStatusUpdate={handleRequestStatusUpdate}
+                            />
+                          </div>
                         ))}
                       </div>
                     )}

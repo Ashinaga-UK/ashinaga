@@ -1,12 +1,14 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { ScholarSessionProvider } from '../lib/scholar-session';
 import { MyProfile } from './my-profile';
 
 const mockGetMyProfile = jest.fn();
+const mockUpdateMyProfile = jest.fn();
 
 jest.mock('../lib/api/profile', () => ({
   getMyProfile: (...args: unknown[]) => mockGetMyProfile(...args),
-  updateMyProfile: jest.fn(),
+  updateMyProfile: (...args: unknown[]) => mockUpdateMyProfile(...args),
 }));
 
 jest.mock('next/image', () => ({
@@ -14,58 +16,60 @@ jest.mock('next/image', () => ({
   default: (props: { alt?: string }) => <span role="img" aria-label={props.alt || ''} />,
 }));
 
+const prepProfile = {
+  id: 's1',
+  userId: 'u1',
+  name: 'Ada Prep',
+  email: 'ada@example.com',
+  program: 'Prep',
+  year: 'TBD',
+  university: 'TBD',
+  status: 'active',
+  startDate: '2026-09-01',
+  programStage: 'prep_year',
+  intendedUniversity: 'University of Edinburgh',
+  intendedCourse: 'Computer Science',
+  degreePathway: 'Foundation Year',
+  platformSetups: [
+    {
+      platformId: 'p1',
+      slug: 'coursera',
+      name: 'Coursera',
+      signpostingUrl: 'https://www.coursera.org',
+      sortOrder: 2,
+      status: 'pending' as const,
+    },
+    {
+      platformId: 'p2',
+      slug: 'duolingo',
+      name: 'Duolingo',
+      signpostingUrl: null,
+      sortOrder: 3,
+      status: 'yes' as const,
+    },
+    {
+      platformId: 'p3',
+      slug: 'ashinaga_connect',
+      name: 'Ashinaga Connect',
+      signpostingUrl: 'javascript:alert(1)',
+      sortOrder: 4,
+      status: 'no' as const,
+    },
+  ],
+  goals: [],
+  tasks: [],
+  documents: [],
+  createdAt: '2026-01-01',
+  updatedAt: '2026-01-01',
+};
+
 describe('MyProfile', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it('shows Prep Year Candidate badge and intended pathway card', async () => {
-    mockGetMyProfile.mockResolvedValue({
-      id: 's1',
-      userId: 'u1',
-      name: 'Ada Prep',
-      email: 'ada@example.com',
-      program: 'Prep',
-      year: 'TBD',
-      university: 'TBD',
-      status: 'active',
-      startDate: '2026-09-01',
-      programStage: 'prep_year',
-      intendedUniversity: 'University of Edinburgh',
-      intendedCourse: 'Computer Science',
-      degreePathway: 'Foundation Year',
-      platformSetups: [
-        {
-          platformId: 'p1',
-          slug: 'coursera',
-          name: 'Coursera',
-          signpostingUrl: 'https://www.coursera.org',
-          sortOrder: 2,
-          status: 'pending' as const,
-        },
-        {
-          platformId: 'p2',
-          slug: 'duolingo',
-          name: 'Duolingo',
-          signpostingUrl: null,
-          sortOrder: 3,
-          status: 'yes' as const,
-        },
-        {
-          platformId: 'p3',
-          slug: 'ashinaga_connect',
-          name: 'Ashinaga Connect',
-          signpostingUrl: 'javascript:alert(1)',
-          sortOrder: 4,
-          status: 'no' as const,
-        },
-      ],
-      goals: [],
-      tasks: [],
-      documents: [],
-      createdAt: '2026-01-01',
-      updatedAt: '2026-01-01',
-    });
+    mockGetMyProfile.mockResolvedValue(prepProfile);
 
     render(
       <ScholarSessionProvider>
@@ -98,6 +102,31 @@ describe('MyProfile', () => {
     expect(screen.getByTestId('platform-icon-ashinaga_connect')).toBeInTheDocument();
     expect(screen.queryByText('Academic Information')).not.toBeInTheDocument();
     expect(screen.queryByText('Academic Year')).not.toBeInTheDocument();
+  });
+
+  it('saves a custom intended course for a Prep Year candidate', async () => {
+    const user = userEvent.setup();
+    const updatedProfile = { ...prepProfile, intendedCourse: 'Marine Robotics' };
+    mockGetMyProfile.mockResolvedValue(prepProfile);
+    mockUpdateMyProfile.mockResolvedValue(updatedProfile);
+
+    render(
+      <ScholarSessionProvider>
+        <MyProfile />
+      </ScholarSessionProvider>
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'Edit Profile' }));
+    const intendedCourse = screen.getByLabelText('Intended Course');
+    await user.clear(intendedCourse);
+    await user.type(intendedCourse, 'Marine Robotics');
+    await user.click(screen.getByRole('button', { name: 'Save Changes' }));
+
+    await waitFor(() =>
+      expect(mockUpdateMyProfile).toHaveBeenCalledWith(
+        expect.objectContaining({ intendedCourse: 'Marine Robotics' })
+      )
+    );
   });
 
   it('keeps academic information for confirmed scholars', async () => {

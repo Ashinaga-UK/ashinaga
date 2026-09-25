@@ -7,6 +7,7 @@ export const requestTypeEnum = pgEnum('request_type', [
   'summer_funding_request',
   'summer_funding_report',
   'requirement_submission',
+  'others',
 ]);
 
 export const requestStatusEnum = pgEnum('request_status', [

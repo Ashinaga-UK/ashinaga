@@ -16,6 +16,7 @@ import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
 import { StaffGuard } from '../auth/staff.guard';
 import { CreateRequestDto, CreateRequestResponseDto } from './dto/create-request.dto';
+import { CreateStaffRequestDto } from './dto/create-staff-request.dto';
 import { GetRequestsQueryDto, GetRequestsResponseDto } from './dto/get-requests.dto';
 import { RespondToRequestDto } from './dto/respond-to-request.dto';
 import { RequestsService } from './requests.service';
@@ -109,6 +110,20 @@ export class RequestsController {
       throw new Error('User not authenticated');
     }
     return this.requestsService.createRequest(createRequestDto, userId);
+  }
+
+  @Post('staff')
+  @UseGuards(StaffGuard)
+  async createStaffRequest(
+    @Body(new ValidationPipe({ transform: true, whitelist: true }))
+    createRequestDto: CreateStaffRequestDto,
+    @Req() req: AuthenticatedRequest
+  ): Promise<CreateRequestResponseDto> {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new UnauthorizedException('User not authenticated');
+    }
+    return this.requestsService.createStaffRequest(createRequestDto, userId);
   }
 
   @Post(':id/respond')

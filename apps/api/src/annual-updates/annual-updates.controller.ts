@@ -17,6 +17,7 @@ import { AuthGuard } from '../auth/auth.guard';
 import { StaffGuard } from '../auth/staff.guard';
 import { AnnualUpdatesService } from './annual-updates.service';
 import { ExportAnnualUpdatesDto } from './dto/export-annual-updates.dto';
+import { UpdateAnnualReviewCopyDto } from './dto/update-annual-review-copy.dto';
 import { UpsertAnnualUpdateDto } from './dto/upsert-annual-update.dto';
 
 interface AuthenticatedRequest {
@@ -24,6 +25,7 @@ interface AuthenticatedRequest {
     id: string;
     email?: string;
     userType?: string;
+    staffRole?: string;
   };
 }
 
@@ -33,6 +35,21 @@ interface AuthenticatedRequest {
 @UseGuards(AuthGuard)
 export class AnnualUpdatesController {
   constructor(private readonly annualUpdatesService: AnnualUpdatesService) {}
+
+  @Get('copy')
+  async getAnnualReviewCopy(@Req() req: AuthenticatedRequest) {
+    return this.annualUpdatesService.getAnnualReviewCopy(req.user.id, req.user.userType);
+  }
+
+  @Put('copy')
+  @UseGuards(StaffGuard)
+  async updateAnnualReviewCopy(
+    @Req() req: AuthenticatedRequest,
+    @Body(new ValidationPipe({ transform: true, whitelist: true }))
+    dto: UpdateAnnualReviewCopyDto
+  ) {
+    return this.annualUpdatesService.updateAnnualReviewCopy(req.user.id, req.user.staffRole, dto);
+  }
 
   @Get()
   @UseGuards(StaffGuard)

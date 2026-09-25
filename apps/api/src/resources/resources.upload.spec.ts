@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { database } from '../db/connection';
+import { NotificationsService } from '../notifications/notifications.service';
 import { ObjectStorageService } from '../storage/object-storage';
 import { ResourcesService } from './resources.service';
 
@@ -14,6 +15,7 @@ jest.mock('../db/connection', () => ({
 
 describe('ResourcesService file uploads', () => {
   let service: ResourcesService;
+  let notifications: { notifyResourceLive: jest.Mock };
   const objectStorage = {
     createUploadUrl: jest.fn(),
     createDownloadUrl: jest.fn(),
@@ -24,12 +26,19 @@ describe('ResourcesService file uploads', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    notifications = {
+      notifyResourceLive: jest.fn().mockResolvedValue(undefined),
+    };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ResourcesService,
         {
           provide: ObjectStorageService,
           useValue: objectStorage,
+        },
+        {
+          provide: NotificationsService,
+          useValue: notifications,
         },
       ],
     }).compile();
@@ -147,6 +156,74 @@ describe('ResourcesService file uploads', () => {
     expect(result.sourceType).toBe('file');
     expect(result.url).toBeNull();
     expect(result.fileName).toBe('handbook.pdf');
+    expect(notifications.notifyResourceLive).not.toHaveBeenCalled();
+  });
+
+  it('notifies scholars when a file resource is created as live', async () => {
+    objectStorage.headObject.mockResolvedValue({
+      contentType: 'application/pdf',
+      contentLength: 2048,
+    });
+    objectStorage.copyObject.mockResolvedValue(undefined);
+    objectStorage.deleteObject.mockResolvedValue(undefined);
+
+    const created = {
+      id: 'resource-live-1',
+      title: 'Live Handbook',
+      description: 'Reference',
+      type: 'Handbook',
+      category: 'Handbook',
+      sourceType: 'file',
+      url: null,
+      fileKey: 'resources/resource-live-1/handbook.pdf',
+      fileName: 'handbook.pdf',
+      fileMimeType: 'application/pdf',
+      fileSizeBytes: 2048,
+      status: 'live',
+      archived: false,
+      createdAt: new Date('2026-01-01'),
+      updatedAt: new Date('2026-01-01'),
+    };
+
+    (database.transaction as jest.Mock).mockImplementation(async (callback) => {
+      const tx = {
+        insert: jest.fn().mockReturnValue({
+          values: jest.fn().mockReturnValue({
+            returning: jest.fn().mockResolvedValue([created]),
+          }),
+        }),
+        delete: jest.fn().mockReturnValue({
+          where: jest.fn().mockResolvedValue(undefined),
+        }),
+      };
+      return callback(tx);
+    });
+
+    await service.createResource(
+      {
+        title: 'Live Handbook',
+        description: 'Reference',
+        type: 'Handbook',
+        category: 'Handbook',
+        sourceType: 'file',
+        status: 'live',
+        pendingFileKey: 'resources/pending/upload-1-handbook.pdf',
+        fileName: 'handbook.pdf',
+        fileMimeType: 'application/pdf',
+        fileSizeBytes: 2048,
+        filters: [{ filterType: 'program', filterValue: 'Medicine' }],
+      },
+      'staff-1'
+    );
+
+    expect(notifications.notifyResourceLive).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resourceId: 'resource-live-1',
+        title: 'Live Handbook',
+        filters: [{ filterType: 'program', filterValue: 'Medicine' }],
+        dedupeSuffix: expect.stringMatching(/^live:/),
+      })
+    );
   });
 
   it('keeps the original filename for display', async () => {

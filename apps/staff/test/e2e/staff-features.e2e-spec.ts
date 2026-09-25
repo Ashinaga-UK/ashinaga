@@ -25,8 +25,8 @@ test.describe('Staff Portal – new features', () => {
     page,
   }) => {
     await expect(page.getByRole('link', { name: 'Invitations', exact: true })).toBeVisible();
-    await page.goto('/?tab=invitations');
-    await expect(page.getByText('Staff & Invitations')).toBeVisible();
+    await openStaffSection(page, 'Invitations');
+    await expect(page.getByText('Staff & Invitations')).toBeVisible({ timeout: 15_000 });
 
     // Sub-sections are rendered as tabs on desktop and as a select on narrow viewports.
     const activeStaffTab = page.getByRole('tab', { name: 'Active Staff', exact: true });

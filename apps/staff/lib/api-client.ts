@@ -180,6 +180,12 @@ export interface AnnualUpdateReportRow {
   university: string;
 }
 
+export interface AnnualReviewCopyResponse {
+  version: number;
+  strings: Record<string, string>;
+  canEdit: boolean;
+}
+
 export interface ScholarProfile {
   id: string;
   userId: string;
@@ -424,6 +430,20 @@ export async function getAnnualUpdatesByScholar(scholarId: string): Promise<Annu
   return fetchAPI<AnnualUpdate[]>(`/api/annual-updates/scholar/${scholarId}`);
 }
 
+export async function getAnnualReviewCopy(): Promise<AnnualReviewCopyResponse> {
+  return fetchAPI<AnnualReviewCopyResponse>('/api/annual-updates/copy');
+}
+
+export async function updateAnnualReviewCopy(
+  version: number,
+  strings: Record<string, string>
+): Promise<AnnualReviewCopyResponse> {
+  return fetchAPI<AnnualReviewCopyResponse>('/api/annual-updates/copy', {
+    method: 'PUT',
+    body: JSON.stringify({ version, strings }),
+  });
+}
+
 export async function getAnnualUpdatesReport(): Promise<AnnualUpdateReportRow[]> {
   return fetchAPI<AnnualUpdateReportRow[]>('/api/annual-updates');
 }
@@ -553,7 +573,8 @@ export interface Request {
     | 'extenuating_circumstances'
     | 'summer_funding_request'
     | 'summer_funding_report'
-    | 'requirement_submission';
+    | 'requirement_submission'
+    | 'others';
   description: string;
   formData?: Record<string, unknown> | null;
   priority: 'high' | 'medium' | 'low';
@@ -573,11 +594,13 @@ export interface GetRequestsParams {
   page?: number;
   limit?: number;
   search?: string;
+  requestId?: string;
   type?:
     | 'extenuating_circumstances'
     | 'summer_funding_request'
     | 'summer_funding_report'
-    | 'requirement_submission';
+    | 'requirement_submission'
+    | 'others';
   status?: 'pending' | 'approved' | 'rejected' | 'reviewed' | 'commented';
   priority?: 'high' | 'medium' | 'low';
   sortBy?: 'submittedDate' | 'status' | 'priority' | 'createdAt';
@@ -606,6 +629,22 @@ export async function getRequests(params?: GetRequestsParams): Promise<GetReques
   return fetchAPI<GetRequestsResponse>(endpoint);
 }
 
+export interface CreateStaffRequestData {
+  scholarId: string;
+  description: string;
+  priority?: 'high' | 'medium' | 'low';
+}
+
+export async function createStaffRequest(data: CreateStaffRequestData): Promise<{ id: string }> {
+  return fetchAPI<{ id: string }>('/api/requests/staff', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+}
+
 export interface RequestStats {
   total: number;
   pending: number;
@@ -617,6 +656,65 @@ export interface RequestStats {
 
 export async function getRequestStats(): Promise<RequestStats> {
   return fetchAPI<RequestStats>('/api/requests/stats');
+}
+
+export type StaffNotificationKind =
+  | 'request_received'
+  | 'request_status_changed'
+  | 'task_completed'
+  | 'annual_review_submitted';
+
+export interface StaffNotification {
+  id: string;
+  kind: StaffNotificationKind;
+  title: string;
+  body: string;
+  scholarId: string | null;
+  scholarName: string | null;
+  entityType: string;
+  entityId: string;
+  href: string;
+  requestType: string | null;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface StaffNotificationsFeedResponse {
+  items: StaffNotification[];
+  total: number;
+  unreadCount: number;
+  page: number;
+  limit: number;
+}
+
+export async function getStaffNotificationsFeed(params?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+}): Promise<StaffNotificationsFeedResponse> {
+  const queryParams = new URLSearchParams();
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, String(value));
+      }
+    });
+  }
+  const queryString = queryParams.toString();
+  return fetchAPI<StaffNotificationsFeedResponse>(
+    `/api/notifications/staff-feed${queryString ? `?${queryString}` : ''}`
+  );
+}
+
+export async function markStaffNotificationsRead(body: {
+  ids?: string[];
+  all?: boolean;
+}): Promise<{ updated: number }> {
+  return fetchAPI<{ updated: number }>('/api/notifications/read', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
 }
 
 export async function updateRequestStatus(
