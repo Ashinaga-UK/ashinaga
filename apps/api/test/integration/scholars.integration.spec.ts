@@ -6,11 +6,23 @@
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 import type { INestApplication } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
+import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import request from 'supertest';
 import { scholars, users } from '../../src/db/schema';
-import { createAuthenticatedIntegrationApp, createIntegrationApp } from './helpers/create-app';
+import {
+  type AuthContext,
+  createAuthenticatedIntegrationApp,
+  createIntegrationApp,
+} from './helpers/create-app';
+import {
+  cleanupSeeded,
+  getTestPool,
+  type SeededScholar,
+  type SeededStaff,
+  seedScholarUser,
+  seedStaffUser,
+} from './helpers/seed';
 
 describe('Scholars API (integration)', () => {
   let app: INestApplication;
@@ -245,6 +257,126 @@ describe('Scholars API (integration)', () => {
       await request(authedApp.getHttpServer())
         .get('/api/scholars/00000000-0000-0000-0000-000000000000/profile')
         .expect(404);
+    });
+  });
+
+  /**
+   * ASH-118: prep_year → scholar must fail when university/year are still placeholders.
+   * Hits the real HTTP + DB path via PATCH /api/scholars/:id/profile.
+   */
+  describe('PATCH /api/scholars/:id/profile (prep_year enroll guards)', () => {
+    let enrollApp: INestApplication;
+    let auth: AuthContext;
+    let enrollPool: Pool;
+    let enrollDb: NodePgDatabase;
+    let staffActor: SeededStaff;
+    let placeholderPrep: SeededScholar;
+    let readyPrep: SeededScholar;
+
+    beforeAll(async () => {
+      const built = await createAuthenticatedIntegrationApp();
+      enrollApp = built.app;
+      auth = built.auth;
+
+      const testDatabase = getTestPool();
+      enrollPool = testDatabase.pool;
+      enrollDb = testDatabase.db;
+
+      staffActor = await seedStaffUser(enrollDb, { name: 'Enroll Guard Staff' });
+      placeholderPrep = await seedScholarUser(enrollDb, {
+        name: 'Placeholder Prep Candidate',
+        programStage: 'prep_year',
+        university: 'TBD',
+        year: 'TBD',
+      });
+      readyPrep = await seedScholarUser(enrollDb, {
+        name: 'Ready Prep Candidate',
+        programStage: 'prep_year',
+        university: 'University of Edinburgh',
+        year: 'Year 1',
+      });
+    }, 30000);
+
+    afterAll(async () => {
+      await cleanupSeeded(enrollDb, {
+        userIds: [staffActor.userId, placeholderPrep.userId, readyPrep.userId],
+        scholarIds: [placeholderPrep.scholarId, readyPrep.scholarId],
+      });
+      await enrollPool.end();
+      if (enrollApp) await enrollApp.close();
+    }, 15000);
+
+    function asStaff() {
+      auth.setUser({
+        id: staffActor.userId,
+        email: staffActor.email,
+        userType: 'staff',
+      });
+    }
+
+    it('rejects prep_year → scholar when university and year are TBD', async () => {
+      asStaff();
+
+      const res = await request(enrollApp.getHttpServer())
+        .patch(`/api/scholars/${placeholderPrep.scholarId}/profile`)
+        .send({ programStage: 'scholar' })
+        .expect(400);
+
+      expect(res.body.message).toMatch(/university and academic year are required/i);
+
+      const [row] = await enrollDb
+        .select({
+          programStage: scholars.programStage,
+          university: scholars.university,
+          year: scholars.year,
+        })
+        .from(scholars)
+        .where(eq(scholars.id, placeholderPrep.scholarId))
+        .limit(1);
+
+      expect(row?.programStage).toBe('prep_year');
+      expect(row?.university).toBe('TBD');
+      expect(row?.year).toBe('TBD');
+    });
+
+    it('rejects prep_year → scholar when only university remains a placeholder', async () => {
+      asStaff();
+
+      const res = await request(enrollApp.getHttpServer())
+        .patch(`/api/scholars/${placeholderPrep.scholarId}/profile`)
+        .send({ programStage: 'scholar', year: 'Year 1' })
+        .expect(400);
+
+      expect(res.body.message).toMatch(/university and academic year are required/i);
+
+      const [row] = await enrollDb
+        .select({ programStage: scholars.programStage })
+        .from(scholars)
+        .where(eq(scholars.id, placeholderPrep.scholarId))
+        .limit(1);
+
+      expect(row?.programStage).toBe('prep_year');
+    });
+
+    it('allows prep_year → scholar when university and year are real values', async () => {
+      asStaff();
+
+      const res = await request(enrollApp.getHttpServer())
+        .patch(`/api/scholars/${readyPrep.scholarId}/profile`)
+        .send({ programStage: 'scholar' })
+        .expect(200);
+
+      expect(res.body.programStage).toBe('scholar');
+      expect(res.body.university).toBe('University of Edinburgh');
+      expect(res.body.year).toBe('Year 1');
+
+      const [row] = await enrollDb
+        .select({ programStage: scholars.programStage })
+        .from(scholars)
+        .where(eq(scholars.id, readyPrep.scholarId))
+        .limit(1);
+
+      expect(row?.programStage).toBe('scholar');
     });
   });
 });
