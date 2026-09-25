@@ -104,11 +104,9 @@ test.describe('Scholar Portal – collapsible sidebar', () => {
 
     try {
       await page.goto('/dashboard');
-      const brand = page.getByRole('heading', { name: 'Ashinaga Scholar Portal' });
-      if (!(await brand.isVisible().catch(() => false))) {
-        await page.reload({ waitUntil: 'domcontentloaded' });
-      }
-      await expect(brand).toBeVisible({ timeout: 30_000 });
+      await expect(page.getByRole('heading', { name: 'Ashinaga Scholar Portal' })).toBeVisible({
+        timeout: 30_000,
+      });
 
       await page.getByRole('button', { name: 'Toggle sidebar' }).click();
       await expect(page.getByRole('button', { name: 'Close menu' })).toBeVisible();
