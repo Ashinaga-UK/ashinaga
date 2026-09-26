@@ -128,6 +128,19 @@ export interface PlatformSetup {
   status: PlatformSetupStatus;
 }
 
+export interface PlatformLink {
+  id: string;
+  slug: string;
+  name: string;
+  signpostingUrl: string | null;
+  sortOrder: number;
+}
+
+export interface PlatformLinksResponse {
+  platforms: PlatformLink[];
+  canEdit: boolean;
+}
+
 export interface AnnualUpdate {
   id: string;
   scholarId: string;
@@ -396,6 +409,20 @@ export async function updateScholarPlatformSetup(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(data),
+  });
+}
+
+export async function getPlatformLinks(): Promise<PlatformLinksResponse> {
+  return fetchAPI<PlatformLinksResponse>('/api/platforms');
+}
+
+export async function updatePlatformLink(
+  slug: string,
+  signpostingUrl: string | null
+): Promise<PlatformLink> {
+  return fetchAPI<PlatformLink>(`/api/platforms/${encodeURIComponent(slug)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ signpostingUrl }),
   });
 }
 

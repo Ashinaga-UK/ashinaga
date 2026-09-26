@@ -97,6 +97,9 @@ describe('MyProfile', () => {
     expect(screen.getByText('Ashinaga Connect')).toBeInTheDocument();
     expect(screen.getByText('javascript:alert(1)')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'javascript:alert(1)' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('platform-icon-coursera')).toBeInTheDocument();
+    expect(screen.getByTestId('platform-icon-duolingo')).toBeInTheDocument();
+    expect(screen.getByTestId('platform-icon-ashinaga_connect')).toBeInTheDocument();
     expect(screen.queryByText('Academic Information')).not.toBeInTheDocument();
     expect(screen.queryByText('Academic Year')).not.toBeInTheDocument();
   });

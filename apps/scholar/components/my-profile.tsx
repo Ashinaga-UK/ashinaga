@@ -1,5 +1,6 @@
 'use client';
 
+import { PlatformIcon } from '@workspace/ui/components/platform-icon';
 import {
   fileToProfileImageBlob,
   PROFILE_IMAGE_CONTENT_TYPE,
@@ -23,8 +24,8 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
-import { uploadAvatarBlob } from '../lib/api-client';
 import { type ScholarProfile, type UpdateProfileData, updateMyProfile } from '../lib/api/profile';
+import { uploadAvatarBlob } from '../lib/api-client';
 import { useScholarSession } from '../lib/scholar-session';
 import { Alert, AlertDescription } from './ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -613,22 +614,25 @@ export function MyProfile() {
                         key={setup.platformId}
                         className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"
                       >
-                        <div className="min-w-0">
-                          <p className="font-medium text-foreground">{setup.name}</p>
-                          {safeUrl ? (
-                            <a
-                              href={safeUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm text-ashinaga-teal-700 underline-offset-2 hover:underline dark:text-ashinaga-teal-400"
-                            >
-                              {setup.signpostingUrl}
-                            </a>
-                          ) : setup.signpostingUrl ? (
-                            <p className="text-sm text-muted-foreground truncate">
-                              {setup.signpostingUrl}
-                            </p>
-                          ) : null}
+                        <div className="flex min-w-0 items-center gap-3">
+                          <PlatformIcon slug={setup.slug} />
+                          <div className="min-w-0">
+                            <p className="font-medium text-foreground">{setup.name}</p>
+                            {safeUrl ? (
+                              <a
+                                href={safeUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm text-ashinaga-teal-700 underline-offset-2 hover:underline dark:text-ashinaga-teal-400"
+                              >
+                                {setup.signpostingUrl}
+                              </a>
+                            ) : setup.signpostingUrl ? (
+                              <p className="text-sm text-muted-foreground truncate">
+                                {setup.signpostingUrl}
+                              </p>
+                            ) : null}
+                          </div>
                         </div>
                         <Badge
                           variant={
