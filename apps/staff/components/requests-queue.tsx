@@ -83,6 +83,22 @@ function savedViewsKey(userId: string) {
   return `ashinaga.requests.savedViews.v${SAVED_VIEWS_VERSION}.${userId}`;
 }
 
+function cohortKey(userId: string) {
+  return `ashinaga.requests.cohort.v${SAVED_VIEWS_VERSION}.${userId}`;
+}
+
+function readCohort(userId: string): { program: string; year: string } | null {
+  try {
+    const raw = localStorage.getItem(cohortKey(userId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { version?: number; program?: string; year?: string };
+    if (parsed.version !== SAVED_VIEWS_VERSION || !parsed.program || !parsed.year) return null;
+    return { program: parsed.program, year: parsed.year };
+  } catch {
+    return null;
+  }
+}
+
 function readSavedViews(userId: string): SavedView[] {
   try {
     const raw = localStorage.getItem(savedViewsKey(userId));
@@ -140,6 +156,10 @@ export function RequestsQueue({ onReviewed }: RequestsQueueProps) {
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
   const [viewName, setViewName] = useState('');
   const [savedViews, setSavedViews] = useState<SavedView[]>([]);
+  const [rememberedCohort, setRememberedCohort] = useState<{
+    program: string;
+    year: string;
+  } | null>(null);
 
   useEffect(() => {
     setSearchDraft(search);
@@ -148,7 +168,15 @@ export function RequestsQueue({ onReviewed }: RequestsQueueProps) {
   useEffect(() => {
     if (!userId) return;
     setSavedViews(readSavedViews(userId));
+    setRememberedCohort(readCohort(userId));
   }, [userId]);
+
+  useEffect(() => {
+    if (!userId || !program || !year) return;
+    const next = { version: SAVED_VIEWS_VERSION, program, year };
+    localStorage.setItem(cohortKey(userId), JSON.stringify(next));
+    setRememberedCohort({ program, year });
+  }, [program, userId, year]);
 
   const replaceQuery = useCallback(
     (updates: Record<string, string | null>, resetPage = true) => {
@@ -356,18 +384,25 @@ export function RequestsQueue({ onReviewed }: RequestsQueueProps) {
               type="button"
               variant="outline"
               size="sm"
-              disabled={!program || !year}
-              onClick={() =>
+              disabled={!(program && year) && !(rememberedCohort && !program && !year)}
+              onClick={() => {
+                const cohort =
+                  program && year ? { program, year } : !program && !year ? rememberedCohort : null;
+                if (!cohort) return;
                 applyQuery({
                   status: 'pending',
-                  program,
-                  year,
+                  program: cohort.program,
+                  year: cohort.year,
                   sortBy: 'submittedDate',
                   sortOrder: 'asc',
-                })
-              }
+                });
+              }}
             >
-              Pending, this programme and year
+              {program && year
+                ? 'Pending, this programme and year'
+                : rememberedCohort && !program && !year
+                  ? `Pending, ${rememberedCohort.program} ${rememberedCohort.year}`
+                  : 'Pending, this programme and year'}
             </Button>
             {savedViews.map((view) => (
               <Button

@@ -86,6 +86,22 @@ describe('RequestsQueue', () => {
     localStorage.clear();
   });
 
+  it('applies the remembered programme and year without those filters already set', async () => {
+    localStorage.setItem(
+      'ashinaga.requests.cohort.v1.staff-1',
+      JSON.stringify({ version: 1, program: 'Engineering', year: '2026' })
+    );
+    const user = userEvent.setup();
+    render(<RequestsQueue onReviewed={jest.fn()} />);
+
+    await user.click(await screen.findByRole('button', { name: 'Pending, Engineering 2026' }));
+
+    expect(replace).toHaveBeenCalledWith(expect.stringContaining('program=Engineering'));
+    expect(replace).toHaveBeenCalledWith(expect.stringContaining('year=2026'));
+    expect(replace).toHaveBeenCalledWith(expect.stringContaining('status=pending'));
+    expect(replace).toHaveBeenCalledWith(expect.stringContaining('sortOrder=asc'));
+  });
+
   it('applies the pending oldest-first preset to the query string', async () => {
     const user = userEvent.setup();
     render(<RequestsQueue onReviewed={jest.fn()} />);

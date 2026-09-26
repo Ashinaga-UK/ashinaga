@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, asc, count, desc, eq, gte, ilike, inArray, lte, or, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, ilike, inArray, lte, sql } from 'drizzle-orm';
 import { database } from '../db/connection';
 import {
   requestAssignees,
@@ -102,13 +102,7 @@ export class RequestsService {
     }
 
     if (search) {
-      whereConditions.push(
-        or(
-          ilike(requests.description, `%${search}%`),
-          ilike(users.name, `%${search}%`),
-          ilike(users.email, `%${search}%`)
-        )
-      );
+      whereConditions.push(ilike(users.name, `%${search}%`));
     }
 
     if (type) {
