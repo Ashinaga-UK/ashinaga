@@ -576,13 +576,19 @@ export interface GetRequestsParams {
     | 'others';
   status?: 'pending' | 'approved' | 'rejected' | 'reviewed' | 'commented';
   priority?: 'high' | 'medium' | 'low';
-  sortBy?: 'submittedDate' | 'status' | 'priority' | 'createdAt';
+  scholarId?: string;
+  program?: string;
+  year?: string;
+  submittedFrom?: string;
+  submittedTo?: string;
+  sortBy?: 'submittedDate' | 'scholarName' | 'type' | 'status' | 'priority' | 'createdAt';
   sortOrder?: 'asc' | 'desc';
 }
 
 export interface GetRequestsResponse {
   data: Request[];
   pagination: PaginationMeta;
+  cohort: { program: string; year: string } | null;
 }
 
 export async function getRequests(params?: GetRequestsParams): Promise<GetRequestsResponse> {
@@ -684,6 +690,18 @@ export async function markStaffNotificationsRead(body: {
   all?: boolean;
 }): Promise<{ updated: number }> {
   return fetchAPI<{ updated: number }>('/api/notifications/read', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function bulkUpdateRequestStatus(body: {
+  ids: string[];
+  status: 'approved' | 'rejected';
+  comment?: string;
+}): Promise<{ data: Array<{ id: string; status: string }> }> {
+  return fetchAPI('/api/requests/bulk-status', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

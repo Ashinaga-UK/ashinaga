@@ -1,3 +1,4 @@
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
 import { EmailService } from '../email/email.service';
@@ -128,12 +129,25 @@ describe('RequestsService', () => {
               }),
             }),
           };
-        } else {
-          // Sixth call - assignees query (request_assignees join with users)
+        } else if (callCount === 6) {
           return {
             from: jest.fn().mockReturnValue({
               innerJoin: jest.fn().mockReturnValue({
                 where: jest.fn().mockResolvedValue([]),
+              }),
+            }),
+          };
+        } else {
+          return {
+            from: jest.fn().mockReturnValue({
+              innerJoin: jest.fn().mockReturnValue({
+                where: jest.fn().mockReturnValue({
+                  groupBy: jest.fn().mockReturnValue({
+                    orderBy: jest.fn().mockReturnValue({
+                      limit: jest.fn().mockResolvedValue([{ program: 'Engineering', year: '2026' }]),
+                    }),
+                  }),
+                }),
               }),
             }),
           };
@@ -146,6 +160,70 @@ describe('RequestsService', () => {
       expect(result).toHaveProperty('pagination');
       expect(result.data).toHaveLength(1);
       expect(result.data[0].scholarName).toBe('John Doe');
+      expect(result.cohort).toEqual({ program: 'Engineering', year: '2026' });
+    });
+
+    it('keeps the pending-first order when sortBy is omitted and sorts by name when asked', async () => {
+      const mockDatabase = require('../db/connection').database;
+      const orderBy = jest.fn().mockReturnValue({
+        limit: jest.fn().mockReturnValue({
+          offset: jest.fn().mockResolvedValue([]),
+        }),
+      });
+      let callCount = 0;
+      mockDatabase.select = jest.fn().mockImplementation(() => {
+        callCount += 1;
+        if (callCount === 1) {
+          return { from: () => ({ where: async () => [{ isSuperAdmin: true }] }) };
+        }
+        if (callCount === 2) {
+          return {
+            from: () => ({
+              innerJoin: () => ({
+                innerJoin: () => ({
+                  where: () => ({ orderBy }),
+                }),
+              }),
+            }),
+          };
+        }
+        if (callCount === 3) {
+          return {
+            from: () => ({
+              innerJoin: () => ({
+                innerJoin: () => ({
+                  where: async () => [{ count: 0 }],
+                }),
+              }),
+            }),
+          };
+        }
+        return {
+          from: () => ({
+            innerJoin: () => ({
+              where: () => ({
+                groupBy: () => ({
+                  orderBy: () => ({
+                    limit: async () => [],
+                  }),
+                }),
+              }),
+            }),
+          }),
+        };
+      });
+
+      const chunkText = (order: { queryChunks?: Array<{ value?: string[] }> }) =>
+        (order.queryChunks ?? [])
+          .flatMap((chunk) => (Array.isArray(chunk.value) ? chunk.value : []))
+          .join('');
+
+      await service.getRequests({}, 'user-123');
+      expect(chunkText(orderBy.mock.calls[0]?.[0])).toContain('pending');
+
+      callCount = 0;
+      await service.getRequests({ sortBy: 'scholarName', sortOrder: 'asc' }, 'user-123');
+      expect(chunkText(orderBy.mock.calls[1]?.[0])).not.toContain('pending');
     });
   });
 
@@ -270,22 +348,28 @@ describe('RequestsService', () => {
         updatedAt: new Date('2026-09-22T00:00:00.000Z'),
       };
 
+      const reviewRow = [
+        {
+          request: currentRequest,
+          scholar: { id: 'scholar-1' },
+          user: {
+            id: 'scholar-user-1',
+            name: 'Test Scholar',
+            email: 'scholar@example.com',
+          },
+        },
+      ];
       mockDatabase.select = jest.fn().mockReturnValue({
         from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue(
+            Object.assign(Promise.resolve([{ isSuperAdmin: true }]), {
+              limit: jest.fn().mockResolvedValue([{ id: 'request-1' }]),
+            })
+          ),
           innerJoin: jest.fn().mockReturnValue({
             innerJoin: jest.fn().mockReturnValue({
               where: jest.fn().mockReturnValue({
-                limit: jest.fn().mockResolvedValue([
-                  {
-                    request: currentRequest,
-                    scholar: { id: 'scholar-1' },
-                    user: {
-                      id: 'scholar-user-1',
-                      name: 'Test Scholar',
-                      email: 'scholar@example.com',
-                    },
-                  },
-                ]),
+                limit: jest.fn().mockResolvedValue(reviewRow),
               }),
             }),
           }),
@@ -314,6 +398,91 @@ describe('RequestsService', () => {
       );
 
       expect(mockEmailService.sendRequestStatusNotification).toHaveBeenCalledTimes(1);
+    });
+
+    it('rejects a rejection that has no reason', async () => {
+      await expect(
+        service.updateRequestStatus('request-1', 'rejected', '   ', 'staff-1')
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('does not update a request the caller cannot review', async () => {
+      const mockDatabase = require('../db/connection').database;
+      mockDatabase.select = jest
+        .fn()
+        .mockReturnValueOnce({
+          from: () => ({
+            where: () => ({ limit: async () => [{ id: 'request-1' }] }),
+          }),
+        })
+        .mockReturnValueOnce({
+          from: () => ({
+            where: async () => [{ isSuperAdmin: false }],
+          }),
+        })
+        .mockReturnValueOnce({
+          from: () => ({
+            where: () => ({ limit: async () => [] }),
+          }),
+        });
+      mockDatabase.update = jest.fn();
+
+      await expect(
+        service.updateRequestStatus('request-1', 'approved', 'ok', 'staff-1')
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(mockDatabase.update).not.toHaveBeenCalled();
+    });
+
+    it('writes one audit row per request in a bulk update', async () => {
+      const mockDatabase = require('../db/connection').database;
+      const updatedAt = new Date('2026-09-22T00:00:00.000Z');
+      const values = jest.fn().mockResolvedValue(undefined);
+      mockDatabase.select = jest.fn().mockReturnValue({
+        from: () => ({
+          where: () =>
+            Object.assign(Promise.resolve([{ isSuperAdmin: true }]), {
+              limit: async () => [{ id: 'request-1' }],
+            }),
+          innerJoin: () => ({
+            innerJoin: () => ({
+              where: () => ({
+                limit: async () => [
+                  {
+                    request: {
+                      id: 'request-1',
+                      type: 'others',
+                      status: 'pending',
+                      description: 'Request description',
+                      scholarId: 'scholar-1',
+                    },
+                    scholar: { id: 'scholar-1' },
+                    user: { name: 'Test Scholar', email: 'scholar@example.com' },
+                  },
+                ],
+              }),
+            }),
+          }),
+        }),
+      });
+      mockDatabase.update = jest.fn().mockReturnValue({
+        set: () => ({
+          where: () => ({
+            returning: async () => [{ id: 'request-1', status: 'rejected', updatedAt }],
+          }),
+        }),
+      });
+      mockDatabase.insert = jest.fn().mockReturnValue({ values });
+
+      await service.bulkUpdateRequestStatus(
+        {
+          ids: ['11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222'],
+          status: 'rejected',
+          comment: 'Missing documents',
+        },
+        'staff-1'
+      );
+
+      expect(values).toHaveBeenCalledTimes(2);
     });
 
     it.each(['summer_funding_report', 'requirement_submission', 'others'] as const)(

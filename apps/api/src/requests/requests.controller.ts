@@ -19,6 +19,10 @@ import { CreateRequestDto, CreateRequestResponseDto } from './dto/create-request
 import { CreateStaffRequestDto } from './dto/create-staff-request.dto';
 import { GetRequestsQueryDto, GetRequestsResponseDto } from './dto/get-requests.dto';
 import { RespondToRequestDto } from './dto/respond-to-request.dto';
+import {
+  BulkUpdateRequestStatusDto,
+  UpdateRequestStatusDto,
+} from './dto/update-request-status.dto';
 import { RequestsService } from './requests.service';
 
 interface AuthenticatedRequest extends Request {
@@ -65,14 +69,26 @@ export class RequestsController {
     return this.requestsService.getRequestStats(userId);
   }
 
+  @Post('bulk-status')
+  @UseGuards(StaffGuard)
+  async bulkUpdateRequestStatus(
+    @Body(new ValidationPipe({ transform: true, whitelist: true }))
+    body: BulkUpdateRequestStatusDto,
+    @Req() req: AuthenticatedRequest
+  ) {
+    const reviewedBy = req.user?.id;
+    if (!reviewedBy) {
+      throw new UnauthorizedException('User not authenticated');
+    }
+    return this.requestsService.bulkUpdateRequestStatus(body, reviewedBy);
+  }
+
   @Post(':id/status')
   @UseGuards(StaffGuard)
   async updateRequestStatus(
     @Param('id') requestId: string,
-    @Body() body: {
-      status: 'approved' | 'rejected' | 'reviewed' | 'commented';
-      comment: string;
-    },
+    @Body(new ValidationPipe({ transform: true, whitelist: true }))
+    body: UpdateRequestStatusDto,
     @Req() req: AuthenticatedRequest
   ) {
     const reviewedBy = req.user?.id;
