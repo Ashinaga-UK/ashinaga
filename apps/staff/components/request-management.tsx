@@ -86,6 +86,14 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
   };
 
   const handleApproval = async (approved: boolean) => {
+    if (!approved && !approvalComment.trim()) {
+      toast({
+        title: 'Reason required',
+        description: 'Add a reason before rejecting this request.',
+        variant: 'destructive',
+      });
+      return;
+    }
     await handleStatusUpdate(approved ? 'approved' : 'rejected');
   };
 
@@ -361,7 +369,7 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
                     <div className="space-y-4">
                       {renderCompletedApplication()}
                       <div>
-                        <Label htmlFor="approvalComment">Comments (Optional)</Label>
+                        <Label htmlFor="approvalComment">Comments (required to reject)</Label>
                         <Textarea
                           id="approvalComment"
                           value={approvalComment}

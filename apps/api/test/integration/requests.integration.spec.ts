@@ -9,7 +9,11 @@ import { and, eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
 import request from 'supertest';
-import { requestAssignees, requests as requestRecords } from '../../src/db/schema';
+import {
+  requestAssignees,
+  requestAuditLogs,
+  requests as requestRecords,
+} from '../../src/db/schema';
 import { type AuthContext, createAuthenticatedIntegrationApp } from './helpers/create-app';
 import {
   cleanupSeeded,
@@ -357,6 +361,70 @@ describe('Requests API – multi-assignee (integration)', () => {
       expect(Array.isArray(row.assignees)).toBe(true);
       const assigneeIds = new Set(row.assignees.map((a: { id: string }) => a.id));
       expect(assigneeIds).toEqual(new Set([staffA.userId, staffB.userId]));
+    });
+
+    it('filters by scholar, programme, and submitted date', async () => {
+      auth.setUser({ id: superAdmin.userId, email: superAdmin.email, userType: 'staff' });
+      const match = await request(app.getHttpServer())
+        .get('/api/requests')
+        .query({
+          scholarId: scholar.scholarId,
+          program: 'Integration Program',
+          year: 'Year 1',
+          submittedFrom: '2000-01-01',
+          submittedTo: '2100-01-01',
+          limit: 100,
+        })
+        .expect(200);
+      const ids = match.body.data.map((row: { id: string }) => row.id);
+      expect(ids).toContain(requestForAB);
+
+      const miss = await request(app.getHttpServer())
+        .get('/api/requests')
+        .query({ scholarId: scholar.scholarId, submittedFrom: '2099-01-01', limit: 100 })
+        .expect(200);
+      expect(miss.body.data.map((row: { id: string }) => row.id)).not.toContain(requestForAB);
+    });
+
+    it('rejects a bulk update that includes a request the caller cannot see', async () => {
+      auth.setUser({ id: staffC.userId, email: staffC.email, userType: 'staff' });
+      await request(app.getHttpServer())
+        .post('/api/requests/bulk-status')
+        .send({ ids: [requestForAB], status: 'approved', comment: 'no' })
+        .expect(403);
+
+      const [row] = await db
+        .select()
+        .from(requestRecords)
+        .where(eq(requestRecords.id, requestForAB));
+      expect(row?.status).toBe('pending');
+    });
+
+    it('writes one audit log per request when bulk rejecting', async () => {
+      auth.setUser({ id: staffA.userId, email: staffA.email, userType: 'staff' });
+      await request(app.getHttpServer())
+        .post('/api/requests/bulk-status')
+        .send({ ids: [requestForAB], status: 'rejected' })
+        .expect(400);
+
+      const res = await request(app.getHttpServer())
+        .post('/api/requests/bulk-status')
+        .send({ ids: [requestForAB], status: 'rejected', comment: 'Missing documents' })
+        .expect(201);
+
+      expect(res.body.data).toHaveLength(1);
+      const logs = await db
+        .select()
+        .from(requestAuditLogs)
+        .where(
+          and(
+            eq(requestAuditLogs.requestId, requestForAB),
+            eq(requestAuditLogs.action, 'status_changed')
+          )
+        );
+      expect(logs).toHaveLength(1);
+      expect(logs[0]?.newStatus).toBe('rejected');
+      expect(logs[0]?.comment).toBe('Missing documents');
     });
   });
 

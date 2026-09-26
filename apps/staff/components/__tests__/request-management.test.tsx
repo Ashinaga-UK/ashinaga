@@ -125,6 +125,17 @@ describe('RequestManagement — Request More Information (commented) action', ()
     );
   });
 
+  it('requires a reason before rejecting', async () => {
+    const user = userEvent.setup();
+    render(<RequestManagement request={buildRequest()} onStatusUpdate={jest.fn()} />);
+
+    await user.click(screen.getByRole('button', { name: /^Review$/i }));
+    await user.click(await screen.findByRole('button', { name: /^Reject$/i }));
+
+    expect(updateRequestStatus).not.toHaveBeenCalled();
+    expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Reason required' }));
+  });
+
   it('requires a comment before requesting more information', async () => {
     const user = userEvent.setup();
     render(<RequestManagement request={buildRequest()} onStatusUpdate={jest.fn()} />);
