@@ -58,22 +58,19 @@ export class RequestsService {
 
     const offset = (page - 1) * limit;
 
-    const whereConditions = [];
+    const visibilityConditions = [eq(requests.archived, false)];
 
-    // Always filter out archived requests
-    whereConditions.push(eq(requests.archived, false));
-
-    // Check if user is a super admin
     const [staffRecord] = await database.select().from(staff).where(eq(staff.userId, userId));
 
-    // If not a super admin, only show requests where this user is one of the assignees
     if (!staffRecord?.isSuperAdmin) {
       const assignedRequestIds = database
         .select({ requestId: requestAssignees.requestId })
         .from(requestAssignees)
         .where(eq(requestAssignees.userId, userId));
-      whereConditions.push(inArray(requests.id, assignedRequestIds));
+      visibilityConditions.push(inArray(requests.id, assignedRequestIds));
     }
+
+    const whereConditions = [...visibilityConditions];
 
     if (requestId) {
       whereConditions.push(eq(requests.id, requestId));
@@ -197,9 +194,23 @@ export class RequestsService {
       hasPrev: page > 1,
     };
 
+    const pendingCount = sql<number>`count(*) filter (where ${requests.status} = 'pending')`;
+    const [topCohort] = await database
+      .select({
+        program: scholars.program,
+        year: scholars.year,
+      })
+      .from(requests)
+      .innerJoin(scholars, eq(requests.scholarId, scholars.id))
+      .where(and(...visibilityConditions))
+      .groupBy(scholars.program, scholars.year)
+      .orderBy(desc(pendingCount), desc(count()))
+      .limit(1);
+
     return {
       data,
       pagination,
+      cohort: topCohort ? { program: topCohort.program, year: topCohort.year } : null,
     };
   }
 

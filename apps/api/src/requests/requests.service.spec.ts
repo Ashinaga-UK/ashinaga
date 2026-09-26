@@ -129,12 +129,25 @@ describe('RequestsService', () => {
               }),
             }),
           };
-        } else {
-          // Sixth call - assignees query (request_assignees join with users)
+        } else if (callCount === 6) {
           return {
             from: jest.fn().mockReturnValue({
               innerJoin: jest.fn().mockReturnValue({
                 where: jest.fn().mockResolvedValue([]),
+              }),
+            }),
+          };
+        } else {
+          return {
+            from: jest.fn().mockReturnValue({
+              innerJoin: jest.fn().mockReturnValue({
+                where: jest.fn().mockReturnValue({
+                  groupBy: jest.fn().mockReturnValue({
+                    orderBy: jest.fn().mockReturnValue({
+                      limit: jest.fn().mockResolvedValue([{ program: 'Engineering', year: '2026' }]),
+                    }),
+                  }),
+                }),
               }),
             }),
           };
@@ -147,6 +160,7 @@ describe('RequestsService', () => {
       expect(result).toHaveProperty('pagination');
       expect(result.data).toHaveLength(1);
       expect(result.data[0].scholarName).toBe('John Doe');
+      expect(result.cohort).toEqual({ program: 'Engineering', year: '2026' });
     });
 
     it('keeps the pending-first order when sortBy is omitted and sorts by name when asked', async () => {
@@ -173,11 +187,26 @@ describe('RequestsService', () => {
             }),
           };
         }
+        if (callCount === 3) {
+          return {
+            from: () => ({
+              innerJoin: () => ({
+                innerJoin: () => ({
+                  where: async () => [{ count: 0 }],
+                }),
+              }),
+            }),
+          };
+        }
         return {
           from: () => ({
             innerJoin: () => ({
-              innerJoin: () => ({
-                where: async () => [{ count: 0 }],
+              where: () => ({
+                groupBy: () => ({
+                  orderBy: () => ({
+                    limit: async () => [],
+                  }),
+                }),
               }),
             }),
           }),

@@ -53,6 +53,7 @@ jest.mock('../../lib/api-client', () => ({
       hasNext: false,
       hasPrev: false,
     },
+    cohort: { program: 'Law', year: '2025' },
   }),
   getFilterOptions: jest.fn().mockResolvedValue({
     programs: ['Engineering'],
@@ -100,6 +101,17 @@ describe('RequestsQueue', () => {
     expect(replace).toHaveBeenCalledWith(expect.stringContaining('year=2026'));
     expect(replace).toHaveBeenCalledWith(expect.stringContaining('status=pending'));
     expect(replace).toHaveBeenCalledWith(expect.stringContaining('sortOrder=asc'));
+  });
+
+  it('uses the queue cohort when no programme and year have been chosen', async () => {
+    const user = userEvent.setup();
+    render(<RequestsQueue onReviewed={jest.fn()} />);
+
+    await user.click(await screen.findByRole('button', { name: 'Pending, Law 2025' }));
+
+    expect(replace).toHaveBeenCalledWith(expect.stringContaining('program=Law'));
+    expect(replace).toHaveBeenCalledWith(expect.stringContaining('year=2025'));
+    expect(replace).toHaveBeenCalledWith(expect.stringContaining('status=pending'));
   });
 
   it('applies the pending oldest-first preset to the query string', async () => {

@@ -160,6 +160,7 @@ export function RequestsQueue({ onReviewed }: RequestsQueueProps) {
     program: string;
     year: string;
   } | null>(null);
+  const [queueCohort, setQueueCohort] = useState<{ program: string; year: string } | null>(null);
 
   useEffect(() => {
     setSearchDraft(search);
@@ -228,6 +229,7 @@ export function RequestsQueue({ onReviewed }: RequestsQueueProps) {
       }
       setRequests(nextRequests);
       setPagination(response.pagination);
+      setQueueCohort(response.cohort);
       setSelectedIds([]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load requests');
@@ -365,6 +367,13 @@ export function RequestsQueue({ onReviewed }: RequestsQueueProps) {
     }
   };
 
+  const cohortPreset =
+    program && year
+      ? { program, year }
+      : !program && !year
+        ? (rememberedCohort ?? queueCohort)
+        : null;
+
   return (
     <div className="space-y-6">
       <div className="rounded-lg border bg-card">
@@ -384,25 +393,21 @@ export function RequestsQueue({ onReviewed }: RequestsQueueProps) {
               type="button"
               variant="outline"
               size="sm"
-              disabled={!(program && year) && !(rememberedCohort && !program && !year)}
+              disabled={!cohortPreset}
               onClick={() => {
-                const cohort =
-                  program && year ? { program, year } : !program && !year ? rememberedCohort : null;
-                if (!cohort) return;
+                if (!cohortPreset) return;
                 applyQuery({
                   status: 'pending',
-                  program: cohort.program,
-                  year: cohort.year,
+                  program: cohortPreset.program,
+                  year: cohortPreset.year,
                   sortBy: 'submittedDate',
                   sortOrder: 'asc',
                 });
               }}
             >
-              {program && year
-                ? 'Pending, this programme and year'
-                : rememberedCohort && !program && !year
-                  ? `Pending, ${rememberedCohort.program} ${rememberedCohort.year}`
-                  : 'Pending, this programme and year'}
+              {cohortPreset
+                ? `Pending, ${cohortPreset.program} ${cohortPreset.year}`
+                : 'Pending, this programme and year'}
             </Button>
             {savedViews.map((view) => (
               <Button

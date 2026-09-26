@@ -588,6 +588,7 @@ export interface GetRequestsParams {
 export interface GetRequestsResponse {
   data: Request[];
   pagination: PaginationMeta;
+  cohort: { program: string; year: string } | null;
 }
 
 export async function getRequests(params?: GetRequestsParams): Promise<GetRequestsResponse> {

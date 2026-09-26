@@ -135,4 +135,6 @@ export class PaginationMetaDto {
 export class GetRequestsResponseDto {
   data: RequestResponseDto[];
   pagination: PaginationMetaDto;
+  /** Programme and year with the most pending requests in the caller's queue. */
+  cohort: { program: string; year: string } | null;
 }
