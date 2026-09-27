@@ -11,17 +11,13 @@ export default function ScholarRootLayout({ children }: { children: React.ReactN
   const refetchSession = useRef(refetch);
   refetchSession.current = refetch;
 
-  // useSession can miss the first response and stay pending. Keep asking
-  // until it settles; one retry is not enough when the first request is lost.
+  // useSession can miss the first response and stay pending. Ask again once.
   useEffect(() => {
     if (!isPending) return;
-    let attempts = 0;
-    const interval = window.setInterval(() => {
-      attempts += 1;
+    const timeout = window.setTimeout(() => {
       void refetchSession.current();
-      if (attempts >= 8) window.clearInterval(interval);
     }, 1000);
-    return () => window.clearInterval(interval);
+    return () => window.clearTimeout(timeout);
   }, [isPending]);
 
   const user = session?.user;
