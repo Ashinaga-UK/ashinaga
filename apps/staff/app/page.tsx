@@ -16,6 +16,7 @@ import { forwardRef, Suspense, useCallback, useEffect, useMemo, useState } from 
 import { AnnouncementCreator } from '../components/announcement-creator';
 import { AnnualReviewCopyEditor } from '../components/annual-review-copy-editor';
 import { AnnualReviewsReport } from '../components/annual-reviews-report';
+import { FaqManagement } from '../components/faq-management';
 import { InvitationsManagement } from '../components/invitations-management';
 import { LoginPage } from '../components/login-page';
 import { MyProfile } from '../components/my-profile';
@@ -372,6 +373,7 @@ function StaffDashboardContent() {
                 {activeTab === 'requests' && 'Requests'}
                 {activeTab === 'announcements' && 'Announcements'}
                 {activeTab === 'resources' && 'Resources'}
+                {activeTab === 'faqs' && 'FAQs'}
                 {activeTab === 'invitations' && 'Invitations'}
               </h2>
               <p className="mt-0.5 text-sm text-muted-foreground print:hidden">
@@ -388,6 +390,7 @@ function StaffDashboardContent() {
                 {activeTab === 'requests' && 'Review and respond to scholar submissions.'}
                 {activeTab === 'announcements' && 'Create and manage announcements.'}
                 {activeTab === 'resources' && 'Review scholar-facing handbooks and guides.'}
+                {activeTab === 'faqs' && 'Add and edit student FAQ answers by programme stage.'}
                 {activeTab === 'invitations' && 'Invite scholars and staff to the portal.'}
               </p>
             </div>
@@ -631,6 +634,12 @@ function StaffDashboardContent() {
             {activeTab === 'resources' && (
               <div className="space-y-6">
                 <ResourcesManagement />
+              </div>
+            )}
+
+            {activeTab === 'faqs' && (
+              <div className="space-y-6">
+                <FaqManagement />
               </div>
             )}
 

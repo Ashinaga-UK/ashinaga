@@ -1795,3 +1795,49 @@ export async function getScholarProposalFileDownloadUrl(
     `/api/proposals/scholars/${scholarId}/steps/${stepKey}/file${query}`
   );
 }
+
+export type FaqAudience = 'prep_year' | 'scholar';
+
+export interface Faq {
+  id: string;
+  audience: FaqAudience;
+  category: string | null;
+  question: string;
+  answer: string;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SaveFaqData {
+  audience: FaqAudience;
+  category?: string;
+  question: string;
+  answer: string;
+  sortOrder?: number;
+}
+
+export async function getFaqs(audience?: FaqAudience): Promise<Faq[]> {
+  const query = audience ? `?audience=${audience}` : '';
+  return fetchAPI<Faq[]>(`/api/faqs${query}`);
+}
+
+export async function createFaq(data: SaveFaqData): Promise<Faq> {
+  return fetchAPI<Faq>('/api/faqs', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateFaq(faqId: string, data: Partial<SaveFaqData>): Promise<Faq> {
+  return fetchAPI<Faq>(`/api/faqs/${faqId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteFaq(faqId: string): Promise<{ success: boolean }> {
+  return fetchAPI<{ success: boolean }>(`/api/faqs/${faqId}`, {
+    method: 'DELETE',
+  });
+}

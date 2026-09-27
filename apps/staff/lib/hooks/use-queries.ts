@@ -17,11 +17,13 @@ import {
   deleteCoordinatorNote,
   deleteScholar,
   deleteTask,
+  type FaqAudience,
   type GetAnnouncementsParams,
   getAnnouncements,
   getAnnualUpdatesByScholar,
   getCoordinatorMeetingUpdates,
   getCoordinatorNotes,
+  getFaqs,
   getPrepTaskCohort,
   getPrepYearReport,
   getProposalInbox,
@@ -60,6 +62,7 @@ export const queryKeys = {
   user: ['user'] as const,
   announcements: (params?: GetAnnouncementsParams) => ['announcements', params] as const,
   resources: ['resources'] as const,
+  faqs: (audience?: FaqAudience) => ['faqs', audience ?? 'all'] as const,
   resourceFilterOptions: ['resources', 'filter-options'] as const,
   requiredDocumentCohort: (missingTypeId?: string) =>
     ['required-documents', 'cohort', missingTypeId ?? 'all'] as const,
@@ -157,6 +160,14 @@ export function useResources(enabled = true) {
   return useQuery({
     queryKey: queryKeys.resources,
     queryFn: getResources,
+    enabled,
+  });
+}
+
+export function useFaqs(audience?: FaqAudience, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.faqs(audience),
+    queryFn: () => getFaqs(audience),
     enabled,
   });
 }

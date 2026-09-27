@@ -89,6 +89,7 @@ describe('ScholarLayout', () => {
       '/annual-review'
     );
     expect(screen.getByRole('link', { name: 'Resources' })).toHaveAttribute('href', '/resources');
+    expect(screen.getByRole('link', { name: 'FAQs' })).toHaveAttribute('href', '/faqs');
     expect(screen.getByRole('button', { name: 'Notifications' })).toBeInTheDocument();
     expect(screen.getByText('Dashboard content')).toBeInTheDocument();
     expect(getToggle()).toBeInTheDocument();

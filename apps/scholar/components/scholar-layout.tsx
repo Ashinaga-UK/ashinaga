@@ -7,6 +7,7 @@ import {
   ClipboardCheck,
   FileText,
   FolderOpen,
+  HelpCircle,
   Home,
   Library,
   LogOut,
@@ -53,6 +54,7 @@ const NAV_ITEMS = [
   { id: 'requests', href: '/requests', label: 'My Requests', icon: FileText },
   { id: 'announcements', href: '/announcements', label: 'Announcements', icon: MessageSquare },
   { id: 'resources', href: '/resources', label: 'Resources', icon: Library },
+  { id: 'faqs', href: '/faqs', label: 'FAQs', icon: HelpCircle },
 ] as const;
 
 type NavItem = (typeof NAV_ITEMS)[number];
