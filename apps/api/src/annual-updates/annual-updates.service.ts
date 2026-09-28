@@ -115,16 +115,43 @@ export class AnnualUpdatesService {
         aaiScholarId: scholars.aaiScholarId,
         scholarYear: scholars.year,
         university: scholars.university,
+        program: scholars.program,
+        academicYearAverageClassification: annualUpdates.academicYearAverageClassification,
+        academicYearWeightedGrade: annualUpdates.academicYearWeightedGrade,
+        leadershipRolesCount: annualUpdates.leadershipRolesCount,
+        payItForwardCount: annualUpdates.payItForwardCount,
+        subSaharanAfricaActivitiesCount: annualUpdates.subSaharanAfricaActivitiesCount,
+        independentInternshipsCount: annualUpdates.independentInternshipsCount,
+        completedAshinagaAfricaInternship: annualUpdates.completedAshinagaAfricaInternship,
+        hasInternshipSummary: sql<boolean>`(
+          ${annualUpdates.status} = 'submitted'
+          and (
+            length(btrim(coalesce(${annualUpdates.internshipsInAfricaSummary}, ''))) > 0
+            or length(btrim(coalesce(${annualUpdates.internshipsElsewhereSummary}, ''))) > 0
+          )
+        )`.as('has_internship_summary'),
       })
       .from(annualUpdates)
       .innerJoin(scholars, eq(annualUpdates.scholarId, scholars.id))
       .innerJoin(users, eq(scholars.userId, users.id))
       .orderBy(desc(annualUpdates.createdAt));
 
-    return rows.map((row) => ({
-      ...row,
-      academicYear: toCanonicalAcademicYear(row.academicYear),
-    }));
+    return rows.map((row) => {
+      const submitted = row.status === 'submitted';
+
+      return {
+        ...row,
+        academicYear: toCanonicalAcademicYear(row.academicYear),
+        academicYearAverageClassification: submitted ? row.academicYearAverageClassification : null,
+        academicYearWeightedGrade: submitted ? row.academicYearWeightedGrade : null,
+        leadershipRolesCount: submitted ? row.leadershipRolesCount : null,
+        payItForwardCount: submitted ? row.payItForwardCount : null,
+        subSaharanAfricaActivitiesCount: submitted ? row.subSaharanAfricaActivitiesCount : null,
+        independentInternshipsCount: submitted ? row.independentInternshipsCount : null,
+        completedAshinagaAfricaInternship: submitted ? row.completedAshinagaAfricaInternship : null,
+        hasInternshipSummary: submitted && row.hasInternshipSummary === true,
+      };
+    });
   }
 
   async getMyAnnualUpdate(userId: string, academicYear?: string) {

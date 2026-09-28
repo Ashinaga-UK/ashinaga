@@ -2,12 +2,17 @@
 
 import { Download, Eye, Loader2, Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { toCanonicalAcademicYear } from '../lib/academic-year';
+import {
+  type AnnualReviewInternshipFilter,
+  filterAnnualReviewReportRows,
+  getAnnualReviewReportFilterOptions,
+} from '../lib/annual-review-report-filters';
 import {
   type AnnualUpdateReportRow,
   downloadAnnualReviewsCSV,
   getAnnualUpdatesReport,
 } from '../lib/api-client';
-import { toCanonicalAcademicYear } from '../lib/academic-year';
 import { Alert, AlertDescription } from './ui/alert';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -27,6 +32,14 @@ export function AnnualReviewsReport({ onViewScholarAnnualReviews }: AnnualReview
   const [searchTerm, setSearchTerm] = useState('');
   const [academicYearFilter, setAcademicYearFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'submitted'>('all');
+  const [classificationFilter, setClassificationFilter] = useState('all');
+  const [weightedGradeFilter, setWeightedGradeFilter] = useState('all');
+  const [leadershipCountFilter, setLeadershipCountFilter] = useState('all');
+  const [payItForwardCountFilter, setPayItForwardCountFilter] = useState('all');
+  const [subSaharanAfricaCountFilter, setSubSaharanAfricaCountFilter] = useState('all');
+  const [internshipFilter, setInternshipFilter] = useState<AnnualReviewInternshipFilter>('all');
+  const [programFilter, setProgramFilter] = useState('all');
+  const [scholarYearFilter, setScholarYearFilter] = useState('all');
   const [exportingFilteredCsv, setExportingFilteredCsv] = useState(false);
   const [exportingAllCsv, setExportingAllCsv] = useState(false);
 
@@ -53,28 +66,41 @@ export function AnnualReviewsReport({ onViewScholarAnnualReviews }: AnnualReview
     fetchAnnualReviews();
   }, []);
 
-  const academicYears = useMemo(
-    () => [...new Set(annualReviews.map((review) => review.academicYear))].sort().reverse(),
+  const filterOptions = useMemo(
+    () => getAnnualReviewReportFilterOptions(annualReviews),
     [annualReviews]
   );
 
-  const filteredAnnualReviews = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase();
-
-    return annualReviews.filter((review) => {
-      const matchesSearch =
-        normalizedSearch.length === 0 ||
-        review.scholarName.toLowerCase().includes(normalizedSearch) ||
-        review.scholarEmail.toLowerCase().includes(normalizedSearch) ||
-        (review.aaiScholarId ?? '').toLowerCase().includes(normalizedSearch) ||
-        review.university.toLowerCase().includes(normalizedSearch);
-      const matchesAcademicYear =
-        academicYearFilter === 'all' || review.academicYear === academicYearFilter;
-      const matchesStatus = statusFilter === 'all' || review.status === statusFilter;
-
-      return matchesSearch && matchesAcademicYear && matchesStatus;
-    });
-  }, [academicYearFilter, annualReviews, searchTerm, statusFilter]);
+  const filteredAnnualReviews = useMemo(
+    () =>
+      filterAnnualReviewReportRows(annualReviews, {
+        searchTerm,
+        academicYear: academicYearFilter,
+        status: statusFilter,
+        classification: classificationFilter,
+        weightedGrade: weightedGradeFilter,
+        leadershipCount: leadershipCountFilter,
+        payItForwardCount: payItForwardCountFilter,
+        subSaharanAfricaCount: subSaharanAfricaCountFilter,
+        internship: internshipFilter,
+        program: programFilter,
+        scholarYear: scholarYearFilter,
+      }),
+    [
+      academicYearFilter,
+      annualReviews,
+      classificationFilter,
+      internshipFilter,
+      leadershipCountFilter,
+      payItForwardCountFilter,
+      programFilter,
+      scholarYearFilter,
+      searchTerm,
+      statusFilter,
+      subSaharanAfricaCountFilter,
+      weightedGradeFilter,
+    ]
+  );
 
   const submittedCount = filteredAnnualReviews.filter(
     (review) => review.status === 'submitted'
@@ -149,7 +175,7 @@ export function AnnualReviewsReport({ onViewScholarAnnualReviews }: AnnualReview
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All years</SelectItem>
-              {academicYears.map((academicYear) => (
+              {filterOptions.academicYears.map((academicYear) => (
                 <SelectItem key={academicYear} value={academicYear}>
                   {academicYear}
                 </SelectItem>
@@ -198,6 +224,70 @@ export function AnnualReviewsReport({ onViewScholarAnnualReviews }: AnnualReview
             Export all
           </Button>
         </div>
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        <ReportFilterSelect
+          label="Academic classification"
+          allLabel="All classifications"
+          value={classificationFilter}
+          onValueChange={setClassificationFilter}
+          options={filterOptions.classifications}
+        />
+        <ReportFilterSelect
+          label="Weighted grade"
+          allLabel="All weighted grades"
+          value={weightedGradeFilter}
+          onValueChange={setWeightedGradeFilter}
+          options={filterOptions.weightedGrades}
+        />
+        <ReportFilterSelect
+          label="Leadership roles"
+          allLabel="All leadership counts"
+          value={leadershipCountFilter}
+          onValueChange={setLeadershipCountFilter}
+          options={filterOptions.leadershipCounts}
+        />
+        <ReportFilterSelect
+          label="Pay-it-forward activities"
+          allLabel="All pay-it-forward counts"
+          value={payItForwardCountFilter}
+          onValueChange={setPayItForwardCountFilter}
+          options={filterOptions.payItForwardCounts}
+        />
+        <ReportFilterSelect
+          label="Sub-Saharan Africa activities"
+          allLabel="All sub-Saharan Africa counts"
+          value={subSaharanAfricaCountFilter}
+          onValueChange={setSubSaharanAfricaCountFilter}
+          options={filterOptions.subSaharanAfricaCounts}
+        />
+        <ReportFilterSelect
+          label="Internship"
+          allLabel="All internships"
+          value={internshipFilter}
+          onValueChange={(value) => setInternshipFilter(value as AnnualReviewInternshipFilter)}
+          options={[
+            { value: 'ashinaga_completed', label: 'Completed Ashinaga 8-week internship' },
+            { value: 'ashinaga_not_completed', label: 'Ashinaga internship not completed' },
+            { value: 'independent', label: 'Has an independent internship' },
+            { value: 'described', label: 'Internship described' },
+          ]}
+        />
+        <ReportFilterSelect
+          label="Programme"
+          allLabel="All programmes"
+          value={programFilter}
+          onValueChange={setProgramFilter}
+          options={filterOptions.programs}
+        />
+        <ReportFilterSelect
+          label="Scholar year"
+          allLabel="All scholar years"
+          value={scholarYearFilter}
+          onValueChange={setScholarYearFilter}
+          options={filterOptions.scholarYears}
+        />
       </div>
 
       <div className="overflow-hidden rounded-lg border bg-card">
@@ -258,6 +348,41 @@ export function AnnualReviewsReport({ onViewScholarAnnualReviews }: AnnualReview
         </Table>
       </div>
     </div>
+  );
+}
+
+function ReportFilterSelect({
+  label,
+  allLabel,
+  value,
+  onValueChange,
+  options,
+}: {
+  label: string;
+  allLabel: string;
+  value: string;
+  onValueChange: (value: string) => void;
+  options: Array<string | { value: string; label: string }>;
+}) {
+  return (
+    <Select value={value} onValueChange={onValueChange}>
+      <SelectTrigger aria-label={label}>
+        <SelectValue placeholder={label} />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">{allLabel}</SelectItem>
+        {options.map((option) => {
+          const optionValue = typeof option === 'string' ? option : option.value;
+          const optionLabel = typeof option === 'string' ? option : option.label;
+
+          return (
+            <SelectItem key={optionValue} value={optionValue}>
+              {optionLabel}
+            </SelectItem>
+          );
+        })}
+      </SelectContent>
+    </Select>
   );
 }
 
