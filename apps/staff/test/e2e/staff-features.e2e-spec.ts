@@ -172,11 +172,10 @@ test.describe('Staff Portal – new features', () => {
     await expect(page.getByRole('link', { name: 'Requests', exact: true })).toBeVisible();
     await page.getByRole('link', { name: 'Requests', exact: true }).click();
     await expect(page.getByRole('banner').getByRole('heading', { name: 'Requests' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Back to Overview' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Toggle sidebar' })).toBeHidden();
-    await page.getByRole('link', { name: 'Back to Overview' }).click();
-    await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: /Ashinaga Staff/ })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Toggle sidebar' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Back to Overview' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+    await expect(page.getByRole('button', { name: 'Close menu' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Logout' })).toBeVisible();
   });
 });

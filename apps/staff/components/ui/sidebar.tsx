@@ -282,6 +282,7 @@ const SidebarTrigger = React.forwardRef<
       size="icon"
       className={cn('h-7 w-7', className)}
       aria-expanded={isMobile ? openMobile : open}
+      aria-label="Toggle sidebar"
       onClick={(event) => {
         onClick?.(event);
         toggleSidebar();

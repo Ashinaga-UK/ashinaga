@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
 import { StaffLayout } from '../staff-layout';
+import { SidebarProvider, SidebarTrigger } from '../ui/sidebar';
 
 jest.mock(
   'lucide-react',
@@ -61,6 +62,11 @@ function renderWithProviders(ui: ReactElement) {
 }
 
 describe('StaffLayout', () => {
+  beforeEach(() => {
+    // biome-ignore lint/suspicious/noDocumentCookie: tests seed the sidebar persistence cookie
+    document.cookie = 'sidebar:state=true; path=/';
+  });
+
   const renderLayout = (onLogout = jest.fn()) =>
     renderWithProviders(
       <StaffLayout
@@ -123,7 +129,7 @@ describe('StaffLayout', () => {
     expect(screen.queryByRole('link', { name: 'Back to Overview' })).not.toBeInTheDocument();
   });
 
-  it('shows a back control away from overview', () => {
+  it('keeps the menu trigger and section title away from overview', () => {
     renderWithProviders(
       <StaffLayout
         activeTab="scholars"
@@ -136,16 +142,36 @@ describe('StaffLayout', () => {
     );
 
     const header = screen.getByRole('banner');
-    const back = screen.getByRole('link', { name: 'Back to Overview' });
+    const toggle = getToggle();
     const sectionTitle = screen.getByRole('heading', { name: 'Scholars' });
 
-    expect(back).toHaveAttribute('href', '/');
-    expect(header).toContainElement(back);
+    expect(toggle).toHaveAccessibleName('Toggle sidebar');
+    expect(toggle).not.toHaveClass('hidden');
+    expect(header).toContainElement(toggle);
     expect(header).toContainElement(sectionTitle);
-    expect(getToggle()).toHaveClass('hidden');
+    expect(screen.queryByRole('link', { name: 'Back to Overview' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Back to Overview')).not.toBeInTheDocument();
     expect(
-      back.compareDocumentPosition(sectionTitle) & Node.DOCUMENT_POSITION_FOLLOWING
+      toggle.compareDocumentPosition(sectionTitle) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
+  });
+
+  it('restores a collapsed desktop sidebar from the cookie', () => {
+    // biome-ignore lint/suspicious/noDocumentCookie: tests seed the sidebar persistence cookie
+    document.cookie = 'sidebar:state=false; path=/';
+    renderLayout();
+
+    expect(getSidebar()).toHaveAttribute('data-state', 'collapsed');
+  });
+
+  it('gives a bare sidebar trigger an accessible name', () => {
+    render(
+      <SidebarProvider>
+        <SidebarTrigger />
+      </SidebarProvider>
+    );
+
+    expect(screen.getByRole('button', { name: 'Toggle sidebar' })).toBeInTheDocument();
   });
 
   it('hides the desktop rail at print so md:block cannot win', () => {

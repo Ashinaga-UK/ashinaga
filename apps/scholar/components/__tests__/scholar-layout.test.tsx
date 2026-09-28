@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { ScholarLayout } from '../scholar-layout';
+import { SidebarProvider, SidebarTrigger } from '../ui/sidebar';
 
 const mockGetMyProfile = jest.fn();
 const navState = { pathname: '' };
@@ -76,6 +77,8 @@ describe('ScholarLayout', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     navState.pathname = '';
+    // biome-ignore lint/suspicious/noDocumentCookie: tests seed the sidebar persistence cookie
+    document.cookie = 'sidebar:state=true; path=/';
     mockGetMyProfile.mockResolvedValue({ programStage: 'scholar' });
   });
 
@@ -121,6 +124,43 @@ describe('ScholarLayout', () => {
     expect(document.querySelector('[data-sidebar="header"]')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /switch/i })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Back to Overview' })).not.toBeInTheDocument();
+  });
+
+  it('keeps the menu trigger and section title on inner pages', async () => {
+    navState.pathname = '/profile';
+    await renderLayout();
+
+    const header = screen.getByRole('banner');
+    const toggle = getToggle();
+    const sectionTitle = screen.getByRole('heading', { name: 'My Profile' });
+
+    expect(toggle).toHaveAccessibleName('Toggle sidebar');
+    expect(toggle).not.toHaveClass('hidden');
+    expect(header).toContainElement(toggle);
+    expect(header).toContainElement(sectionTitle);
+    expect(screen.queryByRole('link', { name: 'Back to Overview' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Back to Overview')).not.toBeInTheDocument();
+    expect(
+      toggle.compareDocumentPosition(sectionTitle) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
+  it('restores a collapsed desktop sidebar from the cookie', async () => {
+    // biome-ignore lint/suspicious/noDocumentCookie: tests seed the sidebar persistence cookie
+    document.cookie = 'sidebar:state=false; path=/';
+    await renderLayout();
+
+    expect(getSidebar()).toHaveAttribute('data-state', 'collapsed');
+  });
+
+  it('gives a bare sidebar trigger an accessible name', () => {
+    render(
+      <SidebarProvider>
+        <SidebarTrigger />
+      </SidebarProvider>
+    );
+
+    expect(screen.getByRole('button', { name: 'Toggle sidebar' })).toBeInTheDocument();
   });
 
   it('collapses to an icon rail while keeping the header toggle visible', async () => {
