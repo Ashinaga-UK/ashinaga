@@ -8,6 +8,7 @@ import {
   FileText,
   FolderOpen,
   Home,
+  Inbox,
   Library,
   ListChecks,
   LogOut,
@@ -62,6 +63,12 @@ export const STAFF_NAV_ITEMS = [
     value: 'annual-reviews',
     label: 'Annual Reviews',
     icon: ClipboardCheck,
+  },
+  {
+    href: '/?tab=submissions',
+    value: 'submissions',
+    label: 'Submissions',
+    icon: Inbox,
   },
   { href: '/?tab=requests', value: 'requests', label: 'Requests', icon: FileText },
   {

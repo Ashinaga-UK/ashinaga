@@ -33,7 +33,9 @@ import {
   getScholarProfile,
   getScholarProposal,
   getScholarRequiredDocuments,
+  getScholarSubmissions,
   getStaffNotificationsFeed,
+  getSubmissionReport,
   getTasksByScholar,
   markStaffNotificationsRead,
   type PlatformSetupStatus,
@@ -41,6 +43,7 @@ import {
   type PrepYearReportFilters,
   type ResourceFilterOptions,
   reviewProposalStep,
+  type SubmissionReportFilters,
   type Task,
   type UpdateScholarProfileData,
   type UpdateTaskData,
@@ -69,6 +72,10 @@ export const queryKeys = {
     ['prep-tasks', 'cohort', filters] as const,
   prepYearReport: (filters: PrepYearReportFilters = {}) =>
     ['prep-year', 'report', filters] as const,
+  submissionReport: (filters: SubmissionReportFilters = {}) =>
+    ['submissions', 'report', filters] as const,
+  scholarSubmissions: (scholarId: string, filters: SubmissionReportFilters = {}) =>
+    ['submissions', 'scholar', scholarId, filters] as const,
   scholarCoordinatorNotes: (id: string) => ['scholar', id, 'coordinator-notes'] as const,
   scholarMeetingUpdates: (id: string) => ['scholar', id, 'meeting-updates'] as const,
   proposalInbox: ['proposals', 'inbox'] as const,
@@ -181,6 +188,27 @@ export function usePrepYearReport(filters: PrepYearReportFilters = {}) {
   return useQuery({
     queryKey: queryKeys.prepYearReport(filters),
     queryFn: () => getPrepYearReport(filters),
+  });
+}
+
+export function useSubmissionReport(filters: SubmissionReportFilters = {}) {
+  return useQuery({
+    queryKey: queryKeys.submissionReport(filters),
+    queryFn: () => getSubmissionReport(filters),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useScholarSubmissions(
+  scholarId: string,
+  filters: SubmissionReportFilters = {},
+  enabled = true
+) {
+  return useQuery({
+    queryKey: queryKeys.scholarSubmissions(scholarId, filters),
+    queryFn: () => getScholarSubmissions(scholarId, filters),
+    enabled: !!scholarId && enabled,
+    placeholderData: keepPreviousData,
   });
 }
 

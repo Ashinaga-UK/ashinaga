@@ -1553,6 +1553,115 @@ export async function downloadPrepYearReportCSV(
   );
 }
 
+export type SubmissionKind = 'request' | 'goal_update' | 'task_submission';
+
+export interface SubmissionReportFilters {
+  program?: string;
+  year?: string;
+  kind?: SubmissionKind;
+  requestType?:
+    | 'extenuating_circumstances'
+    | 'summer_funding_request'
+    | 'summer_funding_report'
+    | 'requirement_submission'
+    | 'others';
+  status?: 'all' | 'pending' | 'approved' | 'rejected';
+  from?: string;
+  to?: string;
+  scholarId?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface SubmissionHistoryRow {
+  id: string;
+  scholarId: string;
+  scholarName: string;
+  scholarEmail: string;
+  program: string;
+  year: string;
+  kind: SubmissionKind;
+  requestType: SubmissionReportFilters['requestType'] | null;
+  taskType: string | null;
+  status: string;
+  occurredAt: string;
+  title: string;
+}
+
+export interface SubmissionReport {
+  summary: {
+    total: number;
+    byKind: Record<SubmissionKind, number>;
+  };
+  series: Array<{
+    month: string;
+    request: number;
+    goal_update: number;
+    task_submission: number;
+  }>;
+  rows: SubmissionHistoryRow[];
+  pagination: {
+    page: number;
+    limit: number;
+    totalItems: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+  filterOptions: {
+    programs: string[];
+    years: string[];
+  };
+}
+
+function submissionReportQuery(filters: SubmissionReportFilters = {}): string {
+  const params = new URLSearchParams();
+  if (filters.program) params.set('program', filters.program);
+  if (filters.year) params.set('year', filters.year);
+  if (filters.kind) params.set('kind', filters.kind);
+  if (filters.requestType) params.set('requestType', filters.requestType);
+  if (filters.status) params.set('status', filters.status);
+  if (filters.from) params.set('from', filters.from);
+  if (filters.to) params.set('to', filters.to);
+  if (filters.scholarId) params.set('scholarId', filters.scholarId);
+  if (filters.page) params.set('page', String(filters.page));
+  if (filters.limit) params.set('limit', String(filters.limit));
+  const query = params.toString();
+  return query ? `?${query}` : '';
+}
+
+export async function getSubmissionReport(
+  filters: SubmissionReportFilters = {}
+): Promise<SubmissionReport> {
+  return fetchAPI<SubmissionReport>(`/api/submissions/report${submissionReportQuery(filters)}`);
+}
+
+export async function getScholarSubmissions(
+  scholarId: string,
+  filters: SubmissionReportFilters = {}
+): Promise<SubmissionReport> {
+  return fetchAPI<SubmissionReport>(
+    `/api/submissions/scholars/${scholarId}${submissionReportQuery({
+      ...filters,
+      scholarId: undefined,
+    })}`
+  );
+}
+
+export async function downloadSubmissionReportCSV(
+  filters: SubmissionReportFilters = {}
+): Promise<void> {
+  await downloadCsvFile(
+    `/api/submissions/report/csv${submissionReportQuery({
+      ...filters,
+      page: undefined,
+      limit: undefined,
+    })}`,
+    `submissions-report-${new Date().toISOString().slice(0, 10)}.csv`,
+    'Failed to download submissions CSV'
+  );
+}
+
 export async function getScholarRequiredDocuments(
   scholarId: string
 ): Promise<RequiredDocumentChecklist> {

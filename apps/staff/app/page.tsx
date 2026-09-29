@@ -35,6 +35,7 @@ import {
 } from '../components/scholar-profile';
 import { StaffInviteDialog } from '../components/staff-invite-dialog';
 import { StaffLayout } from '../components/staff-layout';
+import { SubmissionsReport } from '../components/submissions-report';
 import { TaskAssignment } from '../components/task-assignment';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -369,6 +370,7 @@ function StaffDashboardContent() {
                 {activeTab === 'prep-tasks' && 'Prep tasks'}
                 {activeTab === 'prep-reports' && 'Prep reports'}
                 {activeTab === 'annual-reviews' && 'Annual Reviews'}
+                {activeTab === 'submissions' && 'Submissions'}
                 {activeTab === 'requests' && 'Requests'}
                 {activeTab === 'announcements' && 'Announcements'}
                 {activeTab === 'resources' && 'Resources'}
@@ -385,6 +387,8 @@ function StaffDashboardContent() {
                   'Generate a Prep Year cohort overview for internal and board reviews.'}
                 {activeTab === 'annual-reviews' &&
                   'Track annual review submissions by scholar and academic year.'}
+                {activeTab === 'submissions' &&
+                  'See request, goal update, and task submission volume across cohorts.'}
                 {activeTab === 'requests' && 'Review and respond to scholar submissions.'}
                 {activeTab === 'announcements' && 'Create and manage announcements.'}
                 {activeTab === 'resources' && 'Review scholar-facing handbooks and guides.'}
@@ -612,6 +616,22 @@ function StaffDashboardContent() {
                       onViewScholarAnnualReviews={(scholarId) => {
                         router.push(
                           `?tab=scholars&view=scholar-profile&scholarId=${scholarId}&scholarTab=annual-reviews`
+                        );
+                      }}
+                    />
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {activeTab === 'submissions' && (
+              <div className="space-y-6">
+                <Card>
+                  <CardContent className="p-4 sm:p-5">
+                    <SubmissionsReport
+                      onViewScholar={(scholarId, tab) => {
+                        router.push(
+                          `?tab=scholars&view=scholar-profile&scholarId=${scholarId}&scholarTab=${tab}`
                         );
                       }}
                     />
