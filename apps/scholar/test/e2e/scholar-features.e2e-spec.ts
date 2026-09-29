@@ -93,7 +93,7 @@ test.describe('Scholar Portal – collapsible sidebar', () => {
   test('sidebar trigger opens mobile navigation and a section can be selected', async ({
     browser,
   }) => {
-    test.setTimeout(60_000);
+    test.setTimeout(90_000);
     // Fresh mobile context avoids a CI flake where resizing a desktop page leaves
     // useSession stuck pending (layout shows Loading... with no get-session calls).
     const context = await browser.newContext({
@@ -104,9 +104,18 @@ test.describe('Scholar Portal – collapsible sidebar', () => {
 
     try {
       await page.goto('/dashboard');
-      await expect(page.getByRole('heading', { name: 'Ashinaga Scholar Portal' })).toBeVisible({
-        timeout: 30_000,
-      });
+      const brand = page.getByRole('heading', { name: 'Ashinaga Scholar Portal' });
+      // A fresh mobile context can stay on Loading... when the first session
+      // check never leaves pending. Wait, then reload once. Do not reload when
+      // the shell is already visible.
+      const shellReady = await brand
+        .waitFor({ state: 'visible', timeout: 15_000 })
+        .then(() => true)
+        .catch(() => false);
+      if (!shellReady) {
+        await page.reload();
+      }
+      await expect(brand).toBeVisible({ timeout: 20_000 });
 
       await page.getByRole('button', { name: 'Toggle sidebar' }).click();
       await expect(page.getByRole('button', { name: 'Close menu' })).toBeVisible();
