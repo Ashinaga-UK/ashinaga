@@ -875,6 +875,67 @@ export async function getScholarStats(): Promise<ScholarStats> {
   return fetchAPI<ScholarStats>('/api/scholars/stats');
 }
 
+export type OverviewAttentionType =
+  | 'overdue_task'
+  | 'due_today'
+  | 'pending_request'
+  | 'stale_scholar'
+  | 'missing_document'
+  | 'incomplete_platform'
+  | 'annual_review_draft';
+
+export interface OverviewAttentionItem {
+  id: string;
+  type: OverviewAttentionType;
+  title: string;
+  scholarName: string;
+  scholarId: string;
+  href: string;
+  meta: {
+    dueDate?: string;
+    daysOverdue?: number;
+    submittedDate?: string;
+    lastActivity?: string;
+    daysInactive?: number;
+    academicYear?: string;
+    missingCount?: number;
+  };
+}
+
+export interface OverviewAttentionCounts {
+  action: number;
+  follow: number;
+  prep: number;
+  reviews: number;
+}
+
+export interface OverviewPayload {
+  cohort: { total: number; active: number; prepYear: number };
+  attention: {
+    items: OverviewAttentionItem[];
+    total: number;
+    truncated: boolean;
+    counts: OverviewAttentionCounts;
+  };
+  prepYear: {
+    candidateCount: number;
+    gaps: Array<{
+      id: string;
+      kind: 'documents' | 'platforms' | 'pathway' | 'overdue_task';
+      title: string;
+      scholarName: string;
+      scholarId: string;
+      href: string;
+    }>;
+    total: number;
+    truncated: boolean;
+  } | null;
+}
+
+export async function getOverview(): Promise<OverviewPayload> {
+  return fetchAPI<OverviewPayload>('/api/overview');
+}
+
 // Scholar filter options (for scholar management table)
 export interface ScholarFilterOptions {
   programs: string[];

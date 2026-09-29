@@ -14,6 +14,7 @@ import {
   Trash2,
   Users,
 } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import {
   downloadAllScholarsCSV,
@@ -44,6 +45,10 @@ import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 
+function programStageFromSearch(value: string | null): 'all' | 'prep_year' | 'scholar' {
+  return value === 'prep_year' || value === 'scholar' ? value : 'all';
+}
+
 interface StudentManagementTableProps {
   onViewProfile: (studentId: string) => void;
   onOnboardScholar: () => void;
@@ -53,6 +58,8 @@ export function ScholarManagementTable({
   onViewProfile,
   onOnboardScholar,
 }: StudentManagementTableProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
   const [scholars, setScholars] = useState<Scholar[]>([]);
   const [selectedScholars, setSelectedScholars] = useState<string[]>([]);
@@ -68,7 +75,7 @@ export function ScholarManagementTable({
     'all' | 'active' | 'inactive' | 'on_hold' | 'archived'
   >('all');
   const [programStageFilter, setProgramStageFilter] = useState<'all' | 'prep_year' | 'scholar'>(
-    'all'
+    () => programStageFromSearch(searchParams.get('programStage'))
   );
   const [platformSetupFilter, setPlatformSetupFilter] = useState<'all' | 'incomplete' | 'complete'>(
     'all'
@@ -387,7 +394,15 @@ export function ScholarManagementTable({
 
         <Select
           value={programStageFilter}
-          onValueChange={(v) => setProgramStageFilter(v as typeof programStageFilter)}
+          onValueChange={(value) => {
+            const stage = programStageFromSearch(value);
+            setProgramStageFilter(stage);
+            const params = new URLSearchParams(searchParams.toString());
+            params.set('tab', 'scholars');
+            if (stage === 'all') params.delete('programStage');
+            else params.set('programStage', stage);
+            router.replace(`?${params.toString()}`);
+          }}
         >
           <SelectTrigger>
             <SelectValue placeholder="All Program Stages" />
