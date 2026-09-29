@@ -1,5 +1,12 @@
 import '@testing-library/jest-dom';
+import { configure } from '@testing-library/react';
 import React from 'react';
+
+// CI runners are slower than a dev machine, and signup tests type through
+// comboboxes one keystroke at a time. Jest's 5s default and testing-library's
+// 1s async default time those out on Quality while they pass locally.
+jest.setTimeout(30000);
+configure({ asyncUtilTimeout: 5000 });
 
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
