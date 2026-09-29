@@ -26,6 +26,7 @@ import { PrepTasksTracker } from '../components/prep-tasks-tracker';
 import { ProposalInbox } from '../components/proposal-inbox';
 import { RequestsQueue } from '../components/requests-queue';
 import { ResourcesManagement } from '../components/resources-management';
+import { ScholarActivityReport } from '../components/scholar-activity-report';
 import { ScholarManagementTable } from '../components/scholar-management-table';
 import { ScholarOnboarding } from '../components/scholar-onboarding';
 import {
@@ -365,6 +366,7 @@ function StaffDashboardContent() {
               >
                 {activeTab === 'overview' && 'Overview'}
                 {activeTab === 'scholars' && 'Scholars'}
+                {activeTab === 'scholar-activity' && 'Scholar activity'}
                 {activeTab === 'prep-documents' && 'Prep documents'}
                 {activeTab === 'prep-tasks' && 'Prep tasks'}
                 {activeTab === 'prep-reports' && 'Prep reports'}
@@ -377,6 +379,8 @@ function StaffDashboardContent() {
               <p className="mt-0.5 text-sm text-muted-foreground print:hidden">
                 {activeTab === 'overview' && 'Your dashboard at a glance.'}
                 {activeTab === 'scholars' && 'View and manage your assigned scholars.'}
+                {activeTab === 'scholar-activity' &&
+                  'See who has gone quiet, who is behind on tasks, and which cohorts are most active.'}
                 {activeTab === 'prep-documents' &&
                   'See submitted and missing Prep Year documents without opening each profile.'}
                 {activeTab === 'prep-tasks' &&
@@ -552,6 +556,20 @@ function StaffDashboardContent() {
                   </Card>
                 )}
               </div>
+            )}
+
+            {activeTab === 'scholar-activity' && (
+              <Card>
+                <CardContent className="p-4 sm:p-5">
+                  <ScholarActivityReport
+                    onViewScholar={(scholarId) => {
+                      router.push(
+                        `?tab=scholars&view=scholar-profile&scholarId=${scholarId}&scholarTab=profile`
+                      );
+                    }}
+                  />
+                </CardContent>
+              </Card>
             )}
 
             {activeTab === 'prep-documents' && (

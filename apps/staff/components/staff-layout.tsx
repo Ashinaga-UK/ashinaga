@@ -2,6 +2,7 @@
 
 import { ThemeToggle } from '@workspace/ui';
 import {
+  Activity,
   ChevronLeft,
   ClipboardCheck,
   FileSpreadsheet,
@@ -39,6 +40,12 @@ import {
 export const STAFF_NAV_ITEMS = [
   { href: '/', value: 'overview', label: 'Overview', icon: Home },
   { href: '/?tab=scholars', value: 'scholars', label: 'Scholars', icon: Users },
+  {
+    href: '/?tab=scholar-activity',
+    value: 'scholar-activity',
+    label: 'Scholar activity',
+    icon: Activity,
+  },
   {
     href: '/?tab=prep-documents',
     value: 'prep-documents',
