@@ -1,5 +1,5 @@
-import { Transform } from 'class-transformer';
-import { IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { IsDateString, IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import type {
   ScholarActivitySortBy,
   ScholarActivitySortOrder,
@@ -47,4 +47,19 @@ export class GetScholarActivityQueryDto {
   @IsEnum(['asc', 'desc'])
   @Transform(({ value }) => (typeof value === 'string' ? value.toLowerCase() : value))
   sortOrder?: ScholarActivitySortOrder;
+
+  /** JSON page. CSV export ignores this and returns every matching scholar. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  /** JSON page size. CSV export ignores this. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number;
 }

@@ -170,7 +170,8 @@ describe('GET /api/scholar-activity/report (integration)', () => {
     expect(staleRow.tasksBehind).toBe(1);
     expect(staleRow.taskCompletionRate).toBe(50);
     expect(staleRow.goalsTotal).toBe(1);
-    expect(staleRow.goalsUpdatedInRange).toBe(1);
+    expect(staleRow.tasksCompletedInRange).toBeNull();
+    expect(staleRow.goalsUpdatedInRange).toBeNull();
 
     const unknownRow = res.body.scholars.find(
       (row: { scholarId: string }) => row.scholarId === unknown.scholarId
@@ -231,6 +232,31 @@ describe('GET /api/scholar-activity/report (integration)', () => {
     expect(csv.text).toContain('Unknown Scholar');
     expect(csv.text).toContain('Unknown');
     expect(csv.text).not.toContain('Stale Scholar');
+    expect(csv.text).toContain('"0","0",,"0","","1","1",,"8"');
+
+    const sameDay = await request(app.getHttpServer())
+      .get('/api/scholar-activity/report')
+      .query({ program, from: today, to: today })
+      .expect(200);
+    expect(sameDay.body.summary.scholarCount).toBe(3);
+
+    const paged = await request(app.getHttpServer())
+      .get('/api/scholar-activity/report')
+      .query({ program, page: 1, limit: 1 })
+      .expect(200);
+    expect(paged.body.scholars).toHaveLength(1);
+    expect(paged.body.summary.scholarCount).toBe(3);
+    expect(paged.body.meta).toMatchObject({ page: 1, limit: 1, totalItems: 3, totalPages: 3 });
+    expect(paged.body.cohorts[0].scholarCount).toBe(3);
+
+    const fullCsv = await request(app.getHttpServer())
+      .get('/api/scholar-activity/report/csv')
+      .query({ program, limit: 1 })
+      .expect(200);
+    expect(fullCsv.text).toContain('Stale Scholar');
+    expect(fullCsv.text).toContain('Unknown Scholar');
+    expect(fullCsv.text).toContain('Recent Scholar');
+    expect(fullCsv.text).toContain('"1",,"1"');
   });
 
   it('rejects non-staff and invalid filters', async () => {
@@ -242,6 +268,10 @@ describe('GET /api/scholar-activity/report (integration)', () => {
     await request(app.getHttpServer())
       .get('/api/scholar-activity/report')
       .query({ status: 'graduated' })
+      .expect(400);
+    await request(app.getHttpServer())
+      .get('/api/scholar-activity/report')
+      .query({ from: '2026-09-02', to: '2026-09-01' })
       .expect(400);
   });
 });

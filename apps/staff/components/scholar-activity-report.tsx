@@ -70,7 +70,15 @@ export function ScholarActivityReport({
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [sort, setSort] = useState<SortValue>('name');
+  const [page, setPage] = useState(1);
   const [exporting, setExporting] = useState(false);
+
+  const changeFilter = <T,>(setter: (value: T) => void) => {
+    return (value: T) => {
+      setter(value);
+      setPage(1);
+    };
+  };
 
   const filters = useMemo<ScholarActivityFilters>(() => {
     const [sortBy, sortOrder] = sort === 'name' ? ['name' as const, undefined] : sort.split('-');
@@ -88,8 +96,9 @@ export function ScholarActivityReport({
       next.sortBy = sortBy;
       next.sortOrder = sortOrder === 'desc' ? 'desc' : 'asc';
     }
+    if (page > 1) next.page = page;
     return next;
-  }, [program, year, programStage, nationality, status, from, to, sort]);
+  }, [program, year, programStage, nationality, status, from, to, sort, page]);
 
   const { data, isLoading, isFetching, error } = useScholarActivityReport(filters);
   const scholars = data?.scholars ?? [];
@@ -103,8 +112,9 @@ export function ScholarActivityReport({
   const handleExportCsv = async () => {
     if (reportBusy || scholars.length === 0) return;
     setExporting(true);
+    const { page: _page, ...exportFilters } = filters;
     try {
-      await downloadScholarActivityReportCSV(filters);
+      await downloadScholarActivityReportCSV(exportFilters);
     } catch (err) {
       console.error(err);
       alert('Failed to download scholar activity CSV. Please try again.');
@@ -141,7 +151,7 @@ export function ScholarActivityReport({
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <Select value={program} onValueChange={setProgram}>
+          <Select value={program} onValueChange={changeFilter(setProgram)}>
             <SelectTrigger aria-label="Filter by program">
               <SelectValue placeholder="Program" />
             </SelectTrigger>
@@ -154,7 +164,7 @@ export function ScholarActivityReport({
               ))}
             </SelectContent>
           </Select>
-          <Select value={year} onValueChange={setYear}>
+          <Select value={year} onValueChange={changeFilter(setYear)}>
             <SelectTrigger aria-label="Filter by year">
               <SelectValue placeholder="Year" />
             </SelectTrigger>
@@ -167,7 +177,7 @@ export function ScholarActivityReport({
               ))}
             </SelectContent>
           </Select>
-          <Select value={programStage} onValueChange={setProgramStage}>
+          <Select value={programStage} onValueChange={changeFilter(setProgramStage)}>
             <SelectTrigger aria-label="Filter by stage">
               <SelectValue placeholder="Stage" />
             </SelectTrigger>
@@ -177,7 +187,7 @@ export function ScholarActivityReport({
               <SelectItem value="scholar">Scholar</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={nationality} onValueChange={setNationality}>
+          <Select value={nationality} onValueChange={changeFilter(setNationality)}>
             <SelectTrigger aria-label="Filter by nationality">
               <SelectValue placeholder="Nationality" />
             </SelectTrigger>
@@ -190,7 +200,7 @@ export function ScholarActivityReport({
               ))}
             </SelectContent>
           </Select>
-          <Select value={status} onValueChange={setStatus}>
+          <Select value={status} onValueChange={changeFilter(setStatus)}>
             <SelectTrigger aria-label="Filter by status">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
@@ -203,7 +213,7 @@ export function ScholarActivityReport({
               ))}
             </SelectContent>
           </Select>
-          <Select value={sort} onValueChange={(value) => setSort(value as SortValue)}>
+          <Select value={sort} onValueChange={changeFilter((value) => setSort(value as SortValue))}>
             <SelectTrigger aria-label="Sort scholars">
               <SelectValue placeholder="Sort" />
             </SelectTrigger>
@@ -215,18 +225,30 @@ export function ScholarActivityReport({
               <SelectItem value="taskCompletionRate-desc">Task completion, highest</SelectItem>
             </SelectContent>
           </Select>
-          <Input
-            type="date"
-            aria-label="From"
-            value={from}
-            onChange={(event) => setFrom(event.target.value)}
-          />
-          <Input
-            type="date"
-            aria-label="To"
-            value={to}
-            onChange={(event) => setTo(event.target.value)}
-          />
+          <div className="grid gap-1">
+            <span className="text-xs text-muted-foreground">From (UTC)</span>
+            <Input
+              type="date"
+              aria-label="From (UTC)"
+              value={from}
+              onChange={(event) => {
+                setFrom(event.target.value);
+                setPage(1);
+              }}
+            />
+          </div>
+          <div className="grid gap-1">
+            <span className="text-xs text-muted-foreground">To (UTC)</span>
+            <Input
+              type="date"
+              aria-label="To (UTC)"
+              value={to}
+              onChange={(event) => {
+                setTo(event.target.value);
+                setPage(1);
+              }}
+            />
+          </div>
         </div>
         <Button
           variant="outline"
@@ -246,7 +268,7 @@ export function ScholarActivityReport({
       </div>
       <p className="text-xs text-muted-foreground">
         Last seen is the latest sign-in or profile visit. Unknown means that timestamp was never
-        recorded. The date range applies to tasks completed and goals updated.
+        recorded. The date range is in UTC and applies to tasks completed and goals updated.
       </p>
 
       <div className="space-y-2">
@@ -313,9 +335,13 @@ export function ScholarActivityReport({
               <TableHead>Status</TableHead>
               <TableHead>Last seen</TableHead>
               <TableHead>Activity</TableHead>
-              <TableHead className="text-right">Tasks</TableHead>
+              <TableHead className="text-right">
+                {rangeActive ? 'Tasks (all time)' : 'Tasks'}
+              </TableHead>
               <TableHead className="text-right">Behind</TableHead>
-              <TableHead className="text-right">Completion</TableHead>
+              <TableHead className="text-right">
+                {rangeActive ? 'Completion (all time)' : 'Completion'}
+              </TableHead>
               {rangeActive ? (
                 <TableHead className="text-right">Completed in range</TableHead>
               ) : null}
@@ -380,6 +406,33 @@ export function ScholarActivityReport({
           </TableBody>
         </Table>
       </div>
+      {data?.meta && data.meta.totalPages > 1 ? (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Page {data.meta.page} of {data.meta.totalPages}
+          </p>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={data.meta.page <= 1 || reportBusy}
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+            >
+              Previous
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={data.meta.page >= data.meta.totalPages || reportBusy}
+              onClick={() => setPage((current) => current + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

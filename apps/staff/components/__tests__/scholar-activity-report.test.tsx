@@ -187,6 +187,8 @@ describe('ScholarActivityReport', () => {
     expect(within(cohortTable).getByText('Law')).toBeInTheDocument();
     expect(within(scholarTable).getByText('50%')).toBeInTheDocument();
     expect(within(scholarTable).getByText('1/2')).toBeInTheDocument();
+    expect(screen.getByLabelText('From (UTC)')).toBeInTheDocument();
+    expect(screen.getByLabelText('To (UTC)')).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Ada Scholar' }));
     expect(onViewScholar).toHaveBeenCalledWith('s1');

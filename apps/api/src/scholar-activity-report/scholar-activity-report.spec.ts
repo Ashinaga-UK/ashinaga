@@ -63,7 +63,7 @@ describe('buildScholarActivityReport', () => {
   });
 
   it('treats a missing last_activity as unknown and a timestamp older than 30 days as stale', () => {
-    const report = buildScholarActivityReport([ada, ben, cia], [], {}, now);
+    const report = buildScholarActivityReport([ada, ben, cia], undefined, {}, now);
 
     const adaRow = report.scholars.find((row) => row.scholarId === 'ada');
     const benRow = report.scholars.find((row) => row.scholarId === 'ben');
@@ -92,7 +92,7 @@ describe('buildScholarActivityReport', () => {
       name: 'Exact',
       lastActivity: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
     });
-    const report = buildScholarActivityReport([exact], [], {}, now);
+    const report = buildScholarActivityReport([exact], undefined, {}, now);
     expect(report.scholars[0]?.isStaleLogin).toBe(false);
     expect(report.scholars[0]?.daysSinceActivity).toBe(30);
   });
@@ -107,7 +107,7 @@ describe('buildScholarActivityReport', () => {
       tasksAssigned: 1,
       tasksCompleted: 1,
     });
-    const report = buildScholarActivityReport([ada, ben, cia, quiet], [], {}, now);
+    const report = buildScholarActivityReport([ada, ben, cia, quiet], undefined, {}, now);
     expect(report.cohorts.map((cohort) => `${cohort.program}:${cohort.year}`)).toEqual([
       'Medicine:2025',
       'Law:2026',
@@ -125,7 +125,7 @@ describe('buildScholarActivityReport', () => {
   it('sorts completion with null rates last', () => {
     const report = buildScholarActivityReport(
       [ada, ben, cia],
-      [],
+      undefined,
       {
         sortBy: 'taskCompletionRate',
         sortOrder: 'asc',
@@ -136,12 +136,44 @@ describe('buildScholarActivityReport', () => {
   });
 
   it('exports activity labels without counting unknown as stale', () => {
-    const report = buildScholarActivityReport([ada, ben], [ada, ben], {}, now);
+    const report = buildScholarActivityReport(
+      [ada, ben],
+      {
+        programs: ['Law'],
+        years: ['2026'],
+        nationalities: ['Kenya', 'Uganda'],
+      },
+      {},
+      now
+    );
     const csv = scholarActivityReportToCsv(report);
     expect(csv).toContain('No activity in 30 days');
     expect(csv).toContain('Unknown');
     expect(csv).toContain('50%');
     expect(report.filterOptions.nationalities).toEqual(['Kenya', 'Uganda']);
+  });
+
+  it('leaves in-range CSV cells blank when the request has no date range', () => {
+    const report = buildScholarActivityReport(
+      [
+        scholar({
+          scholarId: 'ada',
+          name: 'Ada',
+          tasksAssigned: 2,
+          tasksCompleted: 1,
+          tasksCompletedInRange: null,
+          tasksBehind: 1,
+          goalsUpdatedInRange: null,
+        }),
+      ],
+      undefined,
+      {},
+      now
+    );
+    const line = scholarActivityReportToCsv(report)
+      .split('\n')
+      .find((row) => row.includes('Ada'));
+    expect(line).toContain('"2","1",,"1"');
   });
 });
 

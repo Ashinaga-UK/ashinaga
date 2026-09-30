@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import type { SQL } from 'drizzle-orm';
-import { and, asc, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, isNull, lt, sql } from 'drizzle-orm';
 import { getDatabase } from '../db/connection';
 import { goals, scholars, tasks, users } from '../db/schema';
 import { GetScholarActivityQueryDto } from './dto/get-scholar-activity-query.dto';
@@ -8,12 +8,15 @@ import {
   activityRangeEnd,
   activityRangeStart,
   buildScholarActivityReport,
+  paginateScholarActivityReport,
   type ScholarActivityReport,
   type ScholarActivityScholarInput,
   type ScholarActivityStage,
   type ScholarActivityStatus,
   scholarActivityReportToCsv,
 } from './scholar-activity-report';
+
+const DEFAULT_PAGE_SIZE = 50;
 
 function asNumber(value: unknown): number {
   const parsed = Number(value ?? 0);
@@ -37,18 +40,29 @@ export class ScholarActivityReportService {
   }
 
   async getReport(query: GetScholarActivityQueryDto = {}): Promise<ScholarActivityReport> {
+    const report = await this.loadReport(query, { includeOptions: true });
+    return paginateScholarActivityReport(report, query.page ?? 1, query.limit ?? DEFAULT_PAGE_SIZE);
+  }
+
+  async exportCsv(query: GetScholarActivityQueryDto = {}): Promise<string> {
+    const report = await this.loadReport(query, { includeOptions: false });
+    return scholarActivityReportToCsv(report);
+  }
+
+  private async loadReport(
+    query: GetScholarActivityQueryDto,
+    options: { includeOptions: boolean }
+  ): Promise<ScholarActivityReport> {
     const from = activityRangeStart(query.from);
     const to = activityRangeEnd(query.to);
+    if (from && to && from.getTime() >= to.getTime()) {
+      throw new BadRequestException('from must be before to');
+    }
+    const rangeActive = from != null || to != null;
     const where = this.scholarWhere(query);
 
-    const [optionRows, scholarRows] = await Promise.all([
-      this.db
-        .select({
-          program: scholars.program,
-          year: scholars.year,
-          nationality: scholars.nationality,
-        })
-        .from(scholars),
+    const [optionSources, scholarRows] = await Promise.all([
+      options.includeOptions ? this.filterOptionSources() : Promise.resolve(null),
       this.db
         .select({
           scholarId: scholars.id,
@@ -67,13 +81,12 @@ export class ScholarActivityReportService {
         .orderBy(asc(users.name)),
     ]);
 
-    const ids = scholarRows.map((row) => row.scholarId);
     const [taskRows, goalRows] =
-      ids.length === 0
+      scholarRows.length === 0
         ? [[], []]
         : await Promise.all([
-            this.taskAggregates(ids, from, to),
-            this.goalAggregates(ids, from, to),
+            this.taskAggregates(where, from, to),
+            this.goalAggregates(where, from, to),
           ]);
 
     const tasksByScholar = new Map(taskRows.map((row) => [row.scholarId, row]));
@@ -94,24 +107,23 @@ export class ScholarActivityReportService {
         lastActivity: row.lastActivity,
         tasksAssigned: asNumber(task?.tasksAssigned),
         tasksCompleted: asNumber(task?.tasksCompleted),
-        tasksCompletedInRange: asNumber(task?.tasksCompletedInRange),
+        tasksCompletedInRange: rangeActive ? asNumber(task?.tasksCompletedInRange) : null,
         tasksBehind: asNumber(task?.tasksBehind),
         goalsTotal: asNumber(goal?.goalsTotal),
         goalsCompleted: asNumber(goal?.goalsCompleted),
-        goalsUpdatedInRange: asNumber(goal?.goalsUpdatedInRange),
+        goalsUpdatedInRange: rangeActive ? asNumber(goal?.goalsUpdatedInRange) : null,
         avgCompletionScale: asNumberOrNull(goal?.avgCompletionScale),
       };
     });
 
-    return buildScholarActivityReport(inputs, optionRows, {
-      sortBy: query.sortBy,
-      sortOrder: query.sortOrder,
-    });
-  }
-
-  async exportCsv(query: GetScholarActivityQueryDto = {}): Promise<string> {
-    const report = await this.getReport(query);
-    return scholarActivityReportToCsv(report);
+    return buildScholarActivityReport(
+      inputs,
+      optionSources ?? { programs: [], years: [], nationalities: [] },
+      {
+        sortBy: query.sortBy,
+        sortOrder: query.sortOrder,
+      }
+    );
   }
 
   private scholarWhere(query: GetScholarActivityQueryDto): SQL | undefined {
@@ -125,29 +137,61 @@ export class ScholarActivityReportService {
     );
   }
 
-  private taskAggregates(ids: string[], from: Date | null, to: Date | null) {
+  /** Distinct dropdown values. Not loaded for CSV, which does not return filter options. */
+  private async filterOptionSources() {
+    const [programs, years, nationalities] = await Promise.all([
+      this.db.selectDistinct({ value: scholars.program }).from(scholars).orderBy(scholars.program),
+      this.db.selectDistinct({ value: scholars.year }).from(scholars).orderBy(scholars.year),
+      this.db
+        .selectDistinct({ value: scholars.nationality })
+        .from(scholars)
+        .orderBy(scholars.nationality),
+    ]);
+    return {
+      programs: programs.map((row) => row.value),
+      years: years.map((row) => row.value),
+      nationalities: nationalities.map((row) => row.value),
+    };
+  }
+
+  /**
+   * Scholars matching the report filter. Aggregates join this instead of an IN list
+   * that grows with every scholar in the cohort.
+   */
+  private filteredScholars(where: SQL | undefined) {
+    return this.db
+      .select({ id: scholars.id })
+      .from(scholars)
+      .innerJoin(users, eq(scholars.userId, users.id))
+      .where(where)
+      .as('filtered_scholars');
+  }
+
+  private taskAggregates(where: SQL | undefined, from: Date | null, to: Date | null) {
+    const filtered = this.filteredScholars(where);
     const inRange = and(
-      isNull(tasks.deletedAt),
       eq(tasks.status, 'completed'),
       from ? gte(tasks.completedAt, from) : undefined,
       to ? lt(tasks.completedAt, to) : undefined
     );
-    const behind = sql`${tasks.deletedAt} is null and ${tasks.status} <> 'completed' and (${tasks.dueDate} at time zone 'UTC')::date <= (current_timestamp at time zone 'UTC')::date`;
+    const behind = sql`${tasks.status} <> 'completed' and (${tasks.dueDate} at time zone 'UTC')::date <= (current_timestamp at time zone 'UTC')::date`;
 
     return this.db
       .select({
         scholarId: tasks.scholarId,
-        tasksAssigned: countWhere(isNull(tasks.deletedAt)),
-        tasksCompleted: countWhere(and(isNull(tasks.deletedAt), eq(tasks.status, 'completed'))),
+        tasksAssigned: sql<number>`count(*)::int`,
+        tasksCompleted: countWhere(eq(tasks.status, 'completed')),
         tasksCompletedInRange: countWhere(inRange),
         tasksBehind: countWhere(behind),
       })
       .from(tasks)
-      .where(inArray(tasks.scholarId, ids))
+      .innerJoin(filtered, eq(tasks.scholarId, filtered.id))
+      .where(isNull(tasks.deletedAt))
       .groupBy(tasks.scholarId);
   }
 
-  private goalAggregates(ids: string[], from: Date | null, to: Date | null) {
+  private goalAggregates(where: SQL | undefined, from: Date | null, to: Date | null) {
+    const filtered = this.filteredScholars(where);
     const updatedInRange = and(
       from ? gte(goals.updatedAt, from) : undefined,
       to ? lt(goals.updatedAt, to) : undefined
@@ -162,7 +206,7 @@ export class ScholarActivityReportService {
         avgCompletionScale: sql<string | null>`avg(${goals.completionScale})`,
       })
       .from(goals)
-      .where(inArray(goals.scholarId, ids))
+      .innerJoin(filtered, eq(goals.scholarId, filtered.id))
       .groupBy(goals.scholarId);
   }
 }

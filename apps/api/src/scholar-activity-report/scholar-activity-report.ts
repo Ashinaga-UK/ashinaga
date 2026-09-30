@@ -34,18 +34,20 @@ export type ScholarActivityScholarInput = {
   lastActivity: Date | string | null;
   tasksAssigned: number;
   tasksCompleted: number;
-  tasksCompletedInRange: number;
+  /** Null when the request did not set from or to. */
+  tasksCompletedInRange: number | null;
   tasksBehind: number;
   goalsTotal: number;
   goalsCompleted: number;
-  goalsUpdatedInRange: number;
+  /** Null when the request did not set from or to. */
+  goalsUpdatedInRange: number | null;
   avgCompletionScale: number | null;
 };
 
-export type ScholarActivityFilterSource = {
-  program: string;
-  year: string;
-  nationality: string | null;
+export type ScholarActivityFilterOptionsInput = {
+  programs: Array<string | null | undefined>;
+  years: Array<string | null | undefined>;
+  nationalities: Array<string | null | undefined>;
 };
 
 export type ScholarActivityRow = {
@@ -63,13 +65,20 @@ export type ScholarActivityRow = {
   isStaleLogin: boolean;
   tasksAssigned: number;
   tasksCompleted: number;
-  tasksCompletedInRange: number;
+  tasksCompletedInRange: number | null;
   tasksBehind: number;
   taskCompletionRate: number | null;
   goalsTotal: number;
   goalsCompleted: number;
-  goalsUpdatedInRange: number;
+  goalsUpdatedInRange: number | null;
   avgCompletionScale: number | null;
+};
+
+export type ScholarActivityPage = {
+  page: number;
+  limit: number;
+  totalItems: number;
+  totalPages: number;
 };
 
 export type ScholarActivityCohort = {
@@ -92,6 +101,7 @@ export type ScholarActivityReport = {
   };
   cohorts: ScholarActivityCohort[];
   scholars: ScholarActivityRow[];
+  meta: ScholarActivityPage;
   filterOptions: {
     programs: string[];
     years: string[];
@@ -232,27 +242,47 @@ function buildCohorts(rows: ScholarActivityRow[]): ScholarActivityCohort[] {
   return cohorts;
 }
 
-export function buildFilterOptions(sources: ScholarActivityFilterSource[]) {
-  const programs = new Set<string>();
-  const years = new Set<string>();
-  const nationalities = new Set<string>();
-  for (const source of sources) {
-    if (source.program) programs.add(source.program);
-    if (source.year) years.add(source.year);
-    if (source.nationality) nationalities.add(source.nationality);
+function sortedDistinct(values: Array<string | null | undefined>): string[] {
+  const unique = new Set<string>();
+  for (const value of values) {
+    const trimmed = value?.trim();
+    if (trimmed) unique.add(trimmed);
   }
-  const sort = (values: Set<string>) => [...values].sort((a, b) => a.localeCompare(b, 'en-GB'));
+  return [...unique].sort((a, b) => a.localeCompare(b, 'en-GB'));
+}
+
+export function buildFilterOptions(sources: ScholarActivityFilterOptionsInput) {
   return {
-    programs: sort(programs),
-    years: sort(years),
-    nationalities: sort(nationalities),
+    programs: sortedDistinct(sources.programs),
+    years: sortedDistinct(sources.years),
+    nationalities: sortedDistinct(sources.nationalities),
     statuses: SCHOLAR_ACTIVITY_STATUSES,
+  };
+}
+
+export function paginateScholarActivityReport(
+  report: ScholarActivityReport,
+  page = 1,
+  limit = 50
+): ScholarActivityReport {
+  const totalItems = report.scholars.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / limit));
+  const safePage = Math.min(page, totalPages);
+  const start = (safePage - 1) * limit;
+  return {
+    ...report,
+    scholars: report.scholars.slice(start, start + limit),
+    meta: { page: safePage, limit, totalItems, totalPages },
   };
 }
 
 export function buildScholarActivityReport(
   scholars: ScholarActivityScholarInput[],
-  optionSources: ScholarActivityFilterSource[],
+  optionSources: ScholarActivityFilterOptionsInput = {
+    programs: [],
+    years: [],
+    nationalities: [],
+  },
   filters: ScholarActivityFilters = {},
   now = new Date()
 ): ScholarActivityReport {
@@ -294,6 +324,7 @@ export function buildScholarActivityReport(
     },
     cohorts: buildCohorts(sorted),
     scholars: sorted,
+    meta: { page: 1, limit: sorted.length, totalItems: sorted.length, totalPages: 1 },
     filterOptions: buildFilterOptions(optionSources),
   };
 }

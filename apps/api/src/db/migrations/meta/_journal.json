@@ -243,7 +243,7 @@
     {
       "idx": 34,
       "version": "7",
-      "when": 1790646372153,
+      "when": 1790400000000,
       "tag": "0034_scholar_activity_indexes",
       "breakpoints": true
     }

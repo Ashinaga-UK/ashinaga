@@ -73,8 +73,7 @@ export const scholars = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    index('scholars_last_activity_idx').on(table.lastActivity),
-    index('scholars_program_year_status_idx').on(table.program, table.year, table.status),
+    index('scholars_status_program_year_idx').on(table.status, table.program, table.year),
     index('scholars_nationality_idx').on(table.nationality),
   ]
 );

@@ -1,5 +1,5 @@
 {
-  "id": "dcfcf171-72c1-4250-82eb-d6066f4c475a",
+  "id": "4ba70ba9-1c1f-4aae-a63b-f1a4f925b68b",
   "prevId": "a8ea8b8a-d46d-4ea6-a5b6-faf3ee76e11c",
   "version": "7",
   "dialect": "postgresql",
@@ -2963,24 +2963,15 @@
         }
       },
       "indexes": {
-        "scholars_last_activity_idx": {
-          "name": "scholars_last_activity_idx",
+        "scholars_status_program_year_idx": {
+          "name": "scholars_status_program_year_idx",
           "columns": [
             {
-              "expression": "last_activity",
+              "expression": "status",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "scholars_program_year_status_idx": {
-          "name": "scholars_program_year_status_idx",
-          "columns": [
+            },
             {
               "expression": "program",
               "isExpression": false,
@@ -2989,12 +2980,6 @@
             },
             {
               "expression": "year",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "status",
               "isExpression": false,
               "asc": true,
               "nulls": "last"

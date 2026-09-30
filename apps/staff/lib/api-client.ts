@@ -1628,6 +1628,8 @@ export interface ScholarActivityFilters {
   to?: string;
   sortBy?: 'name' | 'lastActivity' | 'taskCompletionRate';
   sortOrder?: 'asc' | 'desc';
+  page?: number;
+  limit?: number;
 }
 
 export interface ScholarActivityRow {
@@ -1645,12 +1647,12 @@ export interface ScholarActivityRow {
   isStaleLogin: boolean;
   tasksAssigned: number;
   tasksCompleted: number;
-  tasksCompletedInRange: number;
+  tasksCompletedInRange: number | null;
   tasksBehind: number;
   taskCompletionRate: number | null;
   goalsTotal: number;
   goalsCompleted: number;
-  goalsUpdatedInRange: number;
+  goalsUpdatedInRange: number | null;
   avgCompletionScale: number | null;
 }
 
@@ -1674,6 +1676,12 @@ export interface ScholarActivityReportPayload {
   };
   cohorts: ScholarActivityCohort[];
   scholars: ScholarActivityRow[];
+  meta: {
+    page: number;
+    limit: number;
+    totalItems: number;
+    totalPages: number;
+  };
   filterOptions: {
     programs: string[];
     years: string[];
@@ -1693,6 +1701,8 @@ function scholarActivityQuery(filters: ScholarActivityFilters = {}): string {
   if (filters.to) params.set('to', filters.to);
   if (filters.sortBy) params.set('sortBy', filters.sortBy);
   if (filters.sortOrder) params.set('sortOrder', filters.sortOrder);
+  if (filters.page && filters.page > 1) params.set('page', String(filters.page));
+  if (filters.limit) params.set('limit', String(filters.limit));
   const query = params.toString();
   return query ? `?${query}` : '';
 }
