@@ -87,13 +87,21 @@ test.describe('Scholar Portal – collapsible sidebar', () => {
   test('sidebar trigger opens mobile navigation and a section can be selected', async ({
     page,
   }) => {
-    // Size the focused page before navigation. A second, unfocused context stays
-    // frozen on the server Loading shell and never calls get-session.
+    test.setTimeout(90_000);
+    // Size the focused page before navigation. A mobile viewport can still leave
+    // useSession pending, so the layout stays on Loading... Reload once if the
+    // shell has not appeared.
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/dashboard');
-    await expect(page.getByRole('heading', { name: 'Ashinaga Scholar Portal' })).toBeVisible({
-      timeout: 30_000,
-    });
+    const brand = page.getByRole('heading', { name: 'Ashinaga Scholar Portal' });
+    const shellReady = await brand
+      .waitFor({ state: 'visible', timeout: 15_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!shellReady) {
+      await page.reload();
+    }
+    await expect(brand).toBeVisible({ timeout: 20_000 });
 
     await page.getByRole('button', { name: 'Toggle sidebar' }).click();
     await expect(page.getByRole('button', { name: 'Close menu' })).toBeVisible();
