@@ -31,6 +31,12 @@ import {
 } from './dto/update-request-status.dto';
 import { SCHOLAR_CREATABLE_REQUEST_TYPES, SCHOLAR_VISIBLE_REQUEST_TYPES } from './request-types';
 
+const BULK_OPEN_STATUSES = ['pending', 'reviewed', 'commented'] as const;
+
+function isBulkOpenStatus(status: string): status is (typeof BULK_OPEN_STATUSES)[number] {
+  return (BULK_OPEN_STATUSES as readonly string[]).includes(status);
+}
+
 @Injectable()
 export class RequestsService {
   constructor(
@@ -616,13 +622,13 @@ export class RequestsService {
     }
 
     const { request: currentRequest, user } = requestWithScholar[0];
-    const reviewComment = providedComment || currentRequest.reviewComment || '';
+    const reviewComment = providedComment;
 
     const [updatedRequest] = await database
       .update(requests)
       .set({
         status,
-        ...(providedComment ? { reviewComment: providedComment } : {}),
+        reviewComment,
         reviewedBy,
         reviewDate: new Date(),
         updatedAt: new Date(),
@@ -716,13 +722,16 @@ export class RequestsService {
     const byId = new Map(loaded.map((row) => [row.request.id, row]));
     const blocked = ids.filter((id) => {
       const status = byId.get(id)?.request.status;
-      return status !== 'pending' && status !== body.status;
+      return !status || (!isBulkOpenStatus(status) && status !== body.status);
     });
     if (blocked.length > 0) {
-      throw new BadRequestException('Only pending requests can be bulk-reviewed');
+      throw new BadRequestException('Decided requests cannot be bulk-reviewed');
     }
 
-    const pendingIds = ids.filter((id) => byId.get(id)?.request.status === 'pending');
+    const openIds = ids.filter((id) => {
+      const status = byId.get(id)?.request.status;
+      return status !== undefined && isBulkOpenStatus(status);
+    });
     const notices: {
       email: string;
       name: string;
@@ -733,24 +742,26 @@ export class RequestsService {
       requestId: string;
       reviewComment: string;
       updatedAt: Date;
+      emailScholar: boolean;
     }[] = [];
-    if (pendingIds.length > 0) {
+    if (openIds.length > 0) {
       await database.transaction(async (tx) => {
         notices.length = 0;
-        for (const requestId of pendingIds) {
+        for (const requestId of openIds) {
           const current = byId.get(requestId);
           if (!current) continue;
-          const reviewComment = providedComment || current.request.reviewComment || '';
           const [updatedRequest] = await tx
             .update(requests)
             .set({
               status: body.status,
-              ...(providedComment ? { reviewComment: providedComment } : {}),
+              reviewComment: providedComment,
               reviewedBy,
               reviewDate: new Date(),
               updatedAt: new Date(),
             })
-            .where(and(eq(requests.id, requestId), eq(requests.status, 'pending')))
+            .where(
+              and(eq(requests.id, requestId), inArray(requests.status, [...BULK_OPEN_STATUSES]))
+            )
             .returning();
 
           if (!updatedRequest) {
@@ -768,38 +779,38 @@ export class RequestsService {
           });
           byId.set(requestId, { ...current, request: updatedRequest });
 
-          if (
-            SCHOLAR_VISIBLE_REQUEST_TYPES.includes(current.request.type) &&
-            (body.status === 'approved' || body.status === 'rejected')
-          ) {
-            notices.push({
-              email: current.user.email,
-              name: current.user.name,
-              type: current.request.type,
-              description: current.request.description,
-              scholarId: current.request.scholarId,
-              scholarName: current.user.name,
-              requestId,
-              reviewComment,
-              updatedAt: updatedRequest.updatedAt,
-            });
-          }
+          notices.push({
+            email: current.user.email,
+            name: current.user.name,
+            type: current.request.type,
+            description: current.request.description,
+            scholarId: current.request.scholarId,
+            scholarName: current.user.name,
+            requestId,
+            reviewComment: providedComment,
+            updatedAt: updatedRequest.updatedAt,
+            emailScholar:
+              SCHOLAR_VISIBLE_REQUEST_TYPES.includes(current.request.type) &&
+              (body.status === 'approved' || body.status === 'rejected'),
+          });
         }
       });
     }
 
     for (const notice of notices) {
-      try {
-        await this.emailService.sendRequestStatusNotification(
-          notice.email,
-          notice.name,
-          notice.type.replace('_', ' '),
-          body.status,
-          notice.reviewComment,
-          notice.description
-        );
-      } catch (error) {
-        console.error('Failed to send email notification:', error);
+      if (notice.emailScholar) {
+        try {
+          await this.emailService.sendRequestStatusNotification(
+            notice.email,
+            notice.name,
+            notice.type.replace('_', ' '),
+            body.status,
+            notice.reviewComment,
+            notice.description
+          );
+        } catch (error) {
+          console.error('Failed to send email notification:', error);
+        }
       }
       void this.notifications
         .notifyRequestStatusChanged({

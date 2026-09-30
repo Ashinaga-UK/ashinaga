@@ -292,11 +292,15 @@ export function RequestsQueue({ onReviewed }: RequestsQueueProps) {
     return () => window.clearTimeout(handle);
   }, [scholarOpen, scholarQuery]);
 
-  const pendingIds = requests
-    .filter((request) => request.status === 'pending')
+  const openIds = requests
+    .filter(
+      (request) =>
+        request.status === 'pending' ||
+        request.status === 'reviewed' ||
+        request.status === 'commented'
+    )
     .map((request) => request.id);
-  const allVisibleSelected =
-    pendingIds.length > 0 && pendingIds.every((id) => selectedIds.includes(id));
+  const allVisibleSelected = openIds.length > 0 && openIds.every((id) => selectedIds.includes(id));
 
   const currentQuery = useMemo(() => {
     const query: Record<string, string> = {};
@@ -665,11 +669,11 @@ export function RequestsQueue({ onReviewed }: RequestsQueueProps) {
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Checkbox
                   checked={allVisibleSelected}
-                  disabled={pendingIds.length === 0}
-                  onCheckedChange={(checked) => setSelectedIds(checked ? pendingIds : [])}
-                  aria-label="Select all pending requests on this page"
+                  disabled={openIds.length === 0}
+                  onCheckedChange={(checked) => setSelectedIds(checked ? openIds : [])}
+                  aria-label="Select all open requests on this page"
                 />
-                Select pending
+                Select open
               </div>
               {requests.map((request) => (
                 <div
@@ -684,7 +688,7 @@ export function RequestsQueue({ onReviewed }: RequestsQueueProps) {
                   <Checkbox
                     className="mt-4"
                     checked={selectedIds.includes(request.id)}
-                    disabled={request.status !== 'pending'}
+                    disabled={request.status === 'approved' || request.status === 'rejected'}
                     onCheckedChange={(checked) =>
                       setSelectedIds((current) =>
                         checked

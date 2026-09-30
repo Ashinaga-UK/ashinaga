@@ -442,7 +442,7 @@ describe('Requests API – multi-assignee (integration)', () => {
       expect(decidedRow?.reviewComment).toBe('Earlier reason');
     });
 
-    it('keeps the existing comment and does not audit a repeated bulk approve', async () => {
+    it('clears a stale comment and does not audit a repeated bulk approve', async () => {
       const created = await createRequestAs(scholar.userId, scholar.email, 'scholar', {
         type: 'extenuating_circumstances',
         description: 'Pending request approved twice to confirm the second call is a no-op.',
@@ -467,7 +467,7 @@ describe('Requests API – multi-assignee (integration)', () => {
         .from(requestRecords)
         .where(eq(requestRecords.id, created.body.id));
       expect(approved?.status).toBe('approved');
-      expect(approved?.reviewComment).toBe('Keep me');
+      expect(approved?.reviewComment).toBe('');
 
       const logsAfterFirst = await db
         .select()

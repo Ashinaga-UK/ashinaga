@@ -150,7 +150,7 @@ describe('RequestsQueue', () => {
     });
   });
 
-  it('bulk approve selects only pending requests', async () => {
+  it('bulk approve selects open requests and skips decided ones', async () => {
     const user = userEvent.setup();
     jest.mocked(getRequests).mockResolvedValueOnce({
       data: [
@@ -186,11 +186,27 @@ describe('RequestsQueue', () => {
           createdAt: '2026-01-02T00:00:00.000Z',
           updatedAt: '2026-01-02T00:00:00.000Z',
         },
+        {
+          id: 'req-3',
+          scholarId: 'scholar-3',
+          scholarName: 'Katherine Johnson',
+          scholarEmail: 'katherine@example.com',
+          type: 'others',
+          description: 'Already commented',
+          priority: 'medium',
+          status: 'reviewed',
+          submittedDate: '2026-01-03T00:00:00.000Z',
+          assignees: [],
+          attachments: [],
+          auditLogs: [],
+          createdAt: '2026-01-03T00:00:00.000Z',
+          updatedAt: '2026-01-03T00:00:00.000Z',
+        },
       ],
       pagination: {
         page: 1,
         limit: 20,
-        totalItems: 2,
+        totalItems: 3,
         totalPages: 1,
         hasNext: false,
         hasPrev: false,
@@ -202,15 +218,18 @@ describe('RequestsQueue', () => {
     expect(
       await screen.findByRole('checkbox', { name: 'Select request from Grace Hopper' })
     ).toBeDisabled();
-    expect(screen.getByText('Select pending')).toBeInTheDocument();
+    expect(
+      screen.getByRole('checkbox', { name: 'Select request from Katherine Johnson' })
+    ).toBeEnabled();
+    expect(screen.getByText('Select open')).toBeInTheDocument();
     await user.click(
-      screen.getByRole('checkbox', { name: 'Select all pending requests on this page' })
+      screen.getByRole('checkbox', { name: 'Select all open requests on this page' })
     );
     await user.click(screen.getByRole('button', { name: 'Approve' }));
 
     await waitFor(() => {
       expect(bulkUpdateRequestStatus).toHaveBeenCalledWith({
-        ids: ['req-1'],
+        ids: ['req-1', 'req-3'],
         status: 'approved',
         comment: undefined,
       });

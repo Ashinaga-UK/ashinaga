@@ -550,11 +550,12 @@ describe('RequestsService', () => {
       expect(mockEmailService.sendRequestStatusNotification).not.toHaveBeenCalled();
     });
 
-    it('keeps the existing comment when a bulk approve omits one', async () => {
+    it('clears a stale comment when a bulk approve omits one', async () => {
       const { set } = mockBulkRows([
         {
           id: '11111111-1111-4111-8111-111111111111',
           status: 'pending',
+          type: 'extenuating_circumstances',
           reviewComment: 'Keep me',
         },
       ]);
@@ -564,8 +565,39 @@ describe('RequestsService', () => {
         'staff-1'
       );
 
-      expect(set).toHaveBeenCalledWith(expect.not.objectContaining({ reviewComment: '' }));
-      expect(set.mock.calls[0]?.[0]).not.toHaveProperty('reviewComment');
+      expect(set).toHaveBeenCalledWith(expect.objectContaining({ reviewComment: '' }));
+      expect(mockEmailService.sendRequestStatusNotification).toHaveBeenCalledWith(
+        'scholar@example.com',
+        'Test Scholar',
+        'extenuating circumstances',
+        'approved',
+        '',
+        'Request description'
+      );
+    });
+
+    it('notifies staff for a request type the scholar cannot see', async () => {
+      mockBulkRows([
+        {
+          id: '11111111-1111-4111-8111-111111111111',
+          status: 'reviewed',
+          type: 'others',
+        },
+      ]);
+
+      await service.bulkUpdateRequestStatus(
+        { ids: ['11111111-1111-4111-8111-111111111111'], status: 'approved' },
+        'staff-1'
+      );
+
+      expect(mockEmailService.sendRequestStatusNotification).not.toHaveBeenCalled();
+      expect(mockNotifications.notifyRequestStatusChanged).toHaveBeenCalledWith(
+        expect.objectContaining({
+          requestId: '11111111-1111-4111-8111-111111111111',
+          requestType: 'others',
+          status: 'approved',
+        })
+      );
     });
 
     it('skips a request that is no longer pending when the update runs', async () => {
@@ -596,13 +628,15 @@ describe('RequestsService', () => {
       expect(where).toHaveBeenCalledTimes(2);
       for (const call of where.mock.calls) {
         expect(sqlMentions(call[0], 'pending')).toBe(true);
+        expect(sqlMentions(call[0], 'reviewed')).toBe(true);
+        expect(sqlMentions(call[0], 'commented')).toBe(true);
       }
       expect(values).toHaveBeenCalledTimes(1);
       expect(values).toHaveBeenCalledWith(expect.objectContaining({ requestId: pendingId }));
       expect(mockEmailService.sendRequestStatusNotification).toHaveBeenCalledTimes(1);
     });
 
-    it('keeps the existing comment when a single approve omits one', async () => {
+    it('clears a stale comment when a single approve omits one', async () => {
       mockStatusUpdate('summer_funding_request');
       const mockDatabase = require('../db/connection').database;
       const set = jest.fn().mockReturnValue({
@@ -622,8 +656,16 @@ describe('RequestsService', () => {
 
       await service.updateRequestStatus('request-1', 'approved', '  ', 'staff-1');
 
-      expect(set.mock.calls[0]?.[0]).not.toHaveProperty('reviewComment');
+      expect(set).toHaveBeenCalledWith(expect.objectContaining({ reviewComment: '' }));
       expect(values).toHaveBeenCalledWith(expect.objectContaining({ comment: null }));
+      expect(mockEmailService.sendRequestStatusNotification).toHaveBeenCalledWith(
+        'scholar@example.com',
+        'Test Scholar',
+        'summer funding_request',
+        'approved',
+        '',
+        'Request description'
+      );
     });
 
     it('does not email when the bulk write fails', async () => {
@@ -645,6 +687,7 @@ describe('RequestsService', () => {
         )
       ).rejects.toThrow('db down');
       expect(mockEmailService.sendRequestStatusNotification).not.toHaveBeenCalled();
+      expect(mockNotifications.notifyRequestStatusChanged).not.toHaveBeenCalled();
     });
 
     it.each(['summer_funding_report', 'requirement_submission', 'others'] as const)(
