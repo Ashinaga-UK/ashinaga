@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -99,6 +99,14 @@ describe('flow catalogue', () => {
     assert.ok(flow('scholar.chrome')?.steps.some((s) => s.notSeeLink === 'My Documents'));
     assert.equal(flow('prep.documents')?.persona, 'prep');
     assert.equal(flow('scholar.annual-review')?.persona, 'scholar');
+  });
+
+  it('maps every flow to specs that exist (ASH-123 coverage map)', () => {
+    for (const flow of catalogue.flows) {
+      for (const spec of flow.specs) {
+        assert.ok(existsSync(path.join(repoRoot, spec)), `${flow.id}: spec not found: ${spec}`);
+      }
+    }
   });
 
   it('never flips a scholar to another stage', () => {
