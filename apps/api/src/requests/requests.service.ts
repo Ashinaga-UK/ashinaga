@@ -689,8 +689,8 @@ export class RequestsService {
     reviewedBy: string
   ): Promise<{ data: Awaited<ReturnType<RequestsService['updateRequestStatus']>>[] }> {
     const ids = [...new Set(body.ids)];
-    const reviewComment = body.comment?.trim() ?? '';
-    if (body.status === 'rejected' && !reviewComment) {
+    const providedComment = body.comment?.trim() ?? '';
+    if (body.status === 'rejected' && !providedComment) {
       throw new BadRequestException('A reason is required to reject a request');
     }
 
@@ -698,11 +698,126 @@ export class RequestsService {
       await this.assertCallerCanReview(requestId, reviewedBy);
     }
 
-    const data = [];
-    for (const requestId of ids) {
-      data.push(await this.updateRequestStatus(requestId, body.status, reviewComment, reviewedBy));
+    const loaded = await database
+      .select({
+        request: requests,
+        user: users,
+      })
+      .from(requests)
+      .innerJoin(scholars, eq(requests.scholarId, scholars.id))
+      .innerJoin(users, eq(scholars.userId, users.id))
+      .where(inArray(requests.id, ids));
+
+    if (loaded.length !== ids.length) {
+      throw new NotFoundException('Request with ID not found');
     }
-    return { data };
+
+    const byId = new Map(loaded.map((row) => [row.request.id, row]));
+    const blocked = ids.filter((id) => {
+      const status = byId.get(id)?.request.status;
+      return status !== 'pending' && status !== body.status;
+    });
+    if (blocked.length > 0) {
+      throw new BadRequestException('Only pending requests can be bulk-reviewed');
+    }
+
+    const pendingIds = ids.filter((id) => byId.get(id)?.request.status === 'pending');
+    const notices: {
+      email: string;
+      name: string;
+      type: (typeof requests.$inferSelect)['type'];
+      description: string;
+      scholarId: string;
+      scholarName: string;
+      requestId: string;
+      reviewComment: string;
+      updatedAt: Date;
+    }[] = [];
+    if (pendingIds.length > 0) {
+      await database.transaction(async (tx) => {
+        notices.length = 0;
+        for (const requestId of pendingIds) {
+          const current = byId.get(requestId);
+          if (!current) continue;
+          const reviewComment = providedComment || current.request.reviewComment || '';
+          const [updatedRequest] = await tx
+            .update(requests)
+            .set({
+              status: body.status,
+              ...(providedComment ? { reviewComment: providedComment } : {}),
+              reviewedBy,
+              reviewDate: new Date(),
+              updatedAt: new Date(),
+            })
+            .where(eq(requests.id, requestId))
+            .returning();
+
+          if (!updatedRequest) {
+            throw new NotFoundException(`Request with ID ${requestId} not found`);
+          }
+
+          await tx.insert(requestAuditLogs).values({
+            requestId,
+            action: 'status_changed',
+            performedBy: reviewedBy,
+            previousStatus: current.request.status,
+            newStatus: body.status,
+            comment: providedComment || null,
+            metadata: JSON.stringify({ reviewedBy, reviewDate: new Date() }),
+          });
+          byId.set(requestId, { ...current, request: updatedRequest });
+
+          if (
+            SCHOLAR_VISIBLE_REQUEST_TYPES.includes(current.request.type) &&
+            (body.status === 'approved' || body.status === 'rejected')
+          ) {
+            notices.push({
+              email: current.user.email,
+              name: current.user.name,
+              type: current.request.type,
+              description: current.request.description,
+              scholarId: current.request.scholarId,
+              scholarName: current.user.name,
+              requestId,
+              reviewComment,
+              updatedAt: updatedRequest.updatedAt,
+            });
+          }
+        }
+      });
+    }
+
+    for (const notice of notices) {
+      try {
+        await this.emailService.sendRequestStatusNotification(
+          notice.email,
+          notice.name,
+          notice.type.replace('_', ' '),
+          body.status,
+          notice.reviewComment,
+          notice.description
+        );
+      } catch (error) {
+        console.error('Failed to send email notification:', error);
+      }
+      void this.notifications
+        .notifyRequestStatusChanged({
+          requestId: notice.requestId,
+          scholarId: notice.scholarId,
+          scholarName: notice.scholarName,
+          requestType: notice.type,
+          status: body.status,
+          actorUserId: reviewedBy,
+          dedupeSuffix: `${body.status}:${notice.updatedAt.toISOString()}`,
+        })
+        .catch((error) => {
+          console.error('Failed to create staff request_status_changed notifications:', error);
+        });
+    }
+
+    return {
+      data: ids.map((id) => byId.get(id)?.request).filter((row) => row !== undefined),
+    };
   }
 
   private async assertCallerCanReview(requestId: string, userId: string): Promise<void> {
