@@ -202,6 +202,7 @@ describe('RequestsQueue', () => {
     expect(
       await screen.findByRole('checkbox', { name: 'Select request from Grace Hopper' })
     ).toBeDisabled();
+    expect(screen.getByText('Select pending')).toBeInTheDocument();
     await user.click(
       screen.getByRole('checkbox', { name: 'Select all pending requests on this page' })
     );

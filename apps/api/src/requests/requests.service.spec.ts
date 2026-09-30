@@ -435,6 +435,21 @@ describe('RequestsService', () => {
       expect(mockDatabase.update).not.toHaveBeenCalled();
     });
 
+    function sqlMentions(value: unknown, needle: string): boolean {
+      const seen = new Set<unknown>();
+      const visit = (node: unknown): boolean => {
+        if (node == null || seen.has(node)) return false;
+        if (typeof node === 'string' || typeof node === 'number') {
+          return String(node).includes(needle);
+        }
+        if (typeof node !== 'object') return false;
+        seen.add(node);
+        if (Array.isArray(node)) return node.some(visit);
+        return Object.values(node as Record<string, unknown>).some(visit);
+      };
+      return visit(value);
+    }
+
     function mockBulkRows(
       rows: Array<{
         id: string;
@@ -551,6 +566,64 @@ describe('RequestsService', () => {
 
       expect(set).toHaveBeenCalledWith(expect.not.objectContaining({ reviewComment: '' }));
       expect(set.mock.calls[0]?.[0]).not.toHaveProperty('reviewComment');
+    });
+
+    it('skips a request that is no longer pending when the update runs', async () => {
+      const pendingId = '11111111-1111-4111-8111-111111111111';
+      const lostId = '22222222-2222-4222-8222-222222222222';
+      const { mockDatabase, values } = mockBulkRows([
+        { id: pendingId, status: 'pending', type: 'extenuating_circumstances' },
+        { id: lostId, status: 'pending', type: 'extenuating_circumstances' },
+      ]);
+      const updatedAt = new Date('2026-09-22T00:00:00.000Z');
+      const where = jest
+        .fn()
+        .mockReturnValueOnce({
+          returning: async () => [{ id: pendingId, status: 'approved', updatedAt }],
+        })
+        .mockReturnValueOnce({
+          returning: async () => [],
+        });
+      mockDatabase.update = jest.fn().mockReturnValue({
+        set: jest.fn().mockReturnValue({ where }),
+      });
+
+      await service.bulkUpdateRequestStatus(
+        { ids: [pendingId, lostId], status: 'approved' },
+        'staff-1'
+      );
+
+      expect(where).toHaveBeenCalledTimes(2);
+      for (const call of where.mock.calls) {
+        expect(sqlMentions(call[0], 'pending')).toBe(true);
+      }
+      expect(values).toHaveBeenCalledTimes(1);
+      expect(values).toHaveBeenCalledWith(expect.objectContaining({ requestId: pendingId }));
+      expect(mockEmailService.sendRequestStatusNotification).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps the existing comment when a single approve omits one', async () => {
+      mockStatusUpdate('summer_funding_request');
+      const mockDatabase = require('../db/connection').database;
+      const set = jest.fn().mockReturnValue({
+        where: jest.fn().mockReturnValue({
+          returning: jest.fn().mockResolvedValue([
+            {
+              id: 'request-1',
+              status: 'approved',
+              updatedAt: new Date('2026-09-22T00:00:00.000Z'),
+            },
+          ]),
+        }),
+      });
+      const values = jest.fn().mockResolvedValue(undefined);
+      mockDatabase.update = jest.fn().mockReturnValue({ set });
+      mockDatabase.insert = jest.fn().mockReturnValue({ values });
+
+      await service.updateRequestStatus('request-1', 'approved', '  ', 'staff-1');
+
+      expect(set.mock.calls[0]?.[0]).not.toHaveProperty('reviewComment');
+      expect(values).toHaveBeenCalledWith(expect.objectContaining({ comment: null }));
     });
 
     it('does not email when the bulk write fails', async () => {

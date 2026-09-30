@@ -591,8 +591,8 @@ export class RequestsService {
     comment: string | undefined,
     reviewedBy: string
   ) {
-    const reviewComment = comment?.trim() ?? '';
-    if (status === 'rejected' && !reviewComment) {
+    const providedComment = comment?.trim() ?? '';
+    if (status === 'rejected' && !providedComment) {
       throw new BadRequestException('A reason is required to reject a request');
     }
 
@@ -616,12 +616,13 @@ export class RequestsService {
     }
 
     const { request: currentRequest, user } = requestWithScholar[0];
+    const reviewComment = providedComment || currentRequest.reviewComment || '';
 
     const [updatedRequest] = await database
       .update(requests)
       .set({
         status,
-        reviewComment,
+        ...(providedComment ? { reviewComment: providedComment } : {}),
         reviewedBy,
         reviewDate: new Date(),
         updatedAt: new Date(),
@@ -640,7 +641,7 @@ export class RequestsService {
       performedBy: reviewedBy,
       previousStatus: currentRequest.status,
       newStatus: status,
-      comment: reviewComment,
+      comment: providedComment || null,
       metadata: JSON.stringify({ reviewedBy, reviewDate: new Date() }),
     });
 
@@ -749,11 +750,11 @@ export class RequestsService {
               reviewDate: new Date(),
               updatedAt: new Date(),
             })
-            .where(eq(requests.id, requestId))
+            .where(and(eq(requests.id, requestId), eq(requests.status, 'pending')))
             .returning();
 
           if (!updatedRequest) {
-            throw new NotFoundException(`Request with ID ${requestId} not found`);
+            continue;
           }
 
           await tx.insert(requestAuditLogs).values({

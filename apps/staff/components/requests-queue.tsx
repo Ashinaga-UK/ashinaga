@@ -669,7 +669,7 @@ export function RequestsQueue({ onReviewed }: RequestsQueueProps) {
                   onCheckedChange={(checked) => setSelectedIds(checked ? pendingIds : [])}
                   aria-label="Select all pending requests on this page"
                 />
-                Select page
+                Select pending
               </div>
               {requests.map((request) => (
                 <div
