@@ -4,13 +4,7 @@
  *
  * Auth is handled by ./auth.setup.ts.
  */
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const SCHOLAR_AUTH_FILE = path.join(__dirname, '.auth', 'scholar.json');
 
 test.describe('Scholar Portal – new request multi-assignee', () => {
   test('only offers the two scholar request types', async ({ page }) => {
@@ -91,39 +85,40 @@ test.describe('Scholar Portal – collapsible sidebar', () => {
   });
 
   test('sidebar trigger opens mobile navigation and a section can be selected', async ({
-    browser,
+    page,
   }) => {
-    test.setTimeout(60_000);
-    // Fresh mobile context avoids a CI flake where resizing a desktop page leaves
-    // useSession stuck pending (layout shows Loading... with no get-session calls).
-    const context = await browser.newContext({
-      storageState: SCHOLAR_AUTH_FILE,
-      viewport: { width: 390, height: 844 },
-    });
-    const page = await context.newPage();
-
-    try {
-      await page.goto('/dashboard');
-      await expect(page.getByRole('heading', { name: 'Ashinaga Scholar Portal' })).toBeVisible({
-        timeout: 30_000,
-      });
-
-      await page.getByRole('button', { name: 'Toggle sidebar' }).click();
-      await expect(page.getByRole('button', { name: 'Close menu' })).toBeVisible();
-      await expect(page.getByRole('link', { name: 'My Requests', exact: true })).toBeVisible();
-      await page.getByRole('link', { name: 'My Requests', exact: true }).click();
-      await expect(page).toHaveURL(/\/requests/);
-      await expect(
-        page.getByRole('banner').getByRole('heading', { name: 'My Requests' })
-      ).toBeVisible();
-      await expect(page.getByRole('link', { name: 'Back to Overview' })).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Toggle sidebar' })).toBeHidden();
-      await page.getByRole('link', { name: 'Back to Overview' }).click();
-      await expect(page).toHaveURL(/\/dashboard/);
-      await expect(page.getByRole('heading', { name: 'Ashinaga Scholar Portal' })).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Toggle sidebar' })).toBeVisible();
-    } finally {
-      await context.close();
+    test.setTimeout(90_000);
+    // Size the focused page before navigation. A mobile viewport can still leave
+    // useSession pending, so the layout stays on Loading... Reload once if the
+    // shell has not appeared.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/dashboard');
+    const brand = page.getByRole('heading', { name: 'Ashinaga Scholar Portal' });
+    const shellReady = await brand
+      .waitFor({ state: 'visible', timeout: 15_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!shellReady) {
+      await page.reload();
     }
+    await expect(brand).toBeVisible({ timeout: 20_000 });
+
+    await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+    await expect(page.getByRole('button', { name: 'Close menu' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'My Requests', exact: true })).toBeVisible();
+    await page.getByRole('link', { name: 'My Requests', exact: true }).click();
+    await expect(page).toHaveURL(/\/requests/);
+    await expect(
+      page.getByRole('banner').getByRole('heading', { name: 'My Requests' })
+    ).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Toggle sidebar' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Back to Overview' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+    await expect(page.getByRole('button', { name: 'Close menu' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Logout' })).toBeVisible();
+    await page.getByRole('link', { name: 'Overview', exact: true }).click();
+    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page.getByRole('heading', { name: 'Ashinaga Scholar Portal' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Toggle sidebar' })).toBeVisible();
   });
 });

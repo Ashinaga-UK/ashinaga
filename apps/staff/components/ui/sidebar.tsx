@@ -14,7 +14,7 @@ import { Sheet, SheetContent } from './sheet';
 import { Skeleton } from './skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './tooltip';
 
-const SIDEBAR_COOKIE_NAME = 'sidebar:state';
+const SIDEBAR_COOKIE_NAME = 'sidebar:state:staff';
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 const SIDEBAR_WIDTH = '16rem';
 const SIDEBAR_WIDTH_MOBILE = '18rem';
@@ -282,6 +282,7 @@ const SidebarTrigger = React.forwardRef<
       size="icon"
       className={cn('h-7 w-7', className)}
       aria-expanded={isMobile ? openMobile : open}
+      aria-label="Toggle sidebar"
       onClick={(event) => {
         onClick?.(event);
         toggleSidebar();
