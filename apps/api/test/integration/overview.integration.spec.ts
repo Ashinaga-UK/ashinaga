@@ -23,6 +23,7 @@ describe('GET /api/overview (integration)', () => {
   let onHold: SeededScholar;
   let active: SeededScholar;
   let archived: SeededScholar;
+  let counted: SeededScholar | undefined;
   let onHoldRequestId: string;
   let activeRequestId: string;
 
@@ -40,12 +41,19 @@ describe('GET /api/overview (integration)', () => {
 
   afterAll(async () => {
     await cleanupSeeded(db, {
-      userIds: [staffActor?.userId, onHold?.userId, active?.userId, archived?.userId].filter(
-        (id): id is string => Boolean(id)
-      ),
-      scholarIds: [onHold?.scholarId, active?.scholarId, archived?.scholarId].filter(
-        (id): id is string => Boolean(id)
-      ),
+      userIds: [
+        staffActor?.userId,
+        onHold?.userId,
+        active?.userId,
+        archived?.userId,
+        counted?.userId,
+      ].filter((id): id is string => Boolean(id)),
+      scholarIds: [
+        onHold?.scholarId,
+        active?.scholarId,
+        archived?.scholarId,
+        counted?.scholarId,
+      ].filter((id): id is string => Boolean(id)),
       requestIds: [onHoldRequestId, activeRequestId].filter((id): id is string => Boolean(id)),
     });
     await pool?.end();
@@ -120,14 +128,19 @@ describe('GET /api/overview (integration)', () => {
 
     expect((await overview()).cohort.total).toBe(before);
 
-    const visible = await seedScholarUser(db, { name: 'Counted Scholar', programStage: 'scholar' });
-    await db.update(scholars).set({ status: 'on_hold' }).where(eq(scholars.id, visible.scholarId));
+    counted = await seedScholarUser(db, { name: 'Counted Scholar', programStage: 'scholar' });
+    try {
+      await db
+        .update(scholars)
+        .set({ status: 'on_hold' })
+        .where(eq(scholars.id, counted.scholarId));
 
-    expect((await overview()).cohort.total).toBe(before + 1);
-
-    await cleanupSeeded(db, {
-      userIds: [visible.userId],
-      scholarIds: [visible.scholarId],
-    });
+      expect((await overview()).cohort.total).toBe(before + 1);
+    } finally {
+      await cleanupSeeded(db, {
+        userIds: [counted.userId],
+        scholarIds: [counted.scholarId],
+      });
+    }
   });
 });

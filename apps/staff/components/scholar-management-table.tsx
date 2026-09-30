@@ -482,6 +482,10 @@ export function ScholarManagementTable({
               setPlatformSetupFilter('all');
               setTaskProgressFilter('all');
               setLoginActivityFilter('all');
+              const params = new URLSearchParams(searchParams.toString());
+              params.set('tab', 'scholars');
+              params.delete('programStage');
+              router.replace(`?${params.toString()}`);
             }}
           >
             Clear Filters

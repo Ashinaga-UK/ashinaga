@@ -164,7 +164,7 @@ describe('OverviewDashboard', () => {
 
     renderDashboard();
 
-    expect(screen.getByText(/quiet for 21 days or more/)).toBeInTheDocument();
+    expect(screen.getByText(/quiet for more than 21 days/)).toBeInTheDocument();
   });
 
   it('shows the follow-up row when that view is selected', async () => {

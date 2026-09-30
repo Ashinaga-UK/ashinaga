@@ -176,7 +176,7 @@ export function OverviewDashboard() {
         <div className="px-4 pt-4 sm:px-5">
           <p id="attention-purpose" className="max-w-3xl text-sm text-muted-foreground">
             {current.id === 'follow' && data?.followUpDays
-              ? `Scholars quiet for ${data.followUpDays} ${data.followUpDays === 1 ? 'day' : 'days'} or more. A missing login date is unknown, so it is not listed here.`
+              ? `Scholars quiet for more than ${data.followUpDays} ${data.followUpDays === 1 ? 'day' : 'days'}. A missing login date is unknown, so it is not listed here.`
               : current.purpose}
           </p>
         </div>
