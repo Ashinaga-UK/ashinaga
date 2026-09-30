@@ -63,7 +63,7 @@ variable "app_runner_memory" {
 variable "app_runner_port" {
   description = "Port for App Runner service"
   type        = number
-  default     = 3000
+  default     = 4000
 }
 
 variable "enable_deletion_protection" {

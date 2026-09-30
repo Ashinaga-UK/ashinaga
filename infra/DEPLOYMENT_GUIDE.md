@@ -122,7 +122,7 @@ curl $(terraform output -raw app_runner_service_url)
 
 - **Auto Deployment**: Enabled - automatically deploys when new images are pushed
 - **CPU/Memory**: 0.25 vCPU / 0.5 GB (adjustable)
-- **Health Checks**: TCP on port 3000
+- **Health Checks**: TCP on port 4000
 - **Environment Variables**: Database connection details
 
 ### Image Management
