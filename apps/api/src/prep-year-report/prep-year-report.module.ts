@@ -5,5 +5,6 @@ import { PrepYearReportService } from './prep-year-report.service';
 @Module({
   controllers: [PrepYearReportController],
   providers: [PrepYearReportService],
+  exports: [PrepYearReportService],
 })
 export class PrepYearReportModule {}

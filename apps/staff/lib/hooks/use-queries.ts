@@ -22,6 +22,7 @@ import {
   getAnnualUpdatesByScholar,
   getCoordinatorMeetingUpdates,
   getCoordinatorNotes,
+  getOverview,
   getPrepTaskCohort,
   getPrepYearReport,
   getProposalInbox,
@@ -75,6 +76,7 @@ export const queryKeys = {
   scholarProposal: (id: string) => ['scholar', id, 'proposal'] as const,
   staffNotifications: (search?: string) => ['notifications', 'staff-feed', search ?? ''] as const,
   requestStats: ['requests', 'stats'] as const,
+  overview: ['overview'] as const,
 };
 
 // Scholar profile query
@@ -434,6 +436,15 @@ export function useStaffNotificationsFeed(search = '') {
       return loaded < lastPage.total ? lastPage.page + 1 : undefined;
     },
     refetchInterval: 60_000,
+  });
+}
+
+export function useOverview(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.overview,
+    queryFn: getOverview,
+    enabled,
+    refetchInterval: enabled ? 60_000 : false,
   });
 }
 

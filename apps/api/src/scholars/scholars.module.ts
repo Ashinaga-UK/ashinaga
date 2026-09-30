@@ -9,5 +9,6 @@ import { ScholarsService } from './scholars.service';
   imports: [InvitationsModule, DocumentsModule, AvatarsModule],
   controllers: [ScholarsController],
   providers: [ScholarsService],
+  exports: [ScholarsService],
 })
 export class ScholarsModule {}

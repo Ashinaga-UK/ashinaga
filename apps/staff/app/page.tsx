@@ -1,29 +1,20 @@
 'use client';
 
 import { useQueryClient } from '@tanstack/react-query';
-import {
-  AlertCircle,
-  FileText,
-  Library,
-  Loader2,
-  MessageSquare,
-  Trash2,
-  UserPlus,
-  Users,
-} from 'lucide-react';
+import { AlertCircle, Loader2, MessageSquare, Trash2 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { forwardRef, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { AnnouncementCreator } from '../components/announcement-creator';
 import { AnnualReviewCopyEditor } from '../components/annual-review-copy-editor';
 import { AnnualReviewsReport } from '../components/annual-reviews-report';
 import { InvitationsManagement } from '../components/invitations-management';
 import { LoginPage } from '../components/login-page';
 import { MyProfile } from '../components/my-profile';
+import { OverviewDashboard } from '../components/overview-dashboard';
 import { PlatformLinksEditor } from '../components/platform-links-editor';
 import { PrepCohortReport } from '../components/prep-cohort-report';
 import { PrepDocumentsTracker } from '../components/prep-documents-tracker';
 import { PrepTasksTracker } from '../components/prep-tasks-tracker';
-import { ProposalInbox } from '../components/proposal-inbox';
 import { RequestsQueue } from '../components/requests-queue';
 import { ResourcesManagement } from '../components/resources-management';
 import { ScholarManagementTable } from '../components/scholar-management-table';
@@ -33,9 +24,7 @@ import {
   ScholarProfilePage,
   type ScholarProfileTab,
 } from '../components/scholar-profile';
-import { StaffInviteDialog } from '../components/staff-invite-dialog';
 import { StaffLayout } from '../components/staff-layout';
-import { TaskAssignment } from '../components/task-assignment';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
@@ -51,14 +40,36 @@ import {
   type AnnouncementFilterOptions,
   deleteAnnouncement,
   getAnnouncementFilterOptions,
-  getRequestStats,
-  getScholarStats,
-  type RequestStats,
-  type ScholarStats,
 } from '../lib/api-client';
 import { signOut, useSession } from '../lib/auth-client';
 import { queryKeys, useAnnouncements } from '../lib/hooks/use-queries';
 import { cn } from '../lib/utils';
+
+function programStageParam(searchParams: { get: (key: string) => string | null }): string | null {
+  const stage = searchParams.get('programStage');
+  return stage === 'prep_year' || stage === 'scholar' ? stage : null;
+}
+
+function scholarsListHref(searchParams: { get: (key: string) => string | null }): string {
+  const params = new URLSearchParams({ tab: 'scholars', view: 'dashboard' });
+  const stage = programStageParam(searchParams);
+  if (stage) params.set('programStage', stage);
+  return `?${params.toString()}`;
+}
+
+function scholarProfileHref(
+  searchParams: { get: (key: string) => string | null },
+  scholarId: string
+): string {
+  const params = new URLSearchParams({
+    tab: 'scholars',
+    view: 'scholar-profile',
+    scholarId,
+  });
+  const stage = programStageParam(searchParams);
+  if (stage) params.set('programStage', stage);
+  return `?${params.toString()}`;
+}
 
 type StaffDashboardView =
   | 'dashboard'
@@ -66,47 +77,6 @@ type StaffDashboardView =
   | 'onboarding'
   | 'task-assignment'
   | 'my-profile';
-
-interface QuickActionButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  icon: React.ReactNode;
-  label: string;
-  description?: string;
-  primary?: boolean;
-}
-
-const QuickActionButton = forwardRef<HTMLButtonElement, QuickActionButtonProps>(
-  ({ icon, label, description, primary, className, ...props }, ref) => (
-    <button
-      ref={ref}
-      type="button"
-      className={cn(
-        'group relative flex min-w-0 items-center gap-3 bg-card px-4 py-4 text-left text-sm transition-colors sm:px-5',
-        'hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:z-10',
-        'lg:flex-col lg:items-start lg:justify-between lg:rounded-lg lg:border lg:border-border lg:p-4 lg:hover:border-foreground/20',
-        className
-      )}
-      {...props}
-    >
-      <span
-        className={cn(
-          'flex h-7 w-7 items-center justify-center rounded-md border border-border bg-background transition-colors',
-          primary && 'border-transparent bg-brand text-brand-foreground'
-        )}
-      >
-        {icon}
-      </span>
-      <span className="min-w-0">
-        <span className="block font-medium text-foreground">{label}</span>
-        {description && (
-          <span className="mt-1 hidden text-xs leading-5 text-muted-foreground lg:block">
-            {description}
-          </span>
-        )}
-      </span>
-    </button>
-  )
-);
-QuickActionButton.displayName = 'QuickActionButton';
 
 function StaffDashboardContent() {
   const router = useRouter();
@@ -142,11 +112,6 @@ function StaffDashboardContent() {
       locations: [],
       statuses: [],
     });
-  const [scholarStats, setScholarStats] = useState<ScholarStats | null>(null);
-  const [scholarStatsLoading, setScholarStatsLoading] = useState(true);
-  const [requestStats, setRequestStats] = useState<RequestStats | null>(null);
-  const [requestStatsLoading, setRequestStatsLoading] = useState(true);
-
   // Get user data from session
   const user = session.data?.user;
   const isLoading = session.isPending;
@@ -205,62 +170,6 @@ function StaffDashboardContent() {
     setScholarProfileTab(isScholarProfileTab(newScholarTab) ? newScholarTab : 'profile');
   }, [searchParams]);
 
-  const _getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return 'destructive';
-      case 'medium':
-        return 'default';
-      case 'low':
-        return 'secondary';
-      default:
-        return 'default';
-    }
-  };
-
-  const _getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'text-green-600 dark:text-green-400';
-      case 'approved':
-        return 'text-green-600 dark:text-green-400';
-      case 'in-progress':
-        return 'text-blue-600 dark:text-blue-400';
-      case 'pending':
-        return 'text-orange-600';
-      case 'reviewed':
-        return 'text-purple-600 dark:text-purple-400';
-      case 'rejected':
-        return 'text-red-600';
-      default:
-        return 'text-muted-foreground';
-    }
-  };
-
-  const fetchScholarStats = useCallback(async () => {
-    setScholarStatsLoading(true);
-    try {
-      const stats = await getScholarStats();
-      setScholarStats(stats);
-    } catch (err) {
-      console.error('Error fetching scholar stats:', err);
-    } finally {
-      setScholarStatsLoading(false);
-    }
-  }, []);
-
-  const fetchRequestStats = useCallback(async () => {
-    setRequestStatsLoading(true);
-    try {
-      const stats = await getRequestStats();
-      setRequestStats(stats);
-    } catch (err) {
-      console.error('Error fetching request stats:', err);
-    } finally {
-      setRequestStatsLoading(false);
-    }
-  }, []);
-
   const fetchAnnouncementFilterOptions = useCallback(async () => {
     try {
       const options = await getAnnouncementFilterOptions();
@@ -273,14 +182,10 @@ function StaffDashboardContent() {
   // Announcements are now fetched via React Query
 
   useEffect(() => {
-    // Only fetch data if user is authenticated
     if (isAuthenticated) {
-      fetchScholarStats();
-      fetchRequestStats();
       fetchAnnouncementFilterOptions();
-      // Announcements are now auto-fetched by React Query
     }
-  }, [isAuthenticated, fetchScholarStats, fetchRequestStats, fetchAnnouncementFilterOptions]);
+  }, [isAuthenticated, fetchAnnouncementFilterOptions]);
 
   const clearAnnouncementFilters = () => {
     setAnnouncementYearFilter('all');
@@ -291,16 +196,8 @@ function StaffDashboardContent() {
   };
 
   const handleRequestQueueReviewed = () => {
-    fetchRequestStats();
     void queryClient.invalidateQueries({ queryKey: queryKeys.requestStats });
-  };
-
-  const navigateToScholars = () => {
-    router.push('?tab=scholars');
-  };
-
-  const navigateToRequests = () => {
-    router.push('?tab=requests');
+    void queryClient.invalidateQueries({ queryKey: queryKeys.overview });
   };
 
   const handleSignOut = async () => {
@@ -375,7 +272,7 @@ function StaffDashboardContent() {
                 {activeTab === 'invitations' && 'Invitations'}
               </h2>
               <p className="mt-0.5 text-sm text-muted-foreground print:hidden">
-                {activeTab === 'overview' && 'Your dashboard at a glance.'}
+                {activeTab === 'overview' && 'What needs attention right now.'}
                 {activeTab === 'scholars' && 'View and manage your assigned scholars.'}
                 {activeTab === 'prep-documents' &&
                   'See submitted and missing Prep Year documents without opening each profile.'}
@@ -392,142 +289,7 @@ function StaffDashboardContent() {
               </p>
             </div>
 
-            {activeTab === 'overview' && (
-              <div className="space-y-6">
-                {/* Stats Overview — flatter, tabular numerals, brand chip rather than gradient tile */}
-                <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2">
-                  <button
-                    type="button"
-                    onClick={navigateToScholars}
-                    className="group text-left rounded-lg border bg-card p-4 transition-colors hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:p-5"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 space-y-1">
-                        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                          Total Scholars
-                        </p>
-                        {scholarStatsLoading ? (
-                          <Skeleton className="h-9 w-20" />
-                        ) : (
-                          <p className="text-3xl font-semibold tracking-tight tabular-nums text-foreground">
-                            {scholarStats?.total || 0}
-                          </p>
-                        )}
-                        <p className="text-xs text-muted-foreground">
-                          <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[hsl(var(--success))] mr-1.5 align-middle" />
-                          {scholarStats?.active || 0} active
-                        </p>
-                      </div>
-                      <div className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40 transition-colors group-hover:bg-muted min-[430px]:flex sm:h-9 sm:w-9">
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={navigateToRequests}
-                    className="group text-left rounded-lg border bg-card p-4 transition-colors hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:p-5"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 space-y-1">
-                        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                          Pending Requests
-                        </p>
-                        {requestStatsLoading ? (
-                          <Skeleton className="h-9 w-20" />
-                        ) : (
-                          <p className="text-3xl font-semibold tracking-tight tabular-nums text-foreground">
-                            {requestStats?.pending || 0}
-                          </p>
-                        )}
-                        <p className="text-xs text-muted-foreground tabular-nums">
-                          of {requestStats?.total || 0} total
-                        </p>
-                      </div>
-                      <div className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40 transition-colors group-hover:bg-muted min-[430px]:flex sm:h-9 sm:w-9">
-                        <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                    </div>
-                  </button>
-                </div>
-
-                {/* Quick Actions */}
-                <div className="rounded-lg border bg-card">
-                  <div className="flex items-center justify-between p-4 pb-3 sm:p-5 sm:pb-3">
-                    <div className="space-y-0.5">
-                      <h3 className="text-sm font-semibold leading-none tracking-tight">
-                        Quick actions
-                      </h3>
-                      <p className="text-xs text-muted-foreground">
-                        Common tasks to keep scholars moving forward.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 gap-px border-t bg-border min-[520px]:grid-cols-2 lg:grid-cols-6 lg:gap-3 lg:border-t-0 lg:bg-transparent lg:p-5 lg:pt-2">
-                    <QuickActionButton
-                      icon={<Users className="h-4 w-4" />}
-                      label="Onboard Scholar"
-                      description="Create a new scholar profile and invitation."
-                      onClick={() => router.push('?view=onboarding')}
-                      primary
-                    />
-                    <TaskAssignment
-                      trigger={
-                        <QuickActionButton
-                          icon={<FileText className="h-4 w-4" />}
-                          label="Assign Task"
-                          description="Send a task to one or more scholars or Prep Year candidates."
-                        />
-                      }
-                      onSuccess={(scholarIds) => {
-                        if (scholarIds.length === 1 && scholarIds[0]) {
-                          router.push(
-                            `?tab=scholars&view=scholar-profile&scholarId=${scholarIds[0]}&scholarTab=tasks`
-                          );
-                          return;
-                        }
-                        router.push('?tab=scholars');
-                      }}
-                    />
-                    <QuickActionButton
-                      icon={<MessageSquare className="h-4 w-4" />}
-                      label="Create Announcement"
-                      description="Publish an update for filtered scholars."
-                      onClick={() => router.push('?tab=announcements')}
-                    />
-                    <QuickActionButton
-                      icon={<FileText className="h-4 w-4" />}
-                      label="Review Requests"
-                      description="Triage funding and requirement submissions."
-                      onClick={() => router.push('?tab=requests')}
-                    />
-                    <QuickActionButton
-                      icon={<Library className="h-4 w-4" />}
-                      label="View Resources"
-                      description="Check scholar-facing handbooks and guides."
-                      onClick={() => router.push('?tab=resources')}
-                    />
-                    <StaffInviteDialog
-                      trigger={
-                        <QuickActionButton
-                          icon={<UserPlus className="h-4 w-4" />}
-                          label="Invite Staff"
-                          description="Add another staff member to the portal."
-                        />
-                      }
-                    />
-                  </div>
-                </div>
-                <ProposalInbox
-                  onOpenScholar={(scholarId) =>
-                    router.push(
-                      `?tab=scholars&view=scholar-profile&scholarId=${scholarId}&scholarTab=proposal`
-                    )
-                  }
-                />
-              </div>
-            )}
+            {activeTab === 'overview' && <OverviewDashboard />}
 
             {activeTab === 'scholars' && (
               <div className="space-y-6">
@@ -536,7 +298,7 @@ function StaffDashboardContent() {
                     scholarId={selectedScholarId}
                     initialTab={scholarProfileTab}
                     onBack={() => {
-                      router.push('?tab=scholars&view=dashboard');
+                      router.push(scholarsListHref(searchParams));
                     }}
                   />
                 ) : (
@@ -544,7 +306,7 @@ function StaffDashboardContent() {
                     <CardContent className="p-4 sm:p-5">
                       <ScholarManagementTable
                         onViewProfile={(scholarId) => {
-                          router.push(`?tab=scholars&view=scholar-profile&scholarId=${scholarId}`);
+                          router.push(scholarProfileHref(searchParams, scholarId));
                         }}
                         onOnboardScholar={() => router.push('?view=onboarding')}
                       />
