@@ -1,0 +1,1032 @@
+{
+  "version": 1,
+  "description": "Full staff + student flow catalogue (ASH-122). One list shared by the on-demand QA skill and the flow-coverage detector (ASH-123). Flow IDs are stable: rename only with a matching update to every consumer.",
+  "personas": {
+    "anonymous": "No session.",
+    "staff": "Active staff with is_super_admin = true (sees every section, including Invitations management).",
+    "prep": "Student with program_stage = 'prep_year' (Prep Year candidate).",
+    "scholar": "Student with program_stage = 'scholar' (enrolled scholar)."
+  },
+  "stepTypes": {
+    "goto": "Open a path on the flow's app. {scholarId} and {inviteToken} are resolved at run time.",
+    "see": "Text is visible (substring match).",
+    "seeRole": "An element with this ARIA role and accessible name is visible.",
+    "notSeeLink": "No link with this accessible name exists (nav items that must be hidden).",
+    "click": "Click the element with this ARIA role and accessible name.",
+    "clickText": "Click the first element containing this text.",
+    "press": "Press a keyboard key.",
+    "urlIncludes": "The current URL contains this string.",
+    "download": "Clicking role+name starts a file download.",
+    "print": "Clicking role+name calls window.print() (stubbed, nothing is printed).",
+    "write": "true on any step that creates or changes data. The runner never performs write steps: it runs the read steps and reports the flow as Skip listing the write steps. An agent walks them by hand only when the person running QA allows writes on that environment.",
+    "note": "Extra instructions for a human or agent walking the step.",
+    "tabSelected": "A tab with this accessible name is the selected tab."
+  },
+  "personaRules": {
+    "either": "Both-stage student flow: run once per available student persona (prep, scholar). The row fails if either run fails."
+  },
+  "flows": [
+    {
+      "id": "staff.sign-in",
+      "area": "Staff",
+      "name": "Staff sign in page",
+      "app": "staff",
+      "persona": "anonymous",
+      "stage": "all",
+      "route": "/login",
+      "fixtures": [],
+      "steps": [
+        {
+          "goto": "/"
+        },
+        {
+          "see": "Sign in to your Ashinaga Staff Portal account"
+        },
+        {
+          "see": "You must have an invitation to sign in"
+        }
+      ],
+      "expected": "Signed-out visitors land on the staff login form."
+    },
+    {
+      "id": "staff.overview",
+      "area": "Staff",
+      "name": "Overview: stats, quick actions, Proposal reviews inbox",
+      "app": "staff",
+      "persona": "staff",
+      "stage": "all",
+      "route": "/",
+      "fixtures": [],
+      "steps": [
+        {
+          "goto": "/"
+        },
+        {
+          "see": "What needs attention right now."
+        },
+        {
+          "see": "Quick actions"
+        },
+        {
+          "seeRole": "button",
+          "name": "Assign Task"
+        },
+        {
+          "see": "Proposal reviews"
+        }
+      ],
+      "expected": "Overview shows attention stats, the quick actions and the Proposal reviews inbox."
+    },
+    {
+      "id": "staff.scholars.list",
+      "area": "Staff / Scholars",
+      "name": "Scholars list and filters",
+      "app": "staff",
+      "persona": "staff",
+      "stage": "all",
+      "route": "/?tab=scholars",
+      "fixtures": ["at least one active scholar"],
+      "steps": [
+        {
+          "goto": "/?tab=scholars"
+        },
+        {
+          "see": "View and manage your assigned scholars."
+        },
+        {
+          "see": "All Program Stages"
+        },
+        {
+          "see": "All Programs"
+        },
+        {
+          "see": "All Universities"
+        }
+      ],
+      "expected": "Scholar table renders with stage, programme, university, status and activity filters."
+    },
+    {
+      "id": "staff.scholars.profile",
+      "area": "Staff / Scholars",
+      "name": "Open a scholar profile",
+      "app": "staff",
+      "persona": "staff",
+      "stage": "all",
+      "route": "/?tab=scholars&view=scholar-profile&scholarId={scholarId}",
+      "fixtures": ["enrolled scholar id ({scholarId})"],
+      "steps": [
+        {
+          "goto": "/?tab=scholars&view=scholar-profile&scholarId={scholarId}"
+        },
+        {
+          "seeRole": "tab",
+          "name": "Profile"
+        },
+        {
+          "seeRole": "tab",
+          "name": "Proposal"
+        }
+      ],
+      "expected": "Profile view opens with its tab bar."
+    },
+    {
+      "id": "staff.scholars.onboard",
+      "area": "Staff / Scholars",
+      "name": "Onboard a student (single + CSV import)",
+      "app": "staff",
+      "persona": "staff",
+      "stage": "all",
+      "route": "/?view=onboarding",
+      "fixtures": ["writes: a disposable email to invite"],
+      "steps": [
+        {
+          "goto": "/?tab=scholars"
+        },
+        {
+          "click": "button",
+          "name": "Onboard New Students"
+        },
+        {
+          "see": "Add new scholars to the Ashinaga platform"
+        },
+        {
+          "see": "Single Scholar"
+        },
+        {
+          "see": "Bulk Import (CSV)"
+        },
+        {
+          "click": "button",
+          "name": "Send Invitation",
+          "write": true
+        }
+      ],
+      "expected": "Onboarding form opens with single and CSV modes; sending creates a scholar invitation."
+    },
+    {
+      "id": "staff.scholars.assign-task",
+      "area": "Staff / Scholars",
+      "name": "Assign a task to scholars",
+      "app": "staff",
+      "persona": "staff",
+      "stage": "all",
+      "route": "/?tab=scholars",
+      "fixtures": ["at least one active scholar"],
+      "steps": [
+        {
+          "goto": "/?tab=scholars"
+        },
+        {
+          "click": "button",
+          "name": "Assign Task"
+        },
+        {
+          "seeRole": "dialog",
+          "name": "Assign Task"
+        },
+        {
+          "see": "Select scholars"
+        },
+        {
+          "see": "Task Type"
+        },
+        {
+          "press": "Escape"
+        }
+      ],
+      "expected": "Bulk assign dialog opens with title, type, priority, due date and target."
+    },
+    {
+      "id": "staff.scholars.assign-prep-cohort",
+      "area": "Staff / Scholars",
+      "name": "Assign a task to the Prep Year cohort",
+      "app": "staff",
+      "persona": "staff",
+      "stage": "prep_year",
+      "route": "/?tab=scholars",
+      "fixtures": ["at least one active Prep Year candidate"],
+      "steps": [
+        {
+          "goto": "/?tab=scholars"
+        },
+        {
+          "click": "button",
+          "name": "Assign to Prep Year cohort"
+        },
+        {
+          "see": "Assign task to Prep Year cohort"
+        },
+        {
+          "press": "Escape"
+        }
+      ],
+      "expected": "Cohort dialog opens targeting every active Prep Year candidate."
+    },
+    {
+      "id": "staff.scholars.export-csv",
+      "area": "Staff / Scholars",
+      "name": "Export scholars CSV",
+      "app": "staff",
+      "persona": "staff",
+      "stage": "all",
+      "route": "/?tab=scholars",
+      "fixtures": ["at least one active scholar"],
+      "steps": [
+        {
+          "goto": "/?tab=scholars"
+        },
+        {
+          "download": "button",
+          "name": "Export all (CSV)"
+        }
+      ],
+      "expected": "A CSV of all scholars downloads."
+    },
+    {
+      "id": "staff.scholar-profile.profile",
+      "area": "Staff / Scholar profile",
+      "name": "Scholar profile tab: Profile",
+      "app": "staff",
+      "persona": "staff",
+      "stage": "all",
+      "route": "/?tab=scholars&view=scholar-profile&scholarId={scholarId}&scholarTab=profile",
+      "fixtures": ["enrolled scholar id ({scholarId})"],
+      "steps": [
+        {
+          "goto": "/?tab=scholars&view=scholar-profile&scholarId={scholarId}&scholarTab=profile"
+        },
+        {
+          "tabSelected": "Profile"
+        }
+      ],
+      "expected": "Profile tab opens from its deep link (scholarTab=profile)."
+    },
+    {
+      "id": "staff.scholar-profile.ldf-goals",
+      "area": "Staff / Scholar profile",
+      "name": "Scholar profile tab: LDF Goals",
+      "app": "staff",
+      "persona": "staff",
+      "stage": "all",
+      "route": "/?tab=scholars&view=scholar-profile&scholarId={scholarId}&scholarTab=goals",
+      "fixtures": ["enrolled scholar id ({scholarId})"],
+      "steps": [
+        {
+          "goto": "/?tab=scholars&view=scholar-profile&scholarId={scholarId}&scholarTab=goals"
+        },
+        {
+          "tabSelected": "LDF Goals"
+        }
+      ],
+      "expected": "LDF Goals tab opens from its deep link (scholarTab=goals)."
+    },
+    {
+      "id": "staff.scholar-profile.annual-reviews",
+      "area": "Staff / Scholar profile",
+      "name": "Scholar profile tab: Annual Reviews",
+      "app": "staff",
+      "persona": "staff",
+      "stage": "scholar",
+      "route": "/?tab=scholars&view=scholar-profile&scholarId={scholarId}&scholarTab=annual-reviews",
+      "fixtures": ["enrolled scholar id ({scholarId})"],
+      "steps": [
+        {
+          "goto": "/?tab=scholars&view=scholar-profile&scholarId={scholarId}&scholarTab=annual-reviews"
+        },
+        {
+          "tabSelected": "Annual Reviews"
+        }
+      ],
+      "expected": "Annual Reviews tab opens from its deep link (scholarTab=annual-reviews)."
+    },
+    {
+      "id": "staff.scholar-profile.tasks",
+      "area": "Staff / Scholar profile",
+      "name": "Scholar profile tab: Tasks",
+      "app": "staff",
+      "persona": "staff",
+      "stage": "all",
+      "route": "/?tab=scholars&view=scholar-profile&scholarId={scholarId}&scholarTab=tasks",
+      "fixtures": ["enrolled scholar id ({scholarId})"],
+      "steps": [
+        {
+          "goto": "/?tab=scholars&view=scholar-profile&scholarId={scholarId}&scholarTab=tasks"
+        },
+        {
+          "tabSelected": "Tasks"
+        }
+      ],
+      "expected": "Tasks tab opens from its deep link (scholarTab=tasks)."
+    },
+    {
+      "id": "staff.scholar-profile.documents",
+      "area": "Staff / Scholar profile",
+      "name": "Scholar profile tab: Documents",
+      "app": "staff",
+      "persona": "staff",
+      "stage": "all",
+      "route": "/?tab=scholars&view=scholar-profile&scholarId={scholarId}&scholarTab=documents",
+      "fixtures": ["enrolled scholar id ({scholarId})"],
+      "steps": [
+        {
+          "goto": "/?tab=scholars&view=scholar-profile&scholarId={scholarId}&scholarTab=documents"
+        },
+        {
+          "tabSelected": "Documents"
+        }
+      ],
+      "expected": "Documents tab opens from its deep link (scholarTab=documents)."
+    },
+    {
+      "id": "staff.scholar-profile.coordinator",
+      "area": "Staff / Scholar profile",
+      "name": "Scholar profile tab: Coordinator",
+      "app": "staff",
+      "persona": "staff",
+      "stage": "all",
+      "route": "/?tab=scholars&view=scholar-profile&scholarId={scholarId}&scholarTab=coordinator",
+      "fixtures": ["enrolled scholar id ({scholarId})"],
+      "steps": [
+        {
+          "goto": "/?tab=scholars&view=scholar-profile&scholarId={scholarId}&scholarTab=coordinator"
+        },
+        {
+          "tabSelected": "Coordinator"
+        }
+      ],
+      "expected": "Coordinator tab opens from its deep link (scholarTab=coordinator)."
+    },
+    {
+      "id": "staff.scholar-profile.proposal",
+      "area": "Staff / Scholar profile",
+      "name": "Scholar profile tab: Proposal",
+      "app": "staff",
+      "persona": "staff",
+      "stage": "all",
+      "route": "/?tab=scholars&view=scholar-profile&scholarId={scholarId}&scholarTab=proposal",
+      "fixtures": ["enrolled scholar id ({scholarId})"],
+      "steps": [
+        {
+          "goto": "/?tab=scholars&view=scholar-profile&scholarId={scholarId}&scholarTab=proposal"
+        },
+        {
+          "tabSelected": "Proposal"
+        }
+      ],
+      "expected": "Proposal tab opens from its deep link (scholarTab=proposal)."
+    },
+    {
+      "id": "staff.prep-documents",
+      "area": "Staff / Prep Year",
+      "name": "Prep documents: matrix, missing filter, required types",
+      "app": "staff",
+      "persona": "staff",
+      "stage": "prep_year",
+      "route": "/?tab=prep-documents",
+      "fixtures": ["at least one active Prep Year candidate"],
+      "steps": [
+        {
+          "goto": "/?tab=prep-documents"
+        },
+        {
+          "see": "See submitted and missing Prep Year documents without opening each profile."
+        },
+        {
+          "see": "Manage required types"
+        }
+      ],
+      "expected": "Document matrix renders with the missing-type filter and required-type management."
+    },
+    {
+      "id": "staff.prep-tasks",
+      "area": "Staff / Prep Year",
+      "name": "Prep tasks: matrix, overdue, drill-through",
+      "app": "staff",
+      "persona": "staff",
+      "stage": "prep_year",
+      "route": "/?tab=prep-tasks",
+      "fixtures": ["Prep Year candidate with an assigned task"],
+      "steps": [
+        {
+          "goto": "/?tab=prep-tasks"
+        },
+        {
+          "see": "See Prep Year task completion without opening each profile."
+        },
+        {
+          "seeRole": "combobox",
+          "name": "Filter by state"
+        }
+      ],
+      "expected": "Task matrix renders with candidate, phase, task and state (incl. Overdue) filters; a cell opens the profile Tasks tab."
+    },
+    {
+      "id": "staff.prep-reports",
+      "area": "Staff / Prep Year",
+      "name": "Prep reports: table, CSV, print",
+      "app": "staff",
+      "persona": "staff",
+      "stage": "prep_year",
+      "route": "/?tab=prep-reports",
+      "fixtures": ["at least one active Prep Year candidate"],
+      "steps": [
+        {
+          "goto": "/?tab=prep-reports"
+        },
+        {
+          "see": "Generate a Prep Year cohort overview for internal and board reviews."
+        },
+        {
+          "download": "button",
+          "name": "Export CSV"
+        },
+        {
+          "print": "button",
+          "name": "Print / Save as PDF"
+        }
+      ],
+      "expected": "Cohort report table renders; CSV downloads; print opens the print dialog."
+    },
+    {
+      "id": "staff.annual-reviews",
+      "area": "Staff",
+      "name": "Annual Reviews: list and review",
+      "app": "staff",
+      "persona": "staff",
+      "stage": "scholar",
+      "route": "/?tab=annual-reviews",
+      "fixtures": ["an enrolled scholar with an annual review (to open one)"],
+      "steps": [
+        {
+          "goto": "/?tab=annual-reviews"
+        },
+        {
+          "see": "Track annual review submissions by scholar and academic year."
+        },
+        {
+          "see": "Academic year"
+        }
+      ],
+      "expected": "Submissions list renders with year/status filters; opening a row shows the review."
+    },
+    {
+      "id": "staff.requests",
+      "area": "Staff",
+      "name": "Requests: queue and actions",
+      "app": "staff",
+      "persona": "staff",
+      "stage": "all",
+      "route": "/?tab=requests",
+      "fixtures": ["writes: a pending request to act on"],
+      "steps": [
+        {
+          "goto": "/?tab=requests"
+        },
+        {
+          "see": "Review and respond to scholar submissions."
+        },
+        {
+          "seeRole": "textbox",
+          "name": "Search requests by student name"
+        },
+        {
+          "click": "button",
+          "name": "Approve",
+          "write": true
+        }
+      ],
+      "expected": "Queue renders with filters, sort and saved views; approve/reject/request-info update a request."
+    },
+    {
+      "id": "staff.announcements.create",
+      "area": "Staff / Announcements",
+      "name": "Announcements: create with audience",
+      "app": "staff",
+      "persona": "staff",
+      "stage": "all",
+      "route": "/?tab=announcements",
+      "fixtures": ["writes: posting sends to the chosen audience"],
+      "steps": [
+        {
+          "goto": "/?tab=announcements"
+        },
+        {
+          "click": "button",
+          "name": "New Announcement"
+        },
+        {
+          "see": "Create New Announcement"
+        },
+        {
+          "see": "Target Audience"
+        },
+        {
+          "see": "Recipients Preview"
+        },
+        {
+          "clickText": "Send to",
+          "write": true
+        }
+      ],
+      "expected": "Compose form with audience filters and recipient preview; sending publishes to that audience."
+    },
+    {
+      "id": "staff.announcements.draft-live",
+      "area": "Staff / Announcements",
+      "name": "Announcements: draft vs live",
+      "app": "staff",
+      "persona": "staff",
+      "stage": "all",
+      "route": "/?tab=announcements",
+      "fixtures": [],
+      "skip": "Not in the app: announcements have no draft state. They go live on send and can only be archived (Active/Archived filter).",
+      "steps": [],
+      "expected": "Draft announcements stay hidden from students until made live."
+    },
+    {
+      "id": "staff.resources",
+      "area": "Staff / Resources",
+      "name": "Resources: create, draft → live → off",
+      "app": "staff",
+      "persona": "staff",
+      "stage": "all",
+      "route": "/?tab=resources",
+      "fixtures": ["writes: a disposable resource to toggle"],
+      "steps": [
+        {
+          "goto": "/?tab=resources"
+        },
+        {
+          "see": "Resource library"
+        },
+        {
+          "seeRole": "combobox",
+          "name": "Resource status"
+        },
+        {
+          "click": "button",
+          "name": "Add resource",
+          "write": true
+        }
+      ],
+      "expected": "Library renders with status filter; a new resource starts as Draft, can go Live, then back off (Draft)."
+    },
+    {
+      "id": "staff.invitations.active-staff",
+      "area": "Staff / Invitations",
+      "name": "Invitations: Active Staff",
+      "app": "staff",
+      "persona": "staff",
+      "stage": "all",
+      "route": "/?tab=invitations",
+      "fixtures": [],
+      "steps": [
+        {
+          "goto": "/?tab=invitations"
+        },
+        {
+          "see": "Invite scholars and staff to the portal."
+        },
+        {
+          "click": "tab",
+          "name": "Active Staff"
+        },
+        {
+          "tabSelected": "Active Staff"
+        },
+        {
+          "see": "Role"
+        }
+      ],
+      "expected": "Active staff list with roles and super-admin shield."
+    },
+    {
+      "id": "staff.invitations.staff-invites",
+      "area": "Staff / Invitations",
+      "name": "Invitations: Staff Invites",
+      "app": "staff",
+      "persona": "staff",
+      "stage": "all",
+      "route": "/?tab=invitations",
+      "fixtures": [],
+      "steps": [
+        {
+          "goto": "/?tab=invitations"
+        },
+        {
+          "click": "tab",
+          "name": "Staff Invites"
+        },
+        {
+          "tabSelected": "Staff Invites"
+        },
+        {
+          "seeRole": "textbox",
+          "name": "Search by email"
+        }
+      ],
+      "expected": "Staff invitation list with status and resend counts."
+    },
+    {
+      "id": "staff.invitations.scholar-invites",
+      "area": "Staff / Invitations",
+      "name": "Invitations: Scholar Invites",
+      "app": "staff",
+      "persona": "staff",
+      "stage": "all",
+      "route": "/?tab=invitations",
+      "fixtures": [],
+      "steps": [
+        {
+          "goto": "/?tab=invitations"
+        },
+        {
+          "click": "tab",
+          "name": "Scholar Invites"
+        },
+        {
+          "tabSelected": "Scholar Invites"
+        },
+        {
+          "seeRole": "textbox",
+          "name": "Search by email"
+        }
+      ],
+      "expected": "Scholar invitation list with status and resend counts."
+    },
+    {
+      "id": "staff.invitations.invite-staff",
+      "area": "Staff / Invitations",
+      "name": "Invitations: invite a staff member",
+      "app": "staff",
+      "persona": "staff",
+      "stage": "all",
+      "route": "/?tab=invitations",
+      "fixtures": ["writes: a disposable work email"],
+      "steps": [
+        {
+          "goto": "/?tab=invitations"
+        },
+        {
+          "click": "button",
+          "name": "Invite Staff"
+        },
+        {
+          "see": "Invite a staff member"
+        },
+        {
+          "click": "button",
+          "name": "Send invitation",
+          "write": true,
+          "note": "Fill a disposable work email first; then check it appears under Staff Invites."
+        }
+      ],
+      "expected": "Invite form sends a staff invitation that appears under Staff Invites."
+    },
+    {
+      "id": "staff.invitations.onboard-student",
+      "area": "Staff / Invitations",
+      "name": "Invitations: onboard a student",
+      "app": "staff",
+      "persona": "staff",
+      "stage": "all",
+      "route": "/?tab=invitations",
+      "fixtures": [],
+      "steps": [
+        {
+          "goto": "/?tab=invitations"
+        },
+        {
+          "click": "tab",
+          "name": "Scholar Invites"
+        },
+        {
+          "click": "button",
+          "name": "Onboard Scholar"
+        },
+        {
+          "urlIncludes": "view=onboarding"
+        },
+        {
+          "see": "Add new scholars to the Ashinaga platform"
+        }
+      ],
+      "expected": "Onboard action opens the student onboarding form."
+    },
+    {
+      "id": "student.sign-in",
+      "area": "Student",
+      "name": "Student sign in page",
+      "app": "scholar",
+      "persona": "anonymous",
+      "stage": "all",
+      "route": "/",
+      "fixtures": [],
+      "steps": [
+        {
+          "goto": "/"
+        },
+        {
+          "see": "Sign in to your Ashinaga Scholar Portal account"
+        },
+        {
+          "see": "You must have an invitation to access the portal"
+        }
+      ],
+      "expected": "Signed-out visitors land on the scholar login form."
+    },
+    {
+      "id": "student.signup-from-invite",
+      "area": "Student",
+      "name": "Sign up from an invitation link",
+      "app": "scholar",
+      "persona": "anonymous",
+      "stage": "all",
+      "route": "/signup?token={inviteToken}",
+      "fixtures": ["a pending scholar invitation token ({inviteToken})"],
+      "steps": [
+        {
+          "goto": "/signup?token={inviteToken}"
+        },
+        {
+          "see": "Create Your Account"
+        }
+      ],
+      "expected": "A valid invite opens the account form; an invalid token shows Invalid Invitation."
+    },
+    {
+      "id": "student.overview",
+      "area": "Student",
+      "name": "Overview",
+      "app": "scholar",
+      "persona": "either",
+      "stage": "all",
+      "route": "/dashboard",
+      "fixtures": [],
+      "steps": [
+        {
+          "goto": "/dashboard"
+        },
+        {
+          "see": "Quick Actions"
+        },
+        {
+          "seeRole": "link",
+          "name": "My Tasks"
+        }
+      ],
+      "expected": "Dashboard shows profile summary, LDF progress, announcements and quick actions."
+    },
+    {
+      "id": "student.profile",
+      "area": "Student",
+      "name": "My Profile",
+      "app": "scholar",
+      "persona": "either",
+      "stage": "all",
+      "route": "/profile",
+      "fixtures": [],
+      "steps": [
+        {
+          "goto": "/profile"
+        },
+        {
+          "see": "AAI Scholar ID"
+        }
+      ],
+      "expected": "Profile form renders and saves."
+    },
+    {
+      "id": "student.ldf",
+      "area": "Student",
+      "name": "My LDF",
+      "app": "scholar",
+      "persona": "either",
+      "stage": "all",
+      "route": "/goals",
+      "fixtures": [],
+      "steps": [
+        {
+          "goto": "/goals"
+        },
+        {
+          "see": "Total LDF Goals"
+        }
+      ],
+      "expected": "LDF goals with progress and category/term filters."
+    },
+    {
+      "id": "student.tasks",
+      "area": "Student",
+      "name": "My Tasks",
+      "app": "scholar",
+      "persona": "either",
+      "stage": "all",
+      "route": "/tasks",
+      "fixtures": [],
+      "steps": [
+        {
+          "goto": "/tasks"
+        },
+        {
+          "seeRole": "heading",
+          "name": "My Tasks"
+        }
+      ],
+      "expected": "Assigned tasks with due-state filters; completing a task records the response.",
+      "notes": "Prep Year sees a Due now / Upcoming / Completed layout; enrolled scholars see the filterable list."
+    },
+    {
+      "id": "student.requests",
+      "area": "Student",
+      "name": "My Requests",
+      "app": "scholar",
+      "persona": "either",
+      "stage": "all",
+      "route": "/requests",
+      "fixtures": [],
+      "steps": [
+        {
+          "goto": "/requests"
+        },
+        {
+          "seeRole": "heading",
+          "name": "My Requests"
+        }
+      ],
+      "expected": "Request list and New request dialog."
+    },
+    {
+      "id": "student.announcements",
+      "area": "Student",
+      "name": "Announcements",
+      "app": "scholar",
+      "persona": "either",
+      "stage": "all",
+      "route": "/announcements",
+      "fixtures": [],
+      "steps": [
+        {
+          "goto": "/announcements"
+        },
+        {
+          "see": "Most Recent"
+        }
+      ],
+      "expected": "Announcements addressed to the student, newest first."
+    },
+    {
+      "id": "student.resources",
+      "area": "Student",
+      "name": "Resources",
+      "app": "scholar",
+      "persona": "either",
+      "stage": "all",
+      "route": "/resources",
+      "fixtures": [],
+      "steps": [
+        {
+          "goto": "/resources"
+        },
+        {
+          "seeRole": "heading",
+          "name": "Resources"
+        }
+      ],
+      "expected": "Live resources for the student's audience only (drafts hidden)."
+    },
+    {
+      "id": "prep.documents",
+      "area": "Student / Prep Year",
+      "name": "My Documents (Prep Year tracker)",
+      "app": "scholar",
+      "persona": "prep",
+      "stage": "prep_year",
+      "route": "/documents",
+      "fixtures": [],
+      "steps": [
+        {
+          "goto": "/documents"
+        },
+        {
+          "urlIncludes": "/documents"
+        },
+        {
+          "seeRole": "heading",
+          "name": "My Documents"
+        }
+      ],
+      "expected": "Required Prep Year documents with upload status."
+    },
+    {
+      "id": "prep.proposal",
+      "area": "Student / Prep Year",
+      "name": "My Proposal",
+      "app": "scholar",
+      "persona": "prep",
+      "stage": "prep_year",
+      "route": "/proposal",
+      "fixtures": [],
+      "steps": [
+        {
+          "goto": "/proposal"
+        },
+        {
+          "urlIncludes": "/proposal"
+        },
+        {
+          "seeRole": "heading",
+          "name": "My Proposal"
+        }
+      ],
+      "expected": "Proposal steps, completed-file upload and coordinator comments.",
+      "notes": "The app also shows My Proposal to enrolled scholars (nav gates it on profile load, not stage). The ticket lists it as Prep Year only; confirm which is intended."
+    },
+    {
+      "id": "prep.chrome",
+      "area": "Student / Prep Year",
+      "name": "Prep Year chrome (no My Annual Review)",
+      "app": "scholar",
+      "persona": "prep",
+      "stage": "prep_year",
+      "route": "/dashboard",
+      "fixtures": [],
+      "steps": [
+        {
+          "goto": "/dashboard"
+        },
+        {
+          "see": "Ashinaga Prep Year"
+        },
+        {
+          "seeRole": "link",
+          "name": "My Documents"
+        },
+        {
+          "notSeeLink": "My Annual Review"
+        },
+        {
+          "goto": "/annual-review"
+        },
+        {
+          "urlIncludes": "/dashboard"
+        }
+      ],
+      "expected": "Prep Year header and nav; My Annual Review is hidden and its URL redirects to Overview."
+    },
+    {
+      "id": "scholar.annual-review",
+      "area": "Student / Enrolled scholar",
+      "name": "My Annual Review",
+      "app": "scholar",
+      "persona": "scholar",
+      "stage": "scholar",
+      "route": "/annual-review",
+      "fixtures": [],
+      "steps": [
+        {
+          "goto": "/annual-review"
+        },
+        {
+          "urlIncludes": "/annual-review"
+        },
+        {
+          "see": "My Annual Review"
+        }
+      ],
+      "expected": "Annual review form for the current academic year."
+    },
+    {
+      "id": "scholar.chrome",
+      "area": "Student / Enrolled scholar",
+      "name": "Scholar chrome (no My Documents)",
+      "app": "scholar",
+      "persona": "scholar",
+      "stage": "scholar",
+      "route": "/dashboard",
+      "fixtures": [],
+      "steps": [
+        {
+          "goto": "/dashboard"
+        },
+        {
+          "see": "Ashinaga Scholar Portal"
+        },
+        {
+          "seeRole": "link",
+          "name": "My Annual Review"
+        },
+        {
+          "notSeeLink": "My Documents"
+        },
+        {
+          "goto": "/documents"
+        },
+        {
+          "urlIncludes": "/dashboard"
+        }
+      ],
+      "expected": "Scholar header and nav; My Documents is hidden and its URL redirects to Overview."
+    }
+  ]
+}
