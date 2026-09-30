@@ -115,7 +115,9 @@ export function MyDocuments() {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-2xl font-semibold tracking-tight">My Documents</h2>
+        <h2 className="hidden text-2xl font-semibold tracking-tight md:block print:block">
+          My Documents
+        </h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Upload the required Prep Year documents. You can replace a file if you need to update it.
         </p>
