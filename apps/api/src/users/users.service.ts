@@ -4,9 +4,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
-import { AvatarsService } from '../avatars/avatars.service';
+import { and, eq } from 'drizzle-orm';
 import { resolveAvatarSrc } from '../avatars/avatar-files';
+import { AvatarsService } from '../avatars/avatars.service';
 import { validateProfileImage } from '../common/profile-image';
 import { database } from '../db/connection';
 import { sessions, staff, users } from '../db/schema';
@@ -173,5 +173,64 @@ export class UsersService {
     }
 
     return { success: true, alreadyInactive: false };
+  }
+
+  async setStaffAdmin(targetUserId: string, isSuperAdmin: boolean, requesterUserId: string) {
+    if (targetUserId === requesterUserId) {
+      throw new BadRequestException('You cannot change your own admin access');
+    }
+
+    const [requester] = await database
+      .select()
+      .from(staff)
+      .where(eq(staff.userId, requesterUserId))
+      .limit(1);
+
+    if (!requester || !requester.isActive) {
+      throw new ForbiddenException('Staff access required');
+    }
+
+    if (!requester.isSuperAdmin) {
+      throw new ForbiddenException('Only super-admins can change admin access');
+    }
+
+    return database.transaction(async (tx) => {
+      // Lock the active super-admins so two concurrent demotions cannot both
+      // pass the last-admin check.
+      const activeSuperAdmins = await tx
+        .select({ userId: staff.userId })
+        .from(staff)
+        .where(and(eq(staff.isActive, true), eq(staff.isSuperAdmin, true)))
+        .for('update');
+
+      const [target] = await tx
+        .select()
+        .from(staff)
+        .where(eq(staff.userId, targetUserId))
+        .for('update')
+        .limit(1);
+
+      if (!target) {
+        throw new NotFoundException('Staff member not found');
+      }
+
+      if (!target.isActive) {
+        throw new BadRequestException('Cannot change admin access for an inactive staff member');
+      }
+
+      if (!isSuperAdmin && target.isSuperAdmin && activeSuperAdmins.length <= 1) {
+        throw new BadRequestException('Cannot remove the last super-admin');
+      }
+
+      // `is_super_admin` is the privilege; `role` only drives the Active Staff
+      // badge. Keep them in step so the badge matches the shield.
+      const role = isSuperAdmin ? ('admin' as const) : ('viewer' as const);
+      await tx
+        .update(staff)
+        .set({ isSuperAdmin, role, updatedAt: new Date() })
+        .where(eq(staff.userId, targetUserId));
+
+      return { success: true, userId: targetUserId, isSuperAdmin, role };
+    });
   }
 }
