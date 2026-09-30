@@ -29,7 +29,7 @@ describe('OverviewController', () => {
 
   it('passes the signed-in staff id to the read model', async () => {
     const payload = {
-      cohort: { total: 1, active: 1, prepYear: 0 },
+      cohort: { total: 1, prepYear: 0 },
       attention: { items: [], total: 0, truncated: false },
       prepYear: null,
     };

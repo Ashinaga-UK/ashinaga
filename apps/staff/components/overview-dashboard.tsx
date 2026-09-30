@@ -43,7 +43,7 @@ const VIEWS = [
     label: 'Follow up',
     types: ['stale_scholar'] as OverviewAttentionType[],
     purpose:
-      'Scholars quiet for 14 days or more. A missing login date is unknown, so it is not listed here.',
+      'Scholars quiet past the inactivity window. A missing login date is unknown, so it is not listed here.',
     empty: 'No scholars are past the inactivity window.',
   },
   {
@@ -175,7 +175,9 @@ export function OverviewDashboard() {
       <section className="rounded-lg border bg-card" aria-labelledby="attention-purpose">
         <div className="px-4 pt-4 sm:px-5">
           <p id="attention-purpose" className="max-w-3xl text-sm text-muted-foreground">
-            {current.purpose}
+            {current.id === 'follow' && data?.followUpDays
+              ? `Scholars quiet for ${data.followUpDays} ${data.followUpDays === 1 ? 'day' : 'days'} or more. A missing login date is unknown, so it is not listed here.`
+              : current.purpose}
           </p>
         </div>
         <div
@@ -501,41 +503,43 @@ function PrepYearSnapshot({ snapshot }: { snapshot: NonNullable<OverviewPayload[
       {groups.length === 0 ? (
         <p className="px-4 py-8 text-sm text-muted-foreground sm:px-5">No Prep Year gaps.</p>
       ) : (
-        <ol className="mt-3 border-t">
+        <>
           {snapshot.truncated ? (
             <p className="px-4 pt-3 text-xs tabular-nums text-muted-foreground sm:px-5">
               Showing {snapshot.gaps.length} of {snapshot.total}
             </p>
           ) : null}
-          {groups.map((group) => (
-            <li key={group.scholarId} className="border-b last:border-b-0">
-              <div className="flex items-baseline justify-between gap-3 px-4 pt-4 sm:px-5">
-                <p className="min-w-0 truncate text-sm font-medium text-foreground">
-                  {group.scholarName}
-                </p>
-                <p className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                  {group.gaps.length === 1 ? '1 gap' : `${group.gaps.length} gaps`}
-                </p>
-              </div>
-              <ul className="pb-2">
-                {group.gaps.map((gap) => (
-                  <li key={gap.id}>
-                    <Link
-                      href={gap.href}
-                      className="grid grid-cols-1 gap-0.5 px-4 py-2 text-sm hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:grid-cols-[7rem_minmax(0,1fr)_auto] sm:items-baseline sm:gap-4 sm:px-5"
-                    >
-                      <span className="text-xs text-muted-foreground">
-                        {PREP_GAP_LABEL[gap.kind]}
-                      </span>
-                      <span className="min-w-0 truncate text-foreground">{gap.title}</span>
-                      <span className="text-xs text-muted-foreground">Open</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </li>
-          ))}
-        </ol>
+          <ol className="mt-3 border-t">
+            {groups.map((group) => (
+              <li key={group.scholarId} className="border-b last:border-b-0">
+                <div className="flex items-baseline justify-between gap-3 px-4 pt-4 sm:px-5">
+                  <p className="min-w-0 truncate text-sm font-medium text-foreground">
+                    {group.scholarName}
+                  </p>
+                  <p className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                    {group.gaps.length === 1 ? '1 gap' : `${group.gaps.length} gaps`}
+                  </p>
+                </div>
+                <ul className="pb-2">
+                  {group.gaps.map((gap) => (
+                    <li key={gap.id}>
+                      <Link
+                        href={gap.href}
+                        className="grid grid-cols-1 gap-0.5 px-4 py-2 text-sm hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:grid-cols-[7rem_minmax(0,1fr)_auto] sm:items-baseline sm:gap-4 sm:px-5"
+                      >
+                        <span className="text-xs text-muted-foreground">
+                          {PREP_GAP_LABEL[gap.kind]}
+                        </span>
+                        <span className="min-w-0 truncate text-foreground">{gap.title}</span>
+                        <span className="text-xs text-muted-foreground">Open</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ol>
+        </>
       )}
     </section>
   );

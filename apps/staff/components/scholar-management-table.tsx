@@ -74,8 +74,9 @@ export function ScholarManagementTable({
   const [statusFilter, setStatusFilter] = useState<
     'all' | 'active' | 'inactive' | 'on_hold' | 'archived'
   >('all');
+  const stageFromUrl = programStageFromSearch(searchParams.get('programStage'));
   const [programStageFilter, setProgramStageFilter] = useState<'all' | 'prep_year' | 'scholar'>(
-    () => programStageFromSearch(searchParams.get('programStage'))
+    stageFromUrl
   );
   const [platformSetupFilter, setPlatformSetupFilter] = useState<'all' | 'incomplete' | 'complete'>(
     'all'
@@ -99,6 +100,10 @@ export function ScholarManagementTable({
 
   // Debounce search to avoid too many API calls
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+
+  useEffect(() => {
+    setProgramStageFilter(stageFromUrl);
+  }, [stageFromUrl]);
 
   useEffect(() => {
     const timer = setTimeout(() => {

@@ -58,7 +58,6 @@ export type OverviewAttentionCounts = {
 export type OverviewPayload = {
   cohort: {
     total: number;
-    active: number;
     prepYear: number;
   };
   attention: {
@@ -68,6 +67,7 @@ export type OverviewPayload = {
     counts: OverviewAttentionCounts;
   };
   prepYear: OverviewPrepSnapshot | null;
+  followUpDays: number;
 };
 
 type ScholarStatus = 'active' | 'inactive' | 'on_hold' | 'archived';
@@ -118,13 +118,14 @@ export type OverviewDraftRow = {
 
 export type OverviewBuildInput = {
   now?: Date;
-  scholarStats: { total: number; active: number };
+  scholarStats: { total: number };
   prepYearCount: number;
   prepScholars: OverviewPrepScholar[];
   tasks: OverviewTaskRow[];
   requests: OverviewRequestRow[];
   scholars: OverviewScholarRow[];
   drafts: OverviewDraftRow[];
+  followUpDays: number;
 };
 
 const REQUEST_LABELS: Record<string, string> = {
@@ -313,7 +314,7 @@ export function buildOverview(input: OverviewBuildInput): OverviewPayload {
     .sort((a, b) => overdueDays(b.dueDate, now) - overdueDays(a.dueDate, now) || byName(a, b));
   const scholarsWithNamedOverdue = new Set(prepOverdueTasks.map((task) => task.scholarId));
 
-  const prepGaps: OverviewPrepGap[] = activePrep.flatMap((scholar) => {
+  const otherGaps: OverviewPrepGap[] = activePrep.flatMap((scholar) => {
     const rows: OverviewPrepGap[] = [];
     if (scholar.missingDocumentCount > 0) {
       rows.push({
@@ -371,16 +372,15 @@ export function buildOverview(input: OverviewBuildInput): OverviewPayload {
     }
     return rows;
   });
-  for (const task of prepOverdueTasks) {
-    prepGaps.push({
-      id: `overdue_task:${task.id}`,
-      kind: 'overdue_task',
-      title: task.title,
-      scholarName: task.scholarName,
-      scholarId: task.scholarId,
-      href: scholarHref(task.scholarId, 'tasks'),
-    });
-  }
+  const namedOverdueGaps: OverviewPrepGap[] = prepOverdueTasks.map((task) => ({
+    id: `overdue_task:${task.id}`,
+    kind: 'overdue_task',
+    title: task.title,
+    scholarName: task.scholarName,
+    scholarId: task.scholarId,
+    href: scholarHref(task.scholarId, 'tasks'),
+  }));
+  const prepGaps = [...namedOverdueGaps, ...otherGaps];
 
   const prepYear =
     activePrep.length === 0
@@ -395,7 +395,6 @@ export function buildOverview(input: OverviewBuildInput): OverviewPayload {
   return {
     cohort: {
       total: input.scholarStats.total,
-      active: input.scholarStats.active,
       prepYear: input.prepYearCount,
     },
     attention: {
@@ -405,5 +404,6 @@ export function buildOverview(input: OverviewBuildInput): OverviewPayload {
       counts,
     },
     prepYear,
+    followUpDays: input.followUpDays,
   };
 }

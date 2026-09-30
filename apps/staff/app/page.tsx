@@ -45,6 +45,32 @@ import { signOut, useSession } from '../lib/auth-client';
 import { queryKeys, useAnnouncements } from '../lib/hooks/use-queries';
 import { cn } from '../lib/utils';
 
+function programStageParam(searchParams: { get: (key: string) => string | null }): string | null {
+  const stage = searchParams.get('programStage');
+  return stage === 'prep_year' || stage === 'scholar' ? stage : null;
+}
+
+function scholarsListHref(searchParams: { get: (key: string) => string | null }): string {
+  const params = new URLSearchParams({ tab: 'scholars', view: 'dashboard' });
+  const stage = programStageParam(searchParams);
+  if (stage) params.set('programStage', stage);
+  return `?${params.toString()}`;
+}
+
+function scholarProfileHref(
+  searchParams: { get: (key: string) => string | null },
+  scholarId: string
+): string {
+  const params = new URLSearchParams({
+    tab: 'scholars',
+    view: 'scholar-profile',
+    scholarId,
+  });
+  const stage = programStageParam(searchParams);
+  if (stage) params.set('programStage', stage);
+  return `?${params.toString()}`;
+}
+
 type StaffDashboardView =
   | 'dashboard'
   | 'scholar-profile'
@@ -272,7 +298,7 @@ function StaffDashboardContent() {
                     scholarId={selectedScholarId}
                     initialTab={scholarProfileTab}
                     onBack={() => {
-                      router.push('?tab=scholars&view=dashboard');
+                      router.push(scholarsListHref(searchParams));
                     }}
                   />
                 ) : (
@@ -280,7 +306,7 @@ function StaffDashboardContent() {
                     <CardContent className="p-4 sm:p-5">
                       <ScholarManagementTable
                         onViewProfile={(scholarId) => {
-                          router.push(`?tab=scholars&view=scholar-profile&scholarId=${scholarId}`);
+                          router.push(scholarProfileHref(searchParams, scholarId));
                         }}
                         onOnboardScholar={() => router.push('?view=onboarding')}
                       />

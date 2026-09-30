@@ -910,7 +910,7 @@ export interface OverviewAttentionCounts {
 }
 
 export interface OverviewPayload {
-  cohort: { total: number; active: number; prepYear: number };
+  cohort: { total: number; prepYear: number };
   attention: {
     items: OverviewAttentionItem[];
     total: number;
@@ -930,6 +930,7 @@ export interface OverviewPayload {
     total: number;
     truncated: boolean;
   } | null;
+  followUpDays: number;
 }
 
 export async function getOverview(): Promise<OverviewPayload> {

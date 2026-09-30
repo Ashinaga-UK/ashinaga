@@ -5,13 +5,14 @@ const now = new Date('2026-09-29T12:00:00.000Z');
 function input(overrides: Partial<OverviewBuildInput> = {}): OverviewBuildInput {
   return {
     now,
-    scholarStats: { total: 10, active: 8 },
+    scholarStats: { total: 10 },
     prepYearCount: 0,
     prepScholars: [],
     tasks: [],
     requests: [],
     scholars: [],
     drafts: [],
+    followUpDays: 14,
     ...overrides,
   };
 }
@@ -27,7 +28,8 @@ describe('buildOverview', () => {
       counts: { action: 0, follow: 0, prep: 0, reviews: 0 },
     });
     expect(result.prepYear).toBeNull();
-    expect(result.cohort).toEqual({ total: 10, active: 8, prepYear: 0 });
+    expect(result.cohort).toEqual({ total: 10, prepYear: 0 });
+    expect(result.followUpDays).toBe(14);
   });
 
   it('ranks overdue tasks, then due today, then the oldest pending request', () => {
@@ -250,5 +252,45 @@ describe('buildOverview', () => {
 
     expect(result.attention.items.some((item) => item.id === 'stale_scholar:quiet')).toBe(true);
     expect(result.attention.counts.follow).toBe(1);
+  });
+
+  it('keeps named overdue prep tasks when other gaps fill the cap', () => {
+    const prepScholars = Array.from({ length: 60 }, (_, index) => ({
+      scholarId: `prep-${index}`,
+      name: `Candidate ${String(index).padStart(2, '0')}`,
+      status: 'active' as const,
+      intendedUniversity: 'UCL',
+      intendedCourse: 'Law',
+      degreePathway: 'Undergraduate',
+      overdueCount: index < 5 ? 1 : 0,
+      missingDocumentCount: 1,
+      incompletePlatformCount: 0,
+      missingDocuments: ['Passport'],
+      incompletePlatforms: [],
+    }));
+    const tasks = Array.from({ length: 5 }, (_, index) => ({
+      id: `overdue-${index}`,
+      title: `Overdue task ${index}`,
+      dueDate: '2026-09-01T00:00:00.000Z',
+      status: 'pending',
+      scholarId: `prep-${index}`,
+      scholarName: `Candidate ${String(index).padStart(2, '0')}`,
+    }));
+
+    const result = buildOverview(input({ prepYearCount: 60, prepScholars, tasks }));
+
+    expect(result.prepYear?.truncated).toBe(true);
+    expect(result.prepYear?.total).toBe(65);
+    expect(result.prepYear?.gaps).toHaveLength(OVERVIEW_ATTENTION_CAP);
+    expect(result.prepYear?.gaps.slice(0, 5).map((gap) => gap.id)).toEqual([
+      'overdue_task:overdue-0',
+      'overdue_task:overdue-1',
+      'overdue_task:overdue-2',
+      'overdue_task:overdue-3',
+      'overdue_task:overdue-4',
+    ]);
+    expect(result.prepYear?.gaps.slice(0, 5).every((gap) => gap.kind === 'overdue_task')).toBe(
+      true
+    );
   });
 });

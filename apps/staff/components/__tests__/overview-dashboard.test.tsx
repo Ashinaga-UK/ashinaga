@@ -42,7 +42,8 @@ jest.mock('../../lib/hooks/use-queries', () => ({
 }));
 
 const payload: OverviewPayload = {
-  cohort: { total: 128, active: 96, prepYear: 14 },
+  cohort: { total: 128, prepYear: 14 },
+  followUpDays: 14,
   attention: {
     total: 2,
     truncated: false,
@@ -148,6 +149,22 @@ describe('OverviewDashboard', () => {
     );
     expect(screen.getAllByText('Hannah Bekele')).toHaveLength(1);
     expect(screen.getByText('2 gaps')).toBeInTheDocument();
+  });
+
+  it('states the follow-up window from the overview payload', () => {
+    attention = 'follow';
+    overview.mockReturnValue({
+      data: { ...payload, followUpDays: 21 },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+      isFetching: false,
+    });
+
+    renderDashboard();
+
+    expect(screen.getByText(/quiet for 21 days or more/)).toBeInTheDocument();
   });
 
   it('shows the follow-up row when that view is selected', async () => {
