@@ -220,6 +220,7 @@ describe('AnnualUpdatesService', () => {
       ]);
 
       const [row] = await service.getAnnualUpdatesReport();
+      const selectShape = mockDb.select.mock.calls[0]?.[0] as Record<string, unknown>;
 
       expect(row).toEqual(
         expect.objectContaining({
@@ -239,6 +240,20 @@ describe('AnnualUpdatesService', () => {
       );
       for (const field of essayFields) {
         expect(row).not.toHaveProperty(field);
+      }
+
+      const maskedDraft = internals.hideDraftAnswersForStaff(
+        createAnnualUpdate({
+          status: 'draft',
+          highlights: 'Private draft highlight',
+          leadershipRolesCount: 3,
+          academicYearAverageClassification: '1st',
+        })
+      );
+      for (const field of Object.keys(selectShape)) {
+        if (field in maskedDraft && maskedDraft[field as keyof typeof maskedDraft] === null) {
+          expect(row[field as keyof typeof row]).toBeNull();
+        }
       }
     });
   });

@@ -20,6 +20,23 @@ import { UpsertAnnualUpdateDto } from './dto/upsert-annual-update.dto';
 
 const LIMITED_RESPONSE_WORD_LIMIT = 150;
 type AnnualUpdate = typeof annualUpdates.$inferSelect;
+const DRAFT_ANSWER_FIELDS = [
+  'highlights',
+  'partTimeJobs',
+  'extracurriculars',
+  'leadershipRolesDescription',
+  'leadershipRolesCount',
+  'payItForwardDescription',
+  'payItForwardCount',
+  'subSaharanAfricaActivitiesDescription',
+  'subSaharanAfricaActivitiesCount',
+  'independentInternshipsCount',
+  'internshipsInAfricaSummary',
+  'internshipsElsewhereSummary',
+  'completedAshinagaAfricaInternship',
+  'academicYearAverageClassification',
+  'academicYearWeightedGrade',
+] as const satisfies readonly (keyof AnnualUpdate)[];
 
 @Injectable()
 export class AnnualUpdatesService {
@@ -136,22 +153,13 @@ export class AnnualUpdatesService {
       .innerJoin(users, eq(scholars.userId, users.id))
       .orderBy(desc(annualUpdates.createdAt));
 
-    return rows.map((row) => {
-      const submitted = row.status === 'submitted';
-
-      return {
+    return rows.map((row) =>
+      this.maskUnsubmittedAnswers({
         ...row,
         academicYear: toCanonicalAcademicYear(row.academicYear),
-        academicYearAverageClassification: submitted ? row.academicYearAverageClassification : null,
-        academicYearWeightedGrade: submitted ? row.academicYearWeightedGrade : null,
-        leadershipRolesCount: submitted ? row.leadershipRolesCount : null,
-        payItForwardCount: submitted ? row.payItForwardCount : null,
-        subSaharanAfricaActivitiesCount: submitted ? row.subSaharanAfricaActivitiesCount : null,
-        independentInternshipsCount: submitted ? row.independentInternshipsCount : null,
-        completedAshinagaAfricaInternship: submitted ? row.completedAshinagaAfricaInternship : null,
-        hasInternshipSummary: submitted && row.hasInternshipSummary === true,
-      };
-    });
+        hasInternshipSummary: row.status === 'submitted' && row.hasInternshipSummary === true,
+      })
+    );
   }
 
   async getMyAnnualUpdate(userId: string, academicYear?: string) {
@@ -306,28 +314,22 @@ export class AnnualUpdatesService {
   }
 
   private hideDraftAnswersForStaff(annualUpdate: AnnualUpdate): AnnualUpdate {
-    if (annualUpdate.status === 'submitted') {
-      return annualUpdate;
+    return this.maskUnsubmittedAnswers(annualUpdate);
+  }
+
+  private maskUnsubmittedAnswers<T extends { status: AnnualUpdate['status'] }>(record: T): T {
+    if (record.status === 'submitted') {
+      return record;
     }
 
-    return {
-      ...annualUpdate,
-      highlights: null,
-      partTimeJobs: null,
-      extracurriculars: null,
-      leadershipRolesDescription: null,
-      leadershipRolesCount: null,
-      payItForwardDescription: null,
-      payItForwardCount: null,
-      subSaharanAfricaActivitiesDescription: null,
-      subSaharanAfricaActivitiesCount: null,
-      independentInternshipsCount: null,
-      internshipsInAfricaSummary: null,
-      internshipsElsewhereSummary: null,
-      completedAshinagaAfricaInternship: null,
-      academicYearAverageClassification: null,
-      academicYearWeightedGrade: null,
-    };
+    const masked = { ...record };
+    for (const field of DRAFT_ANSWER_FIELDS) {
+      if (Object.hasOwn(masked, field)) {
+        (masked as Record<(typeof DRAFT_ANSWER_FIELDS)[number], null>)[field] = null;
+      }
+    }
+
+    return masked;
   }
 
   async saveDraft(userId: string, dto: UpsertAnnualUpdateDto) {

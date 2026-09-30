@@ -71,6 +71,8 @@ export function AnnualReviewsReport({ onViewScholarAnnualReviews }: AnnualReview
     [annualReviews]
   );
 
+  const answerFiltersDisabled = statusFilter === 'draft';
+
   const filteredAnnualReviews = useMemo(
     () =>
       filterAnnualReviewReportRows(annualReviews, {
@@ -184,7 +186,18 @@ export function AnnualReviewsReport({ onViewScholarAnnualReviews }: AnnualReview
           </Select>
           <Select
             value={statusFilter}
-            onValueChange={(value) => setStatusFilter(value as typeof statusFilter)}
+            onValueChange={(value) => {
+              const nextStatus = value as typeof statusFilter;
+              setStatusFilter(nextStatus);
+              if (nextStatus === 'draft') {
+                setClassificationFilter('all');
+                setWeightedGradeFilter('all');
+                setLeadershipCountFilter('all');
+                setPayItForwardCountFilter('all');
+                setSubSaharanAfricaCountFilter('all');
+                setInternshipFilter('all');
+              }
+            }}
           >
             <SelectTrigger>
               <SelectValue placeholder="Status" />
@@ -233,6 +246,7 @@ export function AnnualReviewsReport({ onViewScholarAnnualReviews }: AnnualReview
           value={classificationFilter}
           onValueChange={setClassificationFilter}
           options={filterOptions.classifications}
+          disabled={answerFiltersDisabled}
         />
         <ReportFilterSelect
           label="Weighted grade"
@@ -240,6 +254,7 @@ export function AnnualReviewsReport({ onViewScholarAnnualReviews }: AnnualReview
           value={weightedGradeFilter}
           onValueChange={setWeightedGradeFilter}
           options={filterOptions.weightedGrades}
+          disabled={answerFiltersDisabled}
         />
         <ReportFilterSelect
           label="Leadership roles"
@@ -247,6 +262,7 @@ export function AnnualReviewsReport({ onViewScholarAnnualReviews }: AnnualReview
           value={leadershipCountFilter}
           onValueChange={setLeadershipCountFilter}
           options={filterOptions.leadershipCounts}
+          disabled={answerFiltersDisabled}
         />
         <ReportFilterSelect
           label="Pay-it-forward activities"
@@ -254,6 +270,7 @@ export function AnnualReviewsReport({ onViewScholarAnnualReviews }: AnnualReview
           value={payItForwardCountFilter}
           onValueChange={setPayItForwardCountFilter}
           options={filterOptions.payItForwardCounts}
+          disabled={answerFiltersDisabled}
         />
         <ReportFilterSelect
           label="Sub-Saharan Africa activities"
@@ -261,12 +278,14 @@ export function AnnualReviewsReport({ onViewScholarAnnualReviews }: AnnualReview
           value={subSaharanAfricaCountFilter}
           onValueChange={setSubSaharanAfricaCountFilter}
           options={filterOptions.subSaharanAfricaCounts}
+          disabled={answerFiltersDisabled}
         />
         <ReportFilterSelect
           label="Internship"
           allLabel="All internships"
           value={internshipFilter}
           onValueChange={(value) => setInternshipFilter(value as AnnualReviewInternshipFilter)}
+          disabled={answerFiltersDisabled}
           options={[
             { value: 'ashinaga_completed', label: 'Completed Ashinaga 8-week internship' },
             { value: 'ashinaga_not_completed', label: 'Ashinaga internship not completed' },
@@ -357,15 +376,17 @@ function ReportFilterSelect({
   value,
   onValueChange,
   options,
+  disabled = false,
 }: {
   label: string;
   allLabel: string;
   value: string;
   onValueChange: (value: string) => void;
   options: Array<string | { value: string; label: string }>;
+  disabled?: boolean;
 }) {
   return (
-    <Select value={value} onValueChange={onValueChange}>
+    <Select value={value} onValueChange={onValueChange} disabled={disabled}>
       <SelectTrigger aria-label={label}>
         <SelectValue placeholder={label} />
       </SelectTrigger>

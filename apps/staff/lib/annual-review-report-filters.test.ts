@@ -85,11 +85,12 @@ describe('filterAnnualReviewReportRows', () => {
     expect(filterAnnualReviewReportRows(rows, allFilters)).toEqual(rows);
   });
 
-  it('matches a trimmed classification and leaves a different case unmatched', () => {
+  it('matches classification after case folding and whitespace collapsing', () => {
     const classificationRows = [
       review({ id: 'exact', academicYearAverageClassification: '1st' }),
       review({ id: 'padded', academicYearAverageClassification: '1st ' }),
       review({ id: 'case', academicYearAverageClassification: '1ST' }),
+      review({ id: 'words', academicYearAverageClassification: 'First' }),
     ];
 
     expect(
@@ -97,7 +98,11 @@ describe('filterAnnualReviewReportRows', () => {
         ...allFilters,
         classification: '1st',
       }).map((row) => row.id)
-    ).toEqual(['exact', 'padded']);
+    ).toEqual(['exact', 'padded', 'case']);
+    expect(getAnnualReviewReportFilterOptions(classificationRows).classifications).toEqual([
+      '1st',
+      'first',
+    ]);
   });
 
   it('matches a submitted zero count and ignores null', () => {
@@ -154,6 +159,9 @@ describe('filterAnnualReviewReportRows', () => {
     ]);
     expect(matchingIds(internshipRows, { internship: 'ashinaga_not_completed' })).toEqual([
       'not-completed',
+      'unanswered',
+      'independent',
+      'described',
     ]);
     expect(matchingIds(internshipRows, { internship: 'independent' })).toEqual(['independent']);
     expect(matchingIds(internshipRows, { internship: 'described' })).toEqual(['described']);
@@ -176,6 +184,25 @@ describe('filterAnnualReviewReportRows', () => {
         leadershipCount: '3',
       }).map((row) => row.id)
     ).toEqual([]);
+  });
+
+  it('keeps drafts visible when status is draft even if an answer filter is set', () => {
+    expect(
+      filterAnnualReviewReportRows(rows, {
+        ...allFilters,
+        status: 'draft',
+        classification: '1st',
+        leadershipCount: '3',
+      }).map((row) => row.id)
+    ).toEqual(['review-3']);
+  });
+
+  it('treats a missing Ashinaga internship answer as not completed', () => {
+    expect(
+      matchingIds([review({ id: 'blank', completedAshinagaAfricaInternship: null })], {
+        internship: 'ashinaga_not_completed',
+      })
+    ).toEqual(['blank']);
   });
 });
 
@@ -229,13 +256,40 @@ describe('getAnnualReviewReportFilterOptions', () => {
     const options = getAnnualReviewReportFilterOptions(rows);
 
     expect(filtered.map((row) => row.id)).not.toContain('draft');
-    expect(options.classifications).toEqual(['1st', 'First Class']);
+    expect(options.classifications).toEqual(['1st', 'first class']);
     expect(options.weightedGrades).toEqual(['64%', '70%']);
     expect(options.leadershipCounts).toEqual(['0', '10']);
     expect(options.payItForwardCounts).toEqual(['0', '2']);
     expect(options.subSaharanAfricaCounts).toEqual(['2']);
     expect(options.programs).toEqual(['Law', 'Medicine']);
     expect(options.scholarYears).toEqual(['Year 1', 'Year 2']);
+  });
+
+  it('sorts weighted grades numerically and collapses spacing', () => {
+    const gradeRows = [
+      review({ id: 'hundred', academicYearWeightedGrade: '100%' }),
+      review({ id: 'nine', academicYearWeightedGrade: '9%' }),
+      review({ id: 'spaced', academicYearWeightedGrade: '70 %' }),
+      review({ id: 'sixty-four', academicYearWeightedGrade: '64%' }),
+    ];
+
+    expect(getAnnualReviewReportFilterOptions(gradeRows).weightedGrades).toEqual([
+      '9%',
+      '64%',
+      '70%',
+      '100%',
+    ]);
+    expect(matchingIds(gradeRows, { weightedGrade: '70%' })).toEqual(['spaced']);
+  });
+
+  it('groups programme values that differ only by surrounding whitespace', () => {
+    const programmeRows = [
+      review({ id: 'exact', program: 'Law' }),
+      review({ id: 'padded', program: 'Law ', status: 'draft' }),
+    ];
+
+    expect(getAnnualReviewReportFilterOptions(programmeRows).programs).toEqual(['Law']);
+    expect(matchingIds(programmeRows, { program: 'Law' })).toEqual(['exact', 'padded']);
   });
 });
 

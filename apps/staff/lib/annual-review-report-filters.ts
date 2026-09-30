@@ -48,9 +48,12 @@ export function filterAnnualReviewReportRows(
     const matchesAcademicYear =
       filters.academicYear === 'all' || row.academicYear === filters.academicYear;
     const matchesStatus = filters.status === 'all' || row.status === filters.status;
-    const matchesProgram = filters.program === 'all' || row.program === filters.program;
+    const matchesProgram =
+      filters.program === 'all' || normalizeStoredLabel(row.program) === filters.program;
     const matchesScholarYear =
-      filters.scholarYear === 'all' || row.scholarYear === filters.scholarYear;
+      filters.scholarYear === 'all' ||
+      normalizeStoredLabel(row.scholarYear) === filters.scholarYear;
+    const applyAnswerFilters = filters.status !== 'draft';
 
     return (
       matchesSearch &&
@@ -58,12 +61,13 @@ export function filterAnnualReviewReportRows(
       matchesStatus &&
       matchesProgram &&
       matchesScholarYear &&
-      matchesClassification(row, filters.classification) &&
-      matchesWeightedGrade(row, filters.weightedGrade) &&
-      matchesCount(row, filters.leadershipCount, 'leadershipRolesCount') &&
-      matchesCount(row, filters.payItForwardCount, 'payItForwardCount') &&
-      matchesCount(row, filters.subSaharanAfricaCount, 'subSaharanAfricaActivitiesCount') &&
-      matchesInternship(row, filters.internship)
+      (!applyAnswerFilters ||
+        (matchesClassification(row, filters.classification) &&
+          matchesWeightedGrade(row, filters.weightedGrade) &&
+          matchesCount(row, filters.leadershipCount, 'leadershipRolesCount') &&
+          matchesCount(row, filters.payItForwardCount, 'payItForwardCount') &&
+          matchesCount(row, filters.subSaharanAfricaCount, 'subSaharanAfricaActivitiesCount') &&
+          matchesInternship(row, filters.internship)))
     );
   });
 }
@@ -75,19 +79,31 @@ export function getAnnualReviewReportFilterOptions(
 
   return {
     academicYears: [...new Set(rows.map((row) => row.academicYear))].sort().reverse(),
-    classifications: uniqueSortedText(
-      submitted.map((row) => row.academicYearAverageClassification?.trim() ?? '')
+    classifications: uniqueNormalized(
+      submitted.map((row) => row.academicYearAverageClassification),
+      normalizeFreeTextAnswer,
+      (left, right) => left.localeCompare(right)
     ),
-    weightedGrades: uniqueSortedText(
-      submitted.map((row) => row.academicYearWeightedGrade?.trim() ?? '')
+    weightedGrades: uniqueNormalized(
+      submitted.map((row) => row.academicYearWeightedGrade),
+      normalizeFreeTextAnswer,
+      compareWeightedGrades
     ),
     leadershipCounts: uniqueSortedCounts(submitted.map((row) => row.leadershipRolesCount)),
     payItForwardCounts: uniqueSortedCounts(submitted.map((row) => row.payItForwardCount)),
     subSaharanAfricaCounts: uniqueSortedCounts(
       submitted.map((row) => row.subSaharanAfricaActivitiesCount)
     ),
-    programs: uniqueSortedText(rows.map((row) => row.program)),
-    scholarYears: uniqueSortedText(rows.map((row) => row.scholarYear)),
+    programs: uniqueNormalized(
+      rows.map((row) => row.program),
+      normalizeStoredLabel,
+      (left, right) => left.localeCompare(right)
+    ),
+    scholarYears: uniqueNormalized(
+      rows.map((row) => row.scholarYear),
+      normalizeStoredLabel,
+      (left, right) => left.localeCompare(right)
+    ),
   };
 }
 
@@ -98,7 +114,7 @@ function matchesClassification(row: AnnualUpdateReportRow, classification: strin
 
   return (
     row.status === 'submitted' &&
-    (row.academicYearAverageClassification ?? '').trim() === classification
+    normalizeFreeTextAnswer(row.academicYearAverageClassification) === classification
   );
 }
 
@@ -108,7 +124,8 @@ function matchesWeightedGrade(row: AnnualUpdateReportRow, weightedGrade: string)
   }
 
   return (
-    row.status === 'submitted' && (row.academicYearWeightedGrade ?? '').trim() === weightedGrade
+    row.status === 'submitted' &&
+    normalizeFreeTextAnswer(row.academicYearWeightedGrade) === weightedGrade
   );
 }
 
@@ -142,7 +159,7 @@ function matchesInternship(row: AnnualUpdateReportRow, internship: AnnualReviewI
     case 'ashinaga_completed':
       return row.completedAshinagaAfricaInternship === true;
     case 'ashinaga_not_completed':
-      return row.completedAshinagaAfricaInternship === false;
+      return row.completedAshinagaAfricaInternship !== true;
     case 'independent':
       return row.independentInternshipsCount !== null && row.independentInternshipsCount >= 1;
     case 'described':
@@ -152,10 +169,35 @@ function matchesInternship(row: AnnualUpdateReportRow, internship: AnnualReviewI
   }
 }
 
-function uniqueSortedText(values: string[]) {
-  return [...new Set(values.filter((value) => value.trim() !== ''))].sort((left, right) =>
-    left.localeCompare(right)
-  );
+function normalizeStoredLabel(value: string | null | undefined) {
+  return (value ?? '').trim().replace(/\s+/g, ' ');
+}
+
+function normalizeFreeTextAnswer(value: string | null | undefined) {
+  return normalizeStoredLabel(value).replace(/\s+%/g, '%').toLocaleLowerCase();
+}
+
+function uniqueNormalized(
+  values: Array<string | null | undefined>,
+  normalize: (value: string | null | undefined) => string,
+  compare: (left: string, right: string) => number
+) {
+  return [...new Set(values.map(normalize).filter((value) => value !== ''))].sort(compare);
+}
+
+function compareWeightedGrades(left: string, right: string) {
+  const leftNumber = leadingGradeNumber(left);
+  const rightNumber = leadingGradeNumber(right);
+  if (leftNumber !== null && rightNumber !== null && leftNumber !== rightNumber) {
+    return leftNumber - rightNumber;
+  }
+
+  return left.localeCompare(right);
+}
+
+function leadingGradeNumber(value: string) {
+  const match = /^(\d+(?:\.\d+)?)%?$/.exec(value);
+  return match?.[1] ? Number(match[1]) : null;
 }
 
 function uniqueSortedCounts(values: Array<number | null>) {
