@@ -177,5 +177,8 @@ test.describe('Staff Portal – new features', () => {
     await page.getByRole('button', { name: 'Toggle sidebar' }).click();
     await expect(page.getByRole('button', { name: 'Close menu' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Logout' })).toBeVisible();
+    await page.getByRole('link', { name: 'Overview', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Toggle sidebar' })).toBeVisible();
   });
 });

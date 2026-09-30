@@ -45,6 +45,36 @@ function getToggle() {
   return document.querySelector('[data-sidebar="trigger"]') as HTMLButtonElement;
 }
 
+function withMobileViewport() {
+  const previousWidth = window.innerWidth;
+  const previousMatchMedia = window.matchMedia;
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+  window.matchMedia = jest.fn().mockImplementation((query: string) => ({
+    matches: query.includes('max-width'),
+    media: query,
+    onchange: null,
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    dispatchEvent: jest.fn(),
+  }));
+  return () => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: previousWidth });
+    window.matchMedia = previousMatchMedia;
+  };
+}
+
+function expectTriggerShownOnMobile(toggle: HTMLElement) {
+  let node: Element | null = toggle;
+  while (node) {
+    const tokens = (node.getAttribute('class') ?? '').split(/\s+/);
+    expect(tokens).not.toContain('hidden');
+    expect(tokens).not.toContain('md:hidden');
+    node = node.parentElement;
+  }
+}
+
 async function renderLayout(children: ReactNode = <p>Dashboard content</p>, onLogout = jest.fn()) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -78,7 +108,7 @@ describe('ScholarLayout', () => {
     jest.clearAllMocks();
     navState.pathname = '';
     // biome-ignore lint/suspicious/noDocumentCookie: tests seed the sidebar persistence cookie
-    document.cookie = 'sidebar:state=true; path=/';
+    document.cookie = 'sidebar:state:scholar=true; path=/';
     mockGetMyProfile.mockResolvedValue({ programStage: 'scholar' });
   });
 
@@ -145,9 +175,30 @@ describe('ScholarLayout', () => {
     ).toBeTruthy();
   });
 
+  it('opens the mobile sheet from an inner page', async () => {
+    const restore = withMobileViewport();
+    const user = userEvent.setup();
+    navState.pathname = '/profile';
+    try {
+      await renderLayout();
+
+      await waitFor(() => {
+        expect(document.querySelector('[data-side="left"]')).not.toBeInTheDocument();
+      });
+      const toggle = getToggle();
+      expectTriggerShownOnMobile(toggle);
+      await user.click(toggle);
+      expect(await screen.findByRole('button', { name: 'Close menu' })).toBeInTheDocument();
+      expect(document.querySelector('[data-mobile="true"]')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Logout' })).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
   it('restores a collapsed desktop sidebar from the cookie', async () => {
     // biome-ignore lint/suspicious/noDocumentCookie: tests seed the sidebar persistence cookie
-    document.cookie = 'sidebar:state=false; path=/';
+    document.cookie = 'sidebar:state:scholar=false; path=/';
     await renderLayout();
 
     expect(getSidebar()).toHaveAttribute('data-state', 'collapsed');

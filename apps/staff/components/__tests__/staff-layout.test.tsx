@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
 import { StaffLayout } from '../staff-layout';
@@ -51,6 +51,36 @@ function getToggle() {
   return document.querySelector('[data-sidebar="trigger"]') as HTMLButtonElement;
 }
 
+function withMobileViewport() {
+  const previousWidth = window.innerWidth;
+  const previousMatchMedia = window.matchMedia;
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+  window.matchMedia = jest.fn().mockImplementation((query: string) => ({
+    matches: query.includes('max-width'),
+    media: query,
+    onchange: null,
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    dispatchEvent: jest.fn(),
+  }));
+  return () => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: previousWidth });
+    window.matchMedia = previousMatchMedia;
+  };
+}
+
+function expectTriggerShownOnMobile(toggle: HTMLElement) {
+  let node: Element | null = toggle;
+  while (node) {
+    const tokens = (node.getAttribute('class') ?? '').split(/\s+/);
+    expect(tokens).not.toContain('hidden');
+    expect(tokens).not.toContain('md:hidden');
+    node = node.parentElement;
+  }
+}
+
 function renderWithProviders(ui: ReactElement) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -64,7 +94,7 @@ function renderWithProviders(ui: ReactElement) {
 describe('StaffLayout', () => {
   beforeEach(() => {
     // biome-ignore lint/suspicious/noDocumentCookie: tests seed the sidebar persistence cookie
-    document.cookie = 'sidebar:state=true; path=/';
+    document.cookie = 'sidebar:state:staff=true; path=/';
   });
 
   const renderLayout = (onLogout = jest.fn()) =>
@@ -156,9 +186,38 @@ describe('StaffLayout', () => {
     ).toBeTruthy();
   });
 
+  it('opens the mobile sheet from an inner page', async () => {
+    const restore = withMobileViewport();
+    const user = userEvent.setup();
+    try {
+      renderWithProviders(
+        <StaffLayout
+          activeTab="scholars"
+          onLogout={jest.fn()}
+          onOpenProfile={jest.fn()}
+          user={{ name: 'Ada Staff' }}
+        >
+          <p>Staff content</p>
+        </StaffLayout>
+      );
+
+      await waitFor(() => {
+        expect(document.querySelector('[data-side="left"]')).not.toBeInTheDocument();
+      });
+      const toggle = getToggle();
+      expectTriggerShownOnMobile(toggle);
+      await user.click(toggle);
+      expect(await screen.findByRole('button', { name: 'Close menu' })).toBeInTheDocument();
+      expect(document.querySelector('[data-mobile="true"]')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Logout' })).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
   it('restores a collapsed desktop sidebar from the cookie', () => {
     // biome-ignore lint/suspicious/noDocumentCookie: tests seed the sidebar persistence cookie
-    document.cookie = 'sidebar:state=false; path=/';
+    document.cookie = 'sidebar:state:staff=false; path=/';
     renderLayout();
 
     expect(getSidebar()).toHaveAttribute('data-state', 'collapsed');
