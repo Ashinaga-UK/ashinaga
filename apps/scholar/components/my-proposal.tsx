@@ -185,7 +185,9 @@ export function MyProposal() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-semibold tracking-tight">My Proposal</h2>
+        <h2 className="hidden text-2xl font-semibold tracking-tight md:block print:block">
+          My Proposal
+        </h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Each step unlocks after your coordinator approves the previous one. Write the exact step
           you are on — 1, 1a, 1b, 1c, and so on.

@@ -2,6 +2,11 @@ function startOfUtcDay(date: Date): number {
   return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
 }
 
+/** First instant of the next UTC calendar day. Tasks due before this are overdue or due today. */
+export function startOfNextUtcDay(now = new Date()): Date {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+}
+
 export function isTaskOverdue(
   task: { dueDate: Date | string; status: string },
   now = new Date()

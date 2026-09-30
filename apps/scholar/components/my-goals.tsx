@@ -175,7 +175,9 @@ export function MyGoals() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">My LDF</h1>
+            <h1 className="hidden text-3xl font-bold text-gray-900 md:block print:block dark:text-white">
+              My LDF
+            </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
               Track and manage your Leadership Development
             </p>

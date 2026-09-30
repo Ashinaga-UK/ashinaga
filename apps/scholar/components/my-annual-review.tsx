@@ -455,7 +455,7 @@ export function MyAnnualReview() {
                 <ClipboardCheck className="h-4 w-4" />
                 Annual scholar reflection
               </div>
-              <h1 className="text-3xl font-bold">My Annual Review</h1>
+              <h1 className="hidden text-3xl font-bold md:block print:block">My Annual Review</h1>
               <p className="mt-2 text-sm leading-6 text-white/85">
                 Capture your highlights, leadership, internships, Africa-related work, and academic
                 progress for this programme year.
