@@ -1,5 +1,6 @@
 'use client';
 
+import { PlatformIcon } from '@workspace/ui/components/platform-icon';
 import { toSafeHttpUrl } from '@workspace/ui/lib/safe-href';
 import { Loader2 } from 'lucide-react';
 import type { PlatformSetup, PlatformSetupStatus } from '../lib/api-client';
@@ -37,20 +38,23 @@ export function PlatformSetupCard({
               key={setup.platformId}
               className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
             >
-              <div className="min-w-0">
-                <Label htmlFor={`platform-setup-${setup.slug}`}>{setup.name}</Label>
-                {safeUrl ? (
-                  <a
-                    href={safeUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-muted-foreground truncate hover:underline"
-                  >
-                    {setup.signpostingUrl}
-                  </a>
-                ) : setup.signpostingUrl ? (
-                  <p className="text-xs text-muted-foreground truncate">{setup.signpostingUrl}</p>
-                ) : null}
+              <div className="flex min-w-0 items-center gap-3">
+                <PlatformIcon slug={setup.slug} />
+                <div className="min-w-0">
+                  <Label htmlFor={`platform-setup-${setup.slug}`}>{setup.name}</Label>
+                  {safeUrl ? (
+                    <a
+                      href={safeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block truncate text-xs text-muted-foreground hover:underline"
+                    >
+                      {setup.signpostingUrl}
+                    </a>
+                  ) : setup.signpostingUrl ? (
+                    <p className="text-xs text-muted-foreground truncate">{setup.signpostingUrl}</p>
+                  ) : null}
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <Select

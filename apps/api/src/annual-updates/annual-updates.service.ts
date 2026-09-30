@@ -5,12 +5,17 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, desc, eq, inArray, ne } from 'drizzle-orm';
+import { and, desc, eq, inArray, ne, sql } from 'drizzle-orm';
 import { getDatabase } from '../db/connection';
+import { annualReviewCopy } from '../db/schema/annual-review-copy';
 import { annualUpdates } from '../db/schema/annual-updates';
 import { scholars } from '../db/schema/scholars';
-import { users } from '../db/schema/users';
+import { staff, users } from '../db/schema/users';
+import { NotificationsService } from '../notifications/notifications.service';
 import { escapeCsvValue } from '../utils/csv';
+import { academicYearLookupValues, toCanonicalAcademicYear } from './academic-year';
+import { mergeAnnualReviewCopy, validateAnnualReviewCopyStrings } from './annual-review-copy';
+import type { UpdateAnnualReviewCopyDto } from './dto/update-annual-review-copy.dto';
 import { UpsertAnnualUpdateDto } from './dto/upsert-annual-update.dto';
 
 const LIMITED_RESPONSE_WORD_LIMIT = 150;
@@ -19,6 +24,82 @@ type AnnualUpdate = typeof annualUpdates.$inferSelect;
 @Injectable()
 export class AnnualUpdatesService {
   private db = getDatabase();
+
+  constructor(private readonly notifications: NotificationsService) {}
+
+  async getAnnualReviewCopy(userId: string, userType?: string) {
+    const [copy] = await this.db.select().from(annualReviewCopy).limit(1);
+    let canEdit = false;
+
+    if (userType === 'staff') {
+      const [staffMember] = await this.db
+        .select({ role: staff.role, isActive: staff.isActive })
+        .from(staff)
+        .where(eq(staff.userId, userId))
+        .limit(1);
+      canEdit = staffMember?.isActive === true && staffMember.role === 'admin';
+    }
+
+    return {
+      version: copy?.version ?? 0,
+      strings: mergeAnnualReviewCopy(copy?.strings),
+      canEdit,
+    };
+  }
+
+  async updateAnnualReviewCopy(
+    userId: string,
+    staffRole: string | undefined,
+    dto: UpdateAnnualReviewCopyDto
+  ) {
+    if (staffRole !== 'admin') {
+      throw new ForbiddenException('Only staff admins can edit annual review copy');
+    }
+
+    let strings: Record<string, string>;
+    try {
+      strings = validateAnnualReviewCopyStrings(dto.strings);
+    } catch (error) {
+      throw new BadRequestException(error instanceof Error ? error.message : 'Invalid form copy');
+    }
+
+    if (dto.version === 0) {
+      const [created] = await this.db
+        .insert(annualReviewCopy)
+        .values({
+          id: 1,
+          version: 1,
+          strings,
+          updatedBy: userId,
+          updatedAt: new Date(),
+        })
+        .onConflictDoNothing()
+        .returning();
+
+      if (created) {
+        return { ...created, strings: mergeAnnualReviewCopy(created.strings), canEdit: true };
+      }
+    } else {
+      const [updated] = await this.db
+        .update(annualReviewCopy)
+        .set({
+          version: dto.version + 1,
+          strings,
+          updatedBy: userId,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(annualReviewCopy.id, 1), eq(annualReviewCopy.version, dto.version)))
+        .returning();
+
+      if (updated) {
+        return { ...updated, strings: mergeAnnualReviewCopy(updated.strings), canEdit: true };
+      }
+    }
+
+    throw new ConflictException(
+      'Annual review copy changed since you opened it. Reload and try again.'
+    );
+  }
 
   async getAnnualUpdatesReport() {
     const rows = await this.db
@@ -40,27 +121,29 @@ export class AnnualUpdatesService {
       .innerJoin(users, eq(scholars.userId, users.id))
       .orderBy(desc(annualUpdates.createdAt));
 
-    return rows;
+    return rows.map((row) => ({
+      ...row,
+      academicYear: toCanonicalAcademicYear(row.academicYear),
+    }));
   }
 
   async getMyAnnualUpdate(userId: string, academicYear?: string) {
     const scholar = await this.getScholarForUser(userId);
 
-    const query = this.db
+    if (academicYear) {
+      return this.withCanonicalAcademicYear(
+        await this.findAnnualUpdateForYear(scholar.id, academicYear)
+      );
+    }
+
+    const [annualUpdate] = await this.db
       .select()
       .from(annualUpdates)
-      .where(
-        academicYear
-          ? and(
-              eq(annualUpdates.scholarId, scholar.id),
-              eq(annualUpdates.academicYear, academicYear)
-            )
-          : eq(annualUpdates.scholarId, scholar.id)
-      )
-      .orderBy(desc(annualUpdates.createdAt));
+      .where(eq(annualUpdates.scholarId, scholar.id))
+      .orderBy(desc(annualUpdates.createdAt))
+      .limit(1);
 
-    const [annualUpdate] = await query.limit(1);
-    return annualUpdate ?? null;
+    return this.withCanonicalAcademicYear(annualUpdate ?? null);
   }
 
   async getMyDraftAnnualUpdate(userId: string) {
@@ -73,7 +156,7 @@ export class AnnualUpdatesService {
       .orderBy(desc(annualUpdates.updatedAt))
       .limit(1);
 
-    return annualUpdate ?? null;
+    return this.withCanonicalAcademicYear(annualUpdate ?? null);
   }
 
   async getAnnualUpdatesForScholar(scholarId: string) {
@@ -83,7 +166,12 @@ export class AnnualUpdatesService {
       .where(eq(annualUpdates.scholarId, scholarId))
       .orderBy(desc(annualUpdates.createdAt));
 
-    return rows.map((annualUpdate) => this.hideDraftAnswersForStaff(annualUpdate));
+    return rows.map((annualUpdate) =>
+      this.hideDraftAnswersForStaff({
+        ...annualUpdate,
+        academicYear: toCanonicalAcademicYear(annualUpdate.academicYear),
+      })
+    );
   }
 
   async exportAnnualUpdatesCsv(scholarId?: string, annualUpdateIds?: string[]): Promise<string> {
@@ -134,7 +222,7 @@ export class AnnualUpdatesService {
           row.year,
           row.university,
           row.location,
-          annualUpdate.academicYear,
+          toCanonicalAcademicYear(annualUpdate.academicYear),
           annualUpdate.status,
           this.formatCsvDate(annualUpdate.submittedAt),
           this.formatCsvDate(annualUpdate.updatedAt),
@@ -229,7 +317,26 @@ export class AnnualUpdatesService {
     this.validateRequiredFields(dto);
     this.validateWordLimits(dto);
 
-    return this.upsertAnnualUpdate(scholar.id, dto, 'submitted');
+    const annualUpdate = await this.upsertAnnualUpdate(scholar.id, dto, 'submitted');
+
+    const [scholarUser] = await this.db
+      .select({ name: users.name })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    void this.notifications
+      .notifyAnnualReviewSubmitted({
+        annualUpdateId: annualUpdate.id,
+        scholarId: scholar.id,
+        scholarName: scholarUser?.name ?? 'Scholar',
+        academicYear: annualUpdate.academicYear,
+      })
+      .catch((error) => {
+        console.error('Failed to create staff annual_review_submitted notifications:', error);
+      });
+
+    return annualUpdate;
   }
 
   private async upsertAnnualUpdate(
@@ -238,14 +345,34 @@ export class AnnualUpdatesService {
     status: 'draft' | 'submitted'
   ) {
     const now = new Date();
+    const academicYear = toCanonicalAcademicYear(dto.academicYear);
+    const existing = await this.findAnnualUpdateForYear(scholarId, academicYear);
     const values = {
       ...this.toAnnualUpdateValues(dto),
       scholarId,
-      academicYear: dto.academicYear,
+      academicYear,
       status,
       submittedAt: status === 'submitted' ? now : null,
       updatedAt: now,
     };
+
+    if (existing) {
+      if (existing.status === 'submitted') {
+        throw new ConflictException('This annual review has already been submitted and is final.');
+      }
+
+      const [updated] = await this.db
+        .update(annualUpdates)
+        .set(values)
+        .where(and(eq(annualUpdates.id, existing.id), ne(annualUpdates.status, 'submitted')))
+        .returning();
+
+      if (!updated) {
+        throw new ConflictException('This annual review has already been submitted and is final.');
+      }
+
+      return this.withCanonicalAcademicYear(updated);
+    }
 
     const [annualUpdate] = await this.db
       .insert(annualUpdates)
@@ -261,7 +388,38 @@ export class AnnualUpdatesService {
       throw new ConflictException('This annual review has already been submitted and is final.');
     }
 
-    return annualUpdate;
+    return this.withCanonicalAcademicYear(annualUpdate);
+  }
+
+  private async findAnnualUpdateForYear(scholarId: string, academicYear: string) {
+    const [annualUpdate] = await this.db
+      .select()
+      .from(annualUpdates)
+      .where(
+        and(
+          eq(annualUpdates.scholarId, scholarId),
+          inArray(annualUpdates.academicYear, academicYearLookupValues(academicYear))
+        )
+      )
+      .orderBy(
+        desc(sql`case when ${annualUpdates.status} = 'submitted' then 1 else 0 end`),
+        desc(annualUpdates.updatedAt),
+        desc(annualUpdates.createdAt)
+      )
+      .limit(1);
+
+    return annualUpdate ?? null;
+  }
+
+  private withCanonicalAcademicYear(annualUpdate: AnnualUpdate | null) {
+    if (!annualUpdate) {
+      return null;
+    }
+
+    return {
+      ...annualUpdate,
+      academicYear: toCanonicalAcademicYear(annualUpdate.academicYear),
+    };
   }
 
   private async getScholarForUser(userId: string) {

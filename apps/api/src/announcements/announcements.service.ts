@@ -15,6 +15,7 @@ import {
   users,
 } from '../db/schema';
 import { EmailService } from '../email/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateAnnouncementDto, ScholarFilterDto } from './dto/create-announcement.dto';
 import { GetAnnouncementsQueryDto } from './dto/get-announcements.dto';
 
@@ -25,7 +26,10 @@ type AnnouncementFilter = {
 
 @Injectable()
 export class AnnouncementsService {
-  constructor(private readonly emailService: EmailService) {}
+  constructor(
+    private readonly emailService: EmailService,
+    private readonly notifications: NotificationsService
+  ) {}
   async createAnnouncement(createAnnouncementDto: CreateAnnouncementDto, createdBy: string) {
     const { title, content, filters: rawFilters } = createAnnouncementDto;
     const filters = normalizeAudienceFilters(rawFilters ?? []);
@@ -54,8 +58,18 @@ export class AnnouncementsService {
     // Create recipient records for scholars who match the filters
     const recipientScholarIds = await this.createRecipientRecords(announcement.id, filters);
 
-    // Send emails to all recipients
-    await this.sendAnnouncementEmails(announcement.id, title, content, recipientScholarIds);
+    await Promise.allSettled([
+      this.notifications
+        .notifyAnnouncementCreated({
+          announcementId: announcement.id,
+          title,
+          scholarIds: recipientScholarIds,
+        })
+        .catch((error) => {
+          console.error('Failed to create announcement inbox notifications:', error);
+        }),
+      this.sendAnnouncementEmails(announcement.id, title, content, recipientScholarIds),
+    ]);
 
     return announcement;
   }

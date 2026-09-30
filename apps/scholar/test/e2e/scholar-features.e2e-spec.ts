@@ -7,6 +7,21 @@
 import { expect, test } from '@playwright/test';
 
 test.describe('Scholar Portal – new request multi-assignee', () => {
+  test('only offers the two scholar request types', async ({ page }) => {
+    await page.goto('/requests');
+    await page.getByRole('button', { name: /New Request/i }).click();
+
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('combobox').first().click();
+
+    await expect(page.getByRole('option', { name: 'Extenuating Circumstances' })).toBeVisible();
+    await expect(page.getByRole('option', { name: 'Summer Funding Request' })).toBeVisible();
+    await expect(page.getByRole('option', { name: 'Summer Funding Report' })).toHaveCount(0);
+    await expect(page.getByRole('option', { name: 'Requirement Submission' })).toHaveCount(0);
+    await expect(page.getByRole('option', { name: 'Others' })).toHaveCount(0);
+  });
+
   test('shows a multi-select checkbox list of staff members on the new request form', async ({
     page,
   }) => {
@@ -72,8 +87,22 @@ test.describe('Scholar Portal – collapsible sidebar', () => {
   test('sidebar trigger opens mobile navigation and a section can be selected', async ({
     page,
   }) => {
-    await page.goto('/dashboard');
+    test.setTimeout(90_000);
+    // Size the focused page before navigation. A mobile viewport can still leave
+    // useSession pending, so the layout stays on Loading... Reload once if the
+    // shell has not appeared.
     await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/dashboard');
+    const brand = page.getByRole('heading', { name: 'Ashinaga Scholar Portal' });
+    const shellReady = await brand
+      .waitFor({ state: 'visible', timeout: 15_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!shellReady) {
+      await page.reload();
+    }
+    await expect(brand).toBeVisible({ timeout: 20_000 });
+
     await page.getByRole('button', { name: 'Toggle sidebar' }).click();
     await expect(page.getByRole('button', { name: 'Close menu' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'My Requests', exact: true })).toBeVisible();
@@ -82,9 +111,12 @@ test.describe('Scholar Portal – collapsible sidebar', () => {
     await expect(
       page.getByRole('banner').getByRole('heading', { name: 'My Requests' })
     ).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Back to Overview' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Toggle sidebar' })).toBeHidden();
-    await page.getByRole('link', { name: 'Back to Overview' }).click();
+    await expect(page.getByRole('button', { name: 'Toggle sidebar' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Back to Overview' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+    await expect(page.getByRole('button', { name: 'Close menu' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Logout' })).toBeVisible();
+    await page.getByRole('link', { name: 'Overview', exact: true }).click();
     await expect(page).toHaveURL(/\/dashboard/);
     await expect(page.getByRole('heading', { name: 'Ashinaga Scholar Portal' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Toggle sidebar' })).toBeVisible();

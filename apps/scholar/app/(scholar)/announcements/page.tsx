@@ -67,7 +67,9 @@ export default function AnnouncementsPage() {
 
   return (
     <div className="p-6 space-y-4">
-      <h2 className="text-2xl font-bold text-foreground">Announcements</h2>
+      <h2 className="hidden text-2xl font-bold text-foreground md:block print:block">
+        Announcements
+      </h2>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
         <Select value={yearFilter} onValueChange={setYearFilter}>
           <SelectTrigger>

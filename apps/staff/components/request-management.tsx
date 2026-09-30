@@ -42,6 +42,11 @@ interface RequestManagementProps {
 
 type ReviewStatus = 'approved' | 'rejected' | 'reviewed' | 'commented';
 
+const SCHOLAR_VISIBLE_REQUEST_TYPES: readonly Request['type'][] = [
+  'extenuating_circumstances',
+  'summer_funding_request',
+];
+
 export function RequestManagement({ request, onStatusUpdate }: RequestManagementProps) {
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [viewReviewOpen, setViewReviewOpen] = useState(false);
@@ -54,6 +59,7 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
   const isLoading = session.isPending;
   const { toast } = useToast();
   const isAuthenticated = !!user;
+  const scholarCanRespond = SCHOLAR_VISIBLE_REQUEST_TYPES.includes(request.type);
 
   // Debug logging
   console.log('Auth state:', { user, isLoading, isAuthenticated });
@@ -80,6 +86,14 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
   };
 
   const handleApproval = async (approved: boolean) => {
+    if (!approved && !approvalComment.trim()) {
+      toast({
+        title: 'Reason required',
+        description: 'Add a reason before rejecting this request.',
+        variant: 'destructive',
+      });
+      return;
+    }
     await handleStatusUpdate(approved ? 'approved' : 'rejected');
   };
 
@@ -355,7 +369,7 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
                     <div className="space-y-4">
                       {renderCompletedApplication()}
                       <div>
-                        <Label htmlFor="approvalComment">Comments (Optional)</Label>
+                        <Label htmlFor="approvalComment">Comments (required to reject)</Label>
                         <Textarea
                           id="approvalComment"
                           value={approvalComment}
@@ -378,15 +392,17 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
                         <X className="h-4 w-4 mr-2" />
                         {isSubmitting ? 'Processing...' : 'Reject'}
                       </Button>
-                      <Button
-                        variant="outline"
-                        onClick={handleRequestInfo}
-                        disabled={isSubmitting}
-                        className="text-blue-700 border-blue-200 hover:bg-blue-50"
-                      >
-                        <MessageSquare className="h-4 w-4 mr-2" />
-                        {isSubmitting ? 'Processing...' : 'Request More Information'}
-                      </Button>
+                      {scholarCanRespond && (
+                        <Button
+                          variant="outline"
+                          onClick={handleRequestInfo}
+                          disabled={isSubmitting}
+                          className="text-blue-700 border-blue-200 hover:bg-blue-50"
+                        >
+                          <MessageSquare className="h-4 w-4 mr-2" />
+                          {isSubmitting ? 'Processing...' : 'Request More Information'}
+                        </Button>
+                      )}
                       {request.status !== 'reviewed' && (
                         <Button
                           variant="outline"

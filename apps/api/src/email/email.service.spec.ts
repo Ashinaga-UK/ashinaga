@@ -24,9 +24,15 @@ describe('EmailService', () => {
 
   describe('sendPasswordResetEmail', () => {
     it('should log password reset email when Resend is not configured', async () => {
+      delete process.env.RESEND_API_KEY;
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
 
-      await service.sendPasswordResetEmail({
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [EmailService],
+      }).compile();
+      const localService = module.get<EmailService>(EmailService);
+
+      await localService.sendPasswordResetEmail({
         email: 'test@example.com',
         resetUrl: 'https://example.com/reset',
         userType: 'scholar',

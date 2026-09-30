@@ -1,6 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactElement } from 'react';
 import { StaffLayout } from '../staff-layout';
+import { SidebarProvider, SidebarTrigger } from '../ui/sidebar';
 
 jest.mock(
   'lucide-react',
@@ -21,6 +24,25 @@ jest.mock('@workspace/ui', () => ({
   ThemeToggle: () => null,
 }));
 
+jest.mock('../../lib/api-client', () => ({
+  getStaffNotificationsFeed: jest.fn().mockResolvedValue({
+    items: [],
+    total: 0,
+    unreadCount: 0,
+    page: 1,
+    limit: 20,
+  }),
+  getRequestStats: jest.fn().mockResolvedValue({
+    total: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+    reviewed: 0,
+    commented: 0,
+  }),
+  markStaffNotificationsRead: jest.fn().mockResolvedValue({ updated: 0 }),
+}));
+
 function getSidebar() {
   return document.querySelector('[data-side="left"]') as HTMLElement;
 }
@@ -29,9 +51,54 @@ function getToggle() {
   return document.querySelector('[data-sidebar="trigger"]') as HTMLButtonElement;
 }
 
+function withMobileViewport() {
+  const previousWidth = window.innerWidth;
+  const previousMatchMedia = window.matchMedia;
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+  window.matchMedia = jest.fn().mockImplementation((query: string) => ({
+    matches: query.includes('max-width'),
+    media: query,
+    onchange: null,
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    dispatchEvent: jest.fn(),
+  }));
+  return () => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: previousWidth });
+    window.matchMedia = previousMatchMedia;
+  };
+}
+
+function expectTriggerShownOnMobile(toggle: HTMLElement) {
+  let node: Element | null = toggle;
+  while (node) {
+    const tokens = (node.getAttribute('class') ?? '').split(/\s+/);
+    expect(tokens).not.toContain('hidden');
+    expect(tokens).not.toContain('md:hidden');
+    node = node.parentElement;
+  }
+}
+
+function renderWithProviders(ui: ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+}
+
 describe('StaffLayout', () => {
+  beforeEach(() => {
+    // biome-ignore lint/suspicious/noDocumentCookie: tests seed the sidebar persistence cookie
+    document.cookie = 'sidebar:state:staff=true; path=/';
+  });
+
   const renderLayout = (onLogout = jest.fn()) =>
-    render(
+    renderWithProviders(
       <StaffLayout
         activeTab="overview"
         onLogout={onLogout}
@@ -71,6 +138,7 @@ describe('StaffLayout', () => {
       'href',
       '/?tab=invitations'
     );
+    expect(screen.getByRole('button', { name: 'Notifications' })).toBeInTheDocument();
     expect(screen.getByText('Staff content')).toBeInTheDocument();
   });
 
@@ -91,8 +159,8 @@ describe('StaffLayout', () => {
     expect(screen.queryByRole('link', { name: 'Back to Overview' })).not.toBeInTheDocument();
   });
 
-  it('shows a back control away from overview', () => {
-    render(
+  it('keeps the menu trigger and section title away from overview', () => {
+    renderWithProviders(
       <StaffLayout
         activeTab="scholars"
         onLogout={jest.fn()}
@@ -104,16 +172,65 @@ describe('StaffLayout', () => {
     );
 
     const header = screen.getByRole('banner');
-    const back = screen.getByRole('link', { name: 'Back to Overview' });
+    const toggle = getToggle();
     const sectionTitle = screen.getByRole('heading', { name: 'Scholars' });
 
-    expect(back).toHaveAttribute('href', '/');
-    expect(header).toContainElement(back);
+    expect(toggle).toHaveAccessibleName('Toggle sidebar');
+    expect(toggle).not.toHaveClass('hidden');
+    expect(header).toContainElement(toggle);
     expect(header).toContainElement(sectionTitle);
-    expect(getToggle()).toHaveClass('hidden');
+    expect(screen.queryByRole('link', { name: 'Back to Overview' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Back to Overview')).not.toBeInTheDocument();
     expect(
-      back.compareDocumentPosition(sectionTitle) & Node.DOCUMENT_POSITION_FOLLOWING
+      toggle.compareDocumentPosition(sectionTitle) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
+  });
+
+  it('opens the mobile sheet from an inner page', async () => {
+    const restore = withMobileViewport();
+    const user = userEvent.setup();
+    try {
+      renderWithProviders(
+        <StaffLayout
+          activeTab="scholars"
+          onLogout={jest.fn()}
+          onOpenProfile={jest.fn()}
+          user={{ name: 'Ada Staff' }}
+        >
+          <p>Staff content</p>
+        </StaffLayout>
+      );
+
+      await waitFor(() => {
+        expect(document.querySelector('[data-side="left"]')).not.toBeInTheDocument();
+      });
+      const toggle = getToggle();
+      expectTriggerShownOnMobile(toggle);
+      await user.click(toggle);
+      expect(await screen.findByRole('button', { name: 'Close menu' })).toBeInTheDocument();
+      expect(document.querySelector('[data-mobile="true"]')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Logout' })).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  it('restores a collapsed desktop sidebar from the cookie', () => {
+    // biome-ignore lint/suspicious/noDocumentCookie: tests seed the sidebar persistence cookie
+    document.cookie = 'sidebar:state:staff=false; path=/';
+    renderLayout();
+
+    expect(getSidebar()).toHaveAttribute('data-state', 'collapsed');
+  });
+
+  it('gives a bare sidebar trigger an accessible name', () => {
+    render(
+      <SidebarProvider>
+        <SidebarTrigger />
+      </SidebarProvider>
+    );
+
+    expect(screen.getByRole('button', { name: 'Toggle sidebar' })).toBeInTheDocument();
   });
 
   it('hides the desktop rail at print so md:block cannot win', () => {

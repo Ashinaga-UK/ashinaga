@@ -1,5 +1,16 @@
 import { Transform, Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+  IsDateString,
+  IsEnum,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  Min,
+} from 'class-validator';
+import { REQUEST_TYPES, type RequestType } from '../request-types';
 
 export class GetRequestsQueryDto {
   @IsOptional()
@@ -20,17 +31,32 @@ export class GetRequestsQueryDto {
   search?: string;
 
   @IsOptional()
-  @IsEnum([
-    'extenuating_circumstances',
-    'summer_funding_request',
-    'summer_funding_report',
-    'requirement_submission',
-  ])
-  type?:
-    | 'extenuating_circumstances'
-    | 'summer_funding_request'
-    | 'summer_funding_report'
-    | 'requirement_submission';
+  @IsUUID()
+  requestId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  scholarId?: string;
+
+  @IsOptional()
+  @IsString()
+  program?: string;
+
+  @IsOptional()
+  @IsString()
+  year?: string;
+
+  @IsOptional()
+  @IsDateString()
+  submittedFrom?: string;
+
+  @IsOptional()
+  @IsDateString()
+  submittedTo?: string;
+
+  @IsOptional()
+  @IsIn(REQUEST_TYPES)
+  type?: RequestType;
 
   @IsOptional()
   @IsEnum(['pending', 'approved', 'rejected', 'reviewed', 'commented'])
@@ -41,8 +67,8 @@ export class GetRequestsQueryDto {
   priority?: 'high' | 'medium' | 'low';
 
   @IsOptional()
-  @IsEnum(['submittedDate', 'status', 'priority', 'createdAt'])
-  sortBy?: string = 'submittedDate';
+  @IsEnum(['submittedDate', 'scholarName', 'type', 'status', 'priority', 'createdAt'])
+  sortBy?: 'submittedDate' | 'scholarName' | 'type' | 'status' | 'priority' | 'createdAt';
 
   @IsOptional()
   @IsEnum(['asc', 'desc'])
@@ -81,11 +107,7 @@ export class RequestResponseDto {
   scholarId: string;
   scholarName: string;
   scholarEmail: string;
-  type:
-    | 'extenuating_circumstances'
-    | 'summer_funding_request'
-    | 'summer_funding_report'
-    | 'requirement_submission';
+  type: RequestType;
   description: string;
   formData?: Record<string, any> | null;
   priority: 'high' | 'medium' | 'low';
@@ -113,4 +135,6 @@ export class PaginationMetaDto {
 export class GetRequestsResponseDto {
   data: RequestResponseDto[];
   pagination: PaginationMetaDto;
+  /** Programme and year with the most pending requests in the caller's queue. */
+  cohort: { program: string; year: string } | null;
 }

@@ -16,7 +16,9 @@ import {
   Users,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRequestStats } from '../lib/hooks/use-queries';
 import { cn } from '../lib/utils';
+import { StaffNotificationsBell } from './staff-notifications-bell';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import {
   Sidebar,
@@ -26,6 +28,7 @@ import {
   SidebarGroupContent,
   SidebarInset,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
@@ -84,6 +87,8 @@ interface StaffLayoutProps {
 
 function StaffSidebar({ activeTab, onLogout }: Pick<StaffLayoutProps, 'activeTab' | 'onLogout'>) {
   const { isMobile, setOpenMobile } = useSidebar();
+  const { data: requestStats } = useRequestStats();
+  const pendingRequests = requestStats?.pending ?? 0;
 
   return (
     <Sidebar collapsible="icon" className="print:hidden">
@@ -106,6 +111,7 @@ function StaffSidebar({ activeTab, onLogout }: Pick<StaffLayoutProps, 'activeTab
             <SidebarMenu>
               {STAFF_NAV_ITEMS.map((item) => {
                 const Icon = item.icon;
+                const showPendingBadge = item.value === 'requests' && pendingRequests > 0;
                 return (
                   <SidebarMenuItem key={item.value}>
                     <SidebarMenuButton
@@ -118,6 +124,11 @@ function StaffSidebar({ activeTab, onLogout }: Pick<StaffLayoutProps, 'activeTab
                         <span>{item.label}</span>
                       </Link>
                     </SidebarMenuButton>
+                    {showPendingBadge ? (
+                      <SidebarMenuBadge aria-label={`${pendingRequests} pending requests`}>
+                        {pendingRequests > 99 ? '99+' : pendingRequests}
+                      </SidebarMenuBadge>
+                    ) : null}
                   </SidebarMenuItem>
                 );
               })}
@@ -164,20 +175,7 @@ export function StaffLayout({
         style={{ gridTemplateColumns: '1fr auto 1fr' }}
       >
         <div className="flex items-center justify-start md:contents">
-          {!isHome ? (
-            <Link
-              href="/"
-              className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
-              aria-label="Back to Overview"
-            >
-              <ChevronLeft className="size-5" aria-hidden />
-              <span className="sr-only">Back to Overview</span>
-            </Link>
-          ) : null}
-          <SidebarTrigger
-            aria-label="Toggle sidebar"
-            className={cn('shrink-0 md:order-2', !isHome && 'hidden md:inline-flex')}
-          />
+          <SidebarTrigger aria-label="Toggle sidebar" className="shrink-0 md:order-2" />
         </div>
         <div className="flex min-w-0 items-center justify-center md:order-1 md:justify-start">
           {!isHome ? (
@@ -206,6 +204,7 @@ export function StaffLayout({
           </Link>
         </div>
         <div className="flex items-center justify-end gap-1 md:order-3 md:ml-auto">
+          <StaffNotificationsBell />
           <ThemeToggle />
           <button
             type="button"

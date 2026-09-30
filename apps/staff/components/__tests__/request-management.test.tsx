@@ -84,6 +84,20 @@ describe('RequestManagement — Request More Information (commented) action', ()
     ).toBeInTheDocument();
   });
 
+  it.each(['summer_funding_report', 'requirement_submission', 'others'] as const)(
+    'hides "Request More Information" for scholar-hidden %s requests',
+    async (type) => {
+      const user = userEvent.setup();
+      render(<RequestManagement request={buildRequest({ type })} onStatusUpdate={jest.fn()} />);
+
+      await user.click(screen.getByRole('button', { name: /^Review$/i }));
+
+      expect(
+        screen.queryByRole('button', { name: /Request More Information/i })
+      ).not.toBeInTheDocument();
+    }
+  );
+
   it('sets the request status to "commented" with the staff comment when info is requested', async () => {
     const user = userEvent.setup();
     const onStatusUpdate = jest.fn();
@@ -109,6 +123,17 @@ describe('RequestManagement — Request More Information (commented) action', ()
       'commented',
       'Please attach your bank statement.'
     );
+  });
+
+  it('requires a reason before rejecting', async () => {
+    const user = userEvent.setup();
+    render(<RequestManagement request={buildRequest()} onStatusUpdate={jest.fn()} />);
+
+    await user.click(screen.getByRole('button', { name: /^Review$/i }));
+    await user.click(await screen.findByRole('button', { name: /^Reject$/i }));
+
+    expect(updateRequestStatus).not.toHaveBeenCalled();
+    expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Reason required' }));
   });
 
   it('requires a comment before requesting more information', async () => {

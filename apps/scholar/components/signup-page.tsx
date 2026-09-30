@@ -56,6 +56,8 @@ const COURSE_OPTIONS = [
   'International Relations',
 ] as const;
 
+const OTHER_COURSE_OPTION = 'Other';
+
 interface ScholarData {
   name?: string;
   program?: string;
@@ -88,6 +90,8 @@ function SearchableValueField({
   emptyText,
   onChange,
   invalid,
+  allowCustomValue = true,
+  alwaysVisibleOption,
 }: {
   id: string;
   value: string;
@@ -97,6 +101,8 @@ function SearchableValueField({
   emptyText: string;
   onChange: (value: string) => void;
   invalid?: boolean;
+  allowCustomValue?: boolean;
+  alwaysVisibleOption?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState(value);
@@ -110,8 +116,16 @@ function SearchableValueField({
   const filteredOptions = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term) return options;
-    return options.filter((option) => option.toLowerCase().includes(term));
-  }, [options, search]);
+    const matches = options.filter((option) => option.toLowerCase().includes(term));
+    if (
+      alwaysVisibleOption &&
+      options.includes(alwaysVisibleOption) &&
+      !matches.includes(alwaysVisibleOption)
+    ) {
+      matches.push(alwaysVisibleOption);
+    }
+    return matches;
+  }, [alwaysVisibleOption, options, search]);
 
   return (
     <Popover
@@ -149,11 +163,17 @@ function SearchableValueField({
             value={search}
             onValueChange={(nextValue) => {
               setSearch(nextValue);
-              onChange(nextValue);
+              if (allowCustomValue) {
+                onChange(nextValue);
+              }
             }}
           />
           <CommandList>
-            <CommandEmpty>{search.trim() ? `Using "${search.trim()}"` : emptyText}</CommandEmpty>
+            {filteredOptions.length === 0 && (
+              <CommandEmpty>
+                {allowCustomValue && search.trim() ? `Using "${search.trim()}"` : emptyText}
+              </CommandEmpty>
+            )}
             {filteredOptions.map((option) => (
               <CommandItem
                 key={option}
@@ -210,10 +230,15 @@ export function SignupPage() {
   }>({});
   const [invitationData, setInvitationData] = useState<InvitationData | null>(null);
   const prefilledScholarData = invitationData?.scholarData;
+  const [usingOtherCourse, setUsingOtherCourse] = useState(false);
   const [universityOptions, setUniversityOptions] = useState<readonly string[]>(
     DEFAULT_UNIVERSITY_OPTIONS
   );
   const [courseOptions, setCourseOptions] = useState<readonly string[]>(COURSE_OPTIONS);
+  const courseOptionsWithOther = useMemo(
+    () => mergeUniqueOptions(courseOptions, [OTHER_COURSE_OPTION]),
+    [courseOptions]
+  );
 
   useEffect(() => {
     fetchAPI<{
@@ -563,19 +588,50 @@ export function SignupPage() {
                       className="bg-muted"
                     />
                   ) : (
-                    <SearchableValueField
-                      id="intendedCourse"
-                      value={formData.intendedCourse}
-                      options={courseOptions}
-                      placeholder="Select or type a course"
-                      searchPlaceholder="Start typing a course..."
-                      emptyText="No courses match. Keep typing to enter a custom one."
-                      onChange={(value) => {
-                        setFormData((prev) => ({ ...prev, intendedCourse: value }));
-                        setFieldErrors((prev) => ({ ...prev, intendedCourse: undefined }));
-                      }}
-                      invalid={Boolean(fieldErrors.intendedCourse)}
-                    />
+                    <>
+                      <SearchableValueField
+                        id="intendedCourse"
+                        value={usingOtherCourse ? OTHER_COURSE_OPTION : formData.intendedCourse}
+                        options={courseOptionsWithOther}
+                        placeholder="Select a course"
+                        searchPlaceholder="Search courses..."
+                        emptyText='No courses match. Select "Other" to enter a custom course.'
+                        onChange={(value) => {
+                          const isOther = value === OTHER_COURSE_OPTION;
+                          setUsingOtherCourse(isOther);
+                          setFormData((prev) => ({
+                            ...prev,
+                            intendedCourse: isOther ? '' : value,
+                          }));
+                          setFieldErrors((prev) => ({ ...prev, intendedCourse: undefined }));
+                        }}
+                        invalid={Boolean(fieldErrors.intendedCourse)}
+                        allowCustomValue={false}
+                        alwaysVisibleOption={OTHER_COURSE_OPTION}
+                      />
+                      {usingOtherCourse && (
+                        <div className="space-y-2">
+                          <Label htmlFor="otherIntendedCourse">Specific course name</Label>
+                          <Input
+                            id="otherIntendedCourse"
+                            value={formData.intendedCourse}
+                            onChange={(event) => {
+                              setFormData((prev) => ({
+                                ...prev,
+                                intendedCourse: event.target.value,
+                              }));
+                              setFieldErrors((prev) => ({
+                                ...prev,
+                                intendedCourse: undefined,
+                              }));
+                            }}
+                            placeholder="Enter your intended course"
+                            aria-invalid={Boolean(fieldErrors.intendedCourse) || undefined}
+                            disabled={isLoading}
+                          />
+                        </div>
+                      )}
+                    </>
                   )}
                   {fieldErrors.intendedCourse && (
                     <p className="text-sm text-destructive">{fieldErrors.intendedCourse}</p>

@@ -5,6 +5,7 @@ export const REQUEST_TYPE_LABELS: Record<string, string> = {
   summer_funding_request: 'Summer Funding Request',
   summer_funding_report: 'Summer Funding Report',
   requirement_submission: 'Requirement Submission',
+  others: 'Others',
 };
 
 interface FieldConfig {

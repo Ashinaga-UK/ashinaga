@@ -9,7 +9,11 @@ import { and, eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
 import request from 'supertest';
-import { requestAssignees } from '../../src/db/schema';
+import {
+  requestAssignees,
+  requestAuditLogs,
+  requests as requestRecords,
+} from '../../src/db/schema';
 import { type AuthContext, createAuthenticatedIntegrationApp } from './helpers/create-app';
 import {
   cleanupSeeded,
@@ -125,6 +129,154 @@ describe('Requests API – multi-assignee (integration)', () => {
         .where(eq(requestAssignees.requestId, res.body.id));
       expect(joinRows).toHaveLength(2);
     });
+
+    it.each(['summer_funding_report', 'requirement_submission', 'others'])(
+      'rejects scholar creation of the staff-only %s type',
+      async (type) => {
+        const res = await createRequestAs(scholar.userId, scholar.email, 'scholar', {
+          type,
+          description:
+            'This request type must not be created directly by a scholar through the API.',
+          priority: 'medium',
+          assigneeIds: [staffA.userId],
+        });
+
+        expect(res.status).toBe(400);
+      }
+    );
+  });
+
+  describe('POST /api/requests/staff', () => {
+    it('allows staff to create an Other request for a selected scholar', async () => {
+      auth.setUser({ id: staffA.userId, email: staffA.email, userType: 'staff' });
+
+      const res = await request(app.getHttpServer()).post('/api/requests/staff').send({
+        scholarId: scholar.scholarId,
+        description: 'Staff-created request for a situation outside the standard categories.',
+        priority: 'low',
+      });
+
+      expect(res.status).toBe(201);
+      expect(res.body).toMatchObject({
+        scholarId: scholar.scholarId,
+        type: 'others',
+        priority: 'low',
+        status: 'pending',
+        assigneeIds: [staffA.userId],
+      });
+      createdRequestIds.push(res.body.id);
+    });
+
+    it('rejects scholar access to the staff creation endpoint', async () => {
+      auth.setUser({ id: scholar.userId, email: scholar.email, userType: 'scholar' });
+
+      await request(app.getHttpServer())
+        .post('/api/requests/staff')
+        .send({
+          scholarId: scholar.scholarId,
+          description: 'A scholar must not be able to use the staff-only creation endpoint.',
+        })
+        .expect(403);
+    });
+  });
+
+  describe('GET /api/requests/my-requests visibility', () => {
+    it('hides legacy and staff-only request types from scholars but keeps them for staff', async () => {
+      const inserted = await db
+        .insert(requestRecords)
+        .values([
+          {
+            scholarId: scholar.scholarId,
+            type: 'extenuating_circumstances',
+            description: 'Scholar-visible request created for request type visibility testing.',
+            assignedTo: staffA.userId,
+          },
+          {
+            scholarId: scholar.scholarId,
+            type: 'summer_funding_report',
+            description: 'Legacy summer funding report that must remain available to staff.',
+            assignedTo: staffA.userId,
+          },
+          {
+            scholarId: scholar.scholarId,
+            type: 'requirement_submission',
+            description: 'Legacy requirement submission that must remain available to staff.',
+            assignedTo: staffA.userId,
+          },
+          {
+            scholarId: scholar.scholarId,
+            type: 'others',
+            description: 'Staff-only Other request that scholars must not see.',
+            assignedTo: staffA.userId,
+          },
+        ])
+        .returning({ id: requestRecords.id, type: requestRecords.type });
+
+      createdRequestIds.push(...inserted.map((row) => row.id));
+      await db.insert(requestAssignees).values(
+        inserted.map((row) => ({
+          requestId: row.id,
+          userId: staffA.userId,
+        }))
+      );
+
+      auth.setUser({ id: scholar.userId, email: scholar.email, userType: 'scholar' });
+      const scholarResponse = await request(app.getHttpServer())
+        .get('/api/requests/my-requests')
+        .expect(200);
+      const scholarIds = scholarResponse.body.map((row: { id: string }) => row.id);
+
+      expect(scholarIds).toContain(inserted[0]?.id);
+      expect(scholarIds).not.toContain(inserted[1]?.id);
+      expect(scholarIds).not.toContain(inserted[2]?.id);
+      expect(scholarIds).not.toContain(inserted[3]?.id);
+
+      auth.setUser({
+        id: superAdmin.userId,
+        email: superAdmin.email,
+        userType: 'staff',
+      });
+      const staffResponse = await request(app.getHttpServer())
+        .get('/api/requests')
+        .query({ page: 1, limit: 100 })
+        .expect(200);
+      const staffIds = staffResponse.body.data.map((row: { id: string }) => row.id);
+
+      for (const row of inserted) {
+        expect(staffIds).toContain(row.id);
+      }
+    });
+  });
+
+  describe('POST /api/requests/:id/respond visibility', () => {
+    it.each(['summer_funding_report', 'requirement_submission', 'others'] as const)(
+      'rejects scholar responses to hidden %s requests',
+      async (type) => {
+        const [hiddenRequest] = await db
+          .insert(requestRecords)
+          .values({
+            scholarId: scholar.scholarId,
+            type,
+            description: 'Hidden request used to verify scholar response access controls.',
+            status: 'commented',
+            assignedTo: staffA.userId,
+          })
+          .returning({ id: requestRecords.id });
+
+        if (!hiddenRequest) throw new Error('Expected the hidden request to be created');
+        createdRequestIds.push(hiddenRequest.id);
+        await db.insert(requestAssignees).values({
+          requestId: hiddenRequest.id,
+          userId: staffA.userId,
+        });
+        auth.setUser({ id: scholar.userId, email: scholar.email, userType: 'scholar' });
+
+        await request(app.getHttpServer())
+          .post(`/api/requests/${hiddenRequest.id}/respond`)
+          .send({ comment: 'A scholar must not be able to respond to this hidden request.' })
+          .expect(403);
+      }
+    );
   });
 
   describe('GET /api/requests', () => {
@@ -209,6 +361,70 @@ describe('Requests API – multi-assignee (integration)', () => {
       expect(Array.isArray(row.assignees)).toBe(true);
       const assigneeIds = new Set(row.assignees.map((a: { id: string }) => a.id));
       expect(assigneeIds).toEqual(new Set([staffA.userId, staffB.userId]));
+    });
+
+    it('filters by scholar, programme, and submitted date', async () => {
+      auth.setUser({ id: superAdmin.userId, email: superAdmin.email, userType: 'staff' });
+      const match = await request(app.getHttpServer())
+        .get('/api/requests')
+        .query({
+          scholarId: scholar.scholarId,
+          program: 'Integration Program',
+          year: 'Year 1',
+          submittedFrom: '2000-01-01',
+          submittedTo: '2100-01-01',
+          limit: 100,
+        })
+        .expect(200);
+      const ids = match.body.data.map((row: { id: string }) => row.id);
+      expect(ids).toContain(requestForAB);
+
+      const miss = await request(app.getHttpServer())
+        .get('/api/requests')
+        .query({ scholarId: scholar.scholarId, submittedFrom: '2099-01-01', limit: 100 })
+        .expect(200);
+      expect(miss.body.data.map((row: { id: string }) => row.id)).not.toContain(requestForAB);
+    });
+
+    it('rejects a bulk update that includes a request the caller cannot see', async () => {
+      auth.setUser({ id: staffC.userId, email: staffC.email, userType: 'staff' });
+      await request(app.getHttpServer())
+        .post('/api/requests/bulk-status')
+        .send({ ids: [requestForAB], status: 'approved', comment: 'no' })
+        .expect(403);
+
+      const [row] = await db
+        .select()
+        .from(requestRecords)
+        .where(eq(requestRecords.id, requestForAB));
+      expect(row?.status).toBe('pending');
+    });
+
+    it('writes one audit log per request when bulk rejecting', async () => {
+      auth.setUser({ id: staffA.userId, email: staffA.email, userType: 'staff' });
+      await request(app.getHttpServer())
+        .post('/api/requests/bulk-status')
+        .send({ ids: [requestForAB], status: 'rejected' })
+        .expect(400);
+
+      const res = await request(app.getHttpServer())
+        .post('/api/requests/bulk-status')
+        .send({ ids: [requestForAB], status: 'rejected', comment: 'Missing documents' })
+        .expect(201);
+
+      expect(res.body.data).toHaveLength(1);
+      const logs = await db
+        .select()
+        .from(requestAuditLogs)
+        .where(
+          and(
+            eq(requestAuditLogs.requestId, requestForAB),
+            eq(requestAuditLogs.action, 'status_changed')
+          )
+        );
+      expect(logs).toHaveLength(1);
+      expect(logs[0]?.newStatus).toBe('rejected');
+      expect(logs[0]?.comment).toBe('Missing documents');
     });
   });
 

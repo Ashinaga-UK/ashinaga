@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, count, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, ilike, inArray, lte, sql } from 'drizzle-orm';
 import { database } from '../db/connection';
 import {
   requestAssignees,
@@ -16,48 +16,90 @@ import {
   users,
 } from '../db/schema';
 import { EmailService } from '../email/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateRequestDto, CreateRequestResponseDto } from './dto/create-request.dto';
+import { CreateStaffRequestDto } from './dto/create-staff-request.dto';
 import {
   GetRequestsQueryDto,
   GetRequestsResponseDto,
   PaginationMetaDto,
   RequestResponseDto,
 } from './dto/get-requests.dto';
+import {
+  BulkUpdateRequestStatusDto,
+  UpdateRequestStatusDto,
+} from './dto/update-request-status.dto';
+import { SCHOLAR_CREATABLE_REQUEST_TYPES, SCHOLAR_VISIBLE_REQUEST_TYPES } from './request-types';
 
 @Injectable()
 export class RequestsService {
-  constructor(private readonly emailService: EmailService) {}
+  constructor(
+    private readonly emailService: EmailService,
+    private readonly notifications: NotificationsService
+  ) {}
 
   async getRequests(query: GetRequestsQueryDto, userId: string): Promise<GetRequestsResponseDto> {
-    const { page = 1, limit = 20, search, type, status, priority } = query;
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      type,
+      status,
+      priority,
+      requestId,
+      scholarId,
+      program,
+      year,
+      submittedFrom,
+      submittedTo,
+      sortBy,
+      sortOrder = 'desc',
+    } = query;
 
     const offset = (page - 1) * limit;
 
-    const whereConditions = [];
+    const visibilityConditions = [eq(requests.archived, false)];
 
-    // Always filter out archived requests
-    whereConditions.push(eq(requests.archived, false));
-
-    // Check if user is a super admin
     const [staffRecord] = await database.select().from(staff).where(eq(staff.userId, userId));
 
-    // If not a super admin, only show requests where this user is one of the assignees
     if (!staffRecord?.isSuperAdmin) {
       const assignedRequestIds = database
         .select({ requestId: requestAssignees.requestId })
         .from(requestAssignees)
         .where(eq(requestAssignees.userId, userId));
-      whereConditions.push(inArray(requests.id, assignedRequestIds));
+      visibilityConditions.push(inArray(requests.id, assignedRequestIds));
+    }
+
+    const whereConditions = [...visibilityConditions];
+
+    if (requestId) {
+      whereConditions.push(eq(requests.id, requestId));
+    }
+
+    if (scholarId) {
+      whereConditions.push(eq(requests.scholarId, scholarId));
+    }
+
+    if (program) {
+      whereConditions.push(eq(scholars.program, program));
+    }
+
+    if (year) {
+      whereConditions.push(eq(scholars.year, year));
+    }
+
+    if (submittedFrom || submittedTo) {
+      const from = submittedFrom ? submittedDateBound(submittedFrom, 'start') : undefined;
+      const to = submittedTo ? submittedDateBound(submittedTo, 'end') : undefined;
+      if (from && to && from.getTime() > to.getTime()) {
+        throw new BadRequestException('submittedFrom must be on or before submittedTo');
+      }
+      if (from) whereConditions.push(gte(requests.submittedDate, from));
+      if (to) whereConditions.push(lte(requests.submittedDate, to));
     }
 
     if (search) {
-      whereConditions.push(
-        or(
-          ilike(requests.description, `%${search}%`),
-          ilike(users.name, `%${search}%`),
-          ilike(users.email, `%${search}%`)
-        )
-      );
+      whereConditions.push(ilike(users.name, `%${search}%`));
     }
 
     if (type) {
@@ -74,8 +116,13 @@ export class RequestsService {
 
     const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
 
-    // Custom ordering: pending requests first, then by submitted date (newest first)
-    const orderByClause = sql`
+    // Omitted sort keeps the queue order: pending, then reviewed, commented,
+    // approved, rejected, then newest submitted date.
+    const orderByClause = sortBy
+      ? sortOrder === 'asc'
+        ? asc(requestSortColumn(sortBy))
+        : desc(requestSortColumn(sortBy))
+      : sql`
       CASE 
         WHEN ${requests.status} = 'pending' THEN 0
         WHEN ${requests.status} = 'reviewed' THEN 1
@@ -147,9 +194,23 @@ export class RequestsService {
       hasPrev: page > 1,
     };
 
+    const pendingCount = sql<number>`count(*) filter (where ${requests.status} = 'pending')`;
+    const [topCohort] = await database
+      .select({
+        program: scholars.program,
+        year: scholars.year,
+      })
+      .from(requests)
+      .innerJoin(scholars, eq(requests.scholarId, scholars.id))
+      .where(and(...visibilityConditions))
+      .groupBy(scholars.program, scholars.year)
+      .orderBy(desc(pendingCount), desc(count()))
+      .limit(1);
+
     return {
       data,
       pagination,
+      cohort: topCohort ? { program: topCohort.program, year: topCohort.year } : null,
     };
   }
 
@@ -297,7 +358,13 @@ export class RequestsService {
       .from(requests)
       .innerJoin(scholars, eq(requests.scholarId, scholars.id))
       .innerJoin(users, eq(scholars.userId, users.id))
-      .where(and(eq(requests.scholarId, scholarId), eq(requests.archived, false)))
+      .where(
+        and(
+          eq(requests.scholarId, scholarId),
+          eq(requests.archived, false),
+          inArray(requests.type, [...SCHOLAR_VISIBLE_REQUEST_TYPES])
+        )
+      )
       .orderBy(desc(requests.submittedDate));
 
     // Get attachments, audit logs and assignees for all requests
@@ -370,6 +437,12 @@ export class RequestsService {
       throw new NotFoundException('Scholar not found for this user');
     }
 
+    if (!SCHOLAR_CREATABLE_REQUEST_TYPES.includes(createRequestDto.type)) {
+      throw new BadRequestException(
+        'Scholars can only create extenuating circumstances or summer funding requests'
+      );
+    }
+
     const scholarId = scholar[0].id;
 
     // Dedupe assignees and keep the first as the primary (legacy assignedTo)
@@ -426,6 +499,25 @@ export class RequestsService {
       });
     }
 
+    const [scholarUser] = await database
+      .select({ name: users.name })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    const scholarName = scholarUser?.name ?? 'Scholar';
+
+    void this.notifications
+      .notifyRequestReceived({
+        requestId: newRequest.id,
+        scholarId,
+        scholarName,
+        requestType: newRequest.type,
+        assigneeIds,
+      })
+      .catch((error) => {
+        console.error('Failed to create staff request_received notifications:', error);
+      });
+
     return {
       id: newRequest.id,
       scholarId: newRequest.scholarId,
@@ -440,12 +532,72 @@ export class RequestsService {
     };
   }
 
+  async createStaffRequest(
+    createRequestDto: CreateStaffRequestDto,
+    staffUserId: string
+  ): Promise<CreateRequestResponseDto> {
+    const [scholar] = await database
+      .select({ id: scholars.id })
+      .from(scholars)
+      .where(eq(scholars.id, createRequestDto.scholarId))
+      .limit(1);
+
+    if (!scholar) {
+      throw new NotFoundException('Scholar not found');
+    }
+
+    const [newRequest] = await database
+      .insert(requests)
+      .values({
+        scholarId: scholar.id,
+        type: 'others',
+        description: createRequestDto.description.trim(),
+        priority: createRequestDto.priority || 'medium',
+        status: 'pending',
+        assignedTo: staffUserId,
+      })
+      .returning();
+
+    await database.insert(requestAssignees).values({
+      requestId: newRequest.id,
+      userId: staffUserId,
+    });
+
+    await database.insert(requestAuditLogs).values({
+      requestId: newRequest.id,
+      action: 'created',
+      performedBy: staffUserId,
+      newStatus: 'pending',
+      comment: 'Other request created by staff',
+    });
+
+    return {
+      id: newRequest.id,
+      scholarId: newRequest.scholarId,
+      type: newRequest.type,
+      description: newRequest.description,
+      priority: newRequest.priority,
+      status: newRequest.status,
+      submittedDate: newRequest.submittedDate,
+      assigneeIds: [staffUserId],
+      createdAt: newRequest.createdAt,
+      updatedAt: newRequest.updatedAt,
+    };
+  }
+
   async updateRequestStatus(
     requestId: string,
-    status: 'approved' | 'rejected' | 'reviewed' | 'commented',
-    comment: string,
+    status: UpdateRequestStatusDto['status'],
+    comment: string | undefined,
     reviewedBy: string
   ) {
+    const reviewComment = comment?.trim() ?? '';
+    if (status === 'rejected' && !reviewComment) {
+      throw new BadRequestException('A reason is required to reject a request');
+    }
+
+    await this.assertCallerCanReview(requestId, reviewedBy);
+
     // First, get the current request with scholar and user info
     const requestWithScholar = await database
       .select({
@@ -469,7 +621,7 @@ export class RequestsService {
       .update(requests)
       .set({
         status,
-        reviewComment: comment,
+        reviewComment,
         reviewedBy,
         reviewDate: new Date(),
         updatedAt: new Date(),
@@ -488,19 +640,23 @@ export class RequestsService {
       performedBy: reviewedBy,
       previousStatus: currentRequest.status,
       newStatus: status,
-      comment,
+      comment: reviewComment,
       metadata: JSON.stringify({ reviewedBy, reviewDate: new Date() }),
     });
 
-    // Send email notification for approved, rejected, or commented statuses
-    if (status === 'approved' || status === 'rejected' || status === 'commented') {
+    // Only notify scholars about request types they can access in the portal.
+    const scholarCanAccessRequest = SCHOLAR_VISIBLE_REQUEST_TYPES.includes(currentRequest.type);
+    if (
+      scholarCanAccessRequest &&
+      (status === 'approved' || status === 'rejected' || status === 'commented')
+    ) {
       try {
         await this.emailService.sendRequestStatusNotification(
           user.email,
           user.name,
           currentRequest.type.replace('_', ' '),
           status,
-          comment,
+          reviewComment,
           currentRequest.description
         );
       } catch (error) {
@@ -509,7 +665,69 @@ export class RequestsService {
       }
     }
 
+    if (currentRequest.status !== status) {
+      void this.notifications
+        .notifyRequestStatusChanged({
+          requestId,
+          scholarId: currentRequest.scholarId,
+          scholarName: user.name,
+          requestType: currentRequest.type,
+          status,
+          actorUserId: reviewedBy,
+          dedupeSuffix: `${status}:${updatedRequest.updatedAt.toISOString()}`,
+        })
+        .catch((error) => {
+          console.error('Failed to create staff request_status_changed notifications:', error);
+        });
+    }
+
     return updatedRequest;
+  }
+
+  async bulkUpdateRequestStatus(
+    body: BulkUpdateRequestStatusDto,
+    reviewedBy: string
+  ): Promise<{ data: Awaited<ReturnType<RequestsService['updateRequestStatus']>>[] }> {
+    const ids = [...new Set(body.ids)];
+    const reviewComment = body.comment?.trim() ?? '';
+    if (body.status === 'rejected' && !reviewComment) {
+      throw new BadRequestException('A reason is required to reject a request');
+    }
+
+    for (const requestId of ids) {
+      await this.assertCallerCanReview(requestId, reviewedBy);
+    }
+
+    const data = [];
+    for (const requestId of ids) {
+      data.push(await this.updateRequestStatus(requestId, body.status, reviewComment, reviewedBy));
+    }
+    return { data };
+  }
+
+  private async assertCallerCanReview(requestId: string, userId: string): Promise<void> {
+    const [existing] = await database
+      .select({ id: requests.id })
+      .from(requests)
+      .where(eq(requests.id, requestId))
+      .limit(1);
+
+    if (!existing) {
+      throw new NotFoundException(`Request with ID ${requestId} not found`);
+    }
+
+    const [staffRecord] = await database.select().from(staff).where(eq(staff.userId, userId));
+    if (staffRecord?.isSuperAdmin) return;
+
+    const [assignee] = await database
+      .select({ requestId: requestAssignees.requestId })
+      .from(requestAssignees)
+      .where(and(eq(requestAssignees.requestId, requestId), eq(requestAssignees.userId, userId)))
+      .limit(1);
+
+    if (!assignee) {
+      throw new ForbiddenException('You can only review requests assigned to you');
+    }
   }
 
   /**
@@ -571,6 +789,10 @@ export class RequestsService {
 
     if (requestRow.request.scholarId !== scholar.id) {
       throw new ForbiddenException('You can only respond to your own requests');
+    }
+
+    if (!SCHOLAR_VISIBLE_REQUEST_TYPES.includes(requestRow.request.type)) {
+      throw new ForbiddenException('This request type is not available in the scholar portal');
     }
 
     if (requestRow.request.archived) {
@@ -648,6 +870,20 @@ export class RequestsService {
       // Don't break the response flow on email failures
     }
 
+    void this.notifications
+      .notifyRequestStatusChanged({
+        requestId,
+        scholarId: requestRow.request.scholarId,
+        scholarName: requestRow.user.name,
+        requestType: requestRow.request.type,
+        status: 'pending',
+        actorUserId: userId,
+        dedupeSuffix: `scholar_responded:${updatedRequest.updatedAt.toISOString()}`,
+      })
+      .catch((error) => {
+        console.error('Failed to create staff request reopen notifications:', error);
+      });
+
     return updatedRequest;
   }
 
@@ -686,4 +922,28 @@ export class RequestsService {
 
     return archivedRequest;
   }
+}
+
+function requestSortColumn(sortBy: NonNullable<GetRequestsQueryDto['sortBy']>) {
+  switch (sortBy) {
+    case 'scholarName':
+      return users.name;
+    case 'type':
+      return requests.type;
+    case 'status':
+      return requests.status;
+    case 'priority':
+      return requests.priority;
+    case 'createdAt':
+      return requests.createdAt;
+    default:
+      return requests.submittedDate;
+  }
+}
+
+function submittedDateBound(value: string, edge: 'start' | 'end'): Date {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return new Date(edge === 'start' ? `${value}T00:00:00.000Z` : `${value}T23:59:59.999Z`);
+  }
+  return new Date(value);
 }

@@ -7,7 +7,11 @@ const mockGetResourceFilterOptions = jest.fn();
 const mockUpdateResource = jest.fn();
 const mockCreateResource = jest.fn();
 const mockDeleteResource = jest.fn();
+const mockCreateResourceUploadUrl = jest.fn();
 const mockToast = jest.fn();
+
+const fileValidationMessage =
+  'File type not supported. Accepted formats: PDF, Word, Excel, PowerPoint. Maximum size: 10MB.';
 
 jest.mock('lucide-react', () => {
   const React = require('react');
@@ -38,6 +42,7 @@ jest.mock('../../lib/api-client', () => ({
   updateResource: (...args: unknown[]) => mockUpdateResource(...args),
   createResource: (...args: unknown[]) => mockCreateResource(...args),
   deleteResource: (...args: unknown[]) => mockDeleteResource(...args),
+  createResourceUploadUrl: (...args: unknown[]) => mockCreateResourceUploadUrl(...args),
 }));
 
 jest.mock('../ui/use-toast', () => ({
@@ -60,6 +65,45 @@ const resource = {
   createdAt: '2026-08-01T00:00:00.000Z',
   updatedAt: '2026-08-01T00:00:00.000Z',
 };
+
+const fileResource = {
+  ...resource,
+  sourceType: 'file' as const,
+  url: null,
+  fileName: 'handbook.pdf',
+  fileMimeType: 'application/pdf',
+  fileSizeBytes: 2048,
+};
+
+function fileWithSize(name: string, type: string, size = 1024) {
+  const file = new File(['x'], name, { type });
+  Object.defineProperty(file, 'size', { value: size });
+  return file;
+}
+
+function chooseDocument(file: File) {
+  fireEvent.change(screen.getByLabelText('Document'), { target: { files: [file] } });
+}
+
+async function openCreateUpload() {
+  fireEvent.click(await screen.findByRole('button', { name: 'Add resource' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Upload document' }));
+}
+
+function mockUploadFetch(ok: boolean) {
+  const fetchMock = jest.fn().mockResolvedValue({ ok });
+  global.fetch = fetchMock as unknown as typeof fetch;
+  return fetchMock;
+}
+
+function mockSuccessfulUpload() {
+  mockCreateResourceUploadUrl.mockResolvedValue({
+    uploadUrl: 'https://uploads.example/resource',
+    fields: { key: 'resources/pending/file' },
+    fileKey: 'resources/pending/file',
+  });
+  return mockUploadFetch(true);
+}
 
 function renderResources() {
   const queryClient = new QueryClient({
@@ -137,5 +181,202 @@ describe('ResourcesManagement', () => {
 
     expect(screen.getByText('Edit resource')).toBeInTheDocument();
     expect(screen.getByLabelText('Title')).toHaveValue('Original title');
+  });
+
+  it('shows a persistent inline error and disables save for an unsupported file', async () => {
+    renderResources();
+    await openCreateUpload();
+    chooseDocument(fileWithSize('notes.txt', 'text/plain'));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(fileValidationMessage);
+    expect(screen.getByRole('button', { name: 'Save resource' })).toBeDisabled();
+    expect(mockToast).toHaveBeenCalledWith({
+      title: 'Could not upload document',
+      description: 'Please choose a PDF, Word, Excel, or PowerPoint file.',
+      variant: 'destructive',
+    });
+    fireEvent.submit(screen.getByRole('button', { name: 'Save resource' }).closest('form')!);
+    expect(mockCreateResource).not.toHaveBeenCalled();
+    expect(mockCreateResourceUploadUrl).not.toHaveBeenCalled();
+  });
+
+  it('shows the same inline error and disables save for a file over 10MB', async () => {
+    renderResources();
+    await openCreateUpload();
+    chooseDocument(fileWithSize('large.pdf', 'application/pdf', 15 * 1024 * 1024));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(fileValidationMessage);
+    expect(screen.getByRole('button', { name: 'Save resource' })).toBeDisabled();
+    expect(mockToast).toHaveBeenCalledWith({
+      title: 'Could not upload document',
+      description: 'Please choose a file smaller than 10MB.',
+      variant: 'destructive',
+    });
+  });
+
+  it('keeps save enabled after a valid pdf or docx upload', async () => {
+    mockSuccessfulUpload();
+    renderResources();
+    await openCreateUpload();
+
+    chooseDocument(fileWithSize('guide.pdf', 'application/pdf'));
+    expect(await screen.findByText('guide.pdf')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save resource' })).toBeEnabled();
+
+    chooseDocument(
+      fileWithSize(
+        'guide.docx',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      )
+    );
+    await waitFor(() => expect(screen.getByText('guide.docx')).toBeInTheDocument());
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save resource' })).toBeEnabled();
+  });
+
+  it('shows the inline error when the upload API rejects the file', async () => {
+    mockCreateResourceUploadUrl.mockRejectedValue(
+      new Error('API Error: 400 - {"message":"File size exceeds 10MB limit"}')
+    );
+    renderResources();
+    await openCreateUpload();
+    chooseDocument(fileWithSize('notes.pdf', 'application/pdf'));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(fileValidationMessage);
+    expect(screen.getByRole('button', { name: 'Save resource' })).toBeDisabled();
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Could not upload document',
+        variant: 'destructive',
+      })
+    );
+  });
+
+  it('does not treat an unrelated upload 400 as a file validation error', async () => {
+    mockCreateResourceUploadUrl.mockRejectedValue(
+      new Error('API Error: 400 - {"message":"fileName should not be empty"}')
+    );
+    renderResources();
+    await openCreateUpload();
+    chooseDocument(fileWithSize('notes.pdf', 'application/pdf'));
+
+    await waitFor(() =>
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Could not upload document',
+          variant: 'destructive',
+        })
+      )
+    );
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save resource' })).toBeEnabled();
+  });
+
+  it('ignores an older upload failure after a newer file succeeds', async () => {
+    const pending: Array<{
+      resolve: (value: unknown) => void;
+      reject: (error: unknown) => void;
+    }> = [];
+    mockCreateResourceUploadUrl.mockImplementation(
+      () =>
+        new Promise((resolve, reject) => {
+          pending.push({ resolve, reject });
+        })
+    );
+    mockUploadFetch(true);
+    renderResources();
+    await openCreateUpload();
+
+    chooseDocument(fileWithSize('first.pdf', 'application/pdf'));
+    chooseDocument(fileWithSize('second.pdf', 'application/pdf'));
+    await waitFor(() => expect(pending).toHaveLength(2));
+
+    pending[1]?.resolve({
+      uploadUrl: 'https://uploads.example/second',
+      fields: {},
+      fileKey: 'resources/pending/second',
+    });
+    expect(await screen.findByText('second.pdf')).toBeInTheDocument();
+
+    await act(async () => {
+      pending[0]?.reject(new Error('API Error: 400 - {"message":"File size exceeds 10MB limit"}'));
+    });
+
+    expect(screen.getByText('second.pdf')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save resource' })).toBeEnabled();
+    expect(mockToast).not.toHaveBeenCalled();
+  });
+
+  it('does not block save when the file is valid but storage upload fails', async () => {
+    mockCreateResourceUploadUrl.mockResolvedValue({
+      uploadUrl: 'https://uploads.example/resource',
+      fields: {},
+      fileKey: 'resources/pending/file',
+    });
+    mockUploadFetch(false);
+    renderResources();
+    await openCreateUpload();
+    chooseDocument(fileWithSize('notes.pdf', 'application/pdf'));
+
+    await waitFor(() =>
+      expect(mockToast).toHaveBeenCalledWith({
+        title: 'Could not upload document',
+        description: 'Could not upload the document. Please try again.',
+        variant: 'destructive',
+      })
+    );
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save resource' })).toBeEnabled();
+  });
+
+  it('blocks update until a rejected file is replaced with a valid one', async () => {
+    mockGetResources.mockResolvedValue([fileResource]);
+    renderResources();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit' }));
+    chooseDocument(fileWithSize('notes.txt', 'text/plain'));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(fileValidationMessage);
+    const updateButton = screen.getByRole('button', { name: 'Update resource' });
+    expect(updateButton).toBeDisabled();
+    fireEvent.submit(updateButton.closest('form')!);
+    expect(mockUpdateResource).not.toHaveBeenCalled();
+
+    mockSuccessfulUpload();
+    chooseDocument(fileWithSize('notes.pdf', 'application/pdf'));
+    expect(await screen.findByText('Replacement ready: notes.pdf')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Update resource' })).toBeEnabled();
+  });
+
+  it('clears the file error when the dialog is closed or the source switches to a URL', async () => {
+    renderResources();
+    await openCreateUpload();
+    chooseDocument(fileWithSize('notes.txt', 'text/plain'));
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'External URL' }));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save resource' })).toBeEnabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Upload document' }));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+    chooseDocument(fileWithSize('notes.txt', 'text/plain'));
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByText(
+          'Add a URL or uploaded document and choose which scholars should see it.'
+        )
+      ).not.toBeInTheDocument()
+    );
+
+    await openCreateUpload();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save resource' })).toBeEnabled();
   });
 });

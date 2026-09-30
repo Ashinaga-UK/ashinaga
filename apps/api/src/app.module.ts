@@ -14,6 +14,8 @@ import { GoalsModule } from './goals/goals.module';
 import { HealthModule } from './health/health.module';
 import { InvitationsModule } from './invitations/invitations.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { OverviewModule } from './overview/overview.module';
+import { PlatformsModule } from './platforms/platforms.module';
 import { PrepYearReportModule } from './prep-year-report/prep-year-report.module';
 import { ProposalsModule } from './proposals/proposals.module';
 import { RequestsModule } from './requests/requests.module';
@@ -43,9 +45,11 @@ import { UsersModule } from './users/users.module';
     DocumentsModule,
     CoordinatorNotesModule,
     NotificationsModule,
+    OverviewModule,
     ProposalsModule,
     AnnualUpdatesModule,
     PrepYearReportModule,
+    PlatformsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

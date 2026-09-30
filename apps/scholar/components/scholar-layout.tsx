@@ -19,6 +19,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ScholarSessionProvider, useScholarSession } from '../lib/scholar-session';
 import { cn } from '../lib/utils';
+import { ScholarNotificationsBell } from './scholar-notifications-bell';
 import {
   Sidebar,
   SidebarContent,
@@ -167,20 +168,7 @@ function ScholarHeader({ programStage }: { programStage: ProgramStage | null }) 
       style={{ gridTemplateColumns: '1fr auto 1fr' }}
     >
       <div className="flex items-center justify-start md:contents">
-        {!isHome ? (
-          <Link
-            href={HOME_HREF}
-            className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
-            aria-label="Back to Overview"
-          >
-            <ChevronLeft className="size-5" aria-hidden />
-            <span className="sr-only">Back to Overview</span>
-          </Link>
-        ) : null}
-        <SidebarTrigger
-          aria-label="Toggle sidebar"
-          className={cn('shrink-0 md:order-2', !isHome && 'hidden md:inline-flex')}
-        />
+        <SidebarTrigger aria-label="Toggle sidebar" className="shrink-0 md:order-2" />
       </div>
       <div className="flex min-w-0 items-center justify-center md:order-1 md:justify-start">
         {!isHome ? (
@@ -203,7 +191,8 @@ function ScholarHeader({ programStage }: { programStage: ProgramStage | null }) 
           </h1>
         </Link>
       </div>
-      <div className="flex items-center justify-end md:order-3 md:ml-auto">
+      <div className="flex items-center justify-end gap-1 md:order-3 md:ml-auto">
+        <ScholarNotificationsBell />
         <ThemeToggle />
       </div>
     </header>

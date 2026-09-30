@@ -21,7 +21,7 @@ publicly_accessible = true # Temporarily public for debugging
 # App Runner configuration - same as playground for test
 app_runner_cpu    = "0.25 vCPU"
 app_runner_memory = "0.5 GB"
-app_runner_port   = 3000
+app_runner_port   = 4000
 
 # Test environment settings with some production-like features
 enable_deletion_protection = false # Still false for test to allow easy cleanup

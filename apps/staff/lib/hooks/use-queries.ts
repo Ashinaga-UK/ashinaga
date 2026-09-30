@@ -1,4 +1,10 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import {
   addStaffProposalComment,
   archiveScholar,
@@ -16,9 +22,11 @@ import {
   getAnnualUpdatesByScholar,
   getCoordinatorMeetingUpdates,
   getCoordinatorNotes,
+  getOverview,
   getPrepTaskCohort,
   getPrepYearReport,
   getProposalInbox,
+  getRequestStats,
   getRequiredDocumentCohort,
   getRequiredDocumentTypes,
   getResourceFilterOptions,
@@ -26,7 +34,9 @@ import {
   getScholarProfile,
   getScholarProposal,
   getScholarRequiredDocuments,
+  getStaffNotificationsFeed,
   getTasksByScholar,
+  markStaffNotificationsRead,
   type PlatformSetupStatus,
   type PrepTaskCohortFilters,
   type PrepYearReportFilters,
@@ -64,6 +74,9 @@ export const queryKeys = {
   scholarMeetingUpdates: (id: string) => ['scholar', id, 'meeting-updates'] as const,
   proposalInbox: ['proposals', 'inbox'] as const,
   scholarProposal: (id: string) => ['scholar', id, 'proposal'] as const,
+  staffNotifications: (search?: string) => ['notifications', 'staff-feed', search ?? ''] as const,
+  requestStats: ['requests', 'stats'] as const,
+  overview: ['overview'] as const,
 };
 
 // Scholar profile query
@@ -401,6 +414,54 @@ export function useUpdateScholarPlatformSetup(scholarId: string) {
       updateScholarPlatformSetup(scholarId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.scholarProfile(scholarId) });
+    },
+  });
+}
+
+export function useStaffNotificationsFeed(search = '') {
+  return useInfiniteQuery({
+    queryKey: queryKeys.staffNotifications(search),
+    queryFn: ({ pageParam }) =>
+      getStaffNotificationsFeed({
+        page: pageParam,
+        limit: 20,
+        search: search || undefined,
+      }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      if (!lastPage?.items || lastPage.items.length === 0) {
+        return undefined;
+      }
+      const loaded = lastPage.page * lastPage.limit;
+      return loaded < lastPage.total ? lastPage.page + 1 : undefined;
+    },
+    refetchInterval: 60_000,
+  });
+}
+
+export function useOverview(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.overview,
+    queryFn: getOverview,
+    enabled,
+    refetchInterval: enabled ? 60_000 : false,
+  });
+}
+
+export function useRequestStats() {
+  return useQuery({
+    queryKey: queryKeys.requestStats,
+    queryFn: getRequestStats,
+    refetchInterval: 60_000,
+  });
+}
+
+export function useMarkStaffNotificationsRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: markStaffNotificationsRead,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications', 'staff-feed'] });
     },
   });
 }

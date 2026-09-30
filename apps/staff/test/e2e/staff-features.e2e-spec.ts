@@ -11,22 +11,28 @@
 import { expect, type Page, test } from '@playwright/test';
 
 async function openStaffSection(page: Page, name: string) {
-  await page.getByRole('link', { name, exact: true }).click();
+  // The overview cohort card is also a link named "Scholars" while its count is loading.
+  await page
+    .locator('a[data-sidebar="menu-button"]')
+    .filter({ hasText: new RegExp(`^\\s*${name}\\s*$`) })
+    .click();
 }
 
 test.describe('Staff Portal – new features', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     // Wait for the dashboard to be rendered (header is always present once signed in)
-    await expect(page.getByRole('heading', { name: /Ashinaga Staff/ })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Ashinaga Staff/ })).toBeVisible({
+      timeout: 15_000,
+    });
   });
 
   test('Invitations tab is visible and renders Active Staff / Staff Invites / Scholar Invites sub-tabs', async ({
     page,
   }) => {
     await expect(page.getByRole('link', { name: 'Invitations', exact: true })).toBeVisible();
-    await page.goto('/?tab=invitations');
-    await expect(page.getByText('Staff & Invitations')).toBeVisible();
+    await openStaffSection(page, 'Invitations');
+    await expect(page.getByText('Staff & Invitations')).toBeVisible({ timeout: 15_000 });
 
     // Sub-sections are rendered as tabs on desktop and as a select on narrow viewports.
     const activeStaffTab = page.getByRole('tab', { name: 'Active Staff', exact: true });
@@ -169,14 +175,18 @@ test.describe('Staff Portal – new features', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.getByRole('button', { name: 'Toggle sidebar' }).click();
     await expect(page.getByRole('button', { name: 'Close menu' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Requests', exact: true })).toBeVisible();
-    await page.getByRole('link', { name: 'Requests', exact: true }).click();
+    await expect(
+      page.locator('a[data-sidebar="menu-button"]', { hasText: 'Requests' })
+    ).toBeVisible();
+    await openStaffSection(page, 'Requests');
     await expect(page.getByRole('banner').getByRole('heading', { name: 'Requests' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Back to Overview' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Toggle sidebar' })).toBeHidden();
-    await page.getByRole('link', { name: 'Back to Overview' }).click();
+    await expect(page.getByRole('button', { name: 'Toggle sidebar' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Back to Overview' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+    await expect(page.getByRole('button', { name: 'Close menu' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Logout' })).toBeVisible();
+    await page.getByRole('link', { name: 'Overview', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: /Ashinaga Staff/ })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Toggle sidebar' })).toBeVisible();
   });
 });

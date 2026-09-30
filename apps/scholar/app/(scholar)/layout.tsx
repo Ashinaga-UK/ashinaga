@@ -1,13 +1,24 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { ScholarLayout } from '../../components/scholar-layout';
 import { signOut, useSession } from '../../lib/auth-client';
 
 export default function ScholarRootLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { data: session, isPending } = useSession();
+  const { data: session, isPending, refetch } = useSession();
+  const refetchSession = useRef(refetch);
+  refetchSession.current = refetch;
+
+  // Better Auth mounts the session atom during render, then unsubscribes.
+  // Nanostores drops that mount 1s later and the atom never fetches. A retry
+  // on that same 1s timer races the teardown, so a pending session stays on
+  // Loading. Read it in this effect instead, as soon as the layout mounts.
+  useEffect(() => {
+    if (!isPending) return;
+    void refetchSession.current();
+  }, [isPending]);
 
   const user = session?.user;
   const isAuthenticated = !!user;

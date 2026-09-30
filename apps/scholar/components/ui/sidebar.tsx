@@ -14,12 +14,28 @@ import { Sheet, SheetContent } from './sheet';
 import { Skeleton } from './skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './tooltip';
 
-const SIDEBAR_COOKIE_NAME = 'sidebar:state';
+const SIDEBAR_COOKIE_NAME = 'sidebar:state:scholar';
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 const SIDEBAR_WIDTH = '16rem';
 const SIDEBAR_WIDTH_MOBILE = '18rem';
 const SIDEBAR_WIDTH_ICON = '3rem';
 const SIDEBAR_KEYBOARD_SHORTCUT = 'b';
+
+function getSidebarOpenFromCookie(fallback: boolean): boolean {
+  if (typeof document === 'undefined') {
+    return fallback;
+  }
+
+  const match = document.cookie
+    .split('; ')
+    .find((row) => row.startsWith(`${SIDEBAR_COOKIE_NAME}=`));
+
+  if (!match) {
+    return fallback;
+  }
+
+  return match.split('=').slice(1).join('=') === 'true';
+}
 
 type SidebarContext = {
   state: 'expanded' | 'collapsed';
@@ -67,7 +83,8 @@ const SidebarProvider = React.forwardRef<
 
     // This is the internal state of the sidebar.
     // We use openProp and setOpenProp for control from outside the component.
-    const [_open, _setOpen] = React.useState(defaultOpen);
+    // ScholarLayout mounts after client auth, so reading the cookie here is safe.
+    const [_open, _setOpen] = React.useState(() => getSidebarOpenFromCookie(defaultOpen));
     const open = openProp ?? _open;
     const setOpen = React.useCallback(
       (value: boolean | ((value: boolean) => boolean)) => {
@@ -265,6 +282,7 @@ const SidebarTrigger = React.forwardRef<
       size="icon"
       className={cn('h-7 w-7', className)}
       aria-expanded={isMobile ? openMobile : open}
+      aria-label="Toggle sidebar"
       onClick={(event) => {
         onClick?.(event);
         toggleSidebar();

@@ -1,13 +1,26 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { ScholarLayout } from '../scholar-layout';
+import { SidebarProvider, SidebarTrigger } from '../ui/sidebar';
 
 const mockGetMyProfile = jest.fn();
 const navState = { pathname: '' };
 
 jest.mock('../../lib/api/profile', () => ({
   getMyProfile: (...args: unknown[]) => mockGetMyProfile(...args),
+}));
+
+jest.mock('../../lib/api-client', () => ({
+  getScholarNotificationsFeed: jest.fn().mockResolvedValue({
+    items: [],
+    total: 0,
+    unreadCount: 0,
+    page: 1,
+    limit: 20,
+  }),
+  markScholarNotificationsRead: jest.fn().mockResolvedValue({ updated: 0 }),
 }));
 
 jest.mock('next-themes', () => ({
@@ -32,8 +45,48 @@ function getToggle() {
   return document.querySelector('[data-sidebar="trigger"]') as HTMLButtonElement;
 }
 
+function withMobileViewport() {
+  const previousWidth = window.innerWidth;
+  const previousMatchMedia = window.matchMedia;
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+  window.matchMedia = jest.fn().mockImplementation((query: string) => ({
+    matches: query.includes('max-width'),
+    media: query,
+    onchange: null,
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    dispatchEvent: jest.fn(),
+  }));
+  return () => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: previousWidth });
+    window.matchMedia = previousMatchMedia;
+  };
+}
+
+function expectTriggerShownOnMobile(toggle: HTMLElement) {
+  let node: Element | null = toggle;
+  while (node) {
+    const tokens = (node.getAttribute('class') ?? '').split(/\s+/);
+    expect(tokens).not.toContain('hidden');
+    expect(tokens).not.toContain('md:hidden');
+    node = node.parentElement;
+  }
+}
+
 async function renderLayout(children: ReactNode = <p>Dashboard content</p>, onLogout = jest.fn()) {
-  const result = render(<ScholarLayout onLogout={onLogout}>{children}</ScholarLayout>);
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+  const result = render(
+    <QueryClientProvider client={queryClient}>
+      <ScholarLayout onLogout={onLogout}>{children}</ScholarLayout>
+    </QueryClientProvider>
+  );
   await waitFor(() => expect(mockGetMyProfile).toHaveBeenCalled());
 
   let heading = 'Ashinaga Scholar Portal';
@@ -54,6 +107,8 @@ describe('ScholarLayout', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     navState.pathname = '';
+    // biome-ignore lint/suspicious/noDocumentCookie: tests seed the sidebar persistence cookie
+    document.cookie = 'sidebar:state:scholar=true; path=/';
     mockGetMyProfile.mockResolvedValue({ programStage: 'scholar' });
   });
 
@@ -67,6 +122,7 @@ describe('ScholarLayout', () => {
       '/annual-review'
     );
     expect(screen.getByRole('link', { name: 'Resources' })).toHaveAttribute('href', '/resources');
+    expect(screen.getByRole('button', { name: 'Notifications' })).toBeInTheDocument();
     expect(screen.getByText('Dashboard content')).toBeInTheDocument();
     expect(getToggle()).toBeInTheDocument();
   });
@@ -98,6 +154,64 @@ describe('ScholarLayout', () => {
     expect(document.querySelector('[data-sidebar="header"]')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /switch/i })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Back to Overview' })).not.toBeInTheDocument();
+  });
+
+  it('keeps the menu trigger and section title on inner pages', async () => {
+    navState.pathname = '/profile';
+    await renderLayout();
+
+    const header = screen.getByRole('banner');
+    const toggle = getToggle();
+    const sectionTitle = screen.getByRole('heading', { name: 'My Profile' });
+
+    expect(toggle).toHaveAccessibleName('Toggle sidebar');
+    expect(toggle).not.toHaveClass('hidden');
+    expect(header).toContainElement(toggle);
+    expect(header).toContainElement(sectionTitle);
+    expect(screen.queryByRole('link', { name: 'Back to Overview' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Back to Overview')).not.toBeInTheDocument();
+    expect(
+      toggle.compareDocumentPosition(sectionTitle) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
+  it('opens the mobile sheet from an inner page', async () => {
+    const restore = withMobileViewport();
+    const user = userEvent.setup();
+    navState.pathname = '/profile';
+    try {
+      await renderLayout();
+
+      await waitFor(() => {
+        expect(document.querySelector('[data-side="left"]')).not.toBeInTheDocument();
+      });
+      const toggle = getToggle();
+      expectTriggerShownOnMobile(toggle);
+      await user.click(toggle);
+      expect(await screen.findByRole('button', { name: 'Close menu' })).toBeInTheDocument();
+      expect(document.querySelector('[data-mobile="true"]')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Logout' })).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  it('restores a collapsed desktop sidebar from the cookie', async () => {
+    // biome-ignore lint/suspicious/noDocumentCookie: tests seed the sidebar persistence cookie
+    document.cookie = 'sidebar:state:scholar=false; path=/';
+    await renderLayout();
+
+    expect(getSidebar()).toHaveAttribute('data-state', 'collapsed');
+  });
+
+  it('gives a bare sidebar trigger an accessible name', () => {
+    render(
+      <SidebarProvider>
+        <SidebarTrigger />
+      </SidebarProvider>
+    );
+
+    expect(screen.getByRole('button', { name: 'Toggle sidebar' })).toBeInTheDocument();
   });
 
   it('collapses to an icon rail while keeping the header toggle visible', async () => {
@@ -166,7 +280,17 @@ describe('ScholarLayout', () => {
     navState.pathname = '/proposal';
     mockGetMyProfile.mockReturnValue(new Promise(() => {}));
 
-    render(<ScholarLayout onLogout={jest.fn()}>content</ScholarLayout>);
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ScholarLayout onLogout={jest.fn()}>content</ScholarLayout>
+      </QueryClientProvider>
+    );
     await waitFor(() => expect(mockGetMyProfile).toHaveBeenCalled());
 
     expect(screen.queryByRole('link', { name: 'My Proposal' })).not.toBeInTheDocument();

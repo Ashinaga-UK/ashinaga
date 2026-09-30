@@ -85,7 +85,7 @@ export default function ResourcesPage() {
             <Library className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white sm:text-3xl">
+            <h1 className="hidden text-2xl font-bold text-gray-900 md:block print:block dark:text-white sm:text-3xl">
               Resources
             </h1>
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
