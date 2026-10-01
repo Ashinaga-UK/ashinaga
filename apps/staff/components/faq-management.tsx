@@ -169,7 +169,7 @@ export function FaqManagement() {
     try {
       const payload: SaveFaqData = {
         audience: form.audience,
-        category: form.category?.trim() || undefined,
+        category: form.category?.trim() ? form.category.trim() : null,
         question,
         answer,
         sortOrder: form.sortOrder ?? 0,

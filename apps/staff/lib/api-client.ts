@@ -1873,7 +1873,7 @@ export interface Faq {
 
 export interface SaveFaqData {
   audience: FaqAudience;
-  category?: string;
+  category?: string | null;
   question: string;
   answer: string;
   sortOrder?: number;

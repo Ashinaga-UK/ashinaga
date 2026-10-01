@@ -4,6 +4,7 @@ import { AlertCircle, HelpCircle, Loader2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { Faq } from '../lib/api-client';
 import { useMyFaqs } from '../lib/hooks/use-queries';
+import { useScholarSession } from '../lib/scholar-session';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { Button } from './ui/button';
 
@@ -47,12 +48,18 @@ export function faqCategoryOptions(faqs: Array<{ category: string | null }>): st
 }
 
 export function ScholarFaqs() {
+  const { programStage, profileStatus } = useScholarSession();
   const { data: faqs = [], isLoading, error } = useMyFaqs();
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const groups = useMemo(() => groupFaqsByCategory(faqs), [faqs]);
-  const categoryOptions = useMemo(() => faqCategoryOptions(faqs), [faqs]);
+  const stageFaqs = useMemo(() => {
+    if (!programStage) return [];
+    return faqs.filter((faq) => faq.audience === programStage);
+  }, [faqs, programStage]);
+  const groups = useMemo(() => groupFaqsByCategory(stageFaqs), [stageFaqs]);
+  const categoryOptions = useMemo(() => faqCategoryOptions(stageFaqs), [stageFaqs]);
   const hasCategories = groups.some((group) => group.category);
   const showCategoryFilters = categoryOptions.some((option) => option !== FAQ_GENERAL_CATEGORY);
+  const pageLoading = isLoading || profileStatus === 'loading';
   const visibleGroups = useMemo(() => {
     if (categoryFilter === 'all') return groups;
     if (categoryFilter === FAQ_GENERAL_CATEGORY) {
@@ -81,17 +88,17 @@ export function ScholarFaqs() {
         </div>
       </div>
 
-      {isLoading ? (
+      {pageLoading ? (
         <div className="flex min-h-[220px] items-center justify-center rounded-lg border border-ashinaga-teal-100 bg-white/50 text-sm text-muted-foreground dark:border-gray-700 dark:bg-card/40">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           Loading FAQs...
         </div>
-      ) : error && faqs.length === 0 ? (
+      ) : error && stageFaqs.length === 0 ? (
         <div className="flex min-h-[220px] flex-col items-center justify-center rounded-lg border border-destructive/30 bg-destructive/5 px-4 text-center text-sm text-destructive">
           <AlertCircle className="mb-2 h-5 w-5" />
           Could not load FAQs.
         </div>
-      ) : faqs.length === 0 ? (
+      ) : stageFaqs.length === 0 ? (
         <div className="flex min-h-[220px] flex-col items-center justify-center rounded-lg border border-ashinaga-teal-100 bg-white/50 px-4 text-center dark:border-gray-700 dark:bg-card/40">
           <HelpCircle className="mb-2 h-6 w-6 text-muted-foreground" />
           <p className="text-sm font-medium text-foreground">

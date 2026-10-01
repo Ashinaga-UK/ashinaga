@@ -1,6 +1,7 @@
 import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { database } from '../db/connection';
-import { FaqsService } from './faqs.service';
+import { faqs, scholars } from '../db/schema';
+import { FaqsService, toScholarFaq } from './faqs.service';
 
 jest.mock('../db/connection');
 
@@ -37,15 +38,63 @@ const scholarFaq = {
   updatedAt: new Date('2026-09-01'),
 };
 
-function mockSelectChain(result: unknown) {
-  return {
-    from: jest.fn().mockReturnValue({
-      where: jest.fn().mockReturnValue({
-        orderBy: jest.fn().mockResolvedValue(result),
-        limit: jest.fn().mockResolvedValue(result),
-      }),
-    }),
+const allFaqs = [prepFaq, scholarFaq];
+
+function boundSqlValue(condition: unknown): unknown {
+  const seen = new Set<unknown>();
+  const visit = (node: unknown): unknown => {
+    if (!node || typeof node !== 'object' || seen.has(node)) return undefined;
+    seen.add(node);
+    if ('value' in node) {
+      const value = (node as { value: unknown }).value;
+      if (typeof value === 'string') return value;
+    }
+    for (const value of Object.values(node)) {
+      const found = visit(value);
+      if (found !== undefined) return found;
+    }
+    return undefined;
   };
+  return visit(condition);
+}
+
+function mockFaqStore(
+  rows = allFaqs,
+  scholarRows: Array<{ userId: string; programStage: 'prep_year' | 'scholar' }> = [
+    { userId: 'user-1', programStage: 'prep_year' },
+  ]
+) {
+  mockDatabase.select = jest.fn().mockImplementation(() => ({
+    from: (table: unknown) => {
+      if (table === scholars) {
+        return {
+          where: (condition: unknown) => {
+            const userId = boundSqlValue(condition);
+            const matches = scholarRows.filter((row) => row.userId === userId);
+            return {
+              limit: jest.fn().mockResolvedValue(matches),
+            };
+          },
+        };
+      }
+
+      if (table !== faqs) {
+        throw new Error('Unexpected table in FAQ service test');
+      }
+
+      return {
+        where: (condition: unknown) => {
+          const audience = boundSqlValue(condition);
+          const filtered =
+            typeof audience === 'string' ? rows.filter((row) => row.audience === audience) : rows;
+          return {
+            orderBy: jest.fn().mockResolvedValue(filtered),
+          };
+        },
+        orderBy: jest.fn().mockResolvedValue(rows),
+      };
+    },
+  }));
 }
 
 describe('FaqsService', () => {
@@ -58,30 +107,43 @@ describe('FaqsService', () => {
 
   describe('listFaqs', () => {
     it('returns all FAQs when no audience is provided', async () => {
-      mockDatabase.select = jest.fn().mockReturnValue(mockSelectChain([prepFaq, scholarFaq]));
+      mockFaqStore();
 
-      await expect(service.listFaqs()).resolves.toEqual([prepFaq, scholarFaq]);
+      await expect(service.listFaqs()).resolves.toEqual(allFaqs);
     });
 
-    it('filters FAQs by audience for staff', async () => {
-      mockDatabase.select = jest.fn().mockReturnValue(mockSelectChain([prepFaq]));
+    it('filters FAQs by audience from a store that contains both stages', async () => {
+      mockFaqStore();
 
       await expect(service.listFaqs('prep_year')).resolves.toEqual([prepFaq]);
+      await expect(service.listFaqs('scholar')).resolves.toEqual([scholarFaq]);
     });
   });
 
   describe('getFaqsForScholar', () => {
-    it('returns only FAQs for the scholar programme stage', async () => {
-      mockDatabase.select = jest
-        .fn()
-        .mockReturnValueOnce(mockSelectChain([{ programStage: 'prep_year' }]))
-        .mockReturnValueOnce(mockSelectChain([prepFaq]));
+    it('returns only FAQs for the scholar programme stage from a mixed store', async () => {
+      mockFaqStore();
 
-      await expect(service.getFaqsForScholar('user-1')).resolves.toEqual([prepFaq]);
+      const result = await service.getFaqsForScholar('user-1');
+
+      expect(result).toEqual([toScholarFaq(prepFaq)]);
+      expect(result).not.toEqual(
+        expect.arrayContaining([expect.objectContaining({ id: scholarFaq.id })])
+      );
+      expect(result[0]).not.toHaveProperty('createdBy');
+      expect(result[0]).not.toHaveProperty('updatedBy');
+    });
+
+    it('returns only Scholar FAQs for an enrolled scholar', async () => {
+      mockFaqStore(allFaqs, [{ userId: 'user-2', programStage: 'scholar' }]);
+
+      await expect(service.getFaqsForScholar('user-2')).resolves.toEqual([
+        toScholarFaq(scholarFaq),
+      ]);
     });
 
     it('returns an empty list when the user has no scholar profile', async () => {
-      mockDatabase.select = jest.fn().mockReturnValueOnce(mockSelectChain([]));
+      mockFaqStore(allFaqs, []);
 
       await expect(service.getFaqsForScholar('user-1')).resolves.toEqual([]);
     });

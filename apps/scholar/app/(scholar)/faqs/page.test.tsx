@@ -8,6 +8,16 @@ jest.mock('../../../lib/api-client', () => ({
   getMyFaqs: (...args: unknown[]) => mockGetMyFaqs(...args),
 }));
 
+jest.mock('../../../lib/scholar-session', () => ({
+  useScholarSession: () => ({
+    profile: { programStage: 'prep_year' },
+    programStage: 'prep_year',
+    profileStatus: 'ready',
+    refreshProfile: jest.fn(),
+    applyProfile: jest.fn(),
+  }),
+}));
+
 function renderPage() {
   const queryClient = new QueryClient({
     defaultOptions: {

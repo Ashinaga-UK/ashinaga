@@ -5,6 +5,13 @@ import type { Faq } from '../../lib/api-client';
 import { groupFaqsByCategory, ScholarFaqs } from '../scholar-faqs';
 
 const mockGetMyFaqs = jest.fn();
+const mockScholarSession = {
+  profile: { programStage: 'prep_year' as const },
+  programStage: 'prep_year' as const,
+  profileStatus: 'ready' as const,
+  refreshProfile: jest.fn(),
+  applyProfile: jest.fn(),
+};
 
 jest.mock('lucide-react', () => {
   const React = require('react');
@@ -19,6 +26,10 @@ jest.mock('lucide-react', () => {
 
 jest.mock('../../lib/api-client', () => ({
   getMyFaqs: (...args: unknown[]) => mockGetMyFaqs(...args),
+}));
+
+jest.mock('../../lib/scholar-session', () => ({
+  useScholarSession: () => mockScholarSession,
 }));
 
 const prepFaq: Faq = {
@@ -82,6 +93,9 @@ describe('groupFaqsByCategory', () => {
 describe('ScholarFaqs', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockScholarSession.programStage = 'prep_year';
+    mockScholarSession.profileStatus = 'ready';
+    mockScholarSession.profile = { programStage: 'prep_year' };
   });
 
   it('shows a calm placeholder when no FAQs are published', async () => {
@@ -98,8 +112,8 @@ describe('ScholarFaqs', () => {
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
   });
 
-  it('renders only the FAQs returned for the current programme stage', async () => {
-    mockGetMyFaqs.mockResolvedValue([prepFaq]);
+  it('renders only FAQs for the current programme stage from a mixed list', async () => {
+    mockGetMyFaqs.mockResolvedValue([prepFaq, scholarFaq]);
 
     renderFaqs();
 
@@ -107,6 +121,17 @@ describe('ScholarFaqs', () => {
     expect(screen.getByRole('heading', { name: 'Documents' })).toBeInTheDocument();
     expect(screen.queryByText(scholarFaq.question)).not.toBeInTheDocument();
     expect(screen.queryByText(scholarFaq.answer)).not.toBeInTheDocument();
+  });
+
+  it('renders only Scholar FAQs for an enrolled scholar', async () => {
+    mockScholarSession.programStage = 'scholar';
+    mockScholarSession.profile = { programStage: 'scholar' };
+    mockGetMyFaqs.mockResolvedValue([prepFaq, scholarFaq]);
+
+    renderFaqs();
+
+    expect(await screen.findByText(scholarFaq.question)).toBeInTheDocument();
+    expect(screen.queryByText(prepFaq.question)).not.toBeInTheDocument();
   });
 
   it('filters questions with category bubbles', async () => {

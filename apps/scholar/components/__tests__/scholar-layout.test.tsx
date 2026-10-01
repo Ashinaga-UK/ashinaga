@@ -264,6 +264,7 @@ describe('ScholarLayout', () => {
       'href',
       '/documents'
     );
+    expect(screen.getByRole('link', { name: 'FAQs' })).toHaveAttribute('href', '/faqs');
   });
 
   it('does not show annual review when profile loading fails', async () => {

@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { CreateFaqDto } from './create-faq.dto';
+import { UpdateFaqDto } from './update-faq.dto';
 
 describe('CreateFaqDto', () => {
   it('accepts a valid Prep Year FAQ', async () => {
@@ -40,5 +41,21 @@ describe('CreateFaqDto', () => {
 
     const errors = await validate(dto);
     expect(errors.some((error) => error.property === 'question')).toBe(true);
+  });
+});
+
+describe('UpdateFaqDto', () => {
+  it('clears a category when the field is blank', async () => {
+    const dto = plainToInstance(UpdateFaqDto, { category: '   ' });
+
+    expect(await validate(dto)).toHaveLength(0);
+    expect(dto.category).toBeNull();
+  });
+
+  it('keeps an explicit null category', async () => {
+    const dto = plainToInstance(UpdateFaqDto, { category: null });
+
+    expect(await validate(dto)).toHaveLength(0);
+    expect(dto.category).toBeNull();
   });
 });

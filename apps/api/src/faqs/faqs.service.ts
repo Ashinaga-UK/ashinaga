@@ -7,6 +7,24 @@ import type { UpdateFaqDto } from './dto/update-faq.dto';
 
 export type FaqRecord = typeof faqs.$inferSelect;
 
+export type ScholarFaq = Pick<
+  FaqRecord,
+  'id' | 'audience' | 'category' | 'question' | 'answer' | 'sortOrder' | 'createdAt' | 'updatedAt'
+>;
+
+export function toScholarFaq(row: FaqRecord): ScholarFaq {
+  return {
+    id: row.id,
+    audience: row.audience,
+    category: row.category,
+    question: row.question,
+    answer: row.answer,
+    sortOrder: row.sortOrder,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
 @Injectable()
 export class FaqsService {
   async listFaqs(audience?: FaqAudience): Promise<FaqRecord[]> {
@@ -19,7 +37,7 @@ export class FaqsService {
       .orderBy(asc(faqs.audience), asc(faqs.sortOrder), asc(faqs.createdAt));
   }
 
-  async getFaqsForScholar(userId: string): Promise<FaqRecord[]> {
+  async getFaqsForScholar(userId: string): Promise<ScholarFaq[]> {
     if (!userId) {
       throw new UnauthorizedException('User not authenticated');
     }
@@ -34,11 +52,13 @@ export class FaqsService {
       return [];
     }
 
-    return database
+    const rows = await database
       .select()
       .from(faqs)
       .where(eq(faqs.audience, scholar.programStage))
       .orderBy(asc(faqs.sortOrder), asc(faqs.createdAt));
+
+    return rows.map(toScholarFaq);
   }
 
   async createFaq(dto: CreateFaqDto, userId: string): Promise<FaqRecord> {
