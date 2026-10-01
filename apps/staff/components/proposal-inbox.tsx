@@ -10,10 +10,10 @@ export function ProposalInbox({ onOpenScholar }: { onOpenScholar: (scholarId: st
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Proposal reviews</CardTitle>
+      <CardHeader className="px-4 pt-4 pb-0 sm:px-5">
+        <CardTitle className="text-sm font-semibold tracking-tight">Proposal reviews</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4 pt-2 pb-4 sm:px-5">
         {isLoading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />

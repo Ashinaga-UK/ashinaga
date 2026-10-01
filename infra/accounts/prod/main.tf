@@ -89,7 +89,6 @@ module "scholar_data_bucket" {
 module "vpc" {
   source = "../../modules/vpc"
 
-  environment = var.environment
   additional_tags = {
     Project = var.project_name
   }
@@ -139,7 +138,7 @@ resource "aws_db_instance" "postgres" {
   max_allocated_storage       = var.db_max_allocated_storage
   storage_type                = "gp3"
   engine                      = "postgres"
-  engine_version              = "17.5"
+  engine_version              = "17"
   instance_class              = var.db_instance_class
   db_name                     = var.db_name
   username                    = var.db_username
@@ -160,7 +159,10 @@ resource "aws_db_instance" "postgres" {
 
   # Proper lifecycle management
   lifecycle {
-    ignore_changes = [password] # Don't recreate if password changes
+    ignore_changes = [
+      password,       # Don't recreate if password changes
+      engine_version, # RDS applies minor upgrades itself; bump major versions deliberately
+    ]
   }
 
   # Add longer timeout for destroy operations
@@ -265,6 +267,7 @@ module "api_app_runner" {
     DB_PORT     = tostring(aws_db_instance.postgres.port)
     DB_NAME     = aws_db_instance.postgres.db_name
     DB_USER     = aws_db_instance.postgres.username
+    DB_SSL      = "true"
     DB_PASSWORD = module.db_password.secret_value
 
     # Better Auth Configuration
@@ -275,12 +278,12 @@ module "api_app_runner" {
     CORS_ORIGINS = "https://staff.ashinaga-uk.org,https://scholar.ashinaga-uk.org,http://localhost:4001,http://localhost:4002"
 
     # Email Configuration
-    RESEND_API_KEY = module.resend_api_key.secret_value
-    EMAIL_FROM     = "noreply@ashinaga-uk.org"
-    CRON_SECRET                      = module.notification_cron_secret.secret_value
-    NOTIFICATION_REMINDER_DAYS       = "2"
-    NOTIFICATION_INACTIVITY_DAYS     = "14"
-    NOTIFICATION_MONTHLY_DAY         = "1"
+    RESEND_API_KEY                    = module.resend_api_key.secret_value
+    EMAIL_FROM                        = "noreply@ashinaga-uk.org"
+    CRON_SECRET                       = module.notification_cron_secret.secret_value
+    NOTIFICATION_REMINDER_DAYS        = "2"
+    NOTIFICATION_INACTIVITY_DAYS      = "14"
+    NOTIFICATION_MONTHLY_DAY          = "1"
     NOTIFICATION_ACTIVITY_TOUCH_HOURS = "6"
     NOTIFICATION_STAFF_DIGEST_WEEKDAY = "1"
 
