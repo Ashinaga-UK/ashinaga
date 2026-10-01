@@ -68,32 +68,37 @@ async function bootstrap() {
     })
   );
 
-  // Swagger configuration
-  const config = new DocumentBuilder()
-    .setTitle('Ashinaga API')
-    .setDescription('Main API for the Ashinaga platform')
-    .setVersion('1.0')
-    .addBearerAuth(
-      {
-        type: 'http',
-        scheme: 'bearer',
-        bearerFormat: 'JWT',
-        name: 'JWT',
-        description: 'Enter your Bearer token (Better Auth session token)',
-        in: 'header',
-      },
-      'bearer' // This name is used as the security scheme name
-    )
-    .build();
+  // Swagger is a full route map. Keep it off production (test and local still serve it).
+  const exposeSwagger = process.env.NODE_ENV !== 'production';
+  if (exposeSwagger) {
+    const config = new DocumentBuilder()
+      .setTitle('Ashinaga API')
+      .setDescription('Main API for the Ashinaga platform')
+      .setVersion('1.0')
+      .addBearerAuth(
+        {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          name: 'JWT',
+          description: 'Enter your Bearer token (Better Auth session token)',
+          in: 'header',
+        },
+        'bearer' // This name is used as the security scheme name
+      )
+      .build();
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api', app, document);
+  }
 
   const port = process.env.PORT || 3000;
   await app.listen(port, '0.0.0.0');
 
   logger.log(`Application is running on: http://0.0.0.0:${port}`);
-  logger.log(`Swagger documentation available at: http://0.0.0.0:${port}/api`);
+  if (exposeSwagger) {
+    logger.log(`Swagger documentation available at: http://0.0.0.0:${port}/api`);
+  }
   logger.log(`Health check endpoint: http://0.0.0.0:${port}/health`);
 
   // Handle graceful shutdown
