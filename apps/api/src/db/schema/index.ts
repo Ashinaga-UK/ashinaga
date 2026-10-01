@@ -4,6 +4,7 @@ export * from './annual-review-copy';
 export * from './annual-updates';
 export * from './coordinator-notes';
 export * from './documents';
+export * from './faqs';
 export * from './goals';
 export * from './invitations';
 export * from './notification-deliveries';

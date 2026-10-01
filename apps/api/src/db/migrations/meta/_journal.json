@@ -243,8 +243,15 @@
     {
       "idx": 34,
       "version": "7",
-      "when": 1790400000000,
-      "tag": "0034_scholar_activity_indexes",
+      "when": 1790538834982,
+      "tag": "0034_green_pride",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1790871742232,
+      "tag": "0035_scholar_activity_indexes",
       "breakpoints": true
     }
   ]

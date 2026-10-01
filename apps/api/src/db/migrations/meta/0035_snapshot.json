@@ -1,6 +1,6 @@
 {
-  "id": "db220760-8896-44c6-a9be-ab72aa52b42e",
-  "prevId": "a8ea8b8a-d46d-4ea6-a5b6-faf3ee76e11c",
+  "id": "cb4b31fd-e7f2-4dd3-a462-b960ad6af63f",
+  "prevId": "db220760-8896-44c6-a9be-ab72aa52b42e",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1135,7 +1135,29 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "goals_scholar_id_updated_at_idx": {
+          "name": "goals_scholar_id_updated_at_idx",
+          "columns": [
+            {
+              "expression": "scholar_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "updated_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "goals_scholar_id_scholars_id_fk": {
           "name": "goals_scholar_id_scholars_id_fk",
@@ -3045,7 +3067,50 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "scholars_status_program_year_idx": {
+          "name": "scholars_status_program_year_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "program",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "year",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "scholars_nationality_idx": {
+          "name": "scholars_nationality_idx",
+          "columns": [
+            {
+              "expression": "nationality",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "scholars_user_id_user_id_fk": {
           "name": "scholars_user_id_user_id_fk",
@@ -3709,7 +3774,24 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "tasks_scholar_id_active_idx": {
+          "name": "tasks_scholar_id_active_idx",
+          "columns": [
+            {
+              "expression": "scholar_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"tasks\".\"deleted_at\" IS NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "tasks_scholar_id_scholars_id_fk": {
           "name": "tasks_scholar_id_scholars_id_fk",
