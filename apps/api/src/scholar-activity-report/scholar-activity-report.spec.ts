@@ -86,14 +86,14 @@ describe('buildScholarActivityReport', () => {
     });
   });
 
-  it('does not mark a scholar stale at exactly 30 days', () => {
+  it('marks a scholar stale at exactly 30 days', () => {
     const exact = scholar({
       scholarId: 'exact',
       name: 'Exact',
       lastActivity: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
     });
     const report = buildScholarActivityReport([exact], undefined, {}, now);
-    expect(report.scholars[0]?.isStaleLogin).toBe(false);
+    expect(report.scholars[0]?.isStaleLogin).toBe(true);
     expect(report.scholars[0]?.daysSinceActivity).toBe(30);
   });
 
@@ -133,6 +133,40 @@ describe('buildScholarActivityReport', () => {
       now
     );
     expect(report.scholars.map((row) => row.name)).toEqual(['Cia', 'Ada', 'Ben']);
+  });
+
+  it('lists unknown last-seen first when sorting oldest, and last when sorting newest', () => {
+    const oldest = buildScholarActivityReport(
+      [ada, ben, cia],
+      undefined,
+      { sortBy: 'lastActivity', sortOrder: 'asc' },
+      now
+    );
+    expect(oldest.scholars.map((row) => row.name)).toEqual(['Ben', 'Ada', 'Cia']);
+
+    const newest = buildScholarActivityReport(
+      [ada, ben, cia],
+      undefined,
+      { sortBy: 'lastActivity', sortOrder: 'desc' },
+      now
+    );
+    expect(newest.scholars.map((row) => row.name)).toEqual(['Cia', 'Ada', 'Ben']);
+  });
+
+  it('collapses padded and differently cased filter values', () => {
+    const report = buildScholarActivityReport(
+      [],
+      {
+        programs: ['Law', 'Law ', 'law'],
+        years: ['2026', '2026 '],
+        nationalities: [' Kenya', 'kenya'],
+      },
+      {},
+      now
+    );
+    expect(report.filterOptions.programs).toEqual(['Law']);
+    expect(report.filterOptions.years).toEqual(['2026']);
+    expect(report.filterOptions.nationalities).toEqual(['Kenya']);
   });
 
   it('exports activity labels without counting unknown as stale', () => {

@@ -277,7 +277,7 @@ function StaffDashboardContent() {
                 {activeTab === 'overview' && 'What needs attention right now.'}
                 {activeTab === 'scholars' && 'View and manage your assigned scholars.'}
                 {activeTab === 'scholar-activity' &&
-                  'See who has gone quiet, who is behind on tasks, and which cohorts are most active.'}
+                  'See who has gone quiet, who is behind on tasks, and which cohorts are least active.'}
                 {activeTab === 'prep-documents' &&
                   'See submitted and missing Prep Year documents without opening each profile.'}
                 {activeTab === 'prep-tasks' &&

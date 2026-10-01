@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import type { SQL } from 'drizzle-orm';
+import type { AnyColumn, SQL } from 'drizzle-orm';
 import { and, asc, eq, gte, isNull, lt, sql } from 'drizzle-orm';
 import { getDatabase } from '../db/connection';
 import { goals, scholars, tasks, users } from '../db/schema';
@@ -17,6 +17,13 @@ import {
 } from './scholar-activity-report';
 
 const DEFAULT_PAGE_SIZE = 50;
+
+/** Dropdown values are trimmed and case-folded, so the filter has to match that way. */
+function foldedEquals(column: AnyColumn, value?: string): SQL | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+  return sql`lower(btrim(${column})) = ${trimmed.toLocaleLowerCase('en-GB')}`;
+}
 
 function asNumber(value: unknown): number {
   const parsed = Number(value ?? 0);
@@ -130,10 +137,10 @@ export class ScholarActivityReportService {
     const status = query.status ?? 'active';
     return and(
       status === 'all' ? undefined : eq(scholars.status, status),
-      query.program ? eq(scholars.program, query.program) : undefined,
-      query.year ? eq(scholars.year, query.year) : undefined,
+      foldedEquals(scholars.program, query.program),
+      foldedEquals(scholars.year, query.year),
       query.programStage ? eq(scholars.programStage, query.programStage) : undefined,
-      query.nationality ? eq(scholars.nationality, query.nationality) : undefined
+      foldedEquals(scholars.nationality, query.nationality)
     );
   }
 

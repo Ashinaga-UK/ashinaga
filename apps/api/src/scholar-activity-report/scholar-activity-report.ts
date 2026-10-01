@@ -153,7 +153,7 @@ function activityFlags(lastActivity: string | null, now: Date) {
   return {
     daysSinceActivity: Math.max(0, Math.floor(elapsed / DAY_MS)),
     lastActivityUnknown: false,
-    isStaleLogin: elapsed > staleAfter,
+    isStaleLogin: elapsed >= staleAfter,
   };
 }
 
@@ -172,11 +172,12 @@ function weightedCompletion(
 function compareNullable(
   a: number | null,
   b: number | null,
-  order: ScholarActivitySortOrder
+  order: ScholarActivitySortOrder,
+  nulls: 'first' | 'last'
 ): number {
   if (a == null && b == null) return 0;
-  if (a == null) return 1;
-  if (b == null) return -1;
+  if (a == null) return nulls === 'first' ? -1 : 1;
+  if (b == null) return nulls === 'first' ? 1 : -1;
   return order === 'asc' ? a - b : b - a;
 }
 
@@ -190,9 +191,9 @@ function sortScholars(
     if (sortBy === 'lastActivity') {
       const aTime = a.lastActivity ? new Date(a.lastActivity).getTime() : null;
       const bTime = b.lastActivity ? new Date(b.lastActivity).getTime() : null;
-      diff = compareNullable(aTime, bTime, sortOrder);
+      diff = compareNullable(aTime, bTime, sortOrder, sortOrder === 'asc' ? 'first' : 'last');
     } else if (sortBy === 'taskCompletionRate') {
-      diff = compareNullable(a.taskCompletionRate, b.taskCompletionRate, sortOrder);
+      diff = compareNullable(a.taskCompletionRate, b.taskCompletionRate, sortOrder, 'last');
     } else {
       diff = a.name.localeCompare(b.name, 'en-GB');
       if (sortOrder === 'desc') diff = -diff;
@@ -243,12 +244,14 @@ function buildCohorts(rows: ScholarActivityRow[]): ScholarActivityCohort[] {
 }
 
 function sortedDistinct(values: Array<string | null | undefined>): string[] {
-  const unique = new Set<string>();
+  const unique = new Map<string, string>();
   for (const value of values) {
     const trimmed = value?.trim();
-    if (trimmed) unique.add(trimmed);
+    if (!trimmed) continue;
+    const key = trimmed.toLocaleLowerCase('en-GB');
+    if (!unique.has(key)) unique.set(key, trimmed);
   }
-  return [...unique].sort((a, b) => a.localeCompare(b, 'en-GB'));
+  return [...unique.values()].sort((a, b) => a.localeCompare(b, 'en-GB', { sensitivity: 'base' }));
 }
 
 export function buildFilterOptions(sources: ScholarActivityFilterOptionsInput) {
