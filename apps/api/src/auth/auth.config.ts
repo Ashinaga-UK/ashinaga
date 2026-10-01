@@ -229,7 +229,6 @@ If you didn't request this, you can ignore this email.
             .limit(1);
 
           const staffData = staffResults[0];
-          console.log('[Session fetchUser] Staff data from DB:', staffData);
 
           if (staffData) {
             // Parse the department field to extract job title and department
@@ -249,13 +248,6 @@ If you didn't request this, you can ignore this email.
               }
             }
 
-            console.log(
-              '[Session fetchUser] Parsed - jobTitle:',
-              jobTitle,
-              'department:',
-              department
-            );
-
             const result = {
               ...user,
               image: resolveAvatarSrc(user.image, user.id),
@@ -264,7 +256,6 @@ If you didn't request this, you can ignore this email.
               role: jobTitle || null,
             };
 
-            console.log('[Session fetchUser] Returning user with staff data:', result);
             return result;
           }
         }
@@ -276,15 +267,8 @@ If you didn't request this, you can ignore this email.
     },
     signUp: {
       before: async ({ email, name }) => {
-        console.log('==========================================');
-        console.log('SignUp Before Hook - Email received:', email);
-        console.log('SignUp Before Hook - Name received:', name);
-        console.log('SignUp Before Hook - Email lowercase:', email.toLowerCase());
-        console.log('==========================================');
-
         // In test environment, allow any email to sign up without invitation
         if (process.env.NODE_ENV === 'test') {
-          console.log('Test environment: Allowing signup without invitation');
           // Determine user type based on email domain for test environment
           const userType = email.endsWith('@ashinaga.org') ? 'staff' : 'scholar';
           return {
@@ -298,12 +282,9 @@ If you didn't request this, you can ignore this email.
         try {
           // Check if user has a valid invitation (production behavior)
           const db = getDatabase();
-          console.log('Got database connection, checking for invitation...');
 
           // Always use lowercase for email comparison
           const emailLower = email.toLowerCase();
-
-          console.log('Searching for invitation with email:', emailLower);
 
           const invitations = await db
             .select()
@@ -311,27 +292,20 @@ If you didn't request this, you can ignore this email.
             .where(eq(schema.invitations.email, emailLower))
             .limit(1);
 
-          console.log('Query result - Invitations found:', invitations.length);
-
           const invitation = invitations[0];
 
           if (invitation) {
             console.log('Invitation details:', {
               id: invitation.id,
-              email: invitation.email,
               status: invitation.status,
               userType: invitation.userType,
-              expiresAt: invitation.expiresAt,
             });
           }
 
           if (!invitation) {
-            console.error('ERROR: No invitation found for email:', emailLower);
-            console.error('Make sure invitation was created with lowercase email');
+            console.error('ERROR: No invitation found');
             throw new Error('Invalid invitation. You must be invited to join this platform.');
           }
-
-          console.log('Invitation status:', invitation.status);
 
           if (invitation.status !== 'pending') {
             throw new Error('This invitation has already been used or expired.');
@@ -341,10 +315,6 @@ If you didn't request this, you can ignore this email.
             throw new Error('This invitation has expired. Please request a new one.');
           }
 
-          console.log('Invitation valid, returning user data');
-
-          // Return user data with userType from invitation
-          console.log('Returning user data for signup with name:', name);
           return {
             email: emailLower,
             name: name || '', // Use the name from signup form
@@ -399,7 +369,6 @@ If you didn't request this, you can ignore this email.
             .limit(1);
 
           const staffData = staffResults[0];
-          console.log('[SignIn After] Staff data from DB:', staffData);
 
           if (staffData) {
             // Parse the department field to extract job title and department
@@ -418,15 +387,11 @@ If you didn't request this, you can ignore this email.
               }
             }
 
-            console.log('[SignIn After] Parsed - jobTitle:', jobTitle, 'department:', department);
-
             // Add staff fields to user object
             const userWithStaff = user as Record<string, unknown>;
             userWithStaff.phone = staffData.phone || null;
             userWithStaff.department = department || null;
             userWithStaff.role = jobTitle || null;
-
-            console.log('[SignIn After] Updated user object:', user);
           }
         }
         return user;
