@@ -288,9 +288,8 @@ export function AnnualReviewsReport({ onViewScholarAnnualReviews }: AnnualReview
           disabled={answerFiltersDisabled}
           options={[
             { value: 'ashinaga_completed', label: 'Completed Ashinaga 8-week internship' },
-            { value: 'ashinaga_not_completed', label: 'Ashinaga internship not completed' },
+            { value: 'ashinaga_not_completed', label: 'Ashinaga internship not marked complete' },
             { value: 'independent', label: 'Has an independent internship' },
-            { value: 'described', label: 'Internship described' },
           ]}
         />
         <ReportFilterSelect

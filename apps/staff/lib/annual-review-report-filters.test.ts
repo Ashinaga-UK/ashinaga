@@ -40,7 +40,6 @@ function review(overrides: Partial<AnnualUpdateReportRow> = {}): AnnualUpdateRep
     subSaharanAfricaActivitiesCount: 1,
     independentInternshipsCount: 0,
     completedAshinagaAfricaInternship: false,
-    hasInternshipSummary: false,
     ...overrides,
   };
 }
@@ -126,31 +125,21 @@ describe('filterAnnualReviewReportRows', () => {
         id: 'completed',
         completedAshinagaAfricaInternship: true,
         independentInternshipsCount: 0,
-        hasInternshipSummary: false,
       }),
       review({
         id: 'not-completed',
         completedAshinagaAfricaInternship: false,
         independentInternshipsCount: 0,
-        hasInternshipSummary: false,
       }),
       review({
         id: 'unanswered',
         completedAshinagaAfricaInternship: null,
         independentInternshipsCount: 0,
-        hasInternshipSummary: false,
       }),
       review({
         id: 'independent',
         completedAshinagaAfricaInternship: null,
         independentInternshipsCount: 2,
-        hasInternshipSummary: false,
-      }),
-      review({
-        id: 'described',
-        completedAshinagaAfricaInternship: null,
-        independentInternshipsCount: 0,
-        hasInternshipSummary: true,
       }),
     ];
 
@@ -161,10 +150,8 @@ describe('filterAnnualReviewReportRows', () => {
       'not-completed',
       'unanswered',
       'independent',
-      'described',
     ]);
     expect(matchingIds(internshipRows, { internship: 'independent' })).toEqual(['independent']);
-    expect(matchingIds(internshipRows, { internship: 'described' })).toEqual(['described']);
   });
 
   it('matches programme and scholar year on a draft', () => {
@@ -257,7 +244,7 @@ describe('getAnnualReviewReportFilterOptions', () => {
 
     expect(filtered.map((row) => row.id)).not.toContain('draft');
     expect(options.classifications).toEqual(['1st', 'first class']);
-    expect(options.weightedGrades).toEqual(['64%', '70%']);
+    expect(options.weightedGrades).toEqual(['64', '70']);
     expect(options.leadershipCounts).toEqual(['0', '10']);
     expect(options.payItForwardCounts).toEqual(['0', '2']);
     expect(options.subSaharanAfricaCounts).toEqual(['2']);
@@ -265,21 +252,23 @@ describe('getAnnualReviewReportFilterOptions', () => {
     expect(options.scholarYears).toEqual(['Year 1', 'Year 2']);
   });
 
-  it('sorts weighted grades numerically and collapses spacing', () => {
+  it('groups 70, 70%, and 70 % as one weighted grade', () => {
     const gradeRows = [
       review({ id: 'hundred', academicYearWeightedGrade: '100%' }),
       review({ id: 'nine', academicYearWeightedGrade: '9%' }),
+      review({ id: 'bare', academicYearWeightedGrade: '70' }),
+      review({ id: 'percent', academicYearWeightedGrade: '70%' }),
       review({ id: 'spaced', academicYearWeightedGrade: '70 %' }),
       review({ id: 'sixty-four', academicYearWeightedGrade: '64%' }),
     ];
 
     expect(getAnnualReviewReportFilterOptions(gradeRows).weightedGrades).toEqual([
-      '9%',
-      '64%',
-      '70%',
-      '100%',
+      '9',
+      '64',
+      '70',
+      '100',
     ]);
-    expect(matchingIds(gradeRows, { weightedGrade: '70%' })).toEqual(['spaced']);
+    expect(matchingIds(gradeRows, { weightedGrade: '70' })).toEqual(['bare', 'percent', 'spaced']);
   });
 
   it('groups programme values that differ only by surrounding whitespace', () => {

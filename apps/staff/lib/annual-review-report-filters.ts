@@ -4,8 +4,7 @@ export type AnnualReviewInternshipFilter =
   | 'all'
   | 'ashinaga_completed'
   | 'ashinaga_not_completed'
-  | 'independent'
-  | 'described';
+  | 'independent';
 
 export interface AnnualReviewReportFilterState {
   searchTerm: string;
@@ -86,7 +85,7 @@ export function getAnnualReviewReportFilterOptions(
     ),
     weightedGrades: uniqueNormalized(
       submitted.map((row) => row.academicYearWeightedGrade),
-      normalizeFreeTextAnswer,
+      weightedGradeKey,
       compareWeightedGrades
     ),
     leadershipCounts: uniqueSortedCounts(submitted.map((row) => row.leadershipRolesCount)),
@@ -124,8 +123,7 @@ function matchesWeightedGrade(row: AnnualUpdateReportRow, weightedGrade: string)
   }
 
   return (
-    row.status === 'submitted' &&
-    normalizeFreeTextAnswer(row.academicYearWeightedGrade) === weightedGrade
+    row.status === 'submitted' && weightedGradeKey(row.academicYearWeightedGrade) === weightedGrade
   );
 }
 
@@ -162,8 +160,6 @@ function matchesInternship(row: AnnualUpdateReportRow, internship: AnnualReviewI
       return row.completedAshinagaAfricaInternship !== true;
     case 'independent':
       return row.independentInternshipsCount !== null && row.independentInternshipsCount >= 1;
-    case 'described':
-      return row.hasInternshipSummary === true;
     default:
       return false;
   }
@@ -175,6 +171,12 @@ function normalizeStoredLabel(value: string | null | undefined) {
 
 function normalizeFreeTextAnswer(value: string | null | undefined) {
   return normalizeStoredLabel(value).replace(/\s+%/g, '%').toLocaleLowerCase();
+}
+
+function weightedGradeKey(value: string | null | undefined) {
+  const normalized = normalizeFreeTextAnswer(value);
+  const number = leadingGradeNumber(normalized);
+  return number === null ? normalized : String(number);
 }
 
 function uniqueNormalized(

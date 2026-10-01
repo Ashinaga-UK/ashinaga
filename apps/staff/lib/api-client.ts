@@ -186,7 +186,6 @@ export interface AnnualUpdateReportRow {
   subSaharanAfricaActivitiesCount: number | null;
   independentInternshipsCount: number | null;
   completedAshinagaAfricaInternship: boolean | null;
-  hasInternshipSummary: boolean;
 }
 
 export interface AnnualReviewCopyResponse {

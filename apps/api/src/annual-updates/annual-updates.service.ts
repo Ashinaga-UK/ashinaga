@@ -140,13 +140,6 @@ export class AnnualUpdatesService {
         subSaharanAfricaActivitiesCount: annualUpdates.subSaharanAfricaActivitiesCount,
         independentInternshipsCount: annualUpdates.independentInternshipsCount,
         completedAshinagaAfricaInternship: annualUpdates.completedAshinagaAfricaInternship,
-        hasInternshipSummary: sql<boolean>`(
-          ${annualUpdates.status} = 'submitted'
-          and (
-            length(btrim(coalesce(${annualUpdates.internshipsInAfricaSummary}, ''))) > 0
-            or length(btrim(coalesce(${annualUpdates.internshipsElsewhereSummary}, ''))) > 0
-          )
-        )`.as('has_internship_summary'),
       })
       .from(annualUpdates)
       .innerJoin(scholars, eq(annualUpdates.scholarId, scholars.id))
@@ -157,7 +150,6 @@ export class AnnualUpdatesService {
       this.maskUnsubmittedAnswers({
         ...row,
         academicYear: toCanonicalAcademicYear(row.academicYear),
-        hasInternshipSummary: row.status === 'submitted' && row.hasInternshipSummary === true,
       })
     );
   }

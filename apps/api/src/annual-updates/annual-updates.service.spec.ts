@@ -159,7 +159,6 @@ describe('AnnualUpdatesService', () => {
           subSaharanAfricaActivitiesCount: 3,
           independentInternshipsCount: 4,
           completedAshinagaAfricaInternship: true,
-          hasInternshipSummary: true,
         },
       ]);
 
@@ -181,12 +180,11 @@ describe('AnnualUpdatesService', () => {
           subSaharanAfricaActivitiesCount: 3,
           independentInternshipsCount: 4,
           completedAshinagaAfricaInternship: true,
-          hasInternshipSummary: true,
         })
       );
       expect(selectShape).toHaveProperty('program');
       expect(selectShape).toHaveProperty('leadershipRolesCount');
-      expect(selectShape).toHaveProperty('hasInternshipSummary');
+      expect(selectShape).not.toHaveProperty('hasInternshipSummary');
       for (const field of essayFields) {
         expect(selectShape).not.toHaveProperty(field);
         expect(row).not.toHaveProperty(field);
@@ -215,7 +213,6 @@ describe('AnnualUpdatesService', () => {
           subSaharanAfricaActivitiesCount: 5,
           independentInternshipsCount: 6,
           completedAshinagaAfricaInternship: true,
-          hasInternshipSummary: true,
         },
       ]);
 
@@ -235,7 +232,6 @@ describe('AnnualUpdatesService', () => {
           subSaharanAfricaActivitiesCount: null,
           independentInternshipsCount: null,
           completedAshinagaAfricaInternship: null,
-          hasInternshipSummary: false,
         })
       );
       for (const field of essayFields) {
