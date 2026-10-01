@@ -112,6 +112,17 @@ export class AuthController {
       .where(and(eq(invitations.id, invitationId), eq(invitations.status, 'accepted')));
   }
 
+  /**
+   * Profile setup failed after Better Auth created the user. Clear the claim
+   * first (invitations.user_id has no ON DELETE), then delete the user so the
+   * invitee can retry. Accounts, sessions, and profiles cascade from the user.
+   */
+  private async rollbackFailedSignup(invitationId: string, userId?: string): Promise<void> {
+    await this.releaseInvitationClaim(invitationId);
+    if (!userId) return;
+    await getDatabase().delete(users).where(eq(users.id, userId));
+  }
+
   @Get('me')
   @ApiOperation({ summary: 'Get current authenticated user with properties' })
   @ApiResponse({ status: 200, description: 'Current user information' })
@@ -296,9 +307,10 @@ export class AuthController {
       return this.sendAuthResult(res, authResult);
     }
 
+    let userId: string | undefined;
     try {
       const responseData = authResult.body ? JSON.parse(authResult.body) : {};
-      const userId = responseData.user?.id as string | undefined;
+      userId = responseData.user?.id as string | undefined;
       if (!userId) {
         throw new Error('Signup response did not include a user id');
       }
@@ -364,6 +376,11 @@ export class AuthController {
       }
     } catch (error) {
       console.error('Error in post-signup logic:', error);
+      try {
+        await this.rollbackFailedSignup(invitationWithData.id, userId);
+      } catch (rollbackError) {
+        console.error('Failed to roll back signup:', rollbackError);
+      }
       return res.status(500).send({
         error: 'Account setup failed. Please contact support.',
       });

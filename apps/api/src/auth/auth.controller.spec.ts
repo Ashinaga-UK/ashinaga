@@ -22,6 +22,7 @@ describe('AuthController', () => {
     select: jest.Mock;
     update: jest.Mock;
     insert: jest.Mock;
+    delete: jest.Mock;
   };
 
   beforeEach(async () => {
@@ -32,6 +33,7 @@ describe('AuthController', () => {
       select: jest.fn(),
       update: jest.fn(),
       insert: jest.fn(),
+      delete: jest.fn(),
     };
     getDatabase.mockReturnValue(mockDb);
 
@@ -427,5 +429,91 @@ describe('AuthController', () => {
     expect(mockRes.send).toHaveBeenCalledWith({
       error: 'Invitation data is corrupted. Please contact support.',
     });
+  });
+
+  it('rolls back the user and the invitation when profile setup fails', async () => {
+    const { auth } = require('./auth.config');
+    const sets: Array<Record<string, unknown>> = [];
+
+    mockDb.select.mockReturnValue({
+      from: jest.fn().mockReturnValue({
+        where: jest.fn().mockReturnValue({
+          limit: jest.fn().mockResolvedValue([
+            {
+              id: 'inv-staff',
+              email: 'staff@example.com',
+              token: 'valid-token',
+              status: 'pending',
+              expiresAt: new Date(Date.now() + 86_400_000),
+              userType: 'staff',
+              scholarData: null,
+            },
+          ]),
+        }),
+      }),
+    });
+
+    mockDb.update.mockReturnValue({
+      set: jest.fn().mockImplementation((values: Record<string, unknown>) => {
+        sets.push(values);
+        return {
+          where: jest.fn().mockImplementation(() => {
+            const result = Promise.resolve(undefined);
+            return Object.assign(result, {
+              returning: jest.fn().mockResolvedValue([{ id: 'inv-staff' }]),
+            });
+          }),
+        };
+      }),
+    });
+    mockDb.insert.mockReturnValue({
+      values: jest.fn().mockRejectedValue(new Error('profile insert failed')),
+    });
+    const deleteWhere = jest.fn().mockResolvedValue(undefined);
+    mockDb.delete.mockReturnValue({ where: deleteWhere });
+
+    auth.handler.mockResolvedValueOnce({
+      status: 200,
+      headers: new Map(),
+      text: jest.fn().mockResolvedValue('{"user":{"id":"user-rollback"}}'),
+    });
+
+    const mockRes = {
+      statusCode: 200,
+      status(code: number) {
+        this.statusCode = code;
+        return this;
+      },
+      send: jest.fn(),
+      header: jest.fn(),
+      redirect: jest.fn(),
+    };
+
+    await controller.signUpWithEmail(
+      {
+        url: '/api/auth/sign-up/email',
+        method: 'POST',
+        body: {
+          email: 'staff@example.com',
+          password: 'password123',
+          name: 'Staff Invitee',
+          invitationToken: 'valid-token',
+        },
+        headers: { 'content-type': 'application/json' },
+        protocol: 'http',
+        hostname: 'localhost',
+      } as never,
+      mockRes as never
+    );
+
+    expect(mockRes.statusCode).toBe(500);
+    expect(mockRes.send).toHaveBeenCalledWith({
+      error: 'Account setup failed. Please contact support.',
+    });
+    expect(sets).toEqual(
+      expect.arrayContaining([expect.objectContaining({ status: 'pending', userId: null })])
+    );
+    expect(mockDb.delete).toHaveBeenCalled();
+    expect(deleteWhere).toHaveBeenCalled();
   });
 });
