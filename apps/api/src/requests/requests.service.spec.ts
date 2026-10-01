@@ -402,6 +402,87 @@ describe('RequestsService', () => {
       expect(mockEmailService.sendRequestStatusNotification).toHaveBeenCalledTimes(1);
     });
 
+    it('does not reopen a decided request or email the scholar', async () => {
+      mockStatusUpdate('summer_funding_request');
+      const mockDatabase = require('../db/connection').database;
+      const reviewRow = [
+        {
+          request: {
+            id: 'request-1',
+            type: 'summer_funding_request',
+            status: 'rejected',
+            description: 'Request description',
+          },
+          scholar: { id: 'scholar-1' },
+          user: { id: 'scholar-user-1', name: 'Test Scholar', email: 'scholar@example.com' },
+        },
+      ];
+      mockDatabase.select = jest.fn().mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue(
+            Object.assign(Promise.resolve([{ isSuperAdmin: true }]), {
+              limit: jest.fn().mockResolvedValue([{ id: 'request-1' }]),
+            })
+          ),
+          innerJoin: jest.fn().mockReturnValue({
+            innerJoin: jest.fn().mockReturnValue({
+              where: jest.fn().mockReturnValue({
+                limit: jest.fn().mockResolvedValue(reviewRow),
+              }),
+            }),
+          }),
+        }),
+      });
+      mockDatabase.update = jest.fn();
+
+      await expect(
+        service.updateRequestStatus('request-1', 'approved', '', 'staff-1')
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(mockDatabase.update).not.toHaveBeenCalled();
+      expect(mockEmailService.sendRequestStatusNotification).not.toHaveBeenCalled();
+    });
+
+    it('does not write or email when the request is already in the requested status', async () => {
+      mockStatusUpdate('summer_funding_request');
+      const mockDatabase = require('../db/connection').database;
+      const reviewRow = [
+        {
+          request: {
+            id: 'request-1',
+            type: 'summer_funding_request',
+            status: 'approved',
+            description: 'Request description',
+          },
+          scholar: { id: 'scholar-1' },
+          user: { id: 'scholar-user-1', name: 'Test Scholar', email: 'scholar@example.com' },
+        },
+      ];
+      mockDatabase.select = jest.fn().mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue(
+            Object.assign(Promise.resolve([{ isSuperAdmin: true }]), {
+              limit: jest.fn().mockResolvedValue([{ id: 'request-1' }]),
+            })
+          ),
+          innerJoin: jest.fn().mockReturnValue({
+            innerJoin: jest.fn().mockReturnValue({
+              where: jest.fn().mockReturnValue({
+                limit: jest.fn().mockResolvedValue(reviewRow),
+              }),
+            }),
+          }),
+        }),
+      });
+      mockDatabase.update = jest.fn();
+      mockDatabase.insert = jest.fn();
+
+      await service.updateRequestStatus('request-1', 'approved', '', 'staff-1');
+
+      expect(mockDatabase.update).not.toHaveBeenCalled();
+      expect(mockDatabase.insert).not.toHaveBeenCalled();
+      expect(mockEmailService.sendRequestStatusNotification).not.toHaveBeenCalled();
+    });
+
     it('rejects a rejection that has no reason', async () => {
       await expect(
         service.updateRequestStatus('request-1', 'rejected', '   ', 'staff-1')

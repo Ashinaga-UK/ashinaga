@@ -624,6 +624,13 @@ export class RequestsService {
     const { request: currentRequest, user } = requestWithScholar[0];
     const reviewComment = providedComment;
 
+    if (!isBulkOpenStatus(currentRequest.status)) {
+      if (currentRequest.status === status) {
+        return currentRequest;
+      }
+      throw new BadRequestException('Decided requests cannot be reviewed');
+    }
+
     const [updatedRequest] = await database
       .update(requests)
       .set({
@@ -633,11 +640,16 @@ export class RequestsService {
         reviewDate: new Date(),
         updatedAt: new Date(),
       })
-      .where(eq(requests.id, requestId))
+      .where(and(eq(requests.id, requestId), inArray(requests.status, [...BULK_OPEN_STATUSES])))
       .returning();
 
     if (!updatedRequest) {
-      throw new NotFoundException(`Request with ID ${requestId} not found`);
+      const [fresh] = await database
+        .select()
+        .from(requests)
+        .where(eq(requests.id, requestId))
+        .limit(1);
+      return fresh ?? currentRequest;
     }
 
     // Create audit log entry
@@ -765,6 +777,14 @@ export class RequestsService {
             .returning();
 
           if (!updatedRequest) {
+            const [fresh] = await tx
+              .select()
+              .from(requests)
+              .where(eq(requests.id, requestId))
+              .limit(1);
+            if (fresh) {
+              byId.set(requestId, { ...current, request: fresh });
+            }
             continue;
           }
 
