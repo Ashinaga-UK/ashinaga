@@ -195,34 +195,6 @@ describe('Signup invitation token (integration)', () => {
     }
   });
 
-  it('creates the account when NODE_ENV is not test', async () => {
-    const email = randomEmail('signup-prod-env');
-    const previousEnv = process.env.NODE_ENV;
-    try {
-      const invite = await createInvite(email, 'staff');
-
-      process.env.NODE_ENV = 'production';
-      const res = await signUp({
-        email,
-        password: PASSWORD,
-        name: 'Production Env',
-        invitationToken: invite.token,
-      }).expect(200);
-
-      expect(res.body.user?.id).toEqual(expect.any(String));
-      const created = await usersFor(email);
-      expect(created).toHaveLength(1);
-      expect(created[0]?.userType).toBe('staff');
-
-      const [accepted] = await db.select().from(invitations).where(eq(invitations.id, invite.id));
-      expect(accepted?.status).toBe('accepted');
-      expect(accepted?.userId).toBe(created[0].id);
-    } finally {
-      process.env.NODE_ENV = previousEnv;
-      await cleanupSignup(email);
-    }
-  });
-
   it('accepts a scholar invite when the token matches', async () => {
     const email = randomEmail('signup-scholar');
     try {
@@ -248,6 +220,35 @@ describe('Signup invitation token (integration)', () => {
       expect(accepted?.status).toBe('accepted');
       expect(accepted?.userId).toBe(created[0].id);
     } finally {
+      await cleanupSignup(email);
+    }
+  });
+
+  it('signs up through the production invitation hook', async () => {
+    const email = randomEmail('signup-production-hook');
+    const previousNodeEnv = process.env.NODE_ENV;
+    try {
+      const invite = await createInvite(email, 'staff');
+      process.env.NODE_ENV = 'production';
+
+      const res = await signUp({
+        email,
+        password: PASSWORD,
+        name: 'Production Hook',
+        invitationToken: invite.token,
+      }).expect(200);
+
+      expect(res.body.user?.id).toEqual(expect.any(String));
+
+      const created = await usersFor(email);
+      expect(created).toHaveLength(1);
+      expect(created[0]?.userType).toBe('staff');
+
+      const [accepted] = await db.select().from(invitations).where(eq(invitations.id, invite.id));
+      expect(accepted?.status).toBe('accepted');
+      expect(accepted?.userId).toBe(created[0].id);
+    } finally {
+      process.env.NODE_ENV = previousNodeEnv;
       await cleanupSignup(email);
     }
   });

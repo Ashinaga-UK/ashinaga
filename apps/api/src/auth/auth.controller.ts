@@ -90,36 +90,22 @@ export class AuthController {
     return res.status(200).send({ ok: true });
   }
 
-  private async claimInvitation(invitationId: string): Promise<boolean> {
+  private async claimInvitation(invitationId: string, userId: string): Promise<boolean> {
     const claimed = await getDatabase()
       .update(invitations)
-      .set({ status: 'accepted', updatedAt: new Date() })
+      .set({
+        status: 'accepted',
+        acceptedAt: new Date(),
+        userId,
+        updatedAt: new Date(),
+      })
       .where(and(eq(invitations.id, invitationId), eq(invitations.status, 'pending')))
       .returning({ id: invitations.id });
 
     return claimed.length > 0;
   }
 
-  private async releaseInvitationClaim(invitationId: string): Promise<void> {
-    await getDatabase()
-      .update(invitations)
-      .set({
-        status: 'pending',
-        acceptedAt: null,
-        userId: null,
-        updatedAt: new Date(),
-      })
-      .where(and(eq(invitations.id, invitationId), eq(invitations.status, 'accepted')));
-  }
-
-  /**
-   * Profile setup failed after Better Auth created the user. Clear the claim
-   * first (invitations.user_id has no ON DELETE), then delete the user so the
-   * invitee can retry. Accounts, sessions, and profiles cascade from the user.
-   */
-  private async rollbackFailedSignup(invitationId: string, userId?: string): Promise<void> {
-    await this.releaseInvitationClaim(invitationId);
-    if (!userId) return;
+  private async deleteSignupUser(userId: string): Promise<void> {
     await getDatabase().delete(users).where(eq(users.id, userId));
   }
 
@@ -287,61 +273,44 @@ export class AuthController {
       }
     }
 
-    // One pending row can be claimed. A second request loses the update and is rejected.
-    const claimed = await this.claimInvitation(invitationWithData.id);
-    if (!claimed) {
-      return res.status(400).send({ error: 'Invalid invitation' });
-    }
-
+    // Leave the invite pending until Better Auth and the profile insert succeed.
+    // The signup hook still requires status pending, so claiming first rejects every signup.
     let authResult: { status: number; headers?: Headers; body: string };
     try {
       authResult = await this.callAuth(req, '/sign-up/email');
     } catch (error) {
       console.error('Better Auth error:', error);
-      await this.releaseInvitationClaim(invitationWithData.id);
       return res.status(500).send({ error: 'Authentication error' });
     }
 
     if (authResult.status !== 200) {
-      await this.releaseInvitationClaim(invitationWithData.id);
       return this.sendAuthResult(res, authResult);
     }
 
-    let userId: string | undefined;
+    let createdUserId: string | undefined;
     try {
       const responseData = authResult.body ? JSON.parse(authResult.body) : {};
-      userId = responseData.user?.id as string | undefined;
-      if (!userId) {
+      createdUserId = responseData.user?.id as string | undefined;
+      if (!createdUserId) {
         throw new Error('Signup response did not include a user id');
       }
 
-      console.log('User created with ID:', userId, 'Type:', userType);
+      console.log('User created with ID:', createdUserId, 'Type:', userType);
 
-      await db.update(users).set({ userType: userType }).where(eq(users.id, userId));
+      await db.update(users).set({ userType: userType }).where(eq(users.id, createdUserId));
 
       console.log('User type updated to:', userType);
 
-      await db
-        .update(invitations)
-        .set({
-          acceptedAt: new Date(),
-          userId: userId,
-          updatedAt: new Date(),
-        })
-        .where(eq(invitations.id, invitationWithData.id));
-
-      console.log('Invitation marked as accepted');
-
       if (userType === 'staff') {
         await db.insert(staff).values({
-          userId: userId,
+          userId: createdUserId,
           role: 'viewer',
           isActive: true,
         });
         console.log('Staff profile created');
       } else if (userType === 'scholar') {
         await db.insert(scholars).values({
-          userId: userId,
+          userId: createdUserId,
           status: 'active',
           program: scholarData.program || 'TBD',
           year: scholarData.year || 'TBD',
@@ -374,12 +343,21 @@ export class AuthController {
         });
         console.log('Scholar profile created with all invitation data');
       }
+
+      const claimed = await this.claimInvitation(invitationWithData.id, createdUserId);
+      if (!claimed) {
+        await this.deleteSignupUser(createdUserId);
+        return res.status(400).send({ error: 'Invalid invitation' });
+      }
+      console.log('Invitation marked as accepted');
     } catch (error) {
       console.error('Error in post-signup logic:', error);
-      try {
-        await this.rollbackFailedSignup(invitationWithData.id, userId);
-      } catch (rollbackError) {
-        console.error('Failed to roll back signup:', rollbackError);
+      if (createdUserId) {
+        try {
+          await this.deleteSignupUser(createdUserId);
+        } catch (rollbackError) {
+          console.error('Failed to roll back signup user:', rollbackError);
+        }
       }
       return res.status(500).send({
         error: 'Account setup failed. Please contact support.',
@@ -566,7 +544,7 @@ export class AuthController {
     const path = req.url.replace(/^\/api\/auth/, '');
     const pathname = path.split('?')[0] ?? '';
     // Signup is only allowed through signUpWithEmail, which checks the invitation token.
-    // Better Auth's own hook still authorizes by email, so this fallback must not reach it.
+    // The user-create hook also requires that token, and this fallback must not reach it.
     if (pathname.includes('sign-up')) {
       return res.status(400).send({ error: 'Invalid invitation' });
     }

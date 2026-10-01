@@ -510,9 +510,7 @@ describe('AuthController', () => {
     expect(mockRes.send).toHaveBeenCalledWith({
       error: 'Account setup failed. Please contact support.',
     });
-    expect(sets).toEqual(
-      expect.arrayContaining([expect.objectContaining({ status: 'pending', userId: null })])
-    );
+    expect(sets.some((value) => value.status === 'accepted')).toBe(false);
     expect(mockDb.delete).toHaveBeenCalled();
     expect(deleteWhere).toHaveBeenCalled();
   });
