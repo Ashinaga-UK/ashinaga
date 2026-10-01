@@ -72,9 +72,78 @@ describe('AuthController', () => {
     expect(mockRes.send).toHaveBeenCalledWith('{"success":true}');
   });
 
+  it('rejects signup without an invitation token', async () => {
+    const { auth } = require('./auth.config');
+    const mockRes = {
+      statusCode: 200,
+      status(code: number) {
+        this.statusCode = code;
+        return this;
+      },
+      send: jest.fn(),
+      header: jest.fn(),
+      redirect: jest.fn(),
+    };
+
+    await controller.signUpWithEmail(
+      {
+        url: '/api/auth/sign-up/email',
+        method: 'POST',
+        body: {
+          email: 'prep@example.com',
+          password: 'password123',
+          name: 'Prep Scholar',
+        },
+        headers: { 'content-type': 'application/json' },
+        protocol: 'http',
+        hostname: 'localhost',
+      } as never,
+      mockRes as never
+    );
+
+    expect(auth.handler).not.toHaveBeenCalled();
+    expect(mockDb.select).not.toHaveBeenCalled();
+    expect(mockRes.statusCode).toBe(400);
+    expect(mockRes.send).toHaveBeenCalledWith({ error: 'Invalid invitation' });
+  });
+
+  it('does not forward sign-up through the auth fallback', async () => {
+    const { auth } = require('./auth.config');
+    const mockRes = {
+      statusCode: 200,
+      status(code: number) {
+        this.statusCode = code;
+        return this;
+      },
+      send: jest.fn(),
+      header: jest.fn(),
+      redirect: jest.fn(),
+    };
+
+    await controller.handleAuthFallback(
+      {
+        url: '/api/auth/sign-up/email/',
+        method: 'POST',
+        headers: {},
+        protocol: 'http',
+        hostname: 'localhost',
+      } as never,
+      mockRes as never
+    );
+
+    expect(auth.handler).not.toHaveBeenCalled();
+    expect(mockRes.statusCode).toBe(400);
+    expect(mockRes.send).toHaveBeenCalledWith({ error: 'Invalid invitation' });
+  });
+
   it('should reject prep-year signup before forwarding when required fields are missing', async () => {
     const { auth } = require('./auth.config');
     const invitationRow = {
+      id: 'inv-prep',
+      email: 'prep@example.com',
+      token: 'valid-token',
+      status: 'pending',
+      expiresAt: new Date(Date.now() + 86_400_000),
       userType: 'scholar',
       scholarData: {
         programStage: 'prep_year',
@@ -107,6 +176,7 @@ describe('AuthController', () => {
         email: 'prep@example.com',
         password: 'password123',
         name: 'Prep Scholar',
+        invitationToken: 'valid-token',
       },
       headers: {
         'content-type': 'application/json',
@@ -127,6 +197,11 @@ describe('AuthController', () => {
   it('should allow prep-year signup when required fields are present and create the scholar profile', async () => {
     const { auth } = require('./auth.config');
     const invitationRow = {
+      id: 'inv-prep',
+      email: 'prep@example.com',
+      token: 'valid-token',
+      status: 'pending',
+      expiresAt: new Date(Date.now() + 86_400_000),
       userType: 'scholar',
       scholarData: {
         programStage: 'prep_year',
@@ -147,12 +222,15 @@ describe('AuthController', () => {
       }),
     });
 
-    const updateWhere = jest.fn().mockResolvedValue(undefined);
-    const updateSet = jest.fn().mockReturnValue({
-      where: updateWhere,
-    });
     mockDb.update.mockReturnValue({
-      set: updateSet,
+      set: jest.fn().mockReturnValue({
+        where: jest.fn().mockImplementation(() => {
+          const result = Promise.resolve(undefined);
+          return Object.assign(result, {
+            returning: jest.fn().mockResolvedValue([{ id: 'inv-prep' }]),
+          });
+        }),
+      }),
     });
 
     const insertValues = jest.fn().mockResolvedValue(undefined);
@@ -184,6 +262,7 @@ describe('AuthController', () => {
         email: 'prep@example.com',
         password: 'password123',
         name: 'Prep Scholar',
+        invitationToken: 'valid-token',
         intendedUniversity: 'University of Example',
         intendedCourse: 'Engineering',
         degreePathway: 'Foundation Year',
@@ -212,6 +291,11 @@ describe('AuthController', () => {
   it('prefers invitation intended-destination fields over the signup body', async () => {
     const { auth } = require('./auth.config');
     const invitationRow = {
+      id: 'inv-prep',
+      email: 'prep@example.com',
+      token: 'valid-token',
+      status: 'pending',
+      expiresAt: new Date(Date.now() + 86_400_000),
       userType: 'scholar',
       scholarData: {
         programStage: 'prep_year',
@@ -230,9 +314,15 @@ describe('AuthController', () => {
       }),
     });
 
-    const updateWhere = jest.fn().mockResolvedValue(undefined);
     mockDb.update.mockReturnValue({
-      set: jest.fn().mockReturnValue({ where: updateWhere }),
+      set: jest.fn().mockReturnValue({
+        where: jest.fn().mockImplementation(() => {
+          const result = Promise.resolve(undefined);
+          return Object.assign(result, {
+            returning: jest.fn().mockResolvedValue([{ id: 'inv-prep' }]),
+          });
+        }),
+      }),
     });
     const insertValues = jest.fn().mockResolvedValue(undefined);
     mockDb.insert.mockReturnValue({ values: insertValues });
@@ -262,6 +352,7 @@ describe('AuthController', () => {
           email: 'prep@example.com',
           password: 'password123',
           name: 'Prep Scholar',
+          invitationToken: 'valid-token',
           intendedUniversity: 'Attacker University',
           intendedCourse: 'Hacking',
           degreePathway: 'Other',
@@ -290,6 +381,11 @@ describe('AuthController', () => {
         where: jest.fn().mockReturnValue({
           limit: jest.fn().mockResolvedValue([
             {
+              id: 'inv-prep',
+              email: 'prep@example.com',
+              token: 'valid-token',
+              status: 'pending',
+              expiresAt: new Date(Date.now() + 86_400_000),
               userType: 'scholar',
               scholarData: '{not-json',
             },
@@ -317,6 +413,7 @@ describe('AuthController', () => {
           email: 'prep@example.com',
           password: 'password123',
           name: 'Prep Scholar',
+          invitationToken: 'valid-token',
         },
         headers: { 'content-type': 'application/json' },
         protocol: 'http',

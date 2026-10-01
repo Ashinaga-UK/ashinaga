@@ -1,7 +1,8 @@
+import { randomBytes } from 'node:crypto';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { resolveAvatarSrc } from '../avatars/avatar-files';
 import { eq } from 'drizzle-orm';
+import { resolveAvatarSrc } from '../avatars/avatar-files';
 import { getDatabase } from '../db/connection';
 import * as schema from '../db/schema';
 import { EmailService } from '../email/email.service';
@@ -437,12 +438,8 @@ If you didn't request this, you can ignore this email.
 
 export const auth: ReturnType<typeof betterAuth> = authConfig;
 
-// Helper function to create invitation tokens
+// Helper function to create invitation tokens.
+// Existing tokens stay valid until they expire; only new tokens use this generator.
 export function generateInvitationToken(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let token = '';
-  for (let i = 0; i < 32; i++) {
-    token += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return token;
+  return randomBytes(32).toString('base64url');
 }

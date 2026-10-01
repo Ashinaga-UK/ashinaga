@@ -1,17 +1,23 @@
 'use client';
 
-import { AlertCircle, Eye, EyeOff, Lock, Mail, User } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail, User } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import type React from 'react';
-import { useState } from 'react';
-import { signUp } from '../lib/auth-client';
+import { useEffect, useState } from 'react';
+import { fetchAPI } from '../lib/api-client';
+import { apiBaseUrl, signIn } from '../lib/auth-client';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 
+const MISSING_TOKEN_ERROR =
+  'No invitation token provided. Please use the link from your invitation email.';
+
 export function SignupPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const token = searchParams.get('token');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -21,6 +27,8 @@ export function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isValidating, setIsValidating] = useState(Boolean(token));
+  const [invitationReady, setInvitationReady] = useState(false);
   const [error, setError] = useState('');
 
   const handleInputChange =
@@ -31,9 +39,53 @@ export function SignupPage() {
       }));
     };
 
+  useEffect(() => {
+    if (!token) {
+      setInvitationReady(false);
+      setError(MISSING_TOKEN_ERROR);
+      return;
+    }
+
+    let cancelled = false;
+
+    const validateToken = async () => {
+      setIsValidating(true);
+      setInvitationReady(false);
+      setError('');
+      try {
+        const data = await fetchAPI<{ email: string; userType: string }>(
+          `/api/invitations/validate/${encodeURIComponent(token)}`
+        );
+        if (cancelled) return;
+        if (data.userType !== 'staff') {
+          setError('This invitation is not for a staff account.');
+          return;
+        }
+        setFormData((prev) => ({ ...prev, email: data.email }));
+        setInvitationReady(true);
+      } catch {
+        if (!cancelled) {
+          setError('This invitation link is invalid or has expired.');
+        }
+      } finally {
+        if (!cancelled) setIsValidating(false);
+      }
+    };
+
+    void validateToken();
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!token || !invitationReady) {
+      setError(MISSING_TOKEN_ERROR);
+      return;
+    }
 
     // Validation
     if (!formData.name.trim()) {
@@ -63,30 +115,79 @@ export function SignupPage() {
 
     setIsLoading(true);
     try {
-      const { data, error: authError } = await signUp.email({
-        email: formData.email,
-        password: formData.password,
-        name: formData.name,
+      const signupResponse = await fetch(`${apiBaseUrl}/api/auth/sign-up/email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          name: formData.name,
+          invitationToken: token,
+        }),
       });
 
-      if (authError) {
-        console.error('Signup error:', authError);
-        setError(authError.message || 'Failed to create account');
-        setIsLoading(false);
+      const signupData = (await signupResponse.json()) as { user?: { id: string }; error?: string };
+      if (!signupResponse.ok || !signupData.user) {
+        setError(signupData.error || 'Failed to create account. Please try again.');
         return;
       }
 
-      if (data) {
-        // Account created successfully, redirect to dashboard
+      const loginResult = await signIn.email({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (loginResult.data) {
         router.push('/');
         router.refresh();
+      } else {
+        router.push('/login');
       }
     } catch (err) {
       console.error('Unexpected signup error:', err);
       setError('An unexpected error occurred. Please try again.');
+    } finally {
       setIsLoading(false);
     }
   };
+
+  if (isValidating) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:from-background dark:to-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 className="h-8 w-8 animate-spin text-ashinaga-teal-600" />
+              <p className="text-sm text-muted-foreground">Validating your invitation...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!invitationReady) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:from-background dark:to-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Invalid Invitation</CardTitle>
+            <CardDescription>Complete your account setup with your invitation</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-3 rounded-md">
+              <AlertCircle className="h-4 w-4" />
+              {error || MISSING_TOKEN_ERROR}
+            </div>
+            <Button variant="outline" className="w-full" onClick={() => router.push('/login')}>
+              Go to Login
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-ashinaga-teal-50 to-ashinaga-green-50 dark:from-background dark:to-background flex items-center justify-center p-4">
@@ -131,8 +232,9 @@ export function SignupPage() {
                   type="email"
                   placeholder="Enter your invited email address"
                   value={formData.email}
-                  onChange={handleInputChange('email')}
                   className="pl-10"
+                  readOnly
+                  disabled={isLoading}
                   required
                 />
               </div>
