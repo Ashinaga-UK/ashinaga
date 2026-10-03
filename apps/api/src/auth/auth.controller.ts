@@ -40,14 +40,11 @@ export class AuthController {
     });
 
     try {
-      console.log('=== AUTH CONTROLLER ===');
-      console.log('URL:', url.toString());
-      console.log('Method:', req.method);
-      console.log('Body:', body);
+      console.log(`Auth ${req.method} ${path}`);
 
       const authResponse = await auth.handler(request);
 
-      console.log('Better Auth Response Status:', authResponse?.status);
+      console.log(`Auth ${req.method} ${path} -> ${authResponse?.status ?? 'no response'}`);
 
       if (authResponse) {
         res.status(authResponse.status || 200);
@@ -64,7 +61,6 @@ export class AuthController {
         }
 
         const responseBody = await authResponse.text();
-        console.log('Better Auth Response Body:', responseBody);
 
         if (responseBody) {
           return res.send(responseBody);
