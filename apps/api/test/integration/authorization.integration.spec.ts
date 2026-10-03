@@ -261,4 +261,41 @@ describe('API authorization (integration)', () => {
       expect(row?.requestId).toBe(victimRequestId);
     });
   });
+
+  /**
+   * ASH-126: these scholar read routes had no guard, so anyone on the internet
+   * could list every scholar's name, email, phone, location and bio.
+   */
+  describe('Scholar directory reads — staff only', () => {
+    const routes = (scholarId: string) => [
+      '/api/scholars',
+      '/api/scholars/filters',
+      '/api/scholars/stats',
+      `/api/scholars/${scholarId}`,
+    ];
+
+    it('rejects an unauthenticated caller on every route', async () => {
+      asNobody();
+      for (const route of routes(scholarA.scholarId)) {
+        const res = await request(app.getHttpServer()).get(route);
+        expect({ route, status: res.status }).toEqual({ route, status: 401 });
+      }
+    });
+
+    it('rejects a scholar on every route', async () => {
+      asScholar(scholarA);
+      for (const route of routes(scholarB.scholarId)) {
+        const res = await request(app.getHttpServer()).get(route);
+        expect({ route, status: res.status }).toEqual({ route, status: 403 });
+      }
+    });
+
+    it('allows staff on every route (control)', async () => {
+      asStaff();
+      for (const route of routes(scholarA.scholarId)) {
+        const res = await request(app.getHttpServer()).get(route);
+        expect({ route, status: res.status }).toEqual({ route, status: 200 });
+      }
+    });
+  });
 });

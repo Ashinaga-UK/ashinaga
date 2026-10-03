@@ -10,11 +10,7 @@ import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import request from 'supertest';
 import { scholars, users } from '../../src/db/schema';
-import {
-  type AuthContext,
-  createAuthenticatedIntegrationApp,
-  createIntegrationApp,
-} from './helpers/create-app';
+import { type AuthContext, createAuthenticatedIntegrationApp } from './helpers/create-app';
 import {
   cleanupSeeded,
   getTestPool,
@@ -29,10 +25,13 @@ describe('Scholars API (integration)', () => {
   let pool: Pool;
   let seededScholarId: string;
   let seededUserId: string;
+  let staffReader: SeededStaff;
   const testUserEmail = `integration-test-${Date.now()}@example.com`;
 
   beforeAll(async () => {
-    app = await createIntegrationApp();
+    // The directory routes are staff-only (ASH-126), so read them as staff.
+    const built = await createAuthenticatedIntegrationApp();
+    app = built.app;
     const server = app.getHttpServer();
     if (!server) throw new Error('HTTP server not available');
 
@@ -74,6 +73,9 @@ describe('Scholars API (integration)', () => {
 
     if (!insertedScholar) throw new Error('Failed to seed scholar');
     seededScholarId = insertedScholar.id;
+
+    staffReader = await seedStaffUser(db, { name: 'Scholars Directory Reader' });
+    built.auth.setUser({ id: staffReader.userId, email: staffReader.email, userType: 'staff' });
   }, 20000);
 
   afterAll(async () => {
@@ -81,6 +83,7 @@ describe('Scholars API (integration)', () => {
       const db = drizzle(pool);
       await db.delete(scholars).where(eq(scholars.userId, seededUserId));
       await db.delete(users).where(eq(users.id, seededUserId));
+      if (staffReader) await cleanupSeeded(db, { userIds: [staffReader.userId] });
       await pool.end();
     }
     if (app) await app.close();
