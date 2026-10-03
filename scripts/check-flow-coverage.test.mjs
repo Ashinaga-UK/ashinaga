@@ -121,9 +121,76 @@ describe('check-flow-coverage', () => {
 
     const covered = run(diff, {
       files: { [file]: source },
-      specSources: ['await controller.assignMentor("m1");'],
+      specSources: ['await request(server).post(`/api/mentors/${mentor.id}/assign`).expect(201);'],
     });
     assert.deepEqual(covered, []);
+  });
+
+  describe('API route matching', () => {
+    const file = 'apps/api/src/scholars/scholars.controller.ts';
+    const source = [
+      "@Controller('api/scholars')",
+      'export class ScholarsController {',
+      "  @Post(':id/freeze')",
+      '  async freezeScholar(@Param("id") id: string) {}',
+      '}',
+    ].join('\n');
+    const diff = [
+      `diff --git a/${file} b/${file}`,
+      `--- a/${file}`,
+      `+++ b/${file}`,
+      '@@ -2,0 +3,1 @@',
+      "+  @Post(':id/freeze')",
+    ].join('\n');
+    const check = (specSources) => run(diff, { files: { [file]: source }, specSources });
+
+    it('does not let a spec for the prefix cover a nested route', () => {
+      const findings = check([
+        "await request(server).get('/api/scholars').expect(200);",
+        'await request(server).get(`/api/scholars/${id}`).expect(200);',
+        'await request(server).get(`/api/scholars/${id}/profile`).expect(200);',
+      ]);
+      assert.equal(findings.length, 1);
+      assert.equal(findings[0].what, 'new write path POST /api/scholars/:id/freeze');
+    });
+
+    it('does not accept the handler name in a comment or another call', () => {
+      const findings = check([
+        '// TODO test .freezeScholar( once the service exists',
+        'await controller.freezeScholar("s1");',
+      ]);
+      assert.equal(findings.length, 1);
+    });
+
+    it('accepts the full path as a template literal or a literal id', () => {
+      assert.deepEqual(check(['.post(`${API}/api/scholars/${scholar.id}/freeze`)']), []);
+      assert.deepEqual(check(["await api.post('/api/scholars/abc-123/freeze');"]), []);
+    });
+  });
+
+  it('flags each uncovered flow when a nav item maps to several flows', () => {
+    const cat = structuredClone(catalogue);
+    for (const flow of cat.flows.filter((f) => f.id.startsWith('staff.scholars.'))) {
+      flow.specs = flow.id === 'staff.scholars.list' ? ['covered.spec.ts'] : ['missing.spec.ts'];
+      delete flow.specSkip;
+    }
+    const findings = run(
+      diffFor('apps/staff/components/staff-layout.tsx', {
+        added: ["  { href: '/?tab=scholars', value: 'scholars', label: 'Scholars', icon: Users },"],
+      }),
+      { cat, existing: (p) => p === 'covered.spec.ts' }
+    );
+    assert.equal(findings.length, 1);
+    assert.ok(findings[0].flows.includes('staff.scholars.assign-task'));
+    assert.ok(!findings[0].flows.includes('staff.scholars.list'));
+  });
+
+  it('treats a quote-style change on a route decorator as formatting', () => {
+    const diff = diffFor('apps/api/src/tasks/tasks.controller.ts', {
+      removed: ["  @Get('my-tasks')"],
+      added: ['  @Get("my-tasks")'],
+    });
+    assert.deepEqual(run(diff), []);
   });
 
   it('ignores docs-only, copy-only and infra-only changes', () => {
@@ -135,7 +202,7 @@ describe('check-flow-coverage', () => {
       }),
       diffFor('infra/accounts/test/main.tf', { added: ['  engine_version = "17"'] }),
     ].join('\n');
-    // The relabelled nav item still maps to the covered student.tasks flow.
+    // The relabelled nav item still maps to student.tasks, which has an explicit specSkip.
     assert.deepEqual(run(diff), []);
   });
 

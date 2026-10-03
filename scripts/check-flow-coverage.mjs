@@ -6,11 +6,12 @@
  * spec covers:
  *   - a new staff/scholar `page.tsx` route
  *   - a new staff sidebar section, student nav item or scholar-profile tab
- *   - a new `/api/` controller route (GET or write) whose handler/path no spec mentions
+ *   - a new `/api/` controller route (GET or write) whose full path no spec calls
  *
  * UI flows are resolved against the ASH-122 flow catalogue
  * (packages/qa-skill/catalogue/flows.json) and reported by the same flow IDs. A flow is covered
- * when it lists specs that exist, or carries an explicit `specSkip` reason.
+ * when it lists specs that exercise it (see the catalogue's "coverage" rule), or carries an
+ * explicit `specSkip` reason. Each uncovered flow is reported, even when siblings are covered.
  *
  * Silent on docs, copy, styling, infra and formatting-only changes: only added route/nav/tab
  * lines count, and a line that was merely moved or reformatted cancels out.
@@ -29,7 +30,26 @@ const SPEC_FILE = /\.(spec|test|e2e-spec)\.(ts|tsx)$/;
 const API_DECORATOR = /@(Get|Post|Put|Patch|Delete)\(\s*(?:'([^']*)'|"([^"]*)")?\s*\)/;
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
-const normalise = (text) => text.replace(/\s+/g, ' ').trim();
+// Whitespace and quote style don't change meaning, so `@Get('x')` -> `@Get("x")` cancels out.
+const normalise = (text) => text.replace(/\s+/g, ' ').replace(/"/g, "'").trim();
+
+const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Regex for the full API route as it would appear in a spec string: `'/api/x/42/freeze'` or
+ * `` `${base}/api/x/${id}/freeze` ``. A `:param` segment matches one path segment or one
+ * `${...}`; every static segment, including those after a parameter, must be present, and the
+ * path must end there, so `'/api/scholars'` never covers `/api/scholars/:id/freeze`.
+ */
+export function routePattern(route) {
+  const param = '(?:\\$\\{[^}]+\\}|[^/\\s\'"`?$]+)';
+  const body = route
+    .split('/')
+    .filter(Boolean)
+    .map((segment) => (segment.startsWith(':') ? param : escapeRegExp(segment)))
+    .join('/');
+  return new RegExp(`[\`'"](?:\\$\\{[^}]+\\})?/${body}(?=[\`'"?]|\\$\\{)`);
+}
 
 /** Parse `git diff --unified=0` output into per-file added/removed lines. */
 export function parseDiff(diffText) {
@@ -229,22 +249,18 @@ export function analyze({ diffText, catalogue, readFile, fileExists, specSources
       const { route, handler } = apiRoute(signal, readFile);
       const key = `${signal.method} ${route}`;
       if (exceptions.has(key)) continue;
-      const staticPath = route.split('/:')[0];
-      const pathLiterals = ["'", '"', '`'].map((quote) => `${quote}${staticPath}`);
-      const mentioned = specSources.some(
-        (src) =>
-          (handler && src.includes(`.${handler}(`)) ||
-          pathLiterals.some((literal) => src.includes(literal))
-      );
-      if (!mentioned) {
+      // Only the full route path in a spec counts. A handler name is not proof: it matches
+      // comments, `form.submit()`, or `.create(` on unrelated objects.
+      const pattern = routePattern(route);
+      if (!specSources.some((src) => pattern.test(src))) {
         findings.push({
           where,
           what: `${WRITE_METHODS.has(signal.method) ? 'new write path' : 'new API route'} ${key}`,
           flows: [],
           fix:
-            `Add a controller/service unit spec (apps/api/src/**/${handler ?? 'handler'}.spec) or an ` +
-            'API integration spec (apps/api/test/integration) that calls it, or list it in ' +
-            'apiCoverageExceptions with a reason.',
+            `Add an API integration spec (apps/api/test/integration) that calls ${route}` +
+            `${handler ? ` (handler ${handler})` : ''}, or list it in apiCoverageExceptions ` +
+            'with a reason.',
         });
       }
       continue;
@@ -262,8 +278,10 @@ export function analyze({ diffText, catalogue, readFile, fileExists, specSources
       });
       continue;
     }
+    // A nav item can map to several flows (e.g. every staff.scholars.* flow). Report each
+    // uncovered one; one covered sibling must not hide the rest.
     const uncovered = flows.filter((flow) => !isCovered(flow, fileExists));
-    if (uncovered.length === flows.length) {
+    if (uncovered.length > 0) {
       findings.push({
         where,
         what: `${describeSignal(signal)} has no covering spec`,

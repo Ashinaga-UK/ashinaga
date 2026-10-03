@@ -110,7 +110,7 @@
         }
       ],
       "expected": "Scholar table renders with stage, programme, university, status and activity filters.",
-      "specs": ["apps/api/test/integration/scholars.integration.spec.ts"]
+      "specs": ["apps/staff/test/e2e/staff-features.e2e-spec.ts"]
     },
     {
       "id": "staff.scholars.profile",
@@ -170,10 +170,8 @@
         }
       ],
       "expected": "Onboarding form opens with single and CSV modes; sending creates a scholar invitation.",
-      "specs": [
-        "apps/staff/lib/scholar-import.test.ts",
-        "apps/api/test/integration/invitations.integration.spec.ts"
-      ]
+      "specs": [],
+      "specSkip": "No test opens the onboarding screen. Only the CSV parser (apps/staff/lib/scholar-import.test.ts) and POST /api/invitations (apps/api/test/integration/invitations.integration.spec.ts) are tested."
     },
     {
       "id": "staff.scholars.assign-task",
@@ -209,8 +207,7 @@
       "expected": "Bulk assign dialog opens with title, type, priority, due date and target.",
       "specs": [
         "apps/staff/test/e2e/staff-features.e2e-spec.ts",
-        "apps/staff/components/__tests__/task-assignment.test.tsx",
-        "apps/api/test/integration/tasks.integration.spec.ts"
+        "apps/staff/components/__tests__/task-assignment.test.tsx"
       ]
     },
     {
@@ -238,10 +235,8 @@
         }
       ],
       "expected": "Cohort dialog opens targeting every active Prep Year candidate.",
-      "specs": [
-        "apps/api/src/tasks/prep-task-cohort.spec.ts",
-        "apps/api/test/integration/prep-task-cohort.integration.spec.ts"
-      ]
+      "specs": [],
+      "specSkip": "No test opens the \"Assign to Prep Year cohort\" dialog or posts a programStage bulk assignment. The prep-task-cohort specs cover the Prep tasks matrix, not this action."
     },
     {
       "id": "staff.scholars.export-csv",
@@ -262,7 +257,8 @@
         }
       ],
       "expected": "A CSV of all scholars downloads.",
-      "specs": ["apps/api/src/scholars/scholars.controller.spec.ts"]
+      "specs": [],
+      "specSkip": "No test clicks Export CSV or calls GET /api/scholars/export/csv."
     },
     {
       "id": "staff.scholar-profile.profile",
@@ -282,7 +278,7 @@
         }
       ],
       "expected": "Profile tab opens from its deep link (scholarTab=profile).",
-      "specs": ["apps/staff/test/e2e/staff-features.e2e-spec.ts"]
+      "specs": ["apps/staff/components/__tests__/platform-setup-card.test.tsx"]
     },
     {
       "id": "staff.scholar-profile.ldf-goals",
@@ -302,7 +298,8 @@
         }
       ],
       "expected": "LDF Goals tab opens from its deep link (scholarTab=goals).",
-      "specs": ["apps/api/src/goals/goals.controller.spec.ts"]
+      "specs": [],
+      "specSkip": "No test renders the LDF Goals tab. apps/api/src/goals/goals.controller.spec.ts only checks the controller is defined."
     },
     {
       "id": "staff.scholar-profile.annual-reviews",
@@ -322,7 +319,8 @@
         }
       ],
       "expected": "Annual Reviews tab opens from its deep link (scholarTab=annual-reviews).",
-      "specs": ["apps/api/src/annual-updates/annual-updates.service.spec.ts"]
+      "specs": [],
+      "specSkip": "No test renders the scholar's Annual Reviews tab. annual-updates.service.spec.ts covers service logic (copy edits, CSV), not this screen."
     },
     {
       "id": "staff.scholar-profile.tasks",
@@ -362,7 +360,8 @@
         }
       ],
       "expected": "Documents tab opens from its deep link (scholarTab=documents).",
-      "specs": ["apps/api/test/integration/required-documents.integration.spec.ts"]
+      "specs": [],
+      "specSkip": "No test renders the Documents tab. apps/api/test/integration/required-documents.integration.spec.ts covers the upload and download API only."
     },
     {
       "id": "staff.scholar-profile.coordinator",
@@ -477,10 +476,7 @@
         }
       ],
       "expected": "Cohort report table renders; CSV downloads; print opens the print dialog.",
-      "specs": [
-        "apps/staff/components/__tests__/prep-cohort-report.test.tsx",
-        "apps/api/test/integration/prep-year-report.integration.spec.ts"
-      ]
+      "specs": ["apps/staff/components/__tests__/prep-cohort-report.test.tsx"]
     },
     {
       "id": "staff.annual-reviews",
@@ -503,7 +499,8 @@
         }
       ],
       "expected": "Submissions list renders with year/status filters; opening a row shows the review.",
-      "specs": ["apps/staff/components/__tests__/annual-review-copy-editor.test.tsx"]
+      "specs": [],
+      "specSkip": "Only the copy editor on this tab is tested (annual-review-copy-editor.test.tsx). No test opens the submissions list or a review."
     },
     {
       "id": "staff.requests",
@@ -534,8 +531,7 @@
       "expected": "Queue renders with filters, sort and saved views; approve/reject/request-info update a request.",
       "specs": [
         "apps/staff/components/__tests__/requests-queue.test.tsx",
-        "apps/staff/components/__tests__/request-management.test.tsx",
-        "apps/api/test/integration/requests.integration.spec.ts"
+        "apps/staff/components/__tests__/request-management.test.tsx"
       ]
     },
     {
@@ -570,10 +566,8 @@
         }
       ],
       "expected": "Compose form with audience filters and recipient preview; sending publishes to that audience.",
-      "specs": [
-        "apps/api/src/announcements/announcements.controller.spec.ts",
-        "apps/api/test/integration/announcements-audience.integration.spec.ts"
-      ]
+      "specs": [],
+      "specSkip": "No test opens the Announcements tab or the create dialog. announcements.controller.spec.ts and announcements-audience.integration.spec.ts cover the API only."
     },
     {
       "id": "staff.announcements.draft-live",
@@ -617,10 +611,7 @@
         }
       ],
       "expected": "Library renders with status filter; a new resource starts as Draft, can go Live, then back off (Draft).",
-      "specs": [
-        "apps/staff/components/__tests__/resources-management.test.tsx",
-        "apps/api/test/integration/resources.integration.spec.ts"
-      ]
+      "specs": ["apps/staff/components/__tests__/resources-management.test.tsx"]
     },
     {
       "id": "staff.invitations.active-staff",
@@ -736,10 +727,7 @@
         }
       ],
       "expected": "Invite form sends a staff invitation that appears under Staff Invites.",
-      "specs": [
-        "apps/staff/test/e2e/staff-features.e2e-spec.ts",
-        "apps/api/test/integration/invitations.integration.spec.ts"
-      ]
+      "specs": ["apps/staff/test/e2e/staff-features.e2e-spec.ts"]
     },
     {
       "id": "staff.invitations.onboard-student",
@@ -879,7 +867,8 @@
         }
       ],
       "expected": "LDF goals with progress and category/term filters.",
-      "specs": ["apps/api/src/goals/goals.controller.spec.ts"]
+      "specs": [],
+      "specSkip": "No test renders My LDF. apps/api/src/goals/goals.controller.spec.ts only checks the controller is defined."
     },
     {
       "id": "student.tasks",
@@ -901,7 +890,8 @@
       ],
       "expected": "Assigned tasks with due-state filters; completing a task records the response.",
       "notes": "Prep Year sees a Due now / Upcoming / Completed layout; enrolled scholars see the filterable list.",
-      "specs": ["apps/scholar/lib/group-prep-tasks.test.ts", "apps/scholar/lib/task-due.test.ts"]
+      "specs": [],
+      "specSkip": "No test opens My Tasks. group-prep-tasks.test.ts and task-due.test.ts cover helper functions only."
     },
     {
       "id": "student.requests",
@@ -945,7 +935,8 @@
         }
       ],
       "expected": "Announcements addressed to the student, newest first.",
-      "specs": ["apps/api/test/integration/announcements-audience.integration.spec.ts"]
+      "specs": [],
+      "specSkip": "No test opens the scholar Announcements page. announcements-audience.integration.spec.ts covers the API audience filter only."
     },
     {
       "id": "student.resources",
@@ -966,7 +957,8 @@
         }
       ],
       "expected": "Live resources for the student's audience only (drafts hidden).",
-      "specs": ["apps/api/test/integration/resources.integration.spec.ts"]
+      "specs": [],
+      "specSkip": "No test opens the scholar Resources page. resources.integration.spec.ts covers the API audience filter only."
     },
     {
       "id": "prep.documents",
@@ -1051,10 +1043,7 @@
         }
       ],
       "expected": "Prep Year header and nav; My Annual Review is hidden and its URL redirects to Overview.",
-      "specs": [
-        "apps/scholar/components/__tests__/scholar-layout.test.tsx",
-        "apps/scholar/app/(scholar)/layout.test.tsx"
-      ]
+      "specs": ["apps/scholar/components/__tests__/scholar-layout.test.tsx"]
     },
     {
       "id": "scholar.annual-review",
@@ -1116,6 +1105,6 @@
       "specs": ["apps/scholar/components/__tests__/scholar-layout.test.tsx"]
     }
   ],
-  "coverage": "Each flow lists the specs that cover it (\"specs\", empty = none). A flow with no specs needs an explicit \"specSkip\" reason. check:flow-coverage flags new or changed flows that have neither.",
+  "coverage": "Each flow lists the specs that exercise it (\"specs\"): a component or page test that renders that screen, or an e2e test that opens it. A spec file merely existing, or an API-only test for a UI flow, does not count. A flow with no such test has empty specs and an explicit \"specSkip\" reason naming what is tested instead. check:flow-coverage flags new or changed flows that have neither.",
   "apiCoverageExceptions": []
 }

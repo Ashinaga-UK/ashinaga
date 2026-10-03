@@ -18,13 +18,15 @@ branch against its base and flags only:
 | New staff sidebar section (`staff-layout.tsx` `value: '…'`) | `/?tab=…` flows |
 | New student nav item (`scholar-layout.tsx` `href: '…'`) | student flows by route |
 | New scholar-profile tab (`<TabsTrigger value="…">`) | `scholarTab=…` flows |
-| New `/api/` route (`@Get/@Post/@Put/@Patch/@Delete`) | any spec calling `.handler(` or the route path |
+| New `/api/` route (`@Get/@Post/@Put/@Patch/@Delete`) | a spec string with the **full** route path (`:param` = one segment or `${…}`); a handler name or a prefix of the path does not count |
 
-It stays **silent** on docs, copy, styling, infra and Biome/formatting-only diffs (a moved or
-reformatted line cancels out), and on changes to flows that already have a spec.
+It stays **silent** on docs, copy, styling, infra and Biome/formatting-only diffs (a moved,
+reindented or quote-swapped line cancels out), and on changes to flows that already have a spec.
+When a nav item maps to several flows, each uncovered flow is reported.
 
 The flow list is the ASH-122 catalogue, `packages/qa-skill/catalogue/flows.json`: one list, same
-flow IDs. Each flow has `specs` (files that cover it) or an explicit `specSkip` reason.
+flow IDs. Each flow has `specs` (tests that render that screen or open it in e2e; a file merely
+existing, or an API-only test for a UI flow, does not count) or an explicit `specSkip` reason.
 
 ## What to do when it fires
 
