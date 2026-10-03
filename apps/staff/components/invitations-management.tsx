@@ -411,7 +411,15 @@ function InviteStaffButton({ onInvited }: { onInvited: () => void }) {
     </Dialog>
   );
 }
-function ActiveStaffList() {
+// Everything Make admin grants and Remove admin takes away. The API sets
+// `is_super_admin` (remove staff, see all requests) and `role` (edit
+// annual-review copy and platform links) together.
+const ADMIN_RIGHTS =
+  'remove staff, see all scholar requests, edit annual-review copy and edit platform links';
+const ADMIN_RIGHTS_OR =
+  'remove staff, see all scholar requests, edit annual-review copy or edit platform links';
+
+export function ActiveStaffList() {
   const { toast } = useToast();
   const [members, setMembers] = useState<StaffMember[]>([]);
   const [canManage, setCanManage] = useState(false);
@@ -479,8 +487,8 @@ function ActiveStaffList() {
     const grant = !member.isSuperAdmin;
     const confirmed = window.confirm(
       grant
-        ? `Give ${member.name} admin access?\n\nThey will be able to remove staff and see all scholar requests.`
-        : `Remove admin access from ${member.name}?\n\nThey will no longer be able to remove staff or see all scholar requests.`
+        ? `Give ${member.name} admin access?\n\nThey will be able to ${ADMIN_RIGHTS}.`
+        : `Remove admin access from ${member.name}?\n\nThey will no longer be able to ${ADMIN_RIGHTS_OR}.`
     );
     if (!confirmed) return;
     setBusyUserId(member.userId);
@@ -489,8 +497,8 @@ function ActiveStaffList() {
       toast({
         title: grant ? 'Admin access granted' : 'Admin access removed',
         description: grant
-          ? `${member.name} can now manage staff and see all scholar requests.`
-          : `${member.name} is now a viewer.`,
+          ? `${member.name} can now ${ADMIN_RIGHTS}.`
+          : `${member.name} is now a viewer and can no longer ${ADMIN_RIGHTS_OR}.`,
       });
       await load();
     } catch (err) {

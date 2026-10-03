@@ -180,28 +180,34 @@ export class UsersService {
       throw new BadRequestException('You cannot change your own admin access');
     }
 
-    const [requester] = await database
-      .select()
-      .from(staff)
-      .where(eq(staff.userId, requesterUserId))
-      .limit(1);
-
-    if (!requester || !requester.isActive) {
-      throw new ForbiddenException('Staff access required');
-    }
-
-    if (!requester.isSuperAdmin) {
-      throw new ForbiddenException('Only super-admins can change admin access');
-    }
-
     return database.transaction(async (tx) => {
-      // Lock the active super-admins so two concurrent demotions cannot both
-      // pass the last-admin check.
+      // Lock the active super-admins first, so two concurrent changes queue up
+      // here instead of both passing the last-admin check. Taking this lock
+      // before reading the caller also keeps the lock order the same for every
+      // caller, so two admins changing each other cannot deadlock.
       const activeSuperAdmins = await tx
         .select({ userId: staff.userId })
         .from(staff)
         .where(and(eq(staff.isActive, true), eq(staff.isSuperAdmin, true)))
         .for('update');
+
+      // Re-check the caller inside the transaction, after the lock. A check
+      // before the transaction would let a caller who was demoted in the
+      // meantime still run the write.
+      const [requester] = await tx
+        .select()
+        .from(staff)
+        .where(eq(staff.userId, requesterUserId))
+        .for('update')
+        .limit(1);
+
+      if (!requester || !requester.isActive) {
+        throw new ForbiddenException('Staff access required');
+      }
+
+      if (!requester.isSuperAdmin) {
+        throw new ForbiddenException('Only super-admins can change admin access');
+      }
 
       const [target] = await tx
         .select()
@@ -222,8 +228,11 @@ export class UsersService {
         throw new BadRequestException('Cannot remove the last super-admin');
       }
 
-      // `is_super_admin` is the privilege; `role` only drives the Active Staff
-      // badge. Keep them in step so the badge matches the shield.
+      // `is_super_admin` lets staff remove staff and see all scholar requests.
+      // `role` is not just the badge: StaffGuard copies it to
+      // `req.user.staffRole`, and `admin` is what allows editing annual-review
+      // copy (`updateAnnualReviewCopy`) and platform links (`updatePlatformUrl`).
+      // ASH-120 grants and revokes both together, and the confirm dialog says so.
       const role = isSuperAdmin ? ('admin' as const) : ('viewer' as const);
       await tx
         .update(staff)
