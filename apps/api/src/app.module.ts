@@ -20,6 +20,7 @@ import { PrepYearReportModule } from './prep-year-report/prep-year-report.module
 import { ProposalsModule } from './proposals/proposals.module';
 import { RequestsModule } from './requests/requests.module';
 import { ResourcesModule } from './resources/resources.module';
+import { ScholarActivityReportModule } from './scholar-activity-report/scholar-activity-report.module';
 import { ScholarsModule } from './scholars/scholars.module';
 import { TasksModule } from './tasks/tasks.module';
 import { UsersModule } from './users/users.module';
@@ -49,6 +50,7 @@ import { UsersModule } from './users/users.module';
     ProposalsModule,
     AnnualUpdatesModule,
     PrepYearReportModule,
+    ScholarActivityReportModule,
     PlatformsModule,
   ],
   controllers: [AppController],
