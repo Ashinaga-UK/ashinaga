@@ -1,0 +1,30 @@
+name: Flow coverage
+
+# ASH-123: fail only when a PR adds a product flow (page route, nav item, profile tab,
+# /api/ route) that no spec covers. Silent on docs, copy, styling, infra and formatting.
+on:
+  pull_request:
+    branches:
+      - test
+      - main
+
+jobs:
+  flow-coverage:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+
+    - name: Test the detector
+      run: node --test scripts/check-flow-coverage.test.mjs
+
+    - name: Check new flows have tests
+      run: node scripts/check-flow-coverage.mjs --base origin/${{ github.base_ref }}
