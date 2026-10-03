@@ -178,6 +178,14 @@ export interface AnnualUpdateReportRow {
   aaiScholarId: string | null;
   scholarYear: string;
   university: string;
+  program: string;
+  academicYearAverageClassification: string | null;
+  academicYearWeightedGrade: string | null;
+  leadershipRolesCount: number | null;
+  payItForwardCount: number | null;
+  subSaharanAfricaActivitiesCount: number | null;
+  independentInternshipsCount: number | null;
+  completedAshinagaAfricaInternship: boolean | null;
 }
 
 export interface AnnualReviewCopyResponse {
