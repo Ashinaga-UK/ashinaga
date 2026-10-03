@@ -1764,6 +1764,23 @@ export async function removeStaffMember(
   });
 }
 
+export interface StaffAdminUpdate {
+  success: boolean;
+  userId: string;
+  isSuperAdmin: boolean;
+  role: 'admin' | 'viewer';
+}
+
+export async function setStaffAdmin(
+  userId: string,
+  isSuperAdmin: boolean
+): Promise<StaffAdminUpdate> {
+  return fetchAPI<StaffAdminUpdate>(`/api/users/staff/${userId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ isSuperAdmin }),
+  });
+}
+
 export type ProposalStatus = 'draft' | 'submitted' | 'changes_requested' | 'approved';
 
 export interface ProposalInboxItem {
