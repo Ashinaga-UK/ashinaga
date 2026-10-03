@@ -23,7 +23,7 @@
     "tabSelected": "A tab with this accessible name is the selected tab."
   },
   "personaRules": {
-    "either": "Both-stage student flow: run once per available student persona (prep, scholar). The row fails if either run fails."
+    "either": "Both-stage student flow: runs as both prep and scholar. If either student session is missing the row is Skip, never Pass. The row fails if either run fails."
   },
   "flows": [
     {
