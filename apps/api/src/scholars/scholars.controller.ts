@@ -45,6 +45,7 @@ export class ScholarsController {
   }
 
   @Get()
+  @UseGuards(StaffGuard)
   async getScholars(
     @Query(new ValidationPipe({ transform: true, whitelist: true }))
     query: GetScholarsQueryDto
@@ -53,6 +54,7 @@ export class ScholarsController {
   }
 
   @Get('filters')
+  @UseGuards(StaffGuard)
   async getFilterOptions(): Promise<{
     programs: string[];
     years: string[];
@@ -64,6 +66,7 @@ export class ScholarsController {
   }
 
   @Get('stats')
+  @UseGuards(StaffGuard)
   async getScholarStats(): Promise<{
     total: number;
     active: number;
@@ -146,6 +149,7 @@ export class ScholarsController {
   }
 
   @Get(':id')
+  @UseGuards(StaffGuard)
   async getScholar(@Param('id', ParseUUIDPipe) id: string): Promise<ScholarResponseDto> {
     return this.scholarsService.getScholar(id);
   }

@@ -128,28 +128,15 @@ async function runFlow(
     return { ...base, status: 'Skip', personas: [], notes: flow.skip };
   }
 
-  const personas =
-    flow.persona === 'either' ? STUDENT_PERSONAS.filter((p) => sessions[p]) : [flow.persona];
-  if (personas.length === 0) {
-    return {
-      ...base,
-      status: 'Skip',
-      personas: [],
-      notes: `Missing fixture: ${STUDENT_PERSONAS.map((p) => sessionErrors[p]).join('; ')}`,
-    };
+  const plan = planPersonas(flow, sessions, sessionErrors);
+  if ('skip' in plan) {
+    return { ...base, status: 'Skip', personas: [], notes: plan.skip };
   }
+  const { personas } = plan;
 
   const outcomes: { persona: string; status: Status; note: string }[] = [];
   for (const persona of personas) {
-    const session = sessions[persona as keyof SessionMap];
-    if (!session) {
-      outcomes.push({
-        persona,
-        status: 'Skip',
-        note: `Missing fixture: ${sessionErrors[persona]}`,
-      });
-      continue;
-    }
+    const session = sessions[persona as keyof SessionMap] as Session;
     outcomes.push({ persona, ...(await runSteps(flow, persona, session, options, fixtures)) });
   }
 
@@ -165,7 +152,27 @@ async function runFlow(
   return { ...base, status, personas: personas.map(String), notes };
 }
 
-async function runSteps(
+/**
+ * A both-stage (`either`) flow only counts when it runs as Prep Year AND enrolled scholar.
+ * If either student session is missing, the whole row is Skip, so a run with one student
+ * account can't report both-stage flows as Pass.
+ */
+export function planPersonas(
+  flow: Pick<Flow, 'persona'>,
+  sessions: Partial<Record<string, unknown>>,
+  sessionErrors: Record<string, string>
+): { personas: string[] } | { skip: string } {
+  const personas: string[] = flow.persona === 'either' ? [...STUDENT_PERSONAS] : [flow.persona];
+  const missing = personas.filter((p) => !sessions[p]);
+  if (missing.length > 0) {
+    const reasons = missing.map((p) => sessionErrors[p] ?? `no ${p} session`).join('; ');
+    const label = flow.persona === 'either' ? 'Both-stage flow needs prep and scholar. ' : '';
+    return { skip: `${label}Missing fixture: ${reasons}` };
+  }
+  return { personas };
+}
+
+export async function runSteps(
   flow: Flow,
   persona: string,
   session: Session,

@@ -29,11 +29,17 @@ export const LOCAL_ACCOUNTS = {
   scholar: { email: 'e2e-scholar@example.com', password: 'E2eScholarPassw0rd!' },
 } as const;
 
-const PROD_HOSTS = new Set([
-  'api.ashinaga-uk.org',
-  'staff.ashinaga-uk.org',
-  'scholar.ashinaga-uk.org',
-]);
+// QA signs in with real passwords and clicks through the app, so only hosts known not to be
+// production are allowed. Anything else (prod, www, an App Runner URL, a typo) is refused.
+const TEST_HOST = /^[a-z0-9-]+-test\.ashinaga-uk\.org$/;
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
+
+export function isAllowedHost(hostname: string): boolean {
+  // `new URL('https://staff.ashinaga-uk.org.').hostname` keeps the trailing dot and the
+  // browser still resolves it, so strip it before comparing.
+  const host = hostname.toLowerCase().replace(/\.+$/, '');
+  return LOOPBACK_HOSTS.has(host) || TEST_HOST.test(host);
+}
 
 export function resolveTarget(name: string, env: NodeJS.ProcessEnv = process.env): Target {
   if (name !== 'test' && name !== 'local') {
@@ -47,9 +53,9 @@ export function resolveTarget(name: string, env: NodeJS.ProcessEnv = process.env
     scholarUrl: stripSlash(env.SCHOLAR_APP_URL || defaults.scholarUrl),
   };
   for (const url of [target.apiUrl, target.staffUrl, target.scholarUrl]) {
-    if (PROD_HOSTS.has(new URL(url).hostname)) {
+    if (!isAllowedHost(new URL(url).hostname)) {
       throw new Error(
-        `Refusing to run against production (${url}). QA runs on test or local only.`
+        `Refusing to run against ${url}. QA runs only on *-test.ashinaga-uk.org or localhost.`
       );
     }
   }

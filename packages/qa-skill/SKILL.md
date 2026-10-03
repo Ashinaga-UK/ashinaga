@@ -22,6 +22,8 @@ reports Pass / Fail / Skip for every staff and student flow.
    ```
    Fill `.env.local` with a super-admin staff account, a Prep Year candidate and an enrolled
    scholar **on the target**. Missing personas are reported as **Skip**, never silently dropped.
+   Both-stage student flows need **both** the Prep Year and the scholar account; with only one,
+   those rows are Skip, not Pass. Only `*-test.ashinaga-uk.org` and localhost URLs are accepted.
 2. Browsers: the package uses `@playwright/test`. If Chromium is missing, run
    `pnpm --filter @ashinaga/qa-skill exec playwright install chromium`.
 
