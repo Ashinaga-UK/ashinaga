@@ -1,7 +1,12 @@
+import { Suspense } from 'react';
 import { SignupPage } from '../../components/signup-page';
 
 export default function Signup() {
-  return <SignupPage />;
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SignupPage />
+    </Suspense>
+  );
 }
 
 export const metadata = {
