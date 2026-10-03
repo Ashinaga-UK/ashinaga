@@ -400,6 +400,102 @@ describe('Requests API – multi-assignee (integration)', () => {
       expect(row?.status).toBe('pending');
     });
 
+    it('rejects a bulk update that includes a request that is not pending', async () => {
+      const pending = await createRequestAs(scholar.userId, scholar.email, 'scholar', {
+        type: 'extenuating_circumstances',
+        description: 'Pending request that must stay pending when the batch is refused.',
+        priority: 'low',
+        assigneeIds: [staffA.userId],
+      });
+      expect(pending.status).toBe(201);
+      createdRequestIds.push(pending.body.id);
+
+      const decided = await createRequestAs(scholar.userId, scholar.email, 'scholar', {
+        type: 'extenuating_circumstances',
+        description: 'Rejected request that must not be reopened by a bulk approve.',
+        priority: 'low',
+        assigneeIds: [staffA.userId],
+      });
+      expect(decided.status).toBe(201);
+      createdRequestIds.push(decided.body.id);
+      await db
+        .update(requestRecords)
+        .set({ status: 'rejected', reviewComment: 'Earlier reason' })
+        .where(eq(requestRecords.id, decided.body.id));
+
+      auth.setUser({ id: staffA.userId, email: staffA.email, userType: 'staff' });
+      await request(app.getHttpServer())
+        .post('/api/requests/bulk-status')
+        .send({ ids: [pending.body.id, decided.body.id], status: 'approved' })
+        .expect(400);
+
+      const [pendingRow] = await db
+        .select()
+        .from(requestRecords)
+        .where(eq(requestRecords.id, pending.body.id));
+      const [decidedRow] = await db
+        .select()
+        .from(requestRecords)
+        .where(eq(requestRecords.id, decided.body.id));
+      expect(pendingRow?.status).toBe('pending');
+      expect(decidedRow?.status).toBe('rejected');
+      expect(decidedRow?.reviewComment).toBe('Earlier reason');
+    });
+
+    it('clears a stale comment and does not audit a repeated bulk approve', async () => {
+      const created = await createRequestAs(scholar.userId, scholar.email, 'scholar', {
+        type: 'extenuating_circumstances',
+        description: 'Pending request approved twice to confirm the second call is a no-op.',
+        priority: 'low',
+        assigneeIds: [staffA.userId],
+      });
+      expect(created.status).toBe(201);
+      createdRequestIds.push(created.body.id);
+      await db
+        .update(requestRecords)
+        .set({ reviewComment: 'Keep me' })
+        .where(eq(requestRecords.id, created.body.id));
+
+      auth.setUser({ id: staffA.userId, email: staffA.email, userType: 'staff' });
+      await request(app.getHttpServer())
+        .post('/api/requests/bulk-status')
+        .send({ ids: [created.body.id], status: 'approved' })
+        .expect(201);
+
+      const [approved] = await db
+        .select()
+        .from(requestRecords)
+        .where(eq(requestRecords.id, created.body.id));
+      expect(approved?.status).toBe('approved');
+      expect(approved?.reviewComment).toBe('');
+
+      const logsAfterFirst = await db
+        .select()
+        .from(requestAuditLogs)
+        .where(
+          and(
+            eq(requestAuditLogs.requestId, created.body.id),
+            eq(requestAuditLogs.action, 'status_changed')
+          )
+        );
+
+      await request(app.getHttpServer())
+        .post('/api/requests/bulk-status')
+        .send({ ids: [created.body.id], status: 'approved' })
+        .expect(201);
+
+      const logsAfterSecond = await db
+        .select()
+        .from(requestAuditLogs)
+        .where(
+          and(
+            eq(requestAuditLogs.requestId, created.body.id),
+            eq(requestAuditLogs.action, 'status_changed')
+          )
+        );
+      expect(logsAfterSecond).toHaveLength(logsAfterFirst.length);
+    });
+
     it('writes one audit log per request when bulk rejecting', async () => {
       auth.setUser({ id: staffA.userId, email: staffA.email, userType: 'staff' });
       await request(app.getHttpServer())
