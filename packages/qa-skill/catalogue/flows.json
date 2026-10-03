@@ -759,7 +759,7 @@
       ],
       "expected": "Onboard action opens the student onboarding form.",
       "specs": [],
-      "specSkip": "Opens the same onboarding form as staff.scholars.onboard, which is covered."
+      "specSkip": "Opens the same onboarding form as staff.scholars.onboard, which has no screen test either (see its specSkip). The e2e only checks the Onboard Scholar button is shown."
     },
     {
       "id": "student.sign-in",
