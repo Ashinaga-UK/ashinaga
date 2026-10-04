@@ -1,7 +1,8 @@
+import { randomBytes } from 'node:crypto';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { resolveAvatarSrc } from '../avatars/avatar-files';
 import { eq } from 'drizzle-orm';
+import { resolveAvatarSrc } from '../avatars/avatar-files';
 import { getDatabase } from '../db/connection';
 import * as schema from '../db/schema';
 import { EmailService } from '../email/email.service';
@@ -274,89 +275,6 @@ If you didn't request this, you can ignore this email.
         };
       },
     },
-    signUp: {
-      before: async ({ email, name }) => {
-        console.log('==========================================');
-        console.log('SignUp Before Hook - Email received:', email);
-        console.log('SignUp Before Hook - Name received:', name);
-        console.log('SignUp Before Hook - Email lowercase:', email.toLowerCase());
-        console.log('==========================================');
-
-        // In test environment, allow any email to sign up without invitation
-        if (process.env.NODE_ENV === 'test') {
-          console.log('Test environment: Allowing signup without invitation');
-          // Determine user type based on email domain for test environment
-          const userType = email.endsWith('@ashinaga.org') ? 'staff' : 'scholar';
-          return {
-            email,
-            name: name || '',
-            userType: userType,
-            emailVerified: false,
-          };
-        }
-
-        try {
-          // Check if user has a valid invitation (production behavior)
-          const db = getDatabase();
-          console.log('Got database connection, checking for invitation...');
-
-          // Always use lowercase for email comparison
-          const emailLower = email.toLowerCase();
-
-          console.log('Searching for invitation with email:', emailLower);
-
-          const invitations = await db
-            .select()
-            .from(schema.invitations)
-            .where(eq(schema.invitations.email, emailLower))
-            .limit(1);
-
-          console.log('Query result - Invitations found:', invitations.length);
-
-          const invitation = invitations[0];
-
-          if (invitation) {
-            console.log('Invitation details:', {
-              id: invitation.id,
-              email: invitation.email,
-              status: invitation.status,
-              userType: invitation.userType,
-              expiresAt: invitation.expiresAt,
-            });
-          }
-
-          if (!invitation) {
-            console.error('ERROR: No invitation found for email:', emailLower);
-            console.error('Make sure invitation was created with lowercase email');
-            throw new Error('Invalid invitation. You must be invited to join this platform.');
-          }
-
-          console.log('Invitation status:', invitation.status);
-
-          if (invitation.status !== 'pending') {
-            throw new Error('This invitation has already been used or expired.');
-          }
-
-          if (new Date() > new Date(invitation.expiresAt)) {
-            throw new Error('This invitation has expired. Please request a new one.');
-          }
-
-          console.log('Invitation valid, returning user data');
-
-          // Return user data with userType from invitation
-          console.log('Returning user data for signup with name:', name);
-          return {
-            email: emailLower,
-            name: name || '', // Use the name from signup form
-            userType: invitation.userType,
-            emailVerified: false,
-          };
-        } catch (error) {
-          console.error('SignUp Before Hook Error:', error);
-          throw error;
-        }
-      },
-    },
     signIn: {
       before: async ({ email }) => {
         // Optional: Check if user is active
@@ -433,16 +351,72 @@ If you didn't request this, you can ignore this email.
       },
     },
   },
+  databaseHooks: {
+    user: {
+      create: {
+        before: async (user, context) => {
+          // Jest sets NODE_ENV=test. Other tests create users without an invite.
+          if (process.env.NODE_ENV === 'test') {
+            return;
+          }
+
+          const request = context as
+            | { path?: string; body?: { invitationToken?: unknown } }
+            | null
+            | undefined;
+          if (!request?.path?.includes('sign-up')) {
+            return;
+          }
+
+          const token =
+            typeof request.body?.invitationToken === 'string'
+              ? request.body.invitationToken.trim()
+              : '';
+          const emailLower = user.email.toLowerCase();
+          if (!token) {
+            throw new Error('Invalid invitation. You must be invited to join this platform.');
+          }
+
+          try {
+            const db = getDatabase();
+            const [invitation] = await db
+              .select()
+              .from(schema.invitations)
+              .where(eq(schema.invitations.token, token))
+              .limit(1);
+
+            if (!invitation || invitation.email.toLowerCase() !== emailLower) {
+              throw new Error('Invalid invitation. You must be invited to join this platform.');
+            }
+            if (new Date() > new Date(invitation.expiresAt)) {
+              throw new Error('This invitation has expired. Please request a new one.');
+            }
+            // The controller leaves the row pending until the profile exists, so this
+            // hook still sees pending on a live signup. A finished signup is accepted.
+            if (invitation.status !== 'pending') {
+              throw new Error('This invitation has already been used or expired.');
+            }
+
+            return {
+              data: {
+                name: user.name || '',
+                userType: invitation.userType,
+              },
+            };
+          } catch (error) {
+            console.error('SignUp Before Hook Error:', error);
+            throw error;
+          }
+        },
+      },
+    },
+  },
 });
 
 export const auth: ReturnType<typeof betterAuth> = authConfig;
 
-// Helper function to create invitation tokens
+// Helper function to create invitation tokens.
+// Existing tokens stay valid until they expire; only new tokens use this generator.
 export function generateInvitationToken(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let token = '';
-  for (let i = 0; i < 32; i++) {
-    token += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return token;
+  return randomBytes(32).toString('base64url');
 }

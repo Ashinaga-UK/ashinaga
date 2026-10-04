@@ -178,6 +178,14 @@ export interface AnnualUpdateReportRow {
   aaiScholarId: string | null;
   scholarYear: string;
   university: string;
+  program: string;
+  academicYearAverageClassification: string | null;
+  academicYearWeightedGrade: string | null;
+  leadershipRolesCount: number | null;
+  payItForwardCount: number | null;
+  subSaharanAfricaActivitiesCount: number | null;
+  independentInternshipsCount: number | null;
+  completedAshinagaAfricaInternship: boolean | null;
 }
 
 export interface AnnualReviewCopyResponse {
@@ -1856,4 +1864,50 @@ export async function getScholarProposalFileDownloadUrl(
   return fetchAPI<{ downloadUrl: string }>(
     `/api/proposals/scholars/${scholarId}/steps/${stepKey}/file${query}`
   );
+}
+
+export type FaqAudience = 'prep_year' | 'scholar';
+
+export interface Faq {
+  id: string;
+  audience: FaqAudience;
+  category: string | null;
+  question: string;
+  answer: string;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SaveFaqData {
+  audience: FaqAudience;
+  category?: string | null;
+  question: string;
+  answer: string;
+  sortOrder?: number;
+}
+
+export async function getFaqs(audience?: FaqAudience): Promise<Faq[]> {
+  const query = audience ? `?audience=${audience}` : '';
+  return fetchAPI<Faq[]>(`/api/faqs${query}`);
+}
+
+export async function createFaq(data: SaveFaqData): Promise<Faq> {
+  return fetchAPI<Faq>('/api/faqs', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateFaq(faqId: string, data: Partial<SaveFaqData>): Promise<Faq> {
+  return fetchAPI<Faq>(`/api/faqs/${faqId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteFaq(faqId: string): Promise<{ success: boolean }> {
+  return fetchAPI<{ success: boolean }>(`/api/faqs/${faqId}`, {
+    method: 'DELETE',
+  });
 }
