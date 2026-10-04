@@ -614,6 +614,31 @@
       "specs": ["apps/staff/components/__tests__/resources-management.test.tsx"]
     },
     {
+      "id": "staff.faqs",
+      "area": "Staff / FAQs",
+      "name": "FAQs: list, filter by audience and category, add",
+      "app": "staff",
+      "persona": "staff",
+      "stage": "all",
+      "route": "/?tab=faqs",
+      "fixtures": ["writes: a disposable FAQ to add"],
+      "steps": [
+        {
+          "goto": "/?tab=faqs"
+        },
+        {
+          "seeRole": "combobox",
+          "name": "Filter FAQs by audience"
+        },
+        {
+          "click": "button",
+          "name": "Add FAQ",
+          "write": true
+        }
+      ],
+      "expected": "FAQ list renders with audience and category filters; Add FAQ opens the editor (not submitted)."
+    },
+    {
       "id": "staff.invitations.active-staff",
       "area": "Staff / Invitations",
       "name": "Invitations: Active Staff",
@@ -959,6 +984,26 @@
       "expected": "Live resources for the student's audience only (drafts hidden).",
       "specs": [],
       "specSkip": "No test opens the scholar Resources page. resources.integration.spec.ts covers the API audience filter only."
+    },
+    {
+      "id": "student.faqs",
+      "area": "Student",
+      "name": "FAQs",
+      "app": "scholar",
+      "persona": "either",
+      "stage": "all",
+      "route": "/faqs",
+      "fixtures": [],
+      "steps": [
+        {
+          "goto": "/faqs"
+        },
+        {
+          "seeRole": "heading",
+          "name": "FAQs"
+        }
+      ],
+      "expected": "Only FAQs for the student's own stage (or all-audience), grouped by category."
     },
     {
       "id": "prep.documents",
