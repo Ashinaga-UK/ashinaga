@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Req, UseGuards } from '@ne
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/auth.guard';
 import { StaffGuard } from '../auth/staff.guard';
+import { UpdateStaffAdminDto } from './dto/update-staff-admin.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersService } from './users.service';
 
@@ -56,6 +57,25 @@ export class UsersController {
       throw new Error('User not authenticated');
     }
     return this.usersService.getStaffManagementView(userId);
+  }
+
+  @Patch('staff/:userId')
+  @UseGuards(StaffGuard)
+  @ApiOperation({ summary: 'Grant or revoke super-admin access. Super-admin only.' })
+  @ApiResponse({ status: 200, description: 'Admin access updated' })
+  @ApiResponse({ status: 400, description: 'Self, inactive staff, or last super-admin' })
+  @ApiResponse({ status: 403, description: 'Forbidden – super-admin required' })
+  @ApiResponse({ status: 404, description: 'Staff member not found' })
+  async updateStaffAdmin(
+    @Param('userId') targetUserId: string,
+    @Body() dto: UpdateStaffAdminDto,
+    @Req() req: any
+  ) {
+    const requesterUserId = req.user?.id;
+    if (!requesterUserId) {
+      throw new Error('User not authenticated');
+    }
+    return this.usersService.setStaffAdmin(targetUserId, dto.isSuperAdmin, requesterUserId);
   }
 
   @Delete('staff/:userId')

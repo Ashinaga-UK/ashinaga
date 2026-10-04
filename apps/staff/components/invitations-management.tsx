@@ -1,6 +1,16 @@
 'use client';
 
-import { Loader2, Mail, Search, Shield, Trash2, UserPlus, Users } from 'lucide-react';
+import {
+  Loader2,
+  Mail,
+  Search,
+  Shield,
+  ShieldCheck,
+  ShieldOff,
+  Trash2,
+  UserPlus,
+  Users,
+} from 'lucide-react';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -12,6 +22,7 @@ import {
   removeStaffMember,
   resendInvitation,
   type StaffMember,
+  setStaffAdmin,
 } from '../lib/api-client';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -400,7 +411,15 @@ function InviteStaffButton({ onInvited }: { onInvited: () => void }) {
     </Dialog>
   );
 }
-function ActiveStaffList() {
+// Everything Make admin grants and Remove admin takes away. The API sets
+// `is_super_admin` (remove staff, see all requests) and `role` (edit
+// annual-review copy and platform links) together.
+const ADMIN_RIGHTS =
+  'remove staff, see all scholar requests, edit annual-review copy and edit platform links';
+const ADMIN_RIGHTS_OR =
+  'remove staff, see all scholar requests, edit annual-review copy or edit platform links';
+
+export function ActiveStaffList() {
   const { toast } = useToast();
   const [members, setMembers] = useState<StaffMember[]>([]);
   const [canManage, setCanManage] = useState(false);
@@ -463,6 +482,70 @@ function ActiveStaffList() {
     }
   };
 
+  const handleToggleAdmin = async (member: StaffMember) => {
+    if (member.isSelf) return;
+    const grant = !member.isSuperAdmin;
+    const confirmed = window.confirm(
+      grant
+        ? `Give ${member.name} admin access?\n\nThey will be able to ${ADMIN_RIGHTS}.`
+        : `Remove admin access from ${member.name}?\n\nThey will no longer be able to ${ADMIN_RIGHTS_OR}.`
+    );
+    if (!confirmed) return;
+    setBusyUserId(member.userId);
+    try {
+      await setStaffAdmin(member.userId, grant);
+      toast({
+        title: grant ? 'Admin access granted' : 'Admin access removed',
+        description: grant
+          ? `${member.name} can now ${ADMIN_RIGHTS}.`
+          : `${member.name} is now a viewer and can no longer ${ADMIN_RIGHTS_OR}.`,
+      });
+      await load();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      toast({
+        title: 'Could not change admin access',
+        description: msg.replace(/^API Error:\s*\d+\s*-\s*/, ''),
+        variant: 'destructive',
+      });
+    } finally {
+      setBusyUserId(null);
+    }
+  };
+
+  const adminToggle = (member: StaffMember, variant: 'outline' | 'ghost') => {
+    if (!canManage) return null;
+    return (
+      <Button
+        type="button"
+        variant={variant}
+        size="sm"
+        className="text-muted-foreground"
+        disabled={member.isSelf || busyUserId !== null}
+        onClick={() => handleToggleAdmin(member)}
+        title={
+          member.isSelf
+            ? 'You cannot change your own admin access'
+            : member.isSuperAdmin
+              ? 'Remove admin access'
+              : 'Give admin access'
+        }
+      >
+        {member.isSuperAdmin ? (
+          <>
+            <ShieldOff className="h-3.5 w-3.5 mr-1" />
+            Remove admin
+          </>
+        ) : (
+          <>
+            <ShieldCheck className="h-3.5 w-3.5 mr-1" />
+            Make admin
+          </>
+        )}
+      </Button>
+    );
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -477,7 +560,7 @@ function ActiveStaffList() {
         </div>
         {!loading && !canManage && (
           <p className="text-xs text-muted-foreground">
-            Only super-admins can remove staff members.
+            Only super-admins can remove staff or change admin access.
           </p>
         )}
       </div>
@@ -493,10 +576,10 @@ function ActiveStaffList() {
           </div>
           <div className="hidden rounded-lg border overflow-hidden lg:block">
             <div className="grid grid-cols-12 gap-2 px-4 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground border-b bg-muted/30">
-              <div className="col-span-4">Name</div>
+              <div className="col-span-3">Name</div>
               <div className="col-span-4">Email</div>
               <div className="col-span-2">Role</div>
-              <div className="col-span-2 text-right">Actions</div>
+              <div className="col-span-3 text-right">Actions</div>
             </div>
             <div className="divide-y">
               {[0, 1, 2].map((i) => (
@@ -549,40 +632,43 @@ function ActiveStaffList() {
                   >
                     {member.role}
                   </Badge>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="text-muted-foreground hover:text-destructive"
-                    disabled={!canManage || member.isSelf || busyUserId !== null}
-                    onClick={() => handleRemove(member)}
-                    title={
-                      member.isSelf
-                        ? 'You cannot remove yourself'
-                        : !canManage
-                          ? 'Only super-admins can remove staff'
-                          : 'Remove staff member'
-                    }
-                  >
-                    {busyUserId === member.userId ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <>
-                        <Trash2 className="h-3.5 w-3.5 mr-1" />
-                        Remove
-                      </>
-                    )}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {adminToggle(member, 'outline')}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="text-muted-foreground hover:text-destructive"
+                      disabled={!canManage || member.isSelf || busyUserId !== null}
+                      onClick={() => handleRemove(member)}
+                      title={
+                        member.isSelf
+                          ? 'You cannot remove yourself'
+                          : !canManage
+                            ? 'Only super-admins can remove staff'
+                            : 'Remove staff member'
+                      }
+                    >
+                      {busyUserId === member.userId ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <>
+                          <Trash2 className="h-3.5 w-3.5 mr-1" />
+                          Remove
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </li>
             ))}
           </ul>
           <div className="hidden rounded-lg border overflow-hidden lg:block">
             <div className="grid grid-cols-12 gap-2 px-4 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground border-b bg-muted/30">
-              <div className="col-span-4">Name</div>
+              <div className="col-span-3">Name</div>
               <div className="col-span-4">Email</div>
               <div className="col-span-2">Role</div>
-              <div className="col-span-2 text-right">Actions</div>
+              <div className="col-span-3 text-right">Actions</div>
             </div>
             <ul className="divide-y">
               {filtered.map((member) => (
@@ -590,7 +676,7 @@ function ActiveStaffList() {
                   key={member.userId}
                   className="grid grid-cols-12 gap-2 px-4 py-3 items-center text-sm transition-colors hover:bg-muted/30"
                 >
-                  <div className="col-span-4 font-medium text-foreground flex items-center gap-2">
+                  <div className="col-span-3 font-medium text-foreground flex items-center gap-2">
                     <span className="truncate">{member.name}</span>
                     {member.isSelf && (
                       <Badge variant="outline" className="text-[10px] font-normal">
@@ -612,7 +698,8 @@ function ActiveStaffList() {
                       </span>
                     )}
                   </div>
-                  <div className="col-span-2 flex justify-end">
+                  <div className="col-span-3 flex justify-end gap-1">
+                    {adminToggle(member, 'ghost')}
                     <Button
                       type="button"
                       variant="ghost"
