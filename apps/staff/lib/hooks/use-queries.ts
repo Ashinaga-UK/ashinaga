@@ -33,6 +33,7 @@ import {
   getRequiredDocumentTypes,
   getResourceFilterOptions,
   getResources,
+  getScholarActivityReport,
   getScholarProfile,
   getScholarProposal,
   getScholarRequiredDocuments,
@@ -44,6 +45,7 @@ import {
   type PrepYearReportFilters,
   type ResourceFilterOptions,
   reviewProposalStep,
+  type ScholarActivityFilters,
   type Task,
   type UpdateScholarProfileData,
   type UpdateTaskData,
@@ -73,6 +75,8 @@ export const queryKeys = {
     ['prep-tasks', 'cohort', filters] as const,
   prepYearReport: (filters: PrepYearReportFilters = {}) =>
     ['prep-year', 'report', filters] as const,
+  scholarActivityReport: (filters: ScholarActivityFilters = {}) =>
+    ['scholar-activity', 'report', filters] as const,
   scholarCoordinatorNotes: (id: string) => ['scholar', id, 'coordinator-notes'] as const,
   scholarMeetingUpdates: (id: string) => ['scholar', id, 'meeting-updates'] as const,
   proposalInbox: ['proposals', 'inbox'] as const,
@@ -194,6 +198,14 @@ export function usePrepYearReport(filters: PrepYearReportFilters = {}) {
   return useQuery({
     queryKey: queryKeys.prepYearReport(filters),
     queryFn: () => getPrepYearReport(filters),
+  });
+}
+
+export function useScholarActivityReport(filters: ScholarActivityFilters = {}) {
+  return useQuery({
+    queryKey: queryKeys.scholarActivityReport(filters),
+    queryFn: () => getScholarActivityReport(filters),
+    placeholderData: keepPreviousData,
   });
 }
 

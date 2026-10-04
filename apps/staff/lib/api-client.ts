@@ -1623,6 +1623,116 @@ export async function downloadPrepYearReportCSV(
   );
 }
 
+export type ScholarActivityStatus = 'active' | 'inactive' | 'on_hold' | 'archived';
+export type ScholarActivityStage = 'prep_year' | 'scholar';
+
+export interface ScholarActivityFilters {
+  program?: string;
+  year?: string;
+  programStage?: ScholarActivityStage;
+  nationality?: string;
+  status?: ScholarActivityStatus | 'all';
+  from?: string;
+  to?: string;
+  sortBy?: 'name' | 'lastActivity' | 'taskCompletionRate';
+  sortOrder?: 'asc' | 'desc';
+  page?: number;
+  limit?: number;
+}
+
+export interface ScholarActivityRow {
+  scholarId: string;
+  name: string;
+  email: string;
+  status: ScholarActivityStatus;
+  program: string;
+  year: string;
+  programStage: ScholarActivityStage;
+  nationality: string | null;
+  lastActivity: string | null;
+  daysSinceActivity: number | null;
+  lastActivityUnknown: boolean;
+  isStaleLogin: boolean;
+  tasksAssigned: number;
+  tasksCompleted: number;
+  tasksCompletedInRange: number | null;
+  tasksBehind: number;
+  taskCompletionRate: number | null;
+  goalsTotal: number;
+  goalsCompleted: number;
+  goalsUpdatedInRange: number | null;
+  avgCompletionScale: number | null;
+}
+
+export interface ScholarActivityCohort {
+  program: string;
+  year: string;
+  scholarCount: number;
+  staleLoginCount: number;
+  unknownLoginCount: number;
+  scholarsBehindOnTasks: number;
+  avgTaskCompletionRate: number | null;
+}
+
+export interface ScholarActivityReportPayload {
+  summary: {
+    scholarCount: number;
+    staleLoginCount: number;
+    unknownLoginCount: number;
+    scholarsBehindOnTasks: number;
+    avgTaskCompletionRate: number | null;
+  };
+  cohorts: ScholarActivityCohort[];
+  scholars: ScholarActivityRow[];
+  meta: {
+    page: number;
+    limit: number;
+    totalItems: number;
+    totalPages: number;
+  };
+  filterOptions: {
+    programs: string[];
+    years: string[];
+    nationalities: string[];
+    statuses: ScholarActivityStatus[];
+  };
+}
+
+function scholarActivityQuery(filters: ScholarActivityFilters = {}): string {
+  const params = new URLSearchParams();
+  if (filters.program) params.set('program', filters.program);
+  if (filters.year) params.set('year', filters.year);
+  if (filters.programStage) params.set('programStage', filters.programStage);
+  if (filters.nationality) params.set('nationality', filters.nationality);
+  if (filters.status) params.set('status', filters.status);
+  if (filters.from) params.set('from', filters.from);
+  if (filters.to) params.set('to', filters.to);
+  if (filters.sortBy) params.set('sortBy', filters.sortBy);
+  if (filters.sortOrder) params.set('sortOrder', filters.sortOrder);
+  if (filters.page && filters.page > 1) params.set('page', String(filters.page));
+  if (filters.limit) params.set('limit', String(filters.limit));
+  const query = params.toString();
+  return query ? `?${query}` : '';
+}
+
+export async function getScholarActivityReport(
+  filters: ScholarActivityFilters = {}
+): Promise<ScholarActivityReportPayload> {
+  return fetchAPI<ScholarActivityReportPayload>(
+    `/api/scholar-activity/report${scholarActivityQuery(filters)}`
+  );
+}
+
+export async function downloadScholarActivityReportCSV(
+  filters: ScholarActivityFilters = {}
+): Promise<void> {
+  await downloadCsvFile(
+    `/api/scholar-activity/report/csv${scholarActivityQuery(filters)}`,
+    `scholar-activity-report-${new Date().toISOString().slice(0, 10)}.csv`,
+    'Failed to download scholar activity CSV'
+  );
+}
+
 export async function getScholarRequiredDocuments(
   scholarId: string
 ): Promise<RequiredDocumentChecklist> {
