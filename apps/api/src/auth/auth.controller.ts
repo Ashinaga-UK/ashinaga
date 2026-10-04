@@ -6,6 +6,20 @@ import { getDatabase } from '../db/connection';
 import { invitations, scholars, staff, users } from '../db/schema';
 import { auth } from './auth.config';
 
+/** Pathname only — never log OAuth code/state or verify-email tokens from the query string. */
+function authPathname(path: string): string {
+  return path.split('?')[0] || path;
+}
+
+function logAuthError(label: string, error: unknown): void {
+  if (error && typeof error === 'object') {
+    const err = error as { name?: string; code?: string };
+    console.error(label, { name: err.name ?? 'Error', code: err.code });
+    return;
+  }
+  console.error(label, { name: typeof error });
+}
+
 @ApiTags('auth')
 @Controller('api/auth')
 export class AuthController {
@@ -15,6 +29,7 @@ export class AuthController {
       `/api/auth${path}`,
       `${req.protocol}://${req.hostname}:${process.env.PORT || 3000}`
     );
+    const pathForLog = authPathname(path);
 
     const headers = new Headers();
     Object.entries(req.headers).forEach(([key, value]) => {
@@ -40,11 +55,11 @@ export class AuthController {
     });
 
     try {
-      console.log(`Auth ${req.method} ${path}`);
+      console.log(`Auth ${req.method} ${pathForLog}`);
 
       const authResponse = await auth.handler(request);
 
-      console.log(`Auth ${req.method} ${path} -> ${authResponse?.status ?? 'no response'}`);
+      console.log(`Auth ${req.method} ${pathForLog} -> ${authResponse?.status ?? 'no response'}`);
 
       if (authResponse) {
         res.status(authResponse.status || 200);
@@ -69,7 +84,7 @@ export class AuthController {
 
       return res.status(200).send({ ok: true });
     } catch (error) {
-      console.error('Better Auth error:', error);
+      logAuthError('Better Auth error:', error);
       return res.status(500).send({ error: 'Authentication error' });
     }
   }
@@ -314,7 +329,7 @@ export class AuthController {
           }
         }
       } catch (error) {
-        console.error('Error in post-signup logic:', error);
+        logAuthError('Error in post-signup logic:', error);
       }
     }
 
@@ -495,9 +510,9 @@ export class AuthController {
   @All('*')
   @ApiOperation({ summary: 'Fallback for other Better Auth endpoints' })
   async handleAuthFallback(@Req() req: FastifyRequest, @Res() res: FastifyReply) {
-    // Extract the path after /api/auth
+    // Keep the query string for Better Auth (OAuth code/state); log pathname only.
     const path = req.url.replace(/^\/api\/auth/, '');
-    console.log('Auth fallback handling path:', path);
+    console.log('Auth fallback handling path:', authPathname(path));
     return this.forwardToAuth(req, res, path);
   }
 }

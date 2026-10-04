@@ -106,15 +106,12 @@ const authConfig = betterAuth({
         : data.url;
 
       if (process.env.NODE_ENV !== 'production') {
-        console.log('[sendResetPassword] userType:', userType);
-        console.log('[sendResetPassword] portalBaseUrl:', portalBaseUrl);
-        console.log('[sendResetPassword] resetUrl:', resetUrl);
-        if (!token) {
-          console.warn(
-            '[sendResetPassword] Could not extract token from Better Auth URL, using raw URL:',
-            data.url
-          );
-        }
+        // Never log the reset URL/token — test App Runner uses NODE_ENV=test and would
+        // otherwise put the token in CloudWatch.
+        console.log('[sendResetPassword] prepared reset email', {
+          userType,
+          hasToken: Boolean(token),
+        });
       }
 
       // Only skip sending during Jest unit tests.
@@ -322,7 +319,15 @@ If you didn't request this, you can ignore this email.
             emailVerified: false,
           };
         } catch (error) {
-          console.error('SignUp Before Hook Error:', error);
+          if (error && typeof error === 'object') {
+            const err = error as { name?: string; code?: string };
+            console.error('SignUp Before Hook Error:', {
+              name: err.name ?? 'Error',
+              code: err.code,
+            });
+          } else {
+            console.error('SignUp Before Hook Error:', { name: typeof error });
+          }
           throw error;
         }
       },
