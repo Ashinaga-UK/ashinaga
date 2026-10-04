@@ -7,6 +7,7 @@ import { getDatabase } from '../db/connection';
 import * as schema from '../db/schema';
 import { EmailService } from '../email/email.service';
 import { touchScholarLastActivity } from '../scholars/scholar-activity';
+import { logAuthError } from './auth-logging';
 
 // Create email service instance
 const emailService = new EmailService();
@@ -107,15 +108,12 @@ const authConfig = betterAuth({
         : data.url;
 
       if (process.env.NODE_ENV !== 'production') {
-        console.log('[sendResetPassword] userType:', userType);
-        console.log('[sendResetPassword] portalBaseUrl:', portalBaseUrl);
-        console.log('[sendResetPassword] resetUrl:', resetUrl);
-        if (!token) {
-          console.warn(
-            '[sendResetPassword] Could not extract token from Better Auth URL, using raw URL:',
-            data.url
-          );
-        }
+        // Never log the reset URL/token — test App Runner uses NODE_ENV=test and would
+        // otherwise put the token in CloudWatch.
+        console.log('[sendResetPassword] prepared reset email', {
+          userType,
+          hasToken: Boolean(token),
+        });
       }
 
       // Only skip sending during Jest unit tests.
@@ -230,7 +228,6 @@ If you didn't request this, you can ignore this email.
             .limit(1);
 
           const staffData = staffResults[0];
-          console.log('[Session fetchUser] Staff data from DB:', staffData);
 
           if (staffData) {
             // Parse the department field to extract job title and department
@@ -250,13 +247,6 @@ If you didn't request this, you can ignore this email.
               }
             }
 
-            console.log(
-              '[Session fetchUser] Parsed - jobTitle:',
-              jobTitle,
-              'department:',
-              department
-            );
-
             const result = {
               ...user,
               image: resolveAvatarSrc(user.image, user.id),
@@ -265,7 +255,6 @@ If you didn't request this, you can ignore this email.
               role: jobTitle || null,
             };
 
-            console.log('[Session fetchUser] Returning user with staff data:', result);
             return result;
           }
         }
@@ -317,7 +306,6 @@ If you didn't request this, you can ignore this email.
             .limit(1);
 
           const staffData = staffResults[0];
-          console.log('[SignIn After] Staff data from DB:', staffData);
 
           if (staffData) {
             // Parse the department field to extract job title and department
@@ -336,15 +324,11 @@ If you didn't request this, you can ignore this email.
               }
             }
 
-            console.log('[SignIn After] Parsed - jobTitle:', jobTitle, 'department:', department);
-
             // Add staff fields to user object
             const userWithStaff = user as Record<string, unknown>;
             userWithStaff.phone = staffData.phone || null;
             userWithStaff.department = department || null;
             userWithStaff.role = jobTitle || null;
-
-            console.log('[SignIn After] Updated user object:', user);
           }
         }
         return user;
@@ -404,7 +388,7 @@ If you didn't request this, you can ignore this email.
               },
             };
           } catch (error) {
-            console.error('SignUp Before Hook Error:', error);
+            logAuthError('SignUp Before Hook Error:', error);
             throw error;
           }
         },

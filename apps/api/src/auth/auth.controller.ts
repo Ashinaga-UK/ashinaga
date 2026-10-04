@@ -5,6 +5,12 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { getDatabase } from '../db/connection';
 import { invitations, scholars, staff, users } from '../db/schema';
 import { auth } from './auth.config';
+import { logAuthError } from './auth-logging';
+
+/** Pathname only — never log OAuth code/state or verify-email tokens from the query string. */
+function authPathname(path: string): string {
+  return path.split('?')[0] || path;
+}
 
 @ApiTags('auth')
 @Controller('api/auth')
@@ -15,7 +21,7 @@ export class AuthController {
       const result = await this.callAuth(req, path);
       return this.sendAuthResult(res, result);
     } catch (error) {
-      console.error('Better Auth error:', error);
+      logAuthError('Better Auth error:', error);
       return res.status(500).send({ error: 'Authentication error' });
     }
   }
@@ -49,16 +55,12 @@ export class AuthController {
       body,
     });
 
-    console.log('=== AUTH CONTROLLER ===');
-    console.log('URL:', url.toString());
-    console.log('Method:', req.method);
-    console.log('Body:', body);
-
     const authResponse = await auth.handler(request);
-    console.log('Better Auth Response Status:', authResponse?.status);
+    console.log(
+      `Auth ${req.method} ${authPathname(path)} -> ${authResponse?.status ?? 'no response'}`
+    );
 
     const responseBody = authResponse ? await authResponse.text() : '';
-    console.log('Better Auth Response Body:', responseBody);
 
     return {
       status: authResponse?.status || 200,
@@ -243,7 +245,7 @@ export class AuthController {
             ? JSON.parse(invitationWithData.scholarData)
             : invitationWithData.scholarData;
       } catch (error) {
-        console.error('Failed to parse scholar data from invitation:', error);
+        logAuthError('Failed to parse scholar data from invitation:', error);
         return res.status(500).send({
           error: 'Invitation data is corrupted. Please contact support.',
         });
@@ -279,7 +281,7 @@ export class AuthController {
     try {
       authResult = await this.callAuth(req, '/sign-up/email');
     } catch (error) {
-      console.error('Better Auth error:', error);
+      logAuthError('Better Auth error:', error);
       return res.status(500).send({ error: 'Authentication error' });
     }
 
@@ -351,12 +353,12 @@ export class AuthController {
       }
       console.log('Invitation marked as accepted');
     } catch (error) {
-      console.error('Error in post-signup logic:', error);
+      logAuthError('Error in post-signup logic:', error);
       if (createdUserId) {
         try {
           await this.deleteSignupUser(createdUserId);
         } catch (rollbackError) {
-          console.error('Failed to roll back signup user:', rollbackError);
+          logAuthError('Failed to roll back signup user:', rollbackError);
         }
       }
       return res.status(500).send({
@@ -548,7 +550,7 @@ export class AuthController {
     if (pathname.includes('sign-up')) {
       return res.status(400).send({ error: 'Invalid invitation' });
     }
-    console.log('Auth fallback handling path:', path);
+    console.log('Auth fallback handling path:', pathname);
     return this.forwardToAuth(req, res, path);
   }
 }

@@ -1,8 +1,18 @@
 import { Injectable } from '@nestjs/common';
+import { shouldExposeSwagger } from './swagger-exposure';
 
 @Injectable()
 export class AppService {
   getHomePage(): string {
+    const docsSection = shouldExposeSwagger()
+      ? `
+        <div class="section">
+            <h2>📚 API Documentation</h2>
+            <p>Explore the complete API documentation with interactive examples using Swagger UI.</p>
+            <a href="/api" class="swagger-btn">View Swagger Documentation →</a>
+        </div>`
+      : '';
+
     return `
 <!DOCTYPE html>
 <html lang="en">
@@ -82,12 +92,7 @@ export class AppService {
         <p class="subtitle">Welcome to Ashinaga's API</p>
         
         <div class="status">The API is running and ready to serve requests.</div>
-        
-        <div class="section">
-            <h2>📚 API Documentation</h2>
-            <p>Explore the complete API documentation with interactive examples using Swagger UI.</p>
-            <a href="/api" class="swagger-btn">View Swagger Documentation →</a>
-        </div>
+        ${docsSection}
         
         <div class="section">
             <h2>⚡ Tech Stack</h2>
