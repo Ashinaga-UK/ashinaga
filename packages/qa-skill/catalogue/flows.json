@@ -159,7 +159,8 @@
           "name": "Filter by stage"
         }
       ],
-      "expected": "Per-scholar activity table with cohort summary; program/year/stage/nationality filters and the date range update the table; Export CSV downloads the filtered rows."
+      "expected": "Per-scholar activity table with cohort summary; program/year/stage/nationality filters and the date range update the table; Export CSV downloads the filtered rows.",
+      "specs": ["apps/staff/components/__tests__/scholar-activity-report.test.tsx"]
     },
     {
       "id": "staff.scholars.onboard",
