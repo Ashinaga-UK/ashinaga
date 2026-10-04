@@ -30,7 +30,7 @@ export async function createIntegrationApp(options?: {
   );
 
   if (options?.withSwagger) {
-    setupSwagger(app);
+    setupSwagger(app, { skipStaticAssets: true });
   }
 
   await app.init();
