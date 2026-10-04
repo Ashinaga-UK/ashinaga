@@ -125,6 +125,60 @@ describe('Tasks API – bulk/soft-delete/suggestions (integration)', () => {
     });
   });
 
+  // ASH-47: bulk assignment used to report success without saving anything, so
+  // scholars never saw the task. Check it from the scholar's side, not just the
+  // staff response.
+  describe('scholar visibility of assigned tasks (ASH-47)', () => {
+    async function myTaskTitles(scholar: SeededScholar): Promise<string[]> {
+      auth.setUser({ id: scholar.userId, email: scholar.email, userType: 'scholar' });
+      try {
+        const res = await request(app.getHttpServer()).get('/api/tasks/my-tasks').expect(200);
+        return (res.body as { title: string }[]).map((t) => t.title);
+      } finally {
+        auth.setUser({ id: staffActor.userId, email: staffActor.email, userType: 'staff' });
+      }
+    }
+
+    it('shows a bulk-assigned task to every selected scholar and no one else', async () => {
+      const title = 'ASH-47 bulk-assigned task';
+      const res = await request(app.getHttpServer())
+        .post('/api/tasks/bulk')
+        .send({
+          title,
+          type: 'other',
+          priority: 'medium',
+          dueDate: '2026-12-31',
+          scholarIds: [scholarA.scholarId, scholarB.scholarId],
+        })
+        .expect(201);
+      for (const t of res.body.tasks as { id: string }[]) {
+        createdTaskIds.push(t.id);
+      }
+
+      expect(await myTaskTitles(scholarA)).toContain(title);
+      expect(await myTaskTitles(scholarB)).toContain(title);
+      expect(await myTaskTitles(scholarC)).not.toContain(title);
+    });
+
+    it('still shows an individually assigned task to that scholar only', async () => {
+      const title = 'ASH-47 individually assigned task';
+      const res = await request(app.getHttpServer())
+        .post('/api/tasks')
+        .send({
+          title,
+          type: 'other',
+          priority: 'medium',
+          dueDate: '2026-12-31',
+          scholarId: scholarC.scholarId,
+        })
+        .expect(201);
+      createdTaskIds.push(res.body.id);
+
+      expect(await myTaskTitles(scholarC)).toContain(title);
+      expect(await myTaskTitles(scholarA)).not.toContain(title);
+    });
+  });
+
   describe('DELETE /api/tasks/:id (soft delete)', () => {
     it('sets deletedAt and hides the task from list endpoints', async () => {
       // Create a task we will delete

@@ -117,8 +117,28 @@ describe('AnnualUpdatesService', () => {
   });
 
   describe('getAnnualUpdatesReport', () => {
-    it('returns metadata without essay answers', async () => {
-      const orderBy = jest.fn().mockResolvedValue([
+    const essayFields = [
+      'highlights',
+      'partTimeJobs',
+      'extracurriculars',
+      'leadershipRolesDescription',
+      'payItForwardDescription',
+      'subSaharanAfricaActivitiesDescription',
+      'internshipsInAfricaSummary',
+      'internshipsElsewhereSummary',
+    ] as const;
+
+    function mockReportRows(rows: unknown[]) {
+      const orderBy = jest.fn().mockResolvedValue(rows);
+      const innerJoinUsers = jest.fn().mockReturnValue({ orderBy });
+      const innerJoinScholars = jest.fn().mockReturnValue({ innerJoin: innerJoinUsers });
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({ innerJoin: innerJoinScholars }),
+      });
+    }
+
+    it('returns submitted filter scalars without essay answers', async () => {
+      mockReportRows([
         {
           id: 'annual-update-1',
           scholarId: 'scholar-1',
@@ -131,18 +151,20 @@ describe('AnnualUpdatesService', () => {
           aaiScholarId: 'AAI-1',
           scholarYear: 'Year 1',
           university: 'Test University',
+          program: 'Law',
+          academicYearAverageClassification: '1st',
+          academicYearWeightedGrade: '70%',
+          leadershipRolesCount: 1,
+          payItForwardCount: 2,
+          subSaharanAfricaActivitiesCount: 3,
+          independentInternshipsCount: 4,
+          completedAshinagaAfricaInternship: true,
         },
       ]);
-      const innerJoinUsers = jest.fn().mockReturnValue({ orderBy });
-      const innerJoinScholars = jest.fn().mockReturnValue({ innerJoin: innerJoinUsers });
-      mockDb.select.mockReturnValue({
-        from: jest.fn().mockReturnValue({ innerJoin: innerJoinScholars }),
-      });
 
       const rows = await service.getAnnualUpdatesReport();
       const [row] = rows;
-
-      expect(Array.isArray(rows)).toBe(true);
+      const selectShape = mockDb.select.mock.calls[0]?.[0] as Record<string, unknown>;
 
       expect(row).toEqual(
         expect.objectContaining({
@@ -150,10 +172,85 @@ describe('AnnualUpdatesService', () => {
           scholarName: 'Test Scholar',
           academicYear: '2025/2026',
           status: 'submitted',
+          program: 'Law',
+          academicYearAverageClassification: '1st',
+          academicYearWeightedGrade: '70%',
+          leadershipRolesCount: 1,
+          payItForwardCount: 2,
+          subSaharanAfricaActivitiesCount: 3,
+          independentInternshipsCount: 4,
+          completedAshinagaAfricaInternship: true,
         })
       );
-      expect(row).not.toHaveProperty('highlights');
-      expect(row).not.toHaveProperty('leadershipRolesCount');
+      expect(selectShape).toHaveProperty('program');
+      expect(selectShape).toHaveProperty('leadershipRolesCount');
+      expect(selectShape).not.toHaveProperty('hasInternshipSummary');
+      for (const field of essayFields) {
+        expect(selectShape).not.toHaveProperty(field);
+        expect(row).not.toHaveProperty(field);
+      }
+    });
+
+    it('nulls answer scalars for drafts', async () => {
+      mockReportRows([
+        {
+          id: 'annual-update-draft',
+          scholarId: 'scholar-1',
+          academicYear: '2025/26',
+          status: 'draft',
+          submittedAt: null,
+          updatedAt: new Date('2026-07-21T12:00:00.000Z'),
+          scholarName: 'Test Scholar',
+          scholarEmail: 'scholar@example.com',
+          aaiScholarId: 'AAI-1',
+          scholarYear: 'Year 1',
+          university: 'Test University',
+          program: 'Law',
+          academicYearAverageClassification: '1st',
+          academicYearWeightedGrade: '70%',
+          leadershipRolesCount: 3,
+          payItForwardCount: 4,
+          subSaharanAfricaActivitiesCount: 5,
+          independentInternshipsCount: 6,
+          completedAshinagaAfricaInternship: true,
+        },
+      ]);
+
+      const [row] = await service.getAnnualUpdatesReport();
+      const selectShape = mockDb.select.mock.calls[0]?.[0] as Record<string, unknown>;
+
+      expect(row).toEqual(
+        expect.objectContaining({
+          status: 'draft',
+          program: 'Law',
+          scholarYear: 'Year 1',
+          academicYear: '2025/2026',
+          academicYearAverageClassification: null,
+          academicYearWeightedGrade: null,
+          leadershipRolesCount: null,
+          payItForwardCount: null,
+          subSaharanAfricaActivitiesCount: null,
+          independentInternshipsCount: null,
+          completedAshinagaAfricaInternship: null,
+        })
+      );
+      for (const field of essayFields) {
+        expect(row).not.toHaveProperty(field);
+      }
+
+      const maskedDraft = internals.hideDraftAnswersForStaff(
+        createAnnualUpdate({
+          status: 'draft',
+          highlights: 'Private draft highlight',
+          leadershipRolesCount: 3,
+          academicYearAverageClassification: '1st',
+        })
+      );
+      for (const field of Object.keys(selectShape)) {
+        if (field in maskedDraft && maskedDraft[field as keyof typeof maskedDraft] === null) {
+          expect(row[field as keyof typeof row]).toBeNull();
+        }
+      }
     });
   });
 

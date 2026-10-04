@@ -8,6 +8,7 @@ import {
   FileSpreadsheet,
   FileText,
   FolderOpen,
+  HelpCircle,
   Home,
   Library,
   ListChecks,
@@ -78,6 +79,7 @@ export const STAFF_NAV_ITEMS = [
     icon: MessageSquare,
   },
   { href: '/?tab=resources', value: 'resources', label: 'Resources', icon: Library },
+  { href: '/?tab=faqs', value: 'faqs', label: 'FAQs', icon: HelpCircle },
   { href: '/?tab=invitations', value: 'invitations', label: 'Invitations', icon: Mail },
 ] as const;
 
