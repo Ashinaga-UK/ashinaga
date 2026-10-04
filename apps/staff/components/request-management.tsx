@@ -200,7 +200,8 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
 
   const applicationItems = getFormDataDisplayItems(request.type, request.formData);
   const requestTypeLabel = REQUEST_TYPE_LABELS[request.type] || request.type.replace(/_/g, ' ');
-  const canMakeDecision = request.status === 'pending' || request.status === 'reviewed';
+  const canMakeDecision =
+    request.status === 'pending' || request.status === 'reviewed' || request.status === 'commented';
 
   const renderCompletedApplication = () => (
     <div className="bg-muted p-4 rounded-lg">
