@@ -62,14 +62,13 @@ test.describe('Staff Portal – new features', () => {
       .first()
       .click();
 
-    // Dialog opens
+    // Dialog opens — keep assertions scoped to the dialog so parallel workers /
+    // page chrome (e.g. the card's "expire after 30 days" copy) cannot steal matches.
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole('heading', { name: /Invite a staff member/i })).toBeVisible();
     await expect(dialog.getByText(/expire after 30 days/i)).toBeVisible();
-
-    // Form field present
-    await expect(page.getByLabel(/Work email/i)).toBeVisible();
+    await expect(dialog.getByRole('textbox', { name: /Work email/i })).toBeVisible();
   });
 
   test('Bulk task assignment dialog opens from the Scholars tab', async ({ page }) => {
