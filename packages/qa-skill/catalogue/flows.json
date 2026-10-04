@@ -130,6 +130,30 @@
       "expected": "Profile view opens with its tab bar."
     },
     {
+      "id": "staff.scholar-activity",
+      "area": "Staff / Scholar activity",
+      "name": "Scholar activity report: filters, date range, export CSV",
+      "app": "staff",
+      "persona": "staff",
+      "stage": "all",
+      "route": "/?tab=scholar-activity",
+      "fixtures": [],
+      "steps": [
+        {
+          "goto": "/?tab=scholar-activity"
+        },
+        {
+          "seeRole": "combobox",
+          "name": "Filter by program"
+        },
+        {
+          "seeRole": "combobox",
+          "name": "Filter by stage"
+        }
+      ],
+      "expected": "Per-scholar activity table with cohort summary; program/year/stage/nationality filters and the date range update the table; Export CSV downloads the filtered rows."
+    },
+    {
       "id": "staff.scholars.onboard",
       "area": "Staff / Scholars",
       "name": "Onboard a student (single + CSV import)",
