@@ -1,9 +1,9 @@
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { setupSwagger } from './setup-swagger';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -68,29 +68,8 @@ async function bootstrap() {
     })
   );
 
-  // Swagger is a full route map. Keep it off production (test and local still serve it).
-  const exposeSwagger = process.env.NODE_ENV !== 'production';
-  if (exposeSwagger) {
-    const config = new DocumentBuilder()
-      .setTitle('Ashinaga API')
-      .setDescription('Main API for the Ashinaga platform')
-      .setVersion('1.0')
-      .addBearerAuth(
-        {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT',
-          name: 'JWT',
-          description: 'Enter your Bearer token (Better Auth session token)',
-          in: 'header',
-        },
-        'bearer' // This name is used as the security scheme name
-      )
-      .build();
-
-    const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('api', app, document);
-  }
+  // Swagger is a full route map — only development/test (fail closed otherwise).
+  const exposeSwagger = setupSwagger(app);
 
   const port = process.env.PORT || 3000;
   await app.listen(port, '0.0.0.0');

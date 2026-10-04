@@ -50,13 +50,19 @@ describe('AppService', () => {
       expect(result).toContain('href="/api"');
     });
 
-    it('should omit the Swagger link in production', () => {
+    it('should omit the Swagger link outside development/test', () => {
       const previous = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
       try {
-        const result = service.getHomePage();
-        expect(result).not.toContain('View Swagger Documentation');
-        expect(result).not.toContain('href="/api"');
+        for (const nodeEnv of ['production', 'prod', undefined] as const) {
+          if (nodeEnv === undefined) {
+            delete process.env.NODE_ENV;
+          } else {
+            process.env.NODE_ENV = nodeEnv;
+          }
+          const result = service.getHomePage();
+          expect(result).not.toContain('View Swagger Documentation');
+          expect(result).not.toContain('href="/api"');
+        }
       } finally {
         process.env.NODE_ENV = previous;
       }

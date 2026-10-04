@@ -6,13 +6,16 @@ import { Test } from '@nestjs/testing';
 import { AppModule } from '../../../src/app.module';
 import { AuthGuard } from '../../../src/auth/auth.guard';
 import { StaffGuard } from '../../../src/auth/staff.guard';
+import { setupSwagger } from '../../../src/setup-swagger';
 import { ObjectStorageService } from '../../../src/storage/object-storage';
 
 /**
  * Create a Nest application instance for integration tests.
  * Uses Fastify (same as production) and applies global validation pipe.
  */
-export async function createIntegrationApp(): Promise<NestFastifyApplication> {
+export async function createIntegrationApp(options?: {
+  withSwagger?: boolean;
+}): Promise<NestFastifyApplication> {
   const adapter = new FastifyAdapter({ bodyLimit: 5 * 1024 * 1024 });
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, adapter, {
     logger: ['error', 'warn'],
@@ -25,6 +28,10 @@ export async function createIntegrationApp(): Promise<NestFastifyApplication> {
       forbidNonWhitelisted: true,
     })
   );
+
+  if (options?.withSwagger) {
+    setupSwagger(app);
+  }
 
   await app.init();
   await app.getHttpAdapter().getInstance().ready();
