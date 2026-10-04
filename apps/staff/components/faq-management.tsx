@@ -41,27 +41,31 @@ import { useToast } from './ui/use-toast';
 
 type AudienceFilter = 'all' | FaqAudience;
 
-export const FAQ_GENERAL_CATEGORY = 'General';
+/** Internal filter value for FAQs with no category. Label stays "General". */
+export const FAQ_UNCATEGORIZED_FILTER = '__uncategorized__';
+export const FAQ_UNCATEGORIZED_LABEL = 'General';
 
-export function faqCategoryOptions(faqs: Array<{ category: string | null }>): string[] {
+export type FaqCategoryOption = { value: string; label: string };
+
+export function faqCategoryOptions(faqs: Array<{ category: string | null }>): FaqCategoryOption[] {
   const seen = new Set<string>();
-  const options: string[] = [];
-  let hasGeneral = false;
+  const options: FaqCategoryOption[] = [];
+  let hasUncategorized = false;
 
   for (const faq of faqs) {
     const key = faq.category?.trim();
     if (!key) {
-      hasGeneral = true;
+      hasUncategorized = true;
       continue;
     }
     if (!seen.has(key)) {
       seen.add(key);
-      options.push(key);
+      options.push({ value: key, label: key });
     }
   }
 
-  if (hasGeneral) {
-    options.push(FAQ_GENERAL_CATEGORY);
+  if (hasUncategorized) {
+    options.push({ value: FAQ_UNCATEGORIZED_FILTER, label: FAQ_UNCATEGORIZED_LABEL });
   }
 
   return options;
@@ -116,17 +120,22 @@ export function FaqManagement() {
     [faqs]
   );
   const categoryOptions = useMemo(() => faqCategoryOptions(sortedFaqs), [sortedFaqs]);
-  const showCategoryFilters = categoryOptions.some((option) => option !== FAQ_GENERAL_CATEGORY);
+  const showCategoryFilters = categoryOptions.some(
+    (option) => option.value !== FAQ_UNCATEGORIZED_FILTER
+  );
   const visibleFaqs = useMemo(() => {
     if (categoryFilter === 'all') return sortedFaqs;
-    if (categoryFilter === FAQ_GENERAL_CATEGORY) {
+    if (categoryFilter === FAQ_UNCATEGORIZED_FILTER) {
       return sortedFaqs.filter((faq) => !faq.category?.trim());
     }
     return sortedFaqs.filter((faq) => faq.category?.trim() === categoryFilter);
   }, [categoryFilter, sortedFaqs]);
 
   useEffect(() => {
-    if (categoryFilter !== 'all' && !categoryOptions.includes(categoryFilter)) {
+    if (
+      categoryFilter !== 'all' &&
+      !categoryOptions.some((option) => option.value === categoryFilter)
+    ) {
       setCategoryFilter('all');
     }
   }, [categoryFilter, categoryOptions]);
@@ -238,23 +247,24 @@ export function FaqManagement() {
           role="toolbar"
           aria-label="Filter FAQs by category"
         >
-          {['all', ...categoryOptions].map((option) => {
-            const label = option === 'all' ? 'All' : option;
-            const selected = categoryFilter === option;
-            return (
-              <Button
-                key={option}
-                type="button"
-                variant={selected ? 'default' : 'outline'}
-                size="sm"
-                className="shrink-0 rounded-full"
-                aria-pressed={selected}
-                onClick={() => setCategoryFilter(option)}
-              >
-                {label}
-              </Button>
-            );
-          })}
+          {([{ value: 'all', label: 'All' }, ...categoryOptions] as FaqCategoryOption[]).map(
+            (option) => {
+              const selected = categoryFilter === option.value;
+              return (
+                <Button
+                  key={option.value}
+                  type="button"
+                  variant={selected ? 'default' : 'outline'}
+                  size="sm"
+                  className="shrink-0 rounded-full"
+                  aria-pressed={selected}
+                  onClick={() => setCategoryFilter(option.value)}
+                >
+                  {option.label}
+                </Button>
+              );
+            }
+          )}
         </div>
       ) : null}
 
