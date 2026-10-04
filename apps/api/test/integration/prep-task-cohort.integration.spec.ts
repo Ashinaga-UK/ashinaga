@@ -28,8 +28,14 @@ describe('GET /api/tasks/cohort (integration)', () => {
 
   const createdTaskIds: string[] = [];
   const groupId = randomUUID();
-  const englishDue = new Date('2026-10-01T00:00:00.000Z');
-  const overdueDue = new Date('2020-01-01T00:00:00.000Z');
+  // Relative to "now" so the overdue filter assertion does not rot when the calendar moves.
+  const utcToday = new Date();
+  const englishDue = new Date(
+    Date.UTC(utcToday.getUTCFullYear() + 1, utcToday.getUTCMonth(), utcToday.getUTCDate())
+  );
+  const overdueDue = new Date(
+    Date.UTC(utcToday.getUTCFullYear() - 1, utcToday.getUTCMonth(), utcToday.getUTCDate())
+  );
 
   beforeAll(async () => {
     const built = await createAuthenticatedIntegrationApp();
