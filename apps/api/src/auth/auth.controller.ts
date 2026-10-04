@@ -1,23 +1,15 @@
 import { All, Controller, Get, Post, Req, Res } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { getDatabase } from '../db/connection';
 import { invitations, scholars, staff, users } from '../db/schema';
 import { auth } from './auth.config';
+import { logAuthError } from './auth-logging';
 
 /** Pathname only — never log OAuth code/state or verify-email tokens from the query string. */
 function authPathname(path: string): string {
   return path.split('?')[0] || path;
-}
-
-function logAuthError(label: string, error: unknown): void {
-  if (error && typeof error === 'object') {
-    const err = error as { name?: string; code?: string };
-    console.error(label, { name: err.name ?? 'Error', code: err.code });
-    return;
-  }
-  console.error(label, { name: typeof error });
 }
 
 @ApiTags('auth')
@@ -25,11 +17,20 @@ function logAuthError(label: string, error: unknown): void {
 export class AuthController {
   // Helper method to forward requests to Better Auth
   private async forwardToAuth(req: FastifyRequest, res: FastifyReply, path: string) {
+    try {
+      const result = await this.callAuth(req, path);
+      return this.sendAuthResult(res, result);
+    } catch (error) {
+      logAuthError('Better Auth error:', error);
+      return res.status(500).send({ error: 'Authentication error' });
+    }
+  }
+
+  private async callAuth(req: FastifyRequest, path: string) {
     const url = new URL(
       `/api/auth${path}`,
       `${req.protocol}://${req.hostname}:${process.env.PORT || 3000}`
     );
-    const pathForLog = authPathname(path);
 
     const headers = new Headers();
     Object.entries(req.headers).forEach(([key, value]) => {
@@ -54,39 +55,60 @@ export class AuthController {
       body,
     });
 
-    try {
-      console.log(`Auth ${req.method} ${pathForLog}`);
+    const authResponse = await auth.handler(request);
+    console.log(
+      `Auth ${req.method} ${authPathname(path)} -> ${authResponse?.status ?? 'no response'}`
+    );
 
-      const authResponse = await auth.handler(request);
+    const responseBody = authResponse ? await authResponse.text() : '';
 
-      console.log(`Auth ${req.method} ${pathForLog} -> ${authResponse?.status ?? 'no response'}`);
+    return {
+      status: authResponse?.status || 200,
+      headers: authResponse?.headers,
+      body: responseBody,
+    };
+  }
 
-      if (authResponse) {
-        res.status(authResponse.status || 200);
-        authResponse.headers?.forEach((value, key) => {
-          res.header(key, value);
-        });
+  private sendAuthResult(
+    res: FastifyReply,
+    result: { status: number; headers?: Headers; body: string }
+  ) {
+    res.status(result.status);
+    result.headers?.forEach((value, key) => {
+      res.header(key, value);
+    });
 
-        if (authResponse.status === 302 || authResponse.status === 301) {
-          const location =
-            authResponse.headers?.get('Location') || authResponse.headers?.get('location');
-          if (location) {
-            return res.redirect(location);
-          }
-        }
-
-        const responseBody = await authResponse.text();
-
-        if (responseBody) {
-          return res.send(responseBody);
-        }
+    if (result.status === 302 || result.status === 301) {
+      const location = result.headers?.get('Location') || result.headers?.get('location');
+      if (location) {
+        return res.redirect(location);
       }
-
-      return res.status(200).send({ ok: true });
-    } catch (error) {
-      logAuthError('Better Auth error:', error);
-      return res.status(500).send({ error: 'Authentication error' });
     }
+
+    if (result.body) {
+      return res.send(result.body);
+    }
+
+    return res.status(200).send({ ok: true });
+  }
+
+  private async claimInvitation(invitationId: string, userId: string): Promise<boolean> {
+    const claimed = await getDatabase()
+      .update(invitations)
+      .set({
+        status: 'accepted',
+        acceptedAt: new Date(),
+        userId,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(invitations.id, invitationId), eq(invitations.status, 'pending')))
+      .returning({ id: invitations.id });
+
+    return claimed.length > 0;
+  }
+
+  private async deleteSignupUser(userId: string): Promise<void> {
+    await getDatabase().delete(users).where(eq(users.id, userId));
   }
 
   @Get('me')
@@ -131,17 +153,18 @@ export class AuthController {
         email: { type: 'string', format: 'email' },
         password: { type: 'string' },
         name: { type: 'string' },
+        invitationToken: { type: 'string' },
       },
-      required: ['email', 'password', 'name'],
+      required: ['email', 'password', 'name', 'invitationToken'],
     },
   })
   @ApiResponse({ status: 200, description: 'Successfully signed up' })
-  @ApiResponse({ status: 400, description: 'Email already exists' })
+  @ApiResponse({ status: 400, description: 'Invalid invitation' })
   async signUpWithEmail(@Req() req: FastifyRequest, @Res() res: FastifyReply) {
-    const body = req.body as {
-      email: string;
-      password: string;
-      name: string;
+    const body = (req.body ?? {}) as {
+      email?: string;
+      password?: string;
+      name?: string;
       invitationToken?: string;
       // Scholar-specific fields
       program?: string;
@@ -154,22 +177,36 @@ export class AuthController {
       intendedCourse?: string;
       degreePathway?: string;
     };
-    const emailLower = body.email.toLowerCase();
+    const emailLower = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+    const invitationToken =
+      typeof body.invitationToken === 'string' ? body.invitationToken.trim() : '';
 
-    // First, check the invitation to get userType
-    const db = getDatabase();
-    const invitation = await db
-      .select()
-      .from(invitations)
-      .where(eq(invitations.email, emailLower))
-      .limit(1);
-
-    if (!invitation[0]) {
-      return res.status(400).send({ error: 'No invitation found for this email' });
+    if (!emailLower || !invitationToken) {
+      return res.status(400).send({ error: 'Invalid invitation' });
     }
 
-    const userType = invitation[0].userType;
-    const invitationWithData = invitation[0];
+    // The token is the credential. Email alone must not authorize signup.
+    const db = getDatabase();
+    const [invitationWithData] = await db
+      .select()
+      .from(invitations)
+      .where(eq(invitations.token, invitationToken))
+      .limit(1);
+
+    const expiresAt = invitationWithData ? new Date(invitationWithData.expiresAt) : null;
+    const invitationValid =
+      !!invitationWithData &&
+      invitationWithData.status === 'pending' &&
+      !!expiresAt &&
+      !Number.isNaN(expiresAt.getTime()) &&
+      new Date() <= expiresAt &&
+      invitationWithData.email.toLowerCase() === emailLower;
+
+    if (!invitationValid || !invitationWithData) {
+      return res.status(400).send({ error: 'Invalid invitation' });
+    }
+
+    const userType = invitationWithData.userType;
     let scholarData: {
       program?: string;
       year?: string;
@@ -208,7 +245,7 @@ export class AuthController {
             ? JSON.parse(invitationWithData.scholarData)
             : invitationWithData.scholarData;
       } catch (error) {
-        console.error('Failed to parse scholar data from invitation:', error);
+        logAuthError('Failed to parse scholar data from invitation:', error);
         return res.status(500).send({
           error: 'Invitation data is corrupted. Please contact support.',
         });
@@ -238,103 +275,98 @@ export class AuthController {
       }
     }
 
-    // Capture the response body
-    let responseBody: string | undefined;
-    const originalSend = res.send.bind(res);
-    res.send = (data: unknown) => {
-      responseBody = typeof data === 'string' ? data : JSON.stringify(data);
-      return originalSend(data);
-    };
-
-    // Forward to Better Auth to create the user
-    await this.forwardToAuth(req, res, '/sign-up/email');
-
-    // If signup was successful, handle our post-signup logic
-    if (res.statusCode === 200 && responseBody) {
-      try {
-        // Parse the response to get the user ID
-        const responseData = JSON.parse(responseBody);
-        const userId = responseData.user?.id;
-
-        if (userId) {
-          console.log('User created with ID:', userId, 'Type:', userType);
-
-          // Update the user's userType field
-          await db.update(users).set({ userType: userType }).where(eq(users.id, userId));
-
-          console.log('User type updated to:', userType);
-
-          // Update invitation status
-          await db
-            .update(invitations)
-            .set({
-              status: 'accepted',
-              acceptedAt: new Date(),
-              userId: userId,
-              updatedAt: new Date(),
-            })
-            .where(eq(invitations.email, emailLower));
-
-          console.log('Invitation marked as accepted');
-
-          // Create staff or scholar profile
-          if (userType === 'staff') {
-            await db.insert(staff).values({
-              userId: userId,
-              role: 'viewer',
-              isActive: true,
-            });
-            console.log('Staff profile created');
-          } else if (userType === 'scholar') {
-            // Use scholar data from invitation - form data should be minimal (just password)
-            // Since staff has already filled all the data, we use it directly
-            await db.insert(scholars).values({
-              userId: userId,
-              status: 'active',
-              // Required fields with defaults
-              program: scholarData.program || 'TBD',
-              year: scholarData.year || 'TBD',
-              university: scholarData.university || 'TBD',
-              startDate: scholarData.startDate ? new Date(scholarData.startDate) : new Date(),
-              // All optional fields from invitation
-              location: scholarData.location || null,
-              phone: scholarData.phone || null,
-              bio: scholarData.bio || null,
-              aaiScholarId: scholarData.aaiScholarId || null,
-              dateOfBirth: scholarData.dateOfBirth || null,
-              gender:
-                (scholarData.gender as 'male' | 'female' | 'other' | 'prefer_not_to_say') || null,
-              nationality: scholarData.nationality || null,
-              addressHomeCountry: scholarData.addressHomeCountry || null,
-              passportExpirationDate: scholarData.passportExpirationDate || null,
-              visaExpirationDate: scholarData.visaExpirationDate || null,
-              emergencyContactCountryOfStudy: scholarData.emergencyContactCountryOfStudy || null,
-              emergencyContactHomeCountry: scholarData.emergencyContactHomeCountry || null,
-              graduationDate: scholarData.graduationDate
-                ? new Date(scholarData.graduationDate)
-                : null,
-              universityId: scholarData.universityId || null,
-              dietaryInformation: scholarData.dietaryInformation || null,
-              kokorozashi: scholarData.kokorozashi || null,
-              longTermCareerPlan: scholarData.longTermCareerPlan || null,
-              postGraduationPlan: scholarData.postGraduationPlan || null,
-              majorCategory: scholarData.majorCategory || null,
-              fieldOfStudy: scholarData.fieldOfStudy || null,
-              programStage: scholarData.programStage || 'scholar',
-              intendedUniversity: intendedUniversity || null,
-              intendedCourse: intendedCourse || null,
-              degreePathway: degreePathway || null,
-            });
-            console.log('Scholar profile created with all invitation data');
-          }
-        }
-      } catch (error) {
-        logAuthError('Error in post-signup logic:', error);
-      }
+    // Leave the invite pending until Better Auth and the profile insert succeed.
+    // The signup hook still requires status pending, so claiming first rejects every signup.
+    let authResult: { status: number; headers?: Headers; body: string };
+    try {
+      authResult = await this.callAuth(req, '/sign-up/email');
+    } catch (error) {
+      logAuthError('Better Auth error:', error);
+      return res.status(500).send({ error: 'Authentication error' });
     }
 
-    // Response already sent by forwardToAuth
-    return res;
+    if (authResult.status !== 200) {
+      return this.sendAuthResult(res, authResult);
+    }
+
+    let createdUserId: string | undefined;
+    try {
+      const responseData = authResult.body ? JSON.parse(authResult.body) : {};
+      createdUserId = responseData.user?.id as string | undefined;
+      if (!createdUserId) {
+        throw new Error('Signup response did not include a user id');
+      }
+
+      console.log('User created with ID:', createdUserId, 'Type:', userType);
+
+      await db.update(users).set({ userType: userType }).where(eq(users.id, createdUserId));
+
+      console.log('User type updated to:', userType);
+
+      if (userType === 'staff') {
+        await db.insert(staff).values({
+          userId: createdUserId,
+          role: 'viewer',
+          isActive: true,
+        });
+        console.log('Staff profile created');
+      } else if (userType === 'scholar') {
+        await db.insert(scholars).values({
+          userId: createdUserId,
+          status: 'active',
+          program: scholarData.program || 'TBD',
+          year: scholarData.year || 'TBD',
+          university: scholarData.university || 'TBD',
+          startDate: scholarData.startDate ? new Date(scholarData.startDate) : new Date(),
+          location: scholarData.location || null,
+          phone: scholarData.phone || null,
+          bio: scholarData.bio || null,
+          aaiScholarId: scholarData.aaiScholarId || null,
+          dateOfBirth: scholarData.dateOfBirth || null,
+          gender: (scholarData.gender as 'male' | 'female' | 'other' | 'prefer_not_to_say') || null,
+          nationality: scholarData.nationality || null,
+          addressHomeCountry: scholarData.addressHomeCountry || null,
+          passportExpirationDate: scholarData.passportExpirationDate || null,
+          visaExpirationDate: scholarData.visaExpirationDate || null,
+          emergencyContactCountryOfStudy: scholarData.emergencyContactCountryOfStudy || null,
+          emergencyContactHomeCountry: scholarData.emergencyContactHomeCountry || null,
+          graduationDate: scholarData.graduationDate ? new Date(scholarData.graduationDate) : null,
+          universityId: scholarData.universityId || null,
+          dietaryInformation: scholarData.dietaryInformation || null,
+          kokorozashi: scholarData.kokorozashi || null,
+          longTermCareerPlan: scholarData.longTermCareerPlan || null,
+          postGraduationPlan: scholarData.postGraduationPlan || null,
+          majorCategory: scholarData.majorCategory || null,
+          fieldOfStudy: scholarData.fieldOfStudy || null,
+          programStage: scholarData.programStage || 'scholar',
+          intendedUniversity: intendedUniversity || null,
+          intendedCourse: intendedCourse || null,
+          degreePathway: degreePathway || null,
+        });
+        console.log('Scholar profile created with all invitation data');
+      }
+
+      const claimed = await this.claimInvitation(invitationWithData.id, createdUserId);
+      if (!claimed) {
+        await this.deleteSignupUser(createdUserId);
+        return res.status(400).send({ error: 'Invalid invitation' });
+      }
+      console.log('Invitation marked as accepted');
+    } catch (error) {
+      logAuthError('Error in post-signup logic:', error);
+      if (createdUserId) {
+        try {
+          await this.deleteSignupUser(createdUserId);
+        } catch (rollbackError) {
+          logAuthError('Failed to roll back signup user:', rollbackError);
+        }
+      }
+      return res.status(500).send({
+        error: 'Account setup failed. Please contact support.',
+      });
+    }
+
+    return this.sendAuthResult(res, authResult);
   }
 
   @Get('session')
@@ -510,9 +542,15 @@ export class AuthController {
   @All('*')
   @ApiOperation({ summary: 'Fallback for other Better Auth endpoints' })
   async handleAuthFallback(@Req() req: FastifyRequest, @Res() res: FastifyReply) {
-    // Keep the query string for Better Auth (OAuth code/state); log pathname only.
+    // Extract the path after /api/auth
     const path = req.url.replace(/^\/api\/auth/, '');
-    console.log('Auth fallback handling path:', authPathname(path));
+    const pathname = path.split('?')[0] ?? '';
+    // Signup is only allowed through signUpWithEmail, which checks the invitation token.
+    // The user-create hook also requires that token, and this fallback must not reach it.
+    if (pathname.includes('sign-up')) {
+      return res.status(400).send({ error: 'Invalid invitation' });
+    }
+    console.log('Auth fallback handling path:', pathname);
     return this.forwardToAuth(req, res, path);
   }
 }

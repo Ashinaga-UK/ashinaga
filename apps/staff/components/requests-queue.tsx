@@ -292,8 +292,15 @@ export function RequestsQueue({ onReviewed }: RequestsQueueProps) {
     return () => window.clearTimeout(handle);
   }, [scholarOpen, scholarQuery]);
 
-  const allVisibleSelected =
-    requests.length > 0 && requests.every((request) => selectedIds.includes(request.id));
+  const openIds = requests
+    .filter(
+      (request) =>
+        request.status === 'pending' ||
+        request.status === 'reviewed' ||
+        request.status === 'commented'
+    )
+    .map((request) => request.id);
+  const allVisibleSelected = openIds.length > 0 && openIds.every((id) => selectedIds.includes(id));
 
   const currentQuery = useMemo(() => {
     const query: Record<string, string> = {};
@@ -662,12 +669,11 @@ export function RequestsQueue({ onReviewed }: RequestsQueueProps) {
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Checkbox
                   checked={allVisibleSelected}
-                  onCheckedChange={(checked) =>
-                    setSelectedIds(checked ? requests.map((request) => request.id) : [])
-                  }
-                  aria-label="Select all requests on this page"
+                  disabled={openIds.length === 0}
+                  onCheckedChange={(checked) => setSelectedIds(checked ? openIds : [])}
+                  aria-label="Select all open requests on this page"
                 />
-                Select page
+                Select open
               </div>
               {requests.map((request) => (
                 <div
@@ -682,6 +688,7 @@ export function RequestsQueue({ onReviewed }: RequestsQueueProps) {
                   <Checkbox
                     className="mt-4"
                     checked={selectedIds.includes(request.id)}
+                    disabled={request.status === 'approved' || request.status === 'rejected'}
                     onCheckedChange={(checked) =>
                       setSelectedIds((current) =>
                         checked

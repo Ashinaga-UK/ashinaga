@@ -2,8 +2,6 @@ import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { shouldExposeSwagger } from './swagger-exposure';
 
-export { shouldExposeSwagger } from './swagger-exposure';
-
 export interface SetupSwaggerOptions {
   /**
    * Nest's FastifyAdapter loads `@fastify/static` via a nested require that

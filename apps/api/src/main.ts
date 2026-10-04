@@ -69,6 +69,7 @@ async function bootstrap() {
   );
 
   // Swagger is a full route map — only development/test (fail closed otherwise).
+  // Don't call SwaggerModule.setup directly: the prod gate lives in setupSwagger and is tested there.
   const exposeSwagger = setupSwagger(app);
 
   const port = process.env.PORT || 3000;

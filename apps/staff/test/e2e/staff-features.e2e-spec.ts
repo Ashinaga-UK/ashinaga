@@ -21,7 +21,9 @@ async function openStaffSection(page: Page, name: string) {
 test.describe('Staff Portal – new features', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    // Wait for the dashboard to be rendered (header is always present once signed in)
+    // Auth boot can sit on the "A" + spinner screen under next dev; wait it out.
+    await expect(page.locator('.animate-spin')).toHaveCount(0, { timeout: 30_000 });
+    // Header is always present once the staff shell is signed in
     await expect(page.getByRole('heading', { name: /Ashinaga Staff/ })).toBeVisible({
       timeout: 15_000,
     });
@@ -62,8 +64,7 @@ test.describe('Staff Portal – new features', () => {
       .first()
       .click();
 
-    // Dialog opens — keep assertions scoped to the dialog so parallel workers /
-    // page chrome (e.g. the card's "expire after 30 days" copy) cannot steal matches.
+    // Keep assertions scoped to the dialog so page chrome cannot steal matches.
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole('heading', { name: /Invite a staff member/i })).toBeVisible();

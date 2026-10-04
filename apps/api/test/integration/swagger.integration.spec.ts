@@ -8,7 +8,8 @@ describe('Swagger exposure (integration)', () => {
   const previousNodeEnv = process.env.NODE_ENV;
 
   afterEach(async () => {
-    process.env.NODE_ENV = previousNodeEnv;
+    if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = previousNodeEnv;
     if (app) {
       await app.close();
       app = undefined;
