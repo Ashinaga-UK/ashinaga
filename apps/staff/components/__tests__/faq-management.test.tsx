@@ -1,6 +1,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { FaqManagement } from '../faq-management';
+import {
+  FAQ_UNCATEGORIZED_FILTER,
+  FAQ_UNCATEGORIZED_LABEL,
+  FaqManagement,
+  faqCategoryOptions,
+} from '../faq-management';
 
 const mockGetFaqs = jest.fn();
 const mockCreateFaq = jest.fn();
@@ -63,6 +68,22 @@ function renderEditor() {
   );
 }
 
+describe('faqCategoryOptions', () => {
+  it('uses a distinct key for uncategorized so a real General category does not collide', () => {
+    expect(
+      faqCategoryOptions([
+        { category: 'General' },
+        { category: null },
+        { category: 'Documents' },
+      ])
+    ).toEqual([
+      { value: 'General', label: 'General' },
+      { value: 'Documents', label: 'Documents' },
+      { value: FAQ_UNCATEGORIZED_FILTER, label: FAQ_UNCATEGORIZED_LABEL },
+    ]);
+  });
+});
+
 describe('FaqManagement', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -89,6 +110,30 @@ describe('FaqManagement', () => {
 
     expect(screen.getByText('Where are my tasks?')).toBeInTheDocument();
     expect(screen.queryByText('Which documents do I upload?')).not.toBeInTheDocument();
+  });
+
+  it('filters uncategorized items separately from a real General category', async () => {
+    mockGetFaqs.mockResolvedValue([
+      { ...prepFaq, id: 'faq-general', category: 'General', question: 'What is General?' },
+      { ...prepFaq, id: 'faq-none', category: null, question: 'How do I start?' },
+      tasksFaq,
+    ]);
+
+    renderEditor();
+
+    expect(await screen.findByText('What is General?')).toBeInTheDocument();
+    expect(screen.getByText('How do I start?')).toBeInTheDocument();
+
+    const generalButtons = screen.getAllByRole('button', { name: 'General' });
+    expect(generalButtons).toHaveLength(2);
+
+    fireEvent.click(generalButtons[0]);
+    expect(screen.getByText('What is General?')).toBeInTheDocument();
+    expect(screen.queryByText('How do I start?')).not.toBeInTheDocument();
+
+    fireEvent.click(generalButtons[1]);
+    expect(screen.getByText('How do I start?')).toBeInTheDocument();
+    expect(screen.queryByText('What is General?')).not.toBeInTheDocument();
   });
 
   it('creates a FAQ from the editor', async () => {
