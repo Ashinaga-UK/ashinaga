@@ -53,9 +53,9 @@ describe('Auth Configuration', () => {
   });
 
   describe('generateInvitationToken', () => {
-    it('should generate a 32-character token', () => {
+    it('should generate a 43-character token', () => {
       const token = generateInvitationToken();
-      expect(token).toHaveLength(32);
+      expect(token).toHaveLength(43);
     });
 
     it('should generate unique tokens', () => {
@@ -64,9 +64,9 @@ describe('Auth Configuration', () => {
       expect(token1).not.toBe(token2);
     });
 
-    it('should only contain alphanumeric characters', () => {
+    it('should only contain base64url characters', () => {
       const token = generateInvitationToken();
-      expect(token).toMatch(/^[A-Za-z0-9]+$/);
+      expect(token).toMatch(/^[A-Za-z0-9_-]+$/);
     });
   });
 
