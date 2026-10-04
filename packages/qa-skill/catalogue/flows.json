@@ -636,7 +636,8 @@
           "write": true
         }
       ],
-      "expected": "FAQ list renders with audience and category filters; Add FAQ opens the editor (not submitted)."
+      "expected": "FAQ list renders with audience and category filters; Add FAQ opens the editor (not submitted).",
+      "specs": ["apps/staff/components/__tests__/faq-management.test.tsx"]
     },
     {
       "id": "staff.invitations.active-staff",
@@ -1003,7 +1004,8 @@
           "name": "FAQs"
         }
       ],
-      "expected": "Only FAQs for the student's own stage (or all-audience), grouped by category."
+      "expected": "Only FAQs for the student's own stage (or all-audience), grouped by category.",
+      "specs": ["apps/scholar/components/__tests__/scholar-faqs.test.tsx"]
     },
     {
       "id": "prep.documents",
