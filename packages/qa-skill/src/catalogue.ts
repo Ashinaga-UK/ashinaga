@@ -36,6 +36,10 @@ export type Flow = {
   expected: string;
   skip?: string;
   notes?: string;
+  /** Specs that cover this flow (ASH-123 coverage map). Empty means none. */
+  specs: string[];
+  /** Why a flow with no specs is acceptable. */
+  specSkip?: string;
 };
 
 export type Catalogue = {
@@ -99,6 +103,11 @@ export function validateCatalogue(catalogue: Catalogue): string[] {
     }
     if (!flow.skip && flow.steps.length === 0) {
       problems.push(`${where}: needs steps or an explicit skip reason`);
+    }
+    if (!Array.isArray(flow.specs)) {
+      problems.push(`${where}: specs must be a list (empty when no spec covers it)`);
+    } else if (flow.specs.length === 0 && !flow.specSkip) {
+      problems.push(`${where}: no specs, so it needs a specSkip reason`);
     }
     if (flow.steps.length > 0 && stepAction(flow.steps[0]) !== 'goto') {
       problems.push(`${where}: first step must be goto`);

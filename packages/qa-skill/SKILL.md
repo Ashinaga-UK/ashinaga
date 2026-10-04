@@ -79,8 +79,9 @@ When you (the agent) run this skill:
 - Add a flow when you add a staff section, profile tab, student page or nav item. `pnpm --filter
   @ashinaga/qa-skill test` fails if a staff nav section, scholar profile tab or student nav item has no
   flow.
-- Flow IDs are stable (`area.flow-name`). Renaming one means updating every consumer (the ASH-123
-  coverage map uses them too).
+- Flow IDs are stable (`area.flow-name`). Renaming one means updating every consumer.
+- Each flow lists the `specs` that cover it (or a `specSkip` reason). `pnpm check:flow-coverage`
+  uses this map to flag new flows without tests; see `.claude/skills/flow-coverage/SKILL.md`.
 - A flow that the ticket lists but the app does not have stays in the catalogue with a `skip` reason.
 
 ## Troubleshooting
