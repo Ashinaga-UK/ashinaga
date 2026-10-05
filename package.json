@@ -37,7 +37,8 @@
   "pnpm": {
     "overrides": {
       "fastify": "^5.12.5",
-      "@nestjs/platform-express": "^11.2.7"
+      "@nestjs/platform-express": "^11.2.7",
+      "defu": ">=6.1.5"
     }
   }
 }

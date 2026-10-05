@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type React from 'react';
 import { useState } from 'react';
-import { forgetPassword } from '../lib/auth-client';
+import { requestPasswordReset } from '../lib/auth-client';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
@@ -25,7 +25,7 @@ export function ForgotPasswordPage() {
     setIsLoading(true);
 
     try {
-      const { data, error: authError } = await forgetPassword({
+      const { data, error: authError } = await requestPasswordReset({
         email,
         redirectTo: '/reset-password', // Where the user will be redirected after clicking the link
       });
