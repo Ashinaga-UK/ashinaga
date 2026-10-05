@@ -393,7 +393,7 @@ export class AuthController {
   }
 
   @Post('forget-password')
-  @ApiOperation({ summary: 'Request password reset email' })
+  @ApiOperation({ summary: 'Request password reset email (legacy path)' })
   @ApiBody({
     schema: {
       type: 'object',
@@ -406,7 +406,24 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Password reset email sent' })
   @ApiResponse({ status: 404, description: 'Email not found' })
   async forgetPassword(@Req() req: FastifyRequest, @Res() res: FastifyReply) {
-    return this.forwardToAuth(req, res, '/forget-password');
+    return this.forwardToAuth(req, res, '/request-password-reset');
+  }
+
+  @Post('request-password-reset')
+  @ApiOperation({ summary: 'Request password reset email' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        email: { type: 'string', format: 'email' },
+      },
+      required: ['email'],
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Password reset email sent' })
+  @ApiResponse({ status: 404, description: 'Email not found' })
+  async requestPasswordReset(@Req() req: FastifyRequest, @Res() res: FastifyReply) {
+    return this.forwardToAuth(req, res, '/request-password-reset');
   }
 
   @Post('reset-password')

@@ -2,11 +2,9 @@ import { randomBytes } from 'node:crypto';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { eq } from 'drizzle-orm';
-import { resolveAvatarSrc } from '../avatars/avatar-files';
 import { getDatabase } from '../db/connection';
 import * as schema from '../db/schema';
 import { EmailService } from '../email/email.service';
-import { touchScholarLastActivity } from '../scholars/scholar-activity';
 import { logAuthError } from './auth-logging';
 
 // Create email service instance
@@ -54,6 +52,10 @@ const authConfig = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: process.env.BETTER_AUTH_URL || 'http://localhost:4000',
   trustedOrigins: (request) => {
+    // 1.6 calls this with no request during context init and auth.api calls.
+    if (!request) {
+      return [];
+    }
     const origin = request.headers.get('origin') || '';
     // Allow all localhost origins
     if (origin.startsWith('http://localhost:')) {
@@ -100,7 +102,7 @@ const authConfig = betterAuth({
       }
 
       // Always build a portal-correct reset URL (staff -> staff app, scholar -> scholar app)
-      const token = extractResetToken(data.url);
+      const token = data.token || extractResetToken(data.url);
       const userType = (data.user as unknown as ResetPasswordUser)?.userType || 'scholar';
       const portalBaseUrl = getPortalBaseUrl(userType);
       const resetUrl = token
@@ -215,126 +217,6 @@ If you didn't request this, you can ignore this email.
       enabled: true, // Allow linking Microsoft account to email/password account
     },
   },
-  callbacks: {
-    session: {
-      fetchUser: async ({ user }) => {
-        // Add staff data to the user object when fetching session
-        if (user.userType === 'staff') {
-          const db = getDatabase();
-          const staffResults = await db
-            .select()
-            .from(schema.staff)
-            .where(eq(schema.staff.userId, user.id))
-            .limit(1);
-
-          const staffData = staffResults[0];
-
-          if (staffData) {
-            // Parse the department field to extract job title and department
-            // Format is "JobTitle - Department" or just one of them
-            let jobTitle = null;
-            let department = null;
-
-            if (staffData.department) {
-              if (staffData.department.includes(' - ')) {
-                const parts = staffData.department.split(' - ');
-                jobTitle = parts[0] || null;
-                department = parts[1] || null;
-              } else {
-                // If no separator, treat it as job title
-                jobTitle = staffData.department;
-                department = null;
-              }
-            }
-
-            const result = {
-              ...user,
-              image: resolveAvatarSrc(user.image, user.id),
-              phone: staffData.phone || null,
-              department: department || null,
-              role: jobTitle || null,
-            };
-
-            return result;
-          }
-        }
-        return {
-          ...user,
-          image: resolveAvatarSrc(user.image, user.id),
-        };
-      },
-    },
-    signIn: {
-      before: async ({ email }) => {
-        // Optional: Check if user is active
-        const db = getDatabase();
-        const userResults = await db
-          .select()
-          .from(schema.users)
-          .where(eq(schema.users.email, email))
-          .limit(1);
-
-        const user = userResults[0];
-
-        if (user && user.userType === 'staff') {
-          const staffResults = await db
-            .select()
-            .from(schema.staff)
-            .where(eq(schema.staff.userId, user.id))
-            .limit(1);
-
-          const staffMember = staffResults[0];
-
-          if (staffMember && !staffMember.isActive) {
-            throw new Error('Your account has been deactivated. Please contact an administrator.');
-          }
-        }
-
-        return true;
-      },
-      after: async ({ user }) => {
-        if (user.userType === 'scholar') {
-          await touchScholarLastActivity(user.id);
-        }
-        // Add staff data to user object after sign in
-        if (user.userType === 'staff') {
-          const db = getDatabase();
-          const staffResults = await db
-            .select()
-            .from(schema.staff)
-            .where(eq(schema.staff.userId, user.id))
-            .limit(1);
-
-          const staffData = staffResults[0];
-
-          if (staffData) {
-            // Parse the department field to extract job title and department
-            let jobTitle = null;
-            let department = null;
-
-            if (staffData.department) {
-              if (staffData.department.includes(' - ')) {
-                const parts = staffData.department.split(' - ');
-                jobTitle = parts[0] || null;
-                department = parts[1] || null;
-              } else {
-                // If no separator, treat it as job title
-                jobTitle = staffData.department;
-                department = null;
-              }
-            }
-
-            // Add staff fields to user object
-            const userWithStaff = user as Record<string, unknown>;
-            userWithStaff.phone = staffData.phone || null;
-            userWithStaff.department = department || null;
-            userWithStaff.role = jobTitle || null;
-          }
-        }
-        return user;
-      },
-    },
-  },
   databaseHooks: {
     user: {
       create: {
@@ -397,7 +279,7 @@ If you didn't request this, you can ignore this email.
   },
 });
 
-export const auth: ReturnType<typeof betterAuth> = authConfig;
+export const auth = authConfig;
 
 // Helper function to create invitation tokens.
 // Existing tokens stay valid until they expire; only new tokens use this generator.
