@@ -36,25 +36,14 @@ jobs:
       contents: read
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install pnpm
-        run: npm install -g pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
 
       - name: Get database connection
         run: |
@@ -105,14 +94,25 @@ jobs:
           echo "Database name: ${DB_NAME}"
 
       - name: Restore candidate
+        env:
+          EMAIL: ${{ github.event.inputs.email }}
+          PGSSLMODE: require
         run: |
-          EMAIL="${{ github.event.inputs.email }}"
           if [[ ! "$EMAIL" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
             echo "ERROR: Invalid email format"
             exit 1
           fi
 
-          cd apps/api
-          export NODE_ENV="production"
-          export DB_SSL="true"
-          pnpm db:restore-candidate -- "$EMAIL"
+          export PGPASSWORD="$DB_PASSWORD"
+          psql_cmd=(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -v email="$EMAIL")
+
+          echo "Looking up ${EMAIL}"
+          "${psql_cmd[@]}" -c "SELECT u.id, u.email, u.name, u.user_type, s.id AS scholar_id, s.program_stage FROM \"user\" u LEFT JOIN scholars s ON s.user_id = u.id WHERE lower(trim(u.email)) = lower(trim(:'email'));"
+
+          echo "Restoring as a Prep Year candidate when the login exists and the profile does not"
+          RESTORED=$("${psql_cmd[@]}" -tA -c "INSERT INTO scholars (user_id, status, program, year, university, start_date, program_stage) SELECT u.id, 'active', 'TBD', 'TBD', 'TBD', NOW(), 'prep_year' FROM \"user\" u WHERE lower(trim(u.email)) = lower(trim(:'email')) AND u.user_type = 'scholar' AND NOT EXISTS (SELECT 1 FROM scholars s WHERE s.user_id = u.id) RETURNING id;")
+          if [ -z "$RESTORED" ]; then
+            echo "ERROR: nothing was restored. The account is missing, is not a scholar, or already has a profile."
+            exit 1
+          fi
+          echo "Restored scholar id: ${RESTORED}"
