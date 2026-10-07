@@ -1,0 +1,118 @@
+name: Restore deleted candidate
+
+# Puts a deleted scholar login back on the candidate list. The profile was
+# removed but the account remains, so the email cannot be invited again.
+# Uses the same AWS role as Bootstrap Staff. No console access required.
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment'
+        required: true
+        default: 'prod'
+        type: choice
+        options:
+          - test
+          - prod
+      email:
+        description: 'Email of the deleted scholar'
+        required: true
+        type: string
+
+concurrency:
+  group: restore-candidate-${{ github.event.inputs.environment }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: eu-west-3
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get database connection
+        run: |
+          ENVIRONMENT="${{ github.event.inputs.environment }}"
+          DB_IDENTIFIER="ashinaga-postgres-${ENVIRONMENT}"
+
+          DB_HOST=$(aws rds describe-db-instances \
+            --db-instance-identifier ${DB_IDENTIFIER} \
+            --query 'DBInstances[0].Endpoint.Address' \
+            --output text 2>/dev/null || echo "")
+
+          if [ -z "$DB_HOST" ] || [ "$DB_HOST" = "None" ]; then
+            echo "ERROR: Cannot get database endpoint for ${DB_IDENTIFIER}"
+            exit 1
+          fi
+
+          DB_NAME=$(aws rds describe-db-instances \
+            --db-instance-identifier ${DB_IDENTIFIER} \
+            --query 'DBInstances[0].DBName' \
+            --output text)
+
+          DB_USER=$(aws rds describe-db-instances \
+            --db-instance-identifier ${DB_IDENTIFIER} \
+            --query 'DBInstances[0].MasterUsername' \
+            --output text)
+
+          SECRET_NAME="ashinaga-db-password-${ENVIRONMENT}"
+          SECRET_ARN=$(aws secretsmanager list-secrets \
+            --query "SecretList[?contains(Name, '${SECRET_NAME}')] | sort_by(@, &CreatedDate) | [-1].ARN" \
+            --output text)
+
+          if [ -z "$SECRET_ARN" ] || [ "$SECRET_ARN" = "None" ]; then
+            echo "ERROR: Could not find secret containing ${SECRET_NAME}"
+            exit 1
+          fi
+
+          DB_PASSWORD=$(aws secretsmanager get-secret-value \
+            --secret-id "$SECRET_ARN" \
+            --query SecretString --output text)
+
+          echo "::add-mask::$DB_PASSWORD"
+          echo "DB_HOST=${DB_HOST}" >> $GITHUB_ENV
+          echo "DB_PORT=5432" >> $GITHUB_ENV
+          echo "DB_NAME=${DB_NAME}" >> $GITHUB_ENV
+          echo "DB_USER=${DB_USER}" >> $GITHUB_ENV
+          echo "DB_PASSWORD=${DB_PASSWORD}" >> $GITHUB_ENV
+          echo "Database host: ${DB_HOST}"
+          echo "Database name: ${DB_NAME}"
+
+      - name: Restore candidate
+        run: |
+          EMAIL="${{ github.event.inputs.email }}"
+          if [[ ! "$EMAIL" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+            echo "ERROR: Invalid email format"
+            exit 1
+          fi
+
+          cd apps/api
+          export NODE_ENV="production"
+          export DB_SSL="true"
+          pnpm db:restore-candidate -- "$EMAIL"
