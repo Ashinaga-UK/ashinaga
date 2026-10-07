@@ -178,6 +178,14 @@ export interface AnnualUpdateReportRow {
   aaiScholarId: string | null;
   scholarYear: string;
   university: string;
+  program: string;
+  academicYearAverageClassification: string | null;
+  academicYearWeightedGrade: string | null;
+  leadershipRolesCount: number | null;
+  payItForwardCount: number | null;
+  subSaharanAfricaActivitiesCount: number | null;
+  independentInternshipsCount: number | null;
+  completedAshinagaAfricaInternship: boolean | null;
 }
 
 export interface AnnualReviewCopyResponse {
@@ -1615,6 +1623,116 @@ export async function downloadPrepYearReportCSV(
   );
 }
 
+export type ScholarActivityStatus = 'active' | 'inactive' | 'on_hold' | 'archived';
+export type ScholarActivityStage = 'prep_year' | 'scholar';
+
+export interface ScholarActivityFilters {
+  program?: string;
+  year?: string;
+  programStage?: ScholarActivityStage;
+  nationality?: string;
+  status?: ScholarActivityStatus | 'all';
+  from?: string;
+  to?: string;
+  sortBy?: 'name' | 'lastActivity' | 'taskCompletionRate';
+  sortOrder?: 'asc' | 'desc';
+  page?: number;
+  limit?: number;
+}
+
+export interface ScholarActivityRow {
+  scholarId: string;
+  name: string;
+  email: string;
+  status: ScholarActivityStatus;
+  program: string;
+  year: string;
+  programStage: ScholarActivityStage;
+  nationality: string | null;
+  lastActivity: string | null;
+  daysSinceActivity: number | null;
+  lastActivityUnknown: boolean;
+  isStaleLogin: boolean;
+  tasksAssigned: number;
+  tasksCompleted: number;
+  tasksCompletedInRange: number | null;
+  tasksBehind: number;
+  taskCompletionRate: number | null;
+  goalsTotal: number;
+  goalsCompleted: number;
+  goalsUpdatedInRange: number | null;
+  avgCompletionScale: number | null;
+}
+
+export interface ScholarActivityCohort {
+  program: string;
+  year: string;
+  scholarCount: number;
+  staleLoginCount: number;
+  unknownLoginCount: number;
+  scholarsBehindOnTasks: number;
+  avgTaskCompletionRate: number | null;
+}
+
+export interface ScholarActivityReportPayload {
+  summary: {
+    scholarCount: number;
+    staleLoginCount: number;
+    unknownLoginCount: number;
+    scholarsBehindOnTasks: number;
+    avgTaskCompletionRate: number | null;
+  };
+  cohorts: ScholarActivityCohort[];
+  scholars: ScholarActivityRow[];
+  meta: {
+    page: number;
+    limit: number;
+    totalItems: number;
+    totalPages: number;
+  };
+  filterOptions: {
+    programs: string[];
+    years: string[];
+    nationalities: string[];
+    statuses: ScholarActivityStatus[];
+  };
+}
+
+function scholarActivityQuery(filters: ScholarActivityFilters = {}): string {
+  const params = new URLSearchParams();
+  if (filters.program) params.set('program', filters.program);
+  if (filters.year) params.set('year', filters.year);
+  if (filters.programStage) params.set('programStage', filters.programStage);
+  if (filters.nationality) params.set('nationality', filters.nationality);
+  if (filters.status) params.set('status', filters.status);
+  if (filters.from) params.set('from', filters.from);
+  if (filters.to) params.set('to', filters.to);
+  if (filters.sortBy) params.set('sortBy', filters.sortBy);
+  if (filters.sortOrder) params.set('sortOrder', filters.sortOrder);
+  if (filters.page && filters.page > 1) params.set('page', String(filters.page));
+  if (filters.limit) params.set('limit', String(filters.limit));
+  const query = params.toString();
+  return query ? `?${query}` : '';
+}
+
+export async function getScholarActivityReport(
+  filters: ScholarActivityFilters = {}
+): Promise<ScholarActivityReportPayload> {
+  return fetchAPI<ScholarActivityReportPayload>(
+    `/api/scholar-activity/report${scholarActivityQuery(filters)}`
+  );
+}
+
+export async function downloadScholarActivityReportCSV(
+  filters: ScholarActivityFilters = {}
+): Promise<void> {
+  await downloadCsvFile(
+    `/api/scholar-activity/report/csv${scholarActivityQuery(filters)}`,
+    `scholar-activity-report-${new Date().toISOString().slice(0, 10)}.csv`,
+    'Failed to download scholar activity CSV'
+  );
+}
+
 export async function getScholarRequiredDocuments(
   scholarId: string
 ): Promise<RequiredDocumentChecklist> {
@@ -1764,6 +1882,23 @@ export async function removeStaffMember(
   });
 }
 
+export interface StaffAdminUpdate {
+  success: boolean;
+  userId: string;
+  isSuperAdmin: boolean;
+  role: 'admin' | 'viewer';
+}
+
+export async function setStaffAdmin(
+  userId: string,
+  isSuperAdmin: boolean
+): Promise<StaffAdminUpdate> {
+  return fetchAPI<StaffAdminUpdate>(`/api/users/staff/${userId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ isSuperAdmin }),
+  });
+}
+
 export type ProposalStatus = 'draft' | 'submitted' | 'changes_requested' | 'approved';
 
 export interface ProposalInboxItem {
@@ -1856,4 +1991,50 @@ export async function getScholarProposalFileDownloadUrl(
   return fetchAPI<{ downloadUrl: string }>(
     `/api/proposals/scholars/${scholarId}/steps/${stepKey}/file${query}`
   );
+}
+
+export type FaqAudience = 'prep_year' | 'scholar';
+
+export interface Faq {
+  id: string;
+  audience: FaqAudience;
+  category: string | null;
+  question: string;
+  answer: string;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SaveFaqData {
+  audience: FaqAudience;
+  category?: string | null;
+  question: string;
+  answer: string;
+  sortOrder?: number;
+}
+
+export async function getFaqs(audience?: FaqAudience): Promise<Faq[]> {
+  const query = audience ? `?audience=${audience}` : '';
+  return fetchAPI<Faq[]>(`/api/faqs${query}`);
+}
+
+export async function createFaq(data: SaveFaqData): Promise<Faq> {
+  return fetchAPI<Faq>('/api/faqs', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateFaq(faqId: string, data: Partial<SaveFaqData>): Promise<Faq> {
+  return fetchAPI<Faq>(`/api/faqs/${faqId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteFaq(faqId: string): Promise<{ success: boolean }> {
+  return fetchAPI<{ success: boolean }>(`/api/faqs/${faqId}`, {
+    method: 'DELETE',
+  });
 }

@@ -50,6 +50,25 @@ describe('AppService', () => {
       expect(result).toContain('href="/api"');
     });
 
+    it('should omit the Swagger link outside development/test', () => {
+      const previous = process.env.NODE_ENV;
+      try {
+        for (const nodeEnv of ['production', 'prod', undefined] as const) {
+          if (nodeEnv === undefined) {
+            delete process.env.NODE_ENV;
+          } else {
+            process.env.NODE_ENV = nodeEnv;
+          }
+          const result = service.getHomePage();
+          expect(result).not.toContain('View Swagger Documentation');
+          expect(result).not.toContain('href="/api"');
+        }
+      } finally {
+        if (previous === undefined) delete process.env.NODE_ENV;
+        else process.env.NODE_ENV = previous;
+      }
+    });
+
     it('should contain tech stack section', () => {
       const result = service.getHomePage();
       expect(result).toContain('⚡ Tech Stack');

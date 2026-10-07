@@ -513,26 +513,33 @@ jobs:
         SERVICE_NAME="ashinaga-api-${ENVIRONMENT}"
         SERVICE_ARN=$(aws apprunner list-services --query "ServiceSummaryList[?ServiceName=='${SERVICE_NAME}'].ServiceArn" --output text)
         
-        echo "Waiting for deployment to complete..."
-        # Wait up to 20 minutes for deployment to complete
-        timeout 1200 bash -c "
+        # Follow the App Runner operation the update just started. The service
+        # status is RUNNING both before a deployment starts and after a failed
+        # one rolls back, so it can't tell us whether the new image went live.
+        echo "Waiting for the App Runner operation to finish..."
+        timeout 1800 bash -c "
           while true; do
-            STATUS=\$(aws apprunner describe-service --service-arn ${SERVICE_ARN} --query 'Service.Status' --output text)
-            echo \"Current deployment status: \$STATUS\"
-            if [ \"\$STATUS\" = \"RUNNING\" ]; then
-              echo \"Deployment completed successfully!\"
-              break
-            elif [ \"\$STATUS\" = \"CREATE_FAILED\" ] || [ \"\$STATUS\" = \"DELETE_FAILED\" ]; then
-              echo \"Deployment failed: \$STATUS\"
-              exit 1
-            fi
-            sleep 30
+            read -r OP_TYPE OP_STATUS OP_STARTED <<< \$(aws apprunner list-operations --service-arn ${SERVICE_ARN} --max-results 1 \
+              --query 'OperationSummaryList[0].[Type,Status,StartedAt]' --output text)
+            echo \"Latest operation: \$OP_TYPE \$OP_STATUS (started \$OP_STARTED)\"
+            case \"\$OP_STATUS\" in
+              PENDING|IN_PROGRESS) sleep 30 ;;
+              *) break ;;
+            esac
           done
         " || {
-          echo "Timeout waiting for deployment to complete"
+          echo "Timeout waiting for the App Runner operation to finish"
           exit 1
         }
-        
+
+        OP_STATUS=$(aws apprunner list-operations --service-arn ${SERVICE_ARN} --max-results 1 \
+          --query 'OperationSummaryList[0].Status' --output text)
+        if [ "$OP_STATUS" != "SUCCEEDED" ]; then
+          echo "::error::App Runner deployment ended with status $OP_STATUS (the previous version is still serving). Check the service and application logs in CloudWatch."
+          exit 1
+        fi
+        echo "Deployment completed successfully!"
+
         # Get service URL
         SERVICE_URL=$(aws apprunner describe-service --service-arn ${SERVICE_ARN} --query "Service.ServiceUrl" --output text)
         echo "Deployment complete! Service available at: https://${SERVICE_URL}"
