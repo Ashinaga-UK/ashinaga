@@ -104,13 +104,26 @@ jobs:
           fi
 
           export PGPASSWORD="$DB_PASSWORD"
-          psql_cmd=(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -v email="$EMAIL")
 
           echo "Looking up ${EMAIL}"
-          "${psql_cmd[@]}" -c "SELECT u.id, u.email, u.name, u.user_type, s.id AS scholar_id, s.program_stage FROM \"user\" u LEFT JOIN scholars s ON s.user_id = u.id WHERE lower(trim(u.email)) = lower(trim(:'email'));"
+          psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -v email="$EMAIL" <<'SQL'
+SELECT u.id, u.email, u.name, u.user_type, s.id AS scholar_id, s.program_stage
+FROM "user" u
+LEFT JOIN scholars s ON s.user_id = u.id
+WHERE lower(trim(u.email)) = lower(trim(:'email'));
+SQL
 
           echo "Restoring as a Prep Year candidate when the login exists and the profile does not"
-          RESTORED=$("${psql_cmd[@]}" -tA -c "INSERT INTO scholars (user_id, status, program, year, university, start_date, program_stage) SELECT u.id, 'active', 'TBD', 'TBD', 'TBD', NOW(), 'prep_year' FROM \"user\" u WHERE lower(trim(u.email)) = lower(trim(:'email')) AND u.user_type = 'scholar' AND NOT EXISTS (SELECT 1 FROM scholars s WHERE s.user_id = u.id) RETURNING id;")
+          RESTORED=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -tA -v email="$EMAIL" <<'SQL'
+INSERT INTO scholars (user_id, status, program, year, university, start_date, program_stage)
+SELECT u.id, 'active', 'TBD', 'TBD', 'TBD', NOW(), 'prep_year'
+FROM "user" u
+WHERE lower(trim(u.email)) = lower(trim(:'email'))
+  AND u.user_type = 'scholar'
+  AND NOT EXISTS (SELECT 1 FROM scholars s WHERE s.user_id = u.id)
+RETURNING id;
+SQL
+)
           if [ -z "$RESTORED" ]; then
             echo "ERROR: nothing was restored. The account is missing, is not a scholar, or already has a profile."
             exit 1
