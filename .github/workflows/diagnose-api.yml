@@ -1,0 +1,210 @@
+name: Diagnose API
+
+# Read-only App Runner / CloudWatch diagnostics for test or prod.
+# Uses the same AWS_ROLE_ARN as Deploy API. Does not deploy or print secrets.
+#
+# Trigger: Actions → Diagnose API → Run workflow → pick environment.
+# Requires this file on the default branch (merge first).
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to diagnose'
+        required: true
+        default: 'prod'
+        type: choice
+        options:
+          - prod
+          - test
+
+concurrency:
+  group: diagnose-api-${{ github.event.inputs.environment }}
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: eu-west-3
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Public /health check
+        env:
+          ENVIRONMENT: ${{ github.event.inputs.environment }}
+        run: |
+          if [ "$ENVIRONMENT" = "prod" ]; then
+            URL="https://api.ashinaga-uk.org/health"
+          else
+            URL="https://api-test.ashinaga-uk.org/health"
+          fi
+          echo "## Public health check" >> "$GITHUB_STEP_SUMMARY"
+          echo "URL: \`$URL\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Checking $URL ..."
+          CODE=$(curl -sS -o /tmp/health_body -w "%{http_code}" --max-time 15 "$URL" || echo "000")
+          echo "HTTP $CODE"
+          echo "Body:"
+          head -c 500 /tmp/health_body || true
+          echo
+          echo "- HTTP status: \`$CODE\`" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          head -c 500 /tmp/health_body >> "$GITHUB_STEP_SUMMARY" || true
+          echo >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: App Runner service status (no secrets)
+        env:
+          ENVIRONMENT: ${{ github.event.inputs.environment }}
+        run: |
+          set -euo pipefail
+          SERVICE_NAME="ashinaga-api-${ENVIRONMENT}"
+          SERVICE_ARN=$(aws apprunner list-services \
+            --query "ServiceSummaryList[?ServiceName=='${SERVICE_NAME}'].ServiceArn" \
+            --output text)
+
+          if [ -z "$SERVICE_ARN" ] || [ "$SERVICE_ARN" = "None" ]; then
+            echo "No App Runner service named ${SERVICE_NAME}"
+            exit 1
+          fi
+
+          echo "SERVICE_ARN=$SERVICE_ARN" >> "$GITHUB_ENV"
+          echo "SERVICE_NAME=$SERVICE_NAME" >> "$GITHUB_ENV"
+
+          echo "## App Runner: ${SERVICE_NAME}" >> "$GITHUB_STEP_SUMMARY"
+          echo "ARN: \`$SERVICE_ARN\`" >> "$GITHUB_STEP_SUMMARY"
+
+          # Intentionally omit RuntimeEnvironmentVariables (contains secrets).
+          aws apprunner describe-service --service-arn "$SERVICE_ARN" \
+            --query 'Service.{
+              Status:Status,
+              ServiceUrl:ServiceUrl,
+              CreatedAt:CreatedAt,
+              UpdatedAt:UpdatedAt,
+              Image:SourceConfiguration.ImageRepository.ImageIdentifier,
+              AutoDeploy:SourceConfiguration.AutoDeploymentsEnabled,
+              CPU:InstanceConfiguration.Cpu,
+              Memory:InstanceConfiguration.Memory,
+              Health:HealthCheckConfiguration,
+              Egress:NetworkConfiguration.EgressConfiguration,
+              Ingress:NetworkConfiguration.IngressConfiguration
+            }' --output json | tee /tmp/service.json
+
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          cat /tmp/service.json >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+          SERVICE_ID=$(aws apprunner describe-service --service-arn "$SERVICE_ARN" \
+            --query 'Service.ServiceId' --output text)
+          echo "SERVICE_ID=$SERVICE_ID" >> "$GITHUB_ENV"
+
+      - name: Recent App Runner operations
+        run: |
+          set -euo pipefail
+          echo "## Recent operations" >> "$GITHUB_STEP_SUMMARY"
+          aws apprunner list-operations --service-arn "$SERVICE_ARN" --max-results 15 \
+            --output json | tee /tmp/operations.json
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          cat /tmp/operations.json >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: ActiveInstances metric (since Thu 08:00 UTC)
+        run: |
+          set +e
+          echo "## ActiveInstances (CloudWatch)" >> "$GITHUB_STEP_SUMMARY"
+          aws cloudwatch get-metric-statistics \
+            --namespace AWS/AppRunner \
+            --metric-name ActiveInstances \
+            --dimensions Name=ServiceName,Value="$SERVICE_NAME" Name=ServiceId,Value="$SERVICE_ID" \
+            --start-time 2026-10-08T07:00:00Z \
+            --end-time "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --period 300 \
+            --statistics Average Maximum \
+            --output json | tee /tmp/active_instances.json
+          RC=$?
+          if [ $RC -ne 0 ]; then
+            echo "CloudWatch GetMetricStatistics failed (IAM may lack cloudwatch:GetMetricStatistics). RC=$RC"
+            echo "CloudWatch GetMetricStatistics failed (permission or metric missing)." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat /tmp/active_instances.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: CloudWatch log groups + recent events
+        run: |
+          set +e
+          echo "## CloudWatch logs" >> "$GITHUB_STEP_SUMMARY"
+          PREFIX="/aws/apprunner/${SERVICE_NAME}"
+          aws logs describe-log-groups --log-group-name-prefix "$PREFIX" \
+            --query 'logGroups[].{name:logGroupName,storedBytes:storedBytes}' \
+            --output json | tee /tmp/log_groups.json
+          RC=$?
+          if [ $RC -ne 0 ]; then
+            echo "describe-log-groups failed (IAM may lack logs:DescribeLogGroups). RC=$RC"
+            echo "Could not list log groups (permission denied or none exist)." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          cat /tmp/log_groups.json >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+          date -u -d '2026-10-08 07:00:00' +%s000 > /tmp/start_ms
+
+          python3 <<'PY'
+          import json, os, re, subprocess
+
+          groups = json.load(open("/tmp/log_groups.json")) or []
+          start_ms = open("/tmp/start_ms").read().strip()
+          summary = open(os.environ["GITHUB_STEP_SUMMARY"], "a")
+          pat = re.compile(
+              r"(DB_PASSWORD|BETTER_AUTH_SECRET|RESEND_API_KEY|CRON_SECRET)\s*[:=]\s*\S+",
+              re.I,
+          )
+
+          for g in groups:
+              lg = g["name"]
+              print(f"--- Log group: {lg} ---")
+              summary.write(f"### `{lg}` (last ~40 events since 2026-10-08 07:00 UTC)\n")
+              out = subprocess.run(
+                  [
+                      "aws", "logs", "filter-log-events",
+                      "--log-group-name", lg,
+                      "--start-time", start_ms,
+                      "--limit", "40",
+                      "--query", "events[].{t:timestamp,m:message}",
+                      "--output", "json",
+                  ],
+                  capture_output=True,
+                  text=True,
+              )
+              if out.returncode != 0:
+                  print(out.stderr)
+                  summary.write("filter-log-events failed (permission denied).\n")
+                  continue
+              try:
+                  events = json.loads(out.stdout) or []
+              except json.JSONDecodeError:
+                  summary.write("could not parse log events JSON\n")
+                  continue
+              block = ["```"]
+              for e in events:
+                  msg = pat.sub(r"\1=[REDACTED]", e.get("m") or "")
+                  line = f"{e.get('t')}: {msg[:500]}"
+                  print(line)
+                  block.append(line)
+              block.append("```")
+              summary.write("\n".join(block) + "\n")
+          summary.close()
+          PY
