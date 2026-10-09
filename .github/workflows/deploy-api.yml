@@ -332,7 +332,8 @@ jobs:
 
           echo "Found secret: $secret_name" >&2
 
-          # Get secret value and trim whitespace
+          # Return the value unchanged; command substitution strips only the
+          # trailing newline emitted by the AWS CLI.
           aws secretsmanager get-secret-value \
             --secret-id "$secret_name" \
             --query SecretString \
