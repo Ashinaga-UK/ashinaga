@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { getRequests } from '../../lib/api-client';
 import { RequestsQueue } from '../requests-queue';
 
 const replace = jest.fn();
@@ -145,6 +146,92 @@ describe('RequestsQueue', () => {
         ids: ['req-1'],
         status: 'rejected',
         comment: 'Missing documents',
+      });
+    });
+  });
+
+  it('bulk approve selects open requests and skips decided ones', async () => {
+    const user = userEvent.setup();
+    jest.mocked(getRequests).mockResolvedValueOnce({
+      data: [
+        {
+          id: 'req-1',
+          scholarId: 'scholar-1',
+          scholarName: 'Ada Lovelace',
+          scholarEmail: 'ada@example.com',
+          type: 'others',
+          description: 'Need a letter',
+          priority: 'medium',
+          status: 'pending',
+          submittedDate: '2026-01-01T00:00:00.000Z',
+          assignees: [],
+          attachments: [],
+          auditLogs: [],
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'req-2',
+          scholarId: 'scholar-2',
+          scholarName: 'Grace Hopper',
+          scholarEmail: 'grace@example.com',
+          type: 'others',
+          description: 'Already decided',
+          priority: 'medium',
+          status: 'rejected',
+          submittedDate: '2026-01-02T00:00:00.000Z',
+          assignees: [],
+          attachments: [],
+          auditLogs: [],
+          createdAt: '2026-01-02T00:00:00.000Z',
+          updatedAt: '2026-01-02T00:00:00.000Z',
+        },
+        {
+          id: 'req-3',
+          scholarId: 'scholar-3',
+          scholarName: 'Katherine Johnson',
+          scholarEmail: 'katherine@example.com',
+          type: 'others',
+          description: 'Already commented',
+          priority: 'medium',
+          status: 'reviewed',
+          submittedDate: '2026-01-03T00:00:00.000Z',
+          assignees: [],
+          attachments: [],
+          auditLogs: [],
+          createdAt: '2026-01-03T00:00:00.000Z',
+          updatedAt: '2026-01-03T00:00:00.000Z',
+        },
+      ],
+      pagination: {
+        page: 1,
+        limit: 20,
+        totalItems: 3,
+        totalPages: 1,
+        hasNext: false,
+        hasPrev: false,
+      },
+      cohort: null,
+    });
+    render(<RequestsQueue onReviewed={jest.fn()} />);
+
+    expect(
+      await screen.findByRole('checkbox', { name: 'Select request from Grace Hopper' })
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('checkbox', { name: 'Select request from Katherine Johnson' })
+    ).toBeEnabled();
+    expect(screen.getByText('Select open')).toBeInTheDocument();
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Select all open requests on this page' })
+    );
+    await user.click(screen.getByRole('button', { name: 'Approve' }));
+
+    await waitFor(() => {
+      expect(bulkUpdateRequestStatus).toHaveBeenCalledWith({
+        ids: ['req-1', 'req-3'],
+        status: 'approved',
+        comment: undefined,
       });
     });
   });

@@ -114,6 +114,10 @@ describe('StaffLayout', () => {
 
     expect(screen.getByRole('heading', { name: 'Ashinaga Staff' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: 'Scholar activity' })).toHaveAttribute(
+      'href',
+      '/?tab=scholar-activity'
+    );
     expect(screen.getByRole('link', { name: 'Prep documents' })).toHaveAttribute(
       'href',
       '/?tab=prep-documents'
@@ -134,6 +138,7 @@ describe('StaffLayout', () => {
       'href',
       '/?tab=resources'
     );
+    expect(screen.getByRole('link', { name: 'FAQs' })).toHaveAttribute('href', '/?tab=faqs');
     expect(screen.getByRole('link', { name: 'Invitations' })).toHaveAttribute(
       'href',
       '/?tab=invitations'

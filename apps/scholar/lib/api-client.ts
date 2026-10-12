@@ -196,6 +196,23 @@ export async function getMyResources(): Promise<Resource[]> {
   return fetchAPI<Resource[]>('/api/resources/my-resources');
 }
 
+export type FaqAudience = 'prep_year' | 'scholar';
+
+export interface Faq {
+  id: string;
+  audience: FaqAudience;
+  category: string | null;
+  question: string;
+  answer: string;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getMyFaqs(): Promise<Faq[]> {
+  return fetchAPI<Faq[]>('/api/faqs/my-faqs');
+}
+
 export async function getResourceDownloadUrl(
   resourceId: string,
   disposition: 'attachment' | 'inline' = 'attachment'
@@ -318,10 +335,7 @@ export async function getRequiredDocumentDownloadUrl(
   return fetchAPI<{ downloadUrl: string }>(`/api/documents/${fileId}/download${query}`);
 }
 
-export type ScholarNotificationKind =
-  | 'task_assigned'
-  | 'resource_live'
-  | 'announcement_created';
+export type ScholarNotificationKind = 'task_assigned' | 'resource_live' | 'announcement_created';
 
 export interface ScholarNotification {
   id: string;

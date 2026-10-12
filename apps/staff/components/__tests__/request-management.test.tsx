@@ -73,6 +73,17 @@ describe('RequestManagement — Request More Information (commented) action', ()
     });
   });
 
+  it('still offers Review after a request has been commented', async () => {
+    render(
+      <RequestManagement
+        request={buildRequest({ status: 'commented', reviewComment: 'Need a document' })}
+        onStatusUpdate={jest.fn()}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: /^Review$/i })).toBeEnabled();
+  });
+
   it('exposes a "Request More Information" button in the review dialog for a pending request', async () => {
     const user = userEvent.setup();
     render(<RequestManagement request={buildRequest()} onStatusUpdate={jest.fn()} />);

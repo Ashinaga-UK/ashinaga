@@ -144,7 +144,9 @@ describe('RequestsService', () => {
                 where: jest.fn().mockReturnValue({
                   groupBy: jest.fn().mockReturnValue({
                     orderBy: jest.fn().mockReturnValue({
-                      limit: jest.fn().mockResolvedValue([{ program: 'Engineering', year: '2026' }]),
+                      limit: jest
+                        .fn()
+                        .mockResolvedValue([{ program: 'Engineering', year: '2026' }]),
                     }),
                   }),
                 }),
@@ -400,6 +402,87 @@ describe('RequestsService', () => {
       expect(mockEmailService.sendRequestStatusNotification).toHaveBeenCalledTimes(1);
     });
 
+    it('does not reopen a decided request or email the scholar', async () => {
+      mockStatusUpdate('summer_funding_request');
+      const mockDatabase = require('../db/connection').database;
+      const reviewRow = [
+        {
+          request: {
+            id: 'request-1',
+            type: 'summer_funding_request',
+            status: 'rejected',
+            description: 'Request description',
+          },
+          scholar: { id: 'scholar-1' },
+          user: { id: 'scholar-user-1', name: 'Test Scholar', email: 'scholar@example.com' },
+        },
+      ];
+      mockDatabase.select = jest.fn().mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue(
+            Object.assign(Promise.resolve([{ isSuperAdmin: true }]), {
+              limit: jest.fn().mockResolvedValue([{ id: 'request-1' }]),
+            })
+          ),
+          innerJoin: jest.fn().mockReturnValue({
+            innerJoin: jest.fn().mockReturnValue({
+              where: jest.fn().mockReturnValue({
+                limit: jest.fn().mockResolvedValue(reviewRow),
+              }),
+            }),
+          }),
+        }),
+      });
+      mockDatabase.update = jest.fn();
+
+      await expect(
+        service.updateRequestStatus('request-1', 'approved', '', 'staff-1')
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(mockDatabase.update).not.toHaveBeenCalled();
+      expect(mockEmailService.sendRequestStatusNotification).not.toHaveBeenCalled();
+    });
+
+    it('does not write or email when the request is already in the requested status', async () => {
+      mockStatusUpdate('summer_funding_request');
+      const mockDatabase = require('../db/connection').database;
+      const reviewRow = [
+        {
+          request: {
+            id: 'request-1',
+            type: 'summer_funding_request',
+            status: 'approved',
+            description: 'Request description',
+          },
+          scholar: { id: 'scholar-1' },
+          user: { id: 'scholar-user-1', name: 'Test Scholar', email: 'scholar@example.com' },
+        },
+      ];
+      mockDatabase.select = jest.fn().mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue(
+            Object.assign(Promise.resolve([{ isSuperAdmin: true }]), {
+              limit: jest.fn().mockResolvedValue([{ id: 'request-1' }]),
+            })
+          ),
+          innerJoin: jest.fn().mockReturnValue({
+            innerJoin: jest.fn().mockReturnValue({
+              where: jest.fn().mockReturnValue({
+                limit: jest.fn().mockResolvedValue(reviewRow),
+              }),
+            }),
+          }),
+        }),
+      });
+      mockDatabase.update = jest.fn();
+      mockDatabase.insert = jest.fn();
+
+      await service.updateRequestStatus('request-1', 'approved', '', 'staff-1');
+
+      expect(mockDatabase.update).not.toHaveBeenCalled();
+      expect(mockDatabase.insert).not.toHaveBeenCalled();
+      expect(mockEmailService.sendRequestStatusNotification).not.toHaveBeenCalled();
+    });
+
     it('rejects a rejection that has no reason', async () => {
       await expect(
         service.updateRequestStatus('request-1', 'rejected', '   ', 'staff-1')
@@ -433,45 +516,74 @@ describe('RequestsService', () => {
       expect(mockDatabase.update).not.toHaveBeenCalled();
     });
 
-    it('writes one audit row per request in a bulk update', async () => {
+    function sqlMentions(value: unknown, needle: string): boolean {
+      const seen = new Set<unknown>();
+      const visit = (node: unknown): boolean => {
+        if (node == null || seen.has(node)) return false;
+        if (typeof node === 'string' || typeof node === 'number') {
+          return String(node).includes(needle);
+        }
+        if (typeof node !== 'object') return false;
+        seen.add(node);
+        if (Array.isArray(node)) return node.some(visit);
+        return Object.values(node as Record<string, unknown>).some(visit);
+      };
+      return visit(value);
+    }
+
+    function mockBulkRows(
+      rows: Array<{
+        id: string;
+        status: string;
+        type?: string;
+        reviewComment?: string | null;
+      }>
+    ) {
       const mockDatabase = require('../db/connection').database;
       const updatedAt = new Date('2026-09-22T00:00:00.000Z');
+      const set = jest.fn().mockReturnValue({
+        where: () => ({
+          returning: async () => rows.map((row) => ({ id: row.id, status: 'rejected', updatedAt })),
+        }),
+      });
       const values = jest.fn().mockResolvedValue(undefined);
+      mockDatabase.transaction = jest.fn(async (run: (tx: typeof mockDatabase) => unknown) =>
+        run(mockDatabase)
+      );
       mockDatabase.select = jest.fn().mockReturnValue({
         from: () => ({
           where: () =>
             Object.assign(Promise.resolve([{ isSuperAdmin: true }]), {
-              limit: async () => [{ id: 'request-1' }],
+              limit: async () => [{ id: rows[0]?.id ?? 'request-1' }],
             }),
           innerJoin: () => ({
             innerJoin: () => ({
-              where: () => ({
-                limit: async () => [
-                  {
-                    request: {
-                      id: 'request-1',
-                      type: 'others',
-                      status: 'pending',
-                      description: 'Request description',
-                      scholarId: 'scholar-1',
-                    },
-                    scholar: { id: 'scholar-1' },
-                    user: { name: 'Test Scholar', email: 'scholar@example.com' },
+              where: async () =>
+                rows.map((row) => ({
+                  request: {
+                    id: row.id,
+                    type: row.type ?? 'others',
+                    status: row.status,
+                    description: 'Request description',
+                    scholarId: 'scholar-1',
+                    reviewComment: row.reviewComment ?? null,
                   },
-                ],
-              }),
+                  user: { name: 'Test Scholar', email: 'scholar@example.com' },
+                })),
             }),
           }),
         }),
       });
-      mockDatabase.update = jest.fn().mockReturnValue({
-        set: () => ({
-          where: () => ({
-            returning: async () => [{ id: 'request-1', status: 'rejected', updatedAt }],
-          }),
-        }),
-      });
+      mockDatabase.update = jest.fn().mockReturnValue({ set });
       mockDatabase.insert = jest.fn().mockReturnValue({ values });
+      return { mockDatabase, set, values };
+    }
+
+    it('writes one audit row per request in a bulk update', async () => {
+      const { values } = mockBulkRows([
+        { id: '11111111-1111-4111-8111-111111111111', status: 'pending' },
+        { id: '22222222-2222-4222-8222-222222222222', status: 'pending' },
+      ]);
 
       await service.bulkUpdateRequestStatus(
         {
@@ -483,6 +595,180 @@ describe('RequestsService', () => {
       );
 
       expect(values).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not write when a bulk update includes a request that is not pending', async () => {
+      const { mockDatabase, values } = mockBulkRows([
+        { id: '11111111-1111-4111-8111-111111111111', status: 'pending' },
+        { id: '22222222-2222-4222-8222-222222222222', status: 'rejected' },
+      ]);
+
+      await expect(
+        service.bulkUpdateRequestStatus(
+          {
+            ids: ['11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222'],
+            status: 'approved',
+          },
+          'staff-1'
+        )
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(mockDatabase.transaction).not.toHaveBeenCalled();
+      expect(values).not.toHaveBeenCalled();
+    });
+
+    it('skips a request that is already in the requested status', async () => {
+      const { mockDatabase, values } = mockBulkRows([
+        { id: '11111111-1111-4111-8111-111111111111', status: 'approved' },
+      ]);
+
+      await service.bulkUpdateRequestStatus(
+        { ids: ['11111111-1111-4111-8111-111111111111'], status: 'approved' },
+        'staff-1'
+      );
+
+      expect(mockDatabase.transaction).not.toHaveBeenCalled();
+      expect(values).not.toHaveBeenCalled();
+      expect(mockEmailService.sendRequestStatusNotification).not.toHaveBeenCalled();
+    });
+
+    it('clears a stale comment when a bulk approve omits one', async () => {
+      const { set } = mockBulkRows([
+        {
+          id: '11111111-1111-4111-8111-111111111111',
+          status: 'pending',
+          type: 'extenuating_circumstances',
+          reviewComment: 'Keep me',
+        },
+      ]);
+
+      await service.bulkUpdateRequestStatus(
+        { ids: ['11111111-1111-4111-8111-111111111111'], status: 'approved' },
+        'staff-1'
+      );
+
+      expect(set).toHaveBeenCalledWith(expect.objectContaining({ reviewComment: '' }));
+      expect(mockEmailService.sendRequestStatusNotification).toHaveBeenCalledWith(
+        'scholar@example.com',
+        'Test Scholar',
+        'extenuating circumstances',
+        'approved',
+        '',
+        'Request description'
+      );
+    });
+
+    it('notifies staff for a request type the scholar cannot see', async () => {
+      mockBulkRows([
+        {
+          id: '11111111-1111-4111-8111-111111111111',
+          status: 'reviewed',
+          type: 'others',
+        },
+      ]);
+
+      await service.bulkUpdateRequestStatus(
+        { ids: ['11111111-1111-4111-8111-111111111111'], status: 'approved' },
+        'staff-1'
+      );
+
+      expect(mockEmailService.sendRequestStatusNotification).not.toHaveBeenCalled();
+      expect(mockNotifications.notifyRequestStatusChanged).toHaveBeenCalledWith(
+        expect.objectContaining({
+          requestId: '11111111-1111-4111-8111-111111111111',
+          requestType: 'others',
+          status: 'approved',
+        })
+      );
+    });
+
+    it('skips a request that is no longer pending when the update runs', async () => {
+      const pendingId = '11111111-1111-4111-8111-111111111111';
+      const lostId = '22222222-2222-4222-8222-222222222222';
+      const { mockDatabase, values } = mockBulkRows([
+        { id: pendingId, status: 'pending', type: 'extenuating_circumstances' },
+        { id: lostId, status: 'pending', type: 'extenuating_circumstances' },
+      ]);
+      const updatedAt = new Date('2026-09-22T00:00:00.000Z');
+      const where = jest
+        .fn()
+        .mockReturnValueOnce({
+          returning: async () => [{ id: pendingId, status: 'approved', updatedAt }],
+        })
+        .mockReturnValueOnce({
+          returning: async () => [],
+        });
+      mockDatabase.update = jest.fn().mockReturnValue({
+        set: jest.fn().mockReturnValue({ where }),
+      });
+
+      await service.bulkUpdateRequestStatus(
+        { ids: [pendingId, lostId], status: 'approved' },
+        'staff-1'
+      );
+
+      expect(where).toHaveBeenCalledTimes(2);
+      for (const call of where.mock.calls) {
+        expect(sqlMentions(call[0], 'pending')).toBe(true);
+        expect(sqlMentions(call[0], 'reviewed')).toBe(true);
+        expect(sqlMentions(call[0], 'commented')).toBe(true);
+      }
+      expect(values).toHaveBeenCalledTimes(1);
+      expect(values).toHaveBeenCalledWith(expect.objectContaining({ requestId: pendingId }));
+      expect(mockEmailService.sendRequestStatusNotification).toHaveBeenCalledTimes(1);
+    });
+
+    it('clears a stale comment when a single approve omits one', async () => {
+      mockStatusUpdate('summer_funding_request');
+      const mockDatabase = require('../db/connection').database;
+      const set = jest.fn().mockReturnValue({
+        where: jest.fn().mockReturnValue({
+          returning: jest.fn().mockResolvedValue([
+            {
+              id: 'request-1',
+              status: 'approved',
+              updatedAt: new Date('2026-09-22T00:00:00.000Z'),
+            },
+          ]),
+        }),
+      });
+      const values = jest.fn().mockResolvedValue(undefined);
+      mockDatabase.update = jest.fn().mockReturnValue({ set });
+      mockDatabase.insert = jest.fn().mockReturnValue({ values });
+
+      await service.updateRequestStatus('request-1', 'approved', '  ', 'staff-1');
+
+      expect(set).toHaveBeenCalledWith(expect.objectContaining({ reviewComment: '' }));
+      expect(values).toHaveBeenCalledWith(expect.objectContaining({ comment: null }));
+      expect(mockEmailService.sendRequestStatusNotification).toHaveBeenCalledWith(
+        'scholar@example.com',
+        'Test Scholar',
+        'summer funding_request',
+        'approved',
+        '',
+        'Request description'
+      );
+    });
+
+    it('does not email when the bulk write fails', async () => {
+      const { mockDatabase } = mockBulkRows([
+        {
+          id: '11111111-1111-4111-8111-111111111111',
+          status: 'pending',
+          type: 'extenuating_circumstances',
+        },
+      ]);
+      mockDatabase.transaction = jest.fn(async () => {
+        throw new Error('db down');
+      });
+
+      await expect(
+        service.bulkUpdateRequestStatus(
+          { ids: ['11111111-1111-4111-8111-111111111111'], status: 'approved' },
+          'staff-1'
+        )
+      ).rejects.toThrow('db down');
+      expect(mockEmailService.sendRequestStatusNotification).not.toHaveBeenCalled();
+      expect(mockNotifications.notifyRequestStatusChanged).not.toHaveBeenCalled();
     });
 
     it.each(['summer_funding_report', 'requirement_submission', 'others'] as const)(

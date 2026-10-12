@@ -9,6 +9,7 @@ import { AvatarsModule } from './avatars/avatars.module';
 import { CoordinatorNotesModule } from './coordinator-notes/coordinator-notes.module';
 import { DocumentsModule } from './documents/documents.module';
 import { EmailModule } from './email/email.module';
+import { FaqsModule } from './faqs/faqs.module';
 import { FilesModule } from './files/files.module';
 import { GoalsModule } from './goals/goals.module';
 import { HealthModule } from './health/health.module';
@@ -20,6 +21,7 @@ import { PrepYearReportModule } from './prep-year-report/prep-year-report.module
 import { ProposalsModule } from './proposals/proposals.module';
 import { RequestsModule } from './requests/requests.module';
 import { ResourcesModule } from './resources/resources.module';
+import { ScholarActivityReportModule } from './scholar-activity-report/scholar-activity-report.module';
 import { ScholarsModule } from './scholars/scholars.module';
 import { TasksModule } from './tasks/tasks.module';
 import { UsersModule } from './users/users.module';
@@ -40,6 +42,7 @@ import { UsersModule } from './users/users.module';
     UsersModule,
     InvitationsModule,
     FilesModule,
+    FaqsModule,
     GoalsModule,
     ResourcesModule,
     DocumentsModule,
@@ -49,6 +52,7 @@ import { UsersModule } from './users/users.module';
     ProposalsModule,
     AnnualUpdatesModule,
     PrepYearReportModule,
+    ScholarActivityReportModule,
     PlatformsModule,
   ],
   controllers: [AppController],
