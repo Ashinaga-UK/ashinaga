@@ -95,3 +95,20 @@ variable "db_ingress_cidr_blocks" {
   type        = list(string)
   default     = ["0.0.0.0/0"] # Allow all IPs
 }
+variable "api_cpu" {
+  description = "ECS Fargate task CPU units for the API"
+  type        = number
+  default     = 1024
+}
+
+variable "api_memory" {
+  description = "ECS Fargate task memory (MiB) for the API"
+  type        = number
+  default     = 2048
+}
+
+variable "api_desired_count" {
+  description = "Number of API tasks"
+  type        = number
+  default     = 1
+}
