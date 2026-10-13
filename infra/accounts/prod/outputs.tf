@@ -42,3 +42,23 @@ output "database_username" {
   value       = aws_db_instance.postgres.username
   sensitive   = true
 }
+# ECS outputs
+output "api_ecs_cluster" {
+  description = "ECS cluster running the API"
+  value       = module.api_ecs.cluster_name
+}
+
+output "api_ecs_service" {
+  description = "ECS service running the API"
+  value       = module.api_ecs.service_name
+}
+
+output "api_load_balancer_dns_name" {
+  description = "CNAME target for api.ashinaga-uk.org in Google Cloud DNS"
+  value       = module.api_ecs.load_balancer_dns_name
+}
+
+output "api_acm_validation_records" {
+  description = "Add these in Google Cloud DNS so the API certificate can be issued"
+  value       = module.api_ecs.acm_validation_records
+}

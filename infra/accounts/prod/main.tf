@@ -304,3 +304,65 @@ resource "aws_apprunner_custom_domain_association" "api" {
   domain_name = "api.ashinaga-uk.org"
   service_arn = module.api_app_runner.service_arn
 }
+
+# API on ECS Fargate behind an ALB. Replaces App Runner, which has closed to new
+# customers and restricted this account (Oct 2026). Same image, env and secrets.
+module "api_ecs" {
+  source = "../../modules/ecs_service"
+
+  service_name   = "${var.project_name}-api-${var.environment}"
+  environment    = var.environment
+  image          = "${module.api_ecr.repository_url}:latest"
+  container_port = var.app_runner_port
+  cpu            = var.api_cpu
+  memory         = var.api_memory
+  desired_count  = var.api_desired_count
+  domain_name    = "api.ashinaga-uk.org"
+
+  vpc_id     = module.vpc.vpc_id
+  subnet_ids = module.vpc.subnet_ids
+
+  task_policy_arns = [module.scholar_data_bucket.s3_access_policy_arn]
+  deploy_role_name = "GithubActionsDeployRole"
+
+  env_vars = {
+    NODE_ENV = "production"
+    PORT     = tostring(var.app_runner_port)
+    DB_HOST  = aws_db_instance.postgres.address
+    DB_PORT  = tostring(aws_db_instance.postgres.port)
+    DB_NAME  = aws_db_instance.postgres.db_name
+    DB_USER  = aws_db_instance.postgres.username
+    DB_SSL   = "true"
+
+    BETTER_AUTH_URL = "https://api.ashinaga-uk.org"
+    CORS_ORIGINS    = "https://staff.ashinaga-uk.org,https://scholar.ashinaga-uk.org,http://localhost:4001,http://localhost:4002"
+
+    EMAIL_FROM                        = "noreply@ashinaga-uk.org"
+    NOTIFICATION_REMINDER_DAYS        = "2"
+    NOTIFICATION_INACTIVITY_DAYS      = "14"
+    NOTIFICATION_MONTHLY_DAY          = "1"
+    NOTIFICATION_ACTIVITY_TOUCH_HOURS = "6"
+    NOTIFICATION_STAFF_DIGEST_WEEKDAY = "1"
+
+    STAFF_APP_URL   = "https://staff.ashinaga-uk.org"
+    SCHOLAR_APP_URL = "https://scholar.ashinaga-uk.org"
+
+    S3_BUCKET_NAME = module.scholar_data_bucket.bucket_name
+    AWS_REGION     = var.aws_region
+  }
+
+  # Read from Secrets Manager at task start instead of being baked into config.
+  secrets = {
+    DB_PASSWORD        = module.db_password.secret_arn
+    BETTER_AUTH_SECRET = module.better_auth_secret.secret_arn
+    RESEND_API_KEY     = module.resend_api_key.secret_arn
+    CRON_SECRET        = module.notification_cron_secret.secret_arn
+  }
+}
+
+# Certificate requested by hand during the Oct 2026 outage; adopt it so the
+# validation record already being added in Google DNS stays valid.
+import {
+  to = module.api_ecs.aws_acm_certificate.this
+  id = "arn:aws:acm:eu-west-3:492683309376:certificate/87a5dc8d-0825-4ba8-9658-e07d7bab53b2"
+}
