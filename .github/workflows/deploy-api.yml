@@ -23,6 +23,10 @@ on:
       - 'apps/api/**'
       - 'packages/**'
       - '.github/workflows/deploy-api.yml'
+      - 'scripts/start-db-task.sh'
+      - 'scripts/assert-app-runner-vpc-egress.sh'
+      - 'infra/modules/private_data_plane/run-task.sh'
+      - 'infra/modules/private_data_plane/buildspec.yml'
   workflow_dispatch:
     inputs:
       environment:
@@ -80,6 +84,9 @@ jobs:
         role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
         aws-region: ${{ env.AWS_REGION }}
 
+    - name: Require VPC egress once database tasks run in the VPC
+      run: ./scripts/assert-app-runner-vpc-egress.sh "${{ needs.determine-environment.outputs.environment }}"
+
     - name: Login to Amazon ECR
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
@@ -121,7 +128,24 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y postgresql-client
 
+    - name: Run database migrations in the VPC
+      id: db_task
+      run: |
+        ENVIRONMENT="${{ needs.determine-environment.outputs.environment }}"
+        set +e
+        ./scripts/start-db-task.sh "$ENVIRONMENT" migrate
+        status=$?
+        set -e
+        if [ "$status" -eq 0 ]; then
+          echo "ran=codebuild" >> "$GITHUB_OUTPUT"
+        elif [ "$status" -eq 42 ]; then
+          echo "ran=runner" >> "$GITHUB_OUTPUT"
+        else
+          exit "$status"
+        fi
+
     - name: Run database migrations
+      if: steps.db_task.outputs.ran == 'runner'
       run: |
         ENVIRONMENT="${{ needs.determine-environment.outputs.environment }}"
         
@@ -168,8 +192,6 @@ jobs:
         
         # Install dependencies (only if package.json changed)
         pnpm install --frozen-lockfile
-        
-        # Database is now permanently publicly accessible for debugging purposes
         
         # Run migrations
         echo "Running database migrations..."
@@ -543,7 +565,8 @@ jobs:
         # Get service URL
         SERVICE_URL=$(aws apprunner describe-service --service-arn ${SERVICE_ARN} --query "Service.ServiceUrl" --output text)
         echo "Deployment complete! Service available at: https://${SERVICE_URL}"
-        
+        ./scripts/assert-app-runner-vpc-egress.sh "$ENVIRONMENT"
+
         # Add to job summary
         echo "## 🚀 Deployment Complete" >> $GITHUB_STEP_SUMMARY
         echo "- **Environment**: ${ENVIRONMENT}" >> $GITHUB_STEP_SUMMARY  
