@@ -39,3 +39,13 @@ output "database_username" {
   value       = aws_db_instance.postgres.username
   sensitive   = true
 }
+
+output "github_actions_db_tasks_policy_arn" {
+  description = "Attach to the GitHub OIDC role so deploys can start in-VPC database tasks"
+  value       = module.private_data_plane.github_actions_policy_arn
+}
+
+output "db_tasks_project_name" {
+  description = "CodeBuild project that runs migrations inside the VPC"
+  value       = module.private_data_plane.codebuild_project_name
+}
