@@ -264,6 +264,39 @@ describe('Scholars API (integration)', () => {
   });
 
   /**
+   * ASH-136: staff can restore an archived scholar to active.
+   * Hits the real HTTP + DB path via PATCH /api/scholars/:id/restore.
+   */
+  describe('PATCH /api/scholars/:id/restore', () => {
+    it('restores an archived scholar to active', async () => {
+      await drizzle(pool)
+        .update(scholars)
+        .set({ status: 'archived', updatedAt: new Date() })
+        .where(eq(scholars.id, seededScholarId));
+
+      const res = await request(app.getHttpServer())
+        .patch(`/api/scholars/${seededScholarId}/restore`)
+        .expect(200);
+
+      expect(res.body.id).toBe(seededScholarId);
+      expect(res.body.status).toBe('active');
+
+      const [row] = await drizzle(pool)
+        .select({ status: scholars.status })
+        .from(scholars)
+        .where(eq(scholars.id, seededScholarId))
+        .limit(1);
+      expect(row?.status).toBe('active');
+    });
+
+    it('returns 404 for a missing scholar', async () => {
+      await request(app.getHttpServer())
+        .patch('/api/scholars/00000000-0000-0000-0000-000000000000/restore')
+        .expect(404);
+    });
+  });
+
+  /**
    * ASH-118: prep_year → scholar must fail when university/year are still placeholders.
    * Hits the real HTTP + DB path via PATCH /api/scholars/:id/profile.
    */
