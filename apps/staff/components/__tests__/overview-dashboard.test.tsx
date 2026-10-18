@@ -151,6 +151,46 @@ describe('OverviewDashboard', () => {
     expect(screen.getByText('2 gaps')).toBeInTheDocument();
   });
 
+  it('places What needs attention immediately above Proposal reviews', () => {
+    renderDashboard();
+
+    const attention = screen.getByRole('heading', { name: 'What needs attention' });
+    const proposals = screen.getByText('Proposal reviews');
+    const quickActions = screen.getByRole('heading', { name: 'Quick actions' });
+
+    expect(attention.compareDocumentPosition(proposals) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
+    expect(quickActions.compareDocumentPosition(attention) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
+  });
+
+  it('expands What needs attention by default and can collapse and reopen it', async () => {
+    const user = userEvent.setup();
+    renderDashboard();
+
+    const toggle = screen.getByRole('button', { name: 'What needs attention' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('tablist', { name: 'Attention views' })).toBeVisible();
+    expect(screen.getByRole('link', { name: /Personal statement draft/ })).toBeVisible();
+
+    await user.click(toggle);
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('tablist', { name: 'Attention views' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: /Personal statement draft/ })
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('Proposal reviews')).toBeInTheDocument();
+
+    await user.click(toggle);
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('tablist', { name: 'Attention views' })).toBeVisible();
+    expect(screen.getByRole('link', { name: /Personal statement draft/ })).toBeVisible();
+  });
+
   it('states the follow-up window from the overview payload', () => {
     attention = 'follow';
     overview.mockReturnValue({
