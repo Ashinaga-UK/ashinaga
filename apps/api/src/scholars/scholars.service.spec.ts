@@ -1194,6 +1194,74 @@ describe('ScholarsService', () => {
     });
   });
 
+  describe('restoreScholar', () => {
+    it('should throw NotFoundException when scholar does not exist', async () => {
+      const mockFrom = jest.fn().mockReturnThis();
+      const mockWhere = jest.fn().mockReturnThis();
+      const mockLimit = jest.fn().mockResolvedValue([]);
+
+      mockDatabase.select = jest.fn().mockReturnValue({
+        from: mockFrom,
+        where: mockWhere,
+        limit: mockLimit,
+      });
+
+      mockFrom.mockReturnThis();
+      mockWhere.mockReturnThis();
+
+      await expect(service.restoreScholar('missing')).rejects.toThrow(NotFoundException);
+      await expect(service.restoreScholar('missing')).rejects.toThrow('Scholar not found');
+    });
+
+    it('should update status to active and return scholar', async () => {
+      const mockFrom = jest.fn().mockReturnThis();
+      const mockWhere = jest.fn().mockReturnThis();
+      const mockLimit = jest.fn().mockResolvedValue([{ id: 's1', userId: 'u1', status: 'archived' }]);
+      const mockSet = jest.fn().mockReturnThis();
+      const mockUpdateWhere = jest.fn().mockResolvedValue(undefined);
+
+      mockDatabase.select = jest.fn().mockReturnValue({
+        from: mockFrom,
+        where: mockWhere,
+        limit: mockLimit,
+      });
+
+      mockDatabase.update = jest.fn().mockReturnValue({
+        set: mockSet,
+        where: mockUpdateWhere,
+      });
+
+      mockFrom.mockReturnThis();
+      mockWhere.mockReturnThis();
+
+      const getScholarSpy = jest.spyOn(service, 'getScholar').mockResolvedValueOnce({
+        id: 's1',
+        userId: 'u1',
+        name: 'Restored User',
+        email: 'a@x.com',
+        program: 'CS',
+        year: 'Y1',
+        university: 'MIT',
+        status: 'active',
+        startDate: new Date().toISOString(),
+        goals: { total: 0, completed: 0, inProgress: 0, pending: 0 },
+        tasks: { total: 0, completed: 0, overdue: 0, dueToday: 0 },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as Awaited<ReturnType<ScholarsService['getScholar']>>);
+
+      const result = await service.restoreScholar('s1');
+
+      expect(mockDatabase.update).toHaveBeenCalled();
+      expect(mockSet).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'active', updatedAt: expect.any(Date) })
+      );
+      expect(getScholarSpy).toHaveBeenCalledWith('s1');
+      expect(result.status).toBe('active');
+      getScholarSpy.mockRestore();
+    });
+  });
+
   describe('deleteScholar', () => {
     it('should throw NotFoundException when scholar does not exist', async () => {
       const mockFrom = jest.fn().mockReturnThis();

@@ -1366,6 +1366,18 @@ export class ScholarsService {
     return this.getScholar(scholarId);
   }
 
+  async restoreScholar(scholarId: string): Promise<ScholarResponseDto> {
+    const [row] = await database.select().from(scholars).where(eq(scholars.id, scholarId)).limit(1);
+    if (!row) {
+      throw new NotFoundException('Scholar not found');
+    }
+    await database
+      .update(scholars)
+      .set({ status: 'active', updatedAt: new Date() })
+      .where(eq(scholars.id, scholarId));
+    return this.getScholar(scholarId);
+  }
+
   async deleteScholar(scholarId: string): Promise<void> {
     const [row] = await database.select().from(scholars).where(eq(scholars.id, scholarId)).limit(1);
     if (!row) {
