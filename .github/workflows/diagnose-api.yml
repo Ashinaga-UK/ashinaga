@@ -52,7 +52,7 @@ jobs:
           echo "## Public health check" >> "$GITHUB_STEP_SUMMARY"
           echo "URL: \`$URL\`" >> "$GITHUB_STEP_SUMMARY"
           echo "Checking $URL ..."
-          CODE=$(curl -sS -o /tmp/health_body -w "%{http_code}" --max-time 15 "$URL" || echo "000")
+          CODE=$(curl -sS -o /tmp/health_body -w "%{http_code}" --max-time 15 "$URL") || CODE="000"
           echo "HTTP $CODE"
           echo "Body:"
           head -c 500 /tmp/health_body || true
@@ -112,7 +112,7 @@ jobs:
         run: |
           set -euo pipefail
           echo "## Recent operations" >> "$GITHUB_STEP_SUMMARY"
-          aws apprunner list-operations --service-arn "$SERVICE_ARN" --max-results 15 \
+          aws apprunner list-operations --service-arn "$SERVICE_ARN" --max-items 15 \
             --output json | tee /tmp/operations.json
           echo '```json' >> "$GITHUB_STEP_SUMMARY"
           cat /tmp/operations.json >> "$GITHUB_STEP_SUMMARY"
@@ -188,14 +188,13 @@ jobs:
               r"""(?ix)
               (?P<prefix>
                   ["']?
-                  \b(?:DB_PASSWORD|BETTER_AUTH_SECRET|RESEND_API_KEY|CRON_SECRET|
-                      password|token|authorization)\b
+                  [\w-]*(?:password|token|secret|authorization|cookie)[\w-]*
                   ["']?\s*[:=]\s*
               )
               (?P<value>
                   "(?:\\.|[^"\\])*" |
                   '(?:\\.|[^'\\])*' |
-                  (?:Bearer\s+)?[^,;}\]\r\n]+
+                  (?:Bearer\s+)?(?!\[)[^,;}\]\s\r\n]+
               )
               """,
           )
@@ -206,6 +205,7 @@ jobs:
               r"(?i)\bhttps?://[^\s<>\"']*(?:password-reset|reset-password|reset|signup|invite)"
               r"[^\s<>\"']*"
           )
+          bare_jwt = re.compile(r"\beyJ[\w-]+\.[\w-]+\.[\w-]+\b")
 
           def redact(message):
               message = sensitive_link.sub("[REDACTED_URL]", message)
@@ -216,7 +216,8 @@ jobs:
                   quote = value[0] if value[:1] in {'"', "'"} else ""
                   return f"{match.group('prefix')}{quote}[REDACTED]{quote}"
 
-              return sensitive_value.sub(replace_value, message)
+              message = sensitive_value.sub(replace_value, message)
+              return bare_jwt.sub("[REDACTED_JWT]", message)
 
           for g in groups:
               lg = g["name"]
