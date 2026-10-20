@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { OverviewPayload } from '../../lib/api-client';
 import { OverviewDashboard } from '../overview-dashboard';
@@ -96,11 +96,16 @@ const payload: OverviewPayload = {
 
 function renderDashboard() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const renderTree = () => (
     <QueryClientProvider client={client}>
       <OverviewDashboard />
     </QueryClientProvider>
   );
+  const result = render(renderTree());
+  return {
+    ...result,
+    rerenderDashboard: () => result.rerender(renderTree()),
+  };
 }
 
 describe('OverviewDashboard', () => {
@@ -178,6 +183,7 @@ describe('OverviewDashboard', () => {
     await user.click(toggle);
 
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(toggle).not.toHaveAttribute('aria-controls');
     expect(screen.queryByRole('tablist', { name: 'Attention views' })).not.toBeInTheDocument();
     expect(
       screen.queryByRole('link', { name: /Personal statement draft/ })
@@ -189,6 +195,21 @@ describe('OverviewDashboard', () => {
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('tablist', { name: 'Attention views' })).toBeVisible();
     expect(screen.getByRole('link', { name: /Personal statement draft/ })).toBeVisible();
+  });
+
+  it('reopens a collapsed attention panel when an attention deep link arrives', async () => {
+    const user = userEvent.setup();
+    const { rerenderDashboard } = renderDashboard();
+    const toggle = screen.getByRole('button', { name: 'What needs attention' });
+
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+    attention = 'follow';
+    rerenderDashboard();
+
+    await waitFor(() => expect(toggle).toHaveAttribute('aria-expanded', 'true'));
+    expect(screen.getByRole('tab', { name: /Follow up/ })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('states the follow-up window from the overview payload', () => {

@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import type {
   OverviewAttentionItem,
   OverviewAttentionType,
@@ -163,8 +163,15 @@ export function OverviewDashboard() {
   const requested = searchParams.get('attention');
   const view = isViewId(requested) ? requested : 'action';
   const current = VIEWS.find((item) => item.id === view) ?? VIEWS[0];
+  // Keep overview counts current even while the attention panel is collapsed.
   const { data, isLoading, isError, error, refetch, isFetching } = useOverview(true);
   const [attentionOpen, setAttentionOpen] = useState(true);
+
+  useEffect(() => {
+    if (isViewId(requested)) {
+      setAttentionOpen(true);
+    }
+  }, [requested]);
 
   const selectView = (next: ViewId) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -283,27 +290,27 @@ export function OverviewDashboard() {
         className="rounded-lg border bg-card"
       >
         <section aria-labelledby="attention-heading">
-          <CollapsibleTrigger
-            className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:px-5"
-            aria-controls="attention-panel"
+          <h3
+            id="attention-heading"
+            className="text-sm font-semibold leading-none tracking-tight text-balance"
           >
-            <h3
-              id="attention-heading"
-              className="text-sm font-semibold leading-none tracking-tight text-balance"
+            <CollapsibleTrigger
+              className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:px-5"
+              aria-controls={attentionOpen ? 'attention-panel' : undefined}
             >
-              What needs attention
-            </h3>
-            <ChevronDown
-              className={cn(
-                'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200',
-                attentionOpen && 'rotate-180'
-              )}
-              aria-hidden
-            />
-          </CollapsibleTrigger>
+              <span>What needs attention</span>
+              <ChevronDown
+                className={cn(
+                  'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200',
+                  attentionOpen && 'rotate-180'
+                )}
+                aria-hidden
+              />
+            </CollapsibleTrigger>
+          </h3>
           <CollapsibleContent id="attention-panel">
             <div className="px-4 sm:px-5">
-              <p id="attention-purpose" className="max-w-3xl text-sm text-muted-foreground">
+              <p className="max-w-3xl text-sm text-muted-foreground">
                 {current.id === 'follow' && data?.followUpDays
                   ? `Scholars quiet for more than ${data.followUpDays} ${data.followUpDays === 1 ? 'day' : 'days'}. A missing login date is unknown, so it is not listed here.`
                   : current.purpose}
