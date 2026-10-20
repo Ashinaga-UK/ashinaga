@@ -1371,6 +1371,9 @@ export class ScholarsService {
     if (!row) {
       throw new NotFoundException('Scholar not found');
     }
+    if (row.status !== 'archived') {
+      throw new ConflictException(`Cannot restore scholar with status '${row.status}'`);
+    }
     await database
       .update(scholars)
       .set({ status: 'active', updatedAt: new Date() })

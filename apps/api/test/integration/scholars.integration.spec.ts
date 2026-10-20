@@ -268,6 +268,14 @@ describe('Scholars API (integration)', () => {
    * Hits the real HTTP + DB path via PATCH /api/scholars/:id/restore.
    */
   describe('PATCH /api/scholars/:id/restore', () => {
+    afterAll(async () => {
+      if (!pool || !seededScholarId) return;
+      await drizzle(pool)
+        .update(scholars)
+        .set({ status: 'active', updatedAt: new Date() })
+        .where(eq(scholars.id, seededScholarId));
+    });
+
     it('restores an archived scholar to active', async () => {
       await drizzle(pool)
         .update(scholars)
@@ -294,6 +302,29 @@ describe('Scholars API (integration)', () => {
         .patch('/api/scholars/00000000-0000-0000-0000-000000000000/restore')
         .expect(404);
     });
+
+    it.each(['active', 'inactive', 'on_hold'] as const)(
+      'returns 409 and leaves status unchanged when the scholar is %s',
+      async (status) => {
+        await drizzle(pool)
+          .update(scholars)
+          .set({ status, updatedAt: new Date() })
+          .where(eq(scholars.id, seededScholarId));
+
+        const res = await request(app.getHttpServer())
+          .patch(`/api/scholars/${seededScholarId}/restore`)
+          .expect(409);
+
+        expect(res.body.message).toBe(`Cannot restore scholar with status '${status}'`);
+
+        const [row] = await drizzle(pool)
+          .select({ status: scholars.status })
+          .from(scholars)
+          .where(eq(scholars.id, seededScholarId))
+          .limit(1);
+        expect(row?.status).toBe(status);
+      }
+    );
   });
 
   /**
