@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 
 // Mock the database connection before any imports that might use it
@@ -34,9 +34,9 @@ jest.mock('../auth/auth.config', () => ({
   },
 }));
 
+import { AvatarsService } from '../avatars/avatars.service';
 import { DocumentsService } from '../documents/documents.service';
 import { InvitationsService } from '../invitations/invitations.service';
-import { AvatarsService } from '../avatars/avatars.service';
 import type { CreateScholarDto } from './dto/create-scholar.dto';
 import { PlatformSetupStatus } from './dto/update-platform-setup.dto';
 import { Gender, ProgramStage } from './dto/update-scholar-profile.dto';
@@ -1216,7 +1216,9 @@ describe('ScholarsService', () => {
     it('should update status to active and return scholar', async () => {
       const mockFrom = jest.fn().mockReturnThis();
       const mockWhere = jest.fn().mockReturnThis();
-      const mockLimit = jest.fn().mockResolvedValue([{ id: 's1', userId: 'u1', status: 'archived' }]);
+      const mockLimit = jest
+        .fn()
+        .mockResolvedValue([{ id: 's1', userId: 'u1', status: 'archived' }]);
       const mockSet = jest.fn().mockReturnThis();
       const mockUpdateWhere = jest.fn().mockResolvedValue(undefined);
 
@@ -1260,6 +1262,31 @@ describe('ScholarsService', () => {
       expect(result.status).toBe('active');
       getScholarSpy.mockRestore();
     });
+
+    it.each(['active', 'inactive', 'on_hold'] as const)(
+      'should throw ConflictException and leave status unchanged when scholar is %s',
+      async (status) => {
+        const mockFrom = jest.fn().mockReturnThis();
+        const mockWhere = jest.fn().mockReturnThis();
+        const mockLimit = jest.fn().mockResolvedValue([{ id: 's1', userId: 'u1', status }]);
+
+        mockDatabase.select = jest.fn().mockReturnValue({
+          from: mockFrom,
+          where: mockWhere,
+          limit: mockLimit,
+        });
+        mockDatabase.update = jest.fn();
+
+        mockFrom.mockReturnThis();
+        mockWhere.mockReturnThis();
+
+        await expect(service.restoreScholar('s1')).rejects.toThrow(ConflictException);
+        await expect(service.restoreScholar('s1')).rejects.toThrow(
+          `Cannot restore scholar with status '${status}'`
+        );
+        expect(mockDatabase.update).not.toHaveBeenCalled();
+      }
+    );
   });
 
   describe('deleteScholar', () => {
