@@ -54,14 +54,8 @@ jobs:
           echo "Checking $URL ..."
           CODE=$(curl -sS -o /tmp/health_body -w "%{http_code}" --max-time 15 "$URL") || CODE="000"
           echo "HTTP $CODE"
-          echo "Body:"
-          head -c 500 /tmp/health_body || true
-          echo
           echo "- HTTP status: \`$CODE\`" >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          head -c 500 /tmp/health_body >> "$GITHUB_STEP_SUMMARY" || true
-          echo >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          rm -f /tmp/health_body
 
       - name: App Runner service status (no secrets)
         env:
@@ -188,24 +182,31 @@ jobs:
               r"""(?ix)
               (?P<prefix>
                   ["']?
-                  [\w-]*(?:password|token|secret|authorization|cookie)[\w-]*
+                  (?:
+                      DB_PASSWORD |
+                      BETTER_AUTH_SECRET |
+                      RESEND_API_KEY |
+                      CRON_SECRET |
+                      [\w-]*(?:password|token|secret|authorization|cookie|api[_-]?key|session(?:[_-]?id)?)[\w-]*
+                  )
                   ["']?\s*[:=]\s*
               )
               (?P<value>
                   "(?:\\.|[^"\\])*" |
                   '(?:\\.|[^'\\])*' |
-                  (?:Bearer\s+)?(?!\[)[^,;}\]\s\r\n]+
+                  (?:Bearer\s+)?[^,;}&\s\r\n]+
               )
               """,
           )
           sensitive_query = re.compile(
-              r"(?i)([?&](?:password|token|authorization)=)[^&\s<>\"']+"
+              r"(?i)([?&][\w-]*(?:password|token|secret|authorization|cookie|api[_-]?key|"
+              r"session(?:[_-]?id)?)[\w-]*=)[^&\s<>\"']+"
           )
           sensitive_link = re.compile(
               r"(?i)\bhttps?://[^\s<>\"']*(?:password-reset|reset-password|reset|signup|invite)"
               r"[^\s<>\"']*"
           )
-          bare_jwt = re.compile(r"\beyJ[\w-]+\.[\w-]+\.[\w-]+\b")
+          bare_jwt = re.compile(r"\beyJ[\w-]{10,}\.[\w-]{10,}\.[\w-]{10,}\b")
 
           def redact(message):
               message = sensitive_link.sub("[REDACTED_URL]", message)
@@ -213,6 +214,8 @@ jobs:
 
               def replace_value(match):
                   value = match.group("value")
+                  if value.strip("\"'") == "[REDACTED]":
+                      return match.group(0)
                   quote = value[0] if value[:1] in {'"', "'"} else ""
                   return f"{match.group('prefix')}{quote}[REDACTED]{quote}"
 
