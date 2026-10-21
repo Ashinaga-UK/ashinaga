@@ -28,7 +28,7 @@ describe('GET /api/tasks/cohort (integration)', () => {
 
   const createdTaskIds: string[] = [];
   const groupId = randomUUID();
-  const englishDue = new Date('2026-10-01T00:00:00.000Z');
+  const englishDue = new Date('2099-10-01T00:00:00.000Z');
   const overdueDue = new Date('2020-01-01T00:00:00.000Z');
 
   beforeAll(async () => {
