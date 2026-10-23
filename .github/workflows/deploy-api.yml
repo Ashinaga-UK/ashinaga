@@ -198,9 +198,11 @@ jobs:
         fi
         
         echo "Found secret: $SECRET_ARN"
-        export DB_PASSWORD=$(aws secretsmanager get-secret-value \
+        DB_PASSWORD=$(aws secretsmanager get-secret-value \
           --secret-id "$SECRET_ARN" \
           --query SecretString --output text)
+        printf '::add-mask::%s\n' "$DB_PASSWORD"
+        export DB_PASSWORD
           
         # Get Better Auth secret from AWS Secrets Manager
         echo "Retrieving Better Auth secret from AWS Secrets Manager..."
@@ -215,9 +217,11 @@ jobs:
           exit 1
         fi
         
-        export BETTER_AUTH_SECRET=$(aws secretsmanager get-secret-value \
+        BETTER_AUTH_SECRET=$(aws secretsmanager get-secret-value \
           --secret-id "$AUTH_SECRET_ARN" \
           --query SecretString --output text)
+        printf '::add-mask::%s\n' "$BETTER_AUTH_SECRET"
+        export BETTER_AUTH_SECRET
 
         # Get Resend API key from AWS Secrets Manager
         echo "Retrieving Resend API key from AWS Secrets Manager..."
@@ -232,9 +236,11 @@ jobs:
           exit 1
         fi
 
-        export RESEND_API_KEY=$(aws secretsmanager get-secret-value \
+        RESEND_API_KEY=$(aws secretsmanager get-secret-value \
           --secret-id "$RESEND_SECRET_ARN" \
           --query SecretString --output text)
+        printf '::add-mask::%s\n' "$RESEND_API_KEY"
+        export RESEND_API_KEY
 
         # Set Better Auth URL based on environment
         if [ "$ENVIRONMENT" = "test" ]; then
@@ -306,12 +312,14 @@ jobs:
         # Fetch the latest secrets from AWS Secrets Manager
         echo "Fetching latest secrets from AWS Secrets Manager..."
 
-        # Helper function to get secret value and trim whitespace
+        # Helper function to get a secret value. Command substitution removes
+        # the trailing newline without xargs interpreting secret punctuation.
         get_secret_value() {
           local secret_pattern="$1"
           # Get the most recent secret name matching the pattern
           # First get all matching secrets, filter out "None", then sort and pick the last one
-          local secret_name=$(aws secretsmanager list-secrets \
+          local secret_name
+          secret_name=$(aws secretsmanager list-secrets \
             --query "SecretList[?contains(Name, '${secret_pattern}')].Name" \
             --output text | tr '\t' '\n' | grep -v "^None$" | sort | tail -n 1)
 
@@ -324,11 +332,12 @@ jobs:
 
           echo "Found secret: $secret_name" >&2
 
-          # Get secret value and trim whitespace
+          # Return the value unchanged; command substitution strips only the
+          # trailing newline emitted by the AWS CLI.
           aws secretsmanager get-secret-value \
             --secret-id "$secret_name" \
             --query SecretString \
-            --output text | xargs
+            --output text
         }
 
         # Fetch all secrets
@@ -340,6 +349,19 @@ jobs:
         RESEND_API_KEY=$(get_secret_value "ashinaga-resend-api-key-${ENVIRONMENT}")
         echo "Fetching notification cron secret (optional until terraform apply)..."
         CRON_SECRET=$(get_secret_value "ashinaga-notification-cron-secret-${ENVIRONMENT}" || true)
+
+        # GitHub only redacts values registered with add-mask. Hard-coded
+        # "[MASKED]" log messages do not protect later command output.
+        for secret_value in \
+          "$DB_PASSWORD" \
+          "$BETTER_AUTH_SECRET" \
+          "$RESEND_API_KEY" \
+          "${CRON_SECRET:-}"
+        do
+          if [ -n "$secret_value" ]; then
+            printf '::add-mask::%s\n' "$secret_value"
+          fi
+        done
 
         # Get database connection details
         echo "Getting database configuration..."
@@ -433,12 +455,15 @@ jobs:
         # Function to update App Runner service
         update_app_runner_service() {
           echo "Sending update request to App Runner..."
-          aws apprunner update-service \
-            --service-arn ${SERVICE_ARN} \
-            --source-configuration "$APP_RUNNER_CONFIG"
-
-          if [ $? -eq 0 ]; then
-            echo "✅ Successfully triggered App Runner update with latest secrets"
+          local operation_id
+          if operation_id=$(aws apprunner update-service \
+            --service-arn "$SERVICE_ARN" \
+            --source-configuration "$APP_RUNNER_CONFIG" \
+            --query 'OperationId' \
+            --output text); then
+            # The unfiltered response includes RuntimeEnvironmentVariables and
+            # therefore plaintext secrets. Only log the safe operation ID.
+            echo "✅ App Runner update started (operation: ${operation_id})"
           else
             echo "❌ Failed to update App Runner service"
             exit 1
