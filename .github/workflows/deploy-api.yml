@@ -464,12 +464,50 @@ jobs:
             --output text); then
             # The unfiltered response includes RuntimeEnvironmentVariables and
             # therefore plaintext secrets. Only log the safe operation ID.
-            echo "✅ App Runner update started (operation: ${operation_id})"
-            echo "operation_id=${operation_id}" >> "$GITHUB_OUTPUT"
+            :
           else
             echo "❌ Failed to update App Runner service"
             exit 1
           fi
+
+          # update-service only returns an OperationId when it detects a config
+          # change (env vars, secrets, image identifier, ...). AutoDeploymentsEnabled
+          # means a plain ECR push to the same :latest tag is usually already picked
+          # up on its own by the time we get here, so this call is frequently a
+          # genuine no-op and OperationId comes back empty/"None". Force a real,
+          # trackable deployment of whatever :latest currently points to so there is
+          # always an operation to wait on, instead of assuming success or hanging.
+          if [ -z "$operation_id" ] || [ "$operation_id" = "None" ]; then
+            echo "App Runner update was a no-op (no config change) - forcing a deployment of the current image..."
+            # start-deployment can transiently fail if an auto-deploy triggered by
+            # the earlier ECR push is still wrapping up; retry a few times rather
+            # than failing the whole job on that race.
+            local attempt
+            for attempt in 1 2 3 4 5; do
+              if operation_id=$(aws apprunner start-deployment \
+                --service-arn "$SERVICE_ARN" \
+                --query 'OperationId' \
+                --output text 2>/tmp/start-deployment-error); then
+                break
+              fi
+              echo "start-deployment attempt ${attempt} failed, retrying in 15s..."
+              cat /tmp/start-deployment-error
+              operation_id=""
+              sleep 15
+            done
+            if [ -z "$operation_id" ] || [ "$operation_id" = "None" ]; then
+              echo "❌ Failed to start App Runner deployment after retries"
+              exit 1
+            fi
+          fi
+
+          if [ -z "$operation_id" ] || [ "$operation_id" = "None" ]; then
+            echo "❌ App Runner did not return an operation ID from update-service or start-deployment"
+            exit 1
+          fi
+
+          echo "✅ App Runner deployment started (operation: ${operation_id})"
+          echo "operation_id=${operation_id}" >> "$GITHUB_OUTPUT"
         }
 
         # Check service status
