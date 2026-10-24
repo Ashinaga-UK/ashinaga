@@ -44,6 +44,7 @@ import {
   type PrepTaskCohortFilters,
   type PrepYearReportFilters,
   type ResourceFilterOptions,
+  restoreScholar,
   reviewProposalStep,
   type ScholarActivityFilters,
   type Task,
@@ -493,6 +494,13 @@ export function useMarkStaffNotificationsRead() {
 export function useArchiveScholar() {
   return useMutation({
     mutationFn: archiveScholar,
+  });
+}
+
+// Restore archived scholar (staff)
+export function useRestoreScholar() {
+  return useMutation({
+    mutationFn: restoreScholar,
   });
 }
 

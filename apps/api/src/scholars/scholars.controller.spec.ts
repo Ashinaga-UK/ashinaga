@@ -18,6 +18,9 @@ describe('ScholarsController', () => {
     updateScholarProfile: jest.fn(),
     updateScholarProfileByScholarId: jest.fn(),
     updatePlatformSetup: jest.fn(),
+    archiveScholar: jest.fn(),
+    restoreScholar: jest.fn(),
+    deleteScholar: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -331,6 +334,36 @@ describe('ScholarsController', () => {
         { slug: 'coursera', status: 'yes' },
         'staff-1'
       );
+    });
+  });
+
+  describe('restoreScholar', () => {
+    it('should restore an archived scholar via the service', async () => {
+      const restored = {
+        id: 'scholar-1',
+        status: 'active',
+      } as ScholarResponseDto;
+      mockScholarsService.restoreScholar.mockResolvedValue(restored);
+
+      const result = await controller.restoreScholar('scholar-1');
+
+      expect(service.restoreScholar).toHaveBeenCalledWith('scholar-1');
+      expect(result).toEqual(restored);
+    });
+  });
+
+  describe('archiveScholar', () => {
+    it('should archive a scholar via the service', async () => {
+      const archived = {
+        id: 'scholar-1',
+        status: 'archived',
+      } as ScholarResponseDto;
+      mockScholarsService.archiveScholar.mockResolvedValue(archived);
+
+      const result = await controller.archiveScholar('scholar-1');
+
+      expect(service.archiveScholar).toHaveBeenCalledWith('scholar-1');
+      expect(result).toEqual(archived);
     });
   });
 });
