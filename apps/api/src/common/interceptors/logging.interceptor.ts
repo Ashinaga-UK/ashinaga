@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import type { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
+import { redactUrlForLog } from '../redact-url';
 
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
@@ -18,7 +19,9 @@ export class LoggingInterceptor implements NestInterceptor {
     const now = Date.now();
 
     // Log request
-    const { method, url, body, query, params, headers } = request;
+    const { method, body, query, params, headers } = request;
+    // Never log the raw URL: query strings and some paths carry tokens.
+    const url = redactUrlForLog(request.url);
     const userAgent = headers['user-agent'] || '-';
     const ip = request.ip || request.connection?.remoteAddress || '-';
 
@@ -27,10 +30,10 @@ export class LoggingInterceptor implements NestInterceptor {
     // Log request details in development
     if (process.env.NODE_ENV !== 'production') {
       if (Object.keys(query).length > 0) {
-        this.logger.debug(`Query: ${JSON.stringify(query)}`);
+        this.logger.debug(`Query: ${JSON.stringify(this.sanitizeBody(query))}`);
       }
       if (Object.keys(params).length > 0) {
-        this.logger.debug(`Params: ${JSON.stringify(params)}`);
+        this.logger.debug(`Params: ${JSON.stringify(this.sanitizeBody(params))}`);
       }
       if (body && Object.keys(body).length > 0) {
         // Sanitize sensitive data
@@ -72,7 +75,15 @@ export class LoggingInterceptor implements NestInterceptor {
     }
 
     const sanitized = { ...body };
-    const sensitiveFields = ['password', 'token', 'secret', 'authorization', 'cookie'];
+    const sensitiveFields = [
+      'password',
+      'token',
+      'secret',
+      'authorization',
+      'cookie',
+      'code',
+      'state',
+    ];
 
     for (const key of Object.keys(sanitized)) {
       if (sensitiveFields.some((field) => key.toLowerCase().includes(field))) {
