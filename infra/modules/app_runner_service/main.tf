@@ -21,11 +21,10 @@ variable "environment" {
   type        = string
 }
 
-# VPC connector variables (optional)
+# VPC connector. Required so an apply cannot silently drop private egress.
 variable "vpc_connector_name" {
-  description = "Name of the VPC connector for private network access"
+  description = "Stable prefix for the VPC connector. A hash of the subnets and security groups is appended so a replacement can be created before the old connector is destroyed."
   type        = string
-  default     = null
 }
 variable "vpc_id" {
   description = "VPC ID for the VPC connector"
@@ -33,14 +32,22 @@ variable "vpc_id" {
   default     = null
 }
 variable "subnet_ids" {
-  description = "Subnet IDs for the VPC connector"
+  description = "Private subnet IDs for the VPC connector. At least two, in different AZs. Never the default public subnets."
   type        = list(string)
-  default     = []
+
+  validation {
+    condition     = length(var.subnet_ids) >= 2
+    error_message = "The App Runner VPC connector needs subnets in at least two availability zones."
+  }
 }
 variable "security_group_ids" {
-  description = "Security group IDs for the VPC connector"
+  description = "Dedicated security group IDs for the VPC connector. An empty list would use the VPC default security group."
   type        = list(string)
-  default     = []
+
+  validation {
+    condition     = length(var.security_group_ids) > 0
+    error_message = "Pass a dedicated connector security group. An empty list falls through to the VPC default security group."
+  }
 }
 
 variable "additional_policy_arns" {
@@ -96,17 +103,30 @@ resource "aws_iam_role_policy_attachment" "additional_policies" {
   policy_arn = var.additional_policy_arns[count.index]
 }
 
-# VPC connector for private network access (optional)
-resource "aws_apprunner_vpc_connector" "this" {
-  count = var.vpc_connector_name != null ? 1 : 0
+locals {
+  # The name changes when the subnets or security groups change, so
+  # create_before_destroy can create the replacement before deleting the name
+  # AWS still holds.
+  vpc_connector_name = substr(
+    "${var.vpc_connector_name}-${substr(sha256("${join(",", sort(var.subnet_ids))}:${join(",", sort(var.security_group_ids))}"), 0, 8)}",
+    0,
+    40,
+  )
+}
 
-  vpc_connector_name = var.vpc_connector_name
+# VPC connector for private egress. Inbound public access to the service is unchanged.
+resource "aws_apprunner_vpc_connector" "this" {
+  vpc_connector_name = local.vpc_connector_name
   subnets            = var.subnet_ids
   security_groups    = var.security_group_ids
 
   tags = {
-    Name        = var.vpc_connector_name
+    Name        = local.vpc_connector_name
     Environment = var.environment
+  }
+
+  lifecycle {
+    create_before_destroy = true
   }
 }
 
@@ -135,14 +155,11 @@ resource "aws_apprunner_service" "this" {
     instance_role_arn = aws_iam_role.apprunner_instance_role.arn
   }
 
-  # Network configuration for VPC connector (optional)
-  dynamic "network_configuration" {
-    for_each = var.vpc_connector_name != null ? [1] : []
-    content {
-      egress_configuration {
-        egress_type       = "VPC"
-        vpc_connector_arn = aws_apprunner_vpc_connector.this[0].arn
-      }
+  # Egress only. Do not set ingress here: that flag would make the public API hostname private.
+  network_configuration {
+    egress_configuration {
+      egress_type       = "VPC"
+      vpc_connector_arn = aws_apprunner_vpc_connector.this.arn
     }
   }
 
