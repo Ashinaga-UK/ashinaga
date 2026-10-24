@@ -101,7 +101,8 @@ export class RequestsController {
       requestId,
       body.status,
       body.comment,
-      reviewedBy
+      reviewedBy,
+      body.expectedStatus
     );
   }
 

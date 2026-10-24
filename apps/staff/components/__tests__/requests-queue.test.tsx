@@ -5,6 +5,7 @@ import { RequestsQueue } from '../requests-queue';
 
 const replace = jest.fn();
 const bulkUpdateRequestStatus = jest.fn();
+const mockToast = jest.fn();
 
 jest.mock(
   'lucide-react',
@@ -68,6 +69,9 @@ jest.mock('../../lib/api-client', () => ({
     pagination: { page: 1, limit: 8, totalItems: 1, totalPages: 1, hasNext: false, hasPrev: false },
   }),
   bulkUpdateRequestStatus: (...args: unknown[]) => bulkUpdateRequestStatus(...args),
+  isConflictError: (error: unknown) =>
+    error instanceof Error && error.message.startsWith('API Error: 409'),
+  apiErrorMessage: (_error: unknown, fallback: string) => fallback,
 }));
 
 jest.mock('../request-management', () => ({
@@ -79,7 +83,7 @@ jest.mock('../staff-other-request-dialog', () => ({
 }));
 
 jest.mock('../ui/use-toast', () => ({
-  useToast: () => ({ toast: jest.fn() }),
+  useToast: () => ({ toast: mockToast }),
 }));
 
 describe('RequestsQueue', () => {
@@ -146,8 +150,34 @@ describe('RequestsQueue', () => {
         ids: ['req-1'],
         status: 'rejected',
         comment: 'Missing documents',
+        expectedStatuses: { 'req-1': 'pending' },
       });
     });
+  });
+
+  it('reloads the queue when a bulk decision hits a changed request (409)', async () => {
+    const user = userEvent.setup();
+    const onReviewed = jest.fn();
+    bulkUpdateRequestStatus.mockRejectedValueOnce(
+      new Error('API Error: 409 - {"message":"This request changed while you were reviewing it."}')
+    );
+    render(<RequestsQueue onReviewed={onReviewed} />);
+
+    await user.click(
+      await screen.findByRole('checkbox', { name: 'Select request from Ada Lovelace' })
+    );
+    await user.click(screen.getByRole('button', { name: 'Reject' }));
+    await user.type(screen.getByLabelText('Reason'), 'Missing documents');
+    const loadsBefore = (getRequests as jest.Mock).mock.calls.length;
+    await user.click(screen.getByRole('button', { name: 'Reject selected' }));
+
+    await waitFor(() =>
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Some requests have changed', variant: 'destructive' })
+      )
+    );
+    expect((getRequests as jest.Mock).mock.calls.length).toBeGreaterThan(loadsBefore);
+    expect(onReviewed).not.toHaveBeenCalled();
   });
 
   it('bulk approve selects open requests and skips decided ones', async () => {
@@ -232,6 +262,7 @@ describe('RequestsQueue', () => {
         ids: ['req-1', 'req-3'],
         status: 'approved',
         comment: undefined,
+        expectedStatuses: { 'req-1': 'pending', 'req-3': 'reviewed' },
       });
     });
   });

@@ -1,7 +1,19 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { Request } from '../../lib/api-client';
 import { RequestCard } from '../request-card';
+
+const mockToast = jest.fn();
+const mockRespondToRequest = jest.fn();
+
+jest.mock('../../lib/api-client', () => ({
+  ...jest.requireActual('../../lib/api-client'),
+  respondToRequest: (...args: unknown[]) => mockRespondToRequest(...args),
+}));
+
+jest.mock('../ui/use-toast', () => ({
+  useToast: () => ({ toast: mockToast }),
+}));
 
 function renderCard(request: Request) {
   const client = new QueryClient({
@@ -79,5 +91,33 @@ describe('RequestCard expanded details', () => {
     expect(screen.getByText('1 attachment')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Show extra details' }));
     expect(screen.getByText('evidence.pdf')).toBeInTheDocument();
+  });
+});
+
+describe('RequestCard reply', () => {
+  it('shows the latest status instead of an error when staff decided meanwhile (409)', async () => {
+    mockRespondToRequest.mockRejectedValueOnce(
+      new Error(
+        'API Error: 409 - {"message":"This request was updated by staff while you were replying. Reload to see the latest status."}'
+      )
+    );
+    renderCard(baseRequest({ status: 'commented', reviewComment: 'Please add a statement.' }));
+
+    fireEvent.click(screen.getByRole('button', { name: /Respond with more info/i }));
+    fireEvent.change(screen.getByLabelText('Your response'), {
+      target: { value: 'Here is my statement.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send response' }));
+
+    await waitFor(() =>
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Request has changed',
+          description:
+            'This request was updated by staff while you were replying. Reload to see the latest status.',
+        })
+      )
+    );
+    expect(screen.queryByLabelText('Your response')).not.toBeInTheDocument();
   });
 });
