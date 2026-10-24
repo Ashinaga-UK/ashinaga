@@ -4,6 +4,7 @@ import {
   type GetMyAnnouncementsParams,
   getMyAnnouncements,
   getMyDocumentChecklist,
+  getMyFaqs,
   getMyRequests,
   getMyResources,
   getScholarNotificationsFeed,
@@ -15,6 +16,7 @@ import {
 export const queryKeys = {
   myAnnouncements: (params?: GetMyAnnouncementsParams) => ['my-announcements', params] as const,
   myResources: ['my-resources'] as const,
+  myFaqs: ['my-faqs'] as const,
   myRequests: ['my-requests'] as const,
   myDocuments: ['my-documents'] as const,
   staffList: ['staff-list'] as const,
@@ -44,6 +46,14 @@ export function useMyResources(enabled = true) {
   return useQuery({
     queryKey: queryKeys.myResources,
     queryFn: getMyResources,
+    enabled,
+  });
+}
+
+export function useMyFaqs(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.myFaqs,
+    queryFn: getMyFaqs,
     enabled,
   });
 }

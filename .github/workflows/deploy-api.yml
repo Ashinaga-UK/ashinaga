@@ -287,6 +287,7 @@ jobs:
         printf '%s\n' "$APPLIED" | node "${GITHUB_WORKSPACE}/scripts/assert-applied-migrations.mjs"
 
     - name: Update App Runner service
+      id: apprunner_update
       run: |
         # This step:
         # 1. Fetches latest secrets from AWS Secrets Manager (GitHub Actions is the source of truth for secrets)
@@ -463,11 +464,50 @@ jobs:
             --output text); then
             # The unfiltered response includes RuntimeEnvironmentVariables and
             # therefore plaintext secrets. Only log the safe operation ID.
-            echo "✅ App Runner update started (operation: ${operation_id})"
+            :
           else
             echo "❌ Failed to update App Runner service"
             exit 1
           fi
+
+          # update-service only returns an OperationId when it detects a config
+          # change (env vars, secrets, image identifier, ...). AutoDeploymentsEnabled
+          # means a plain ECR push to the same :latest tag is usually already picked
+          # up on its own by the time we get here, so this call is frequently a
+          # genuine no-op and OperationId comes back empty/"None". Force a real,
+          # trackable deployment of whatever :latest currently points to so there is
+          # always an operation to wait on, instead of assuming success or hanging.
+          if [ -z "$operation_id" ] || [ "$operation_id" = "None" ]; then
+            echo "App Runner update was a no-op (no config change) - forcing a deployment of the current image..."
+            # start-deployment can transiently fail if an auto-deploy triggered by
+            # the earlier ECR push is still wrapping up; retry a few times rather
+            # than failing the whole job on that race.
+            local attempt
+            for attempt in 1 2 3 4 5; do
+              if operation_id=$(aws apprunner start-deployment \
+                --service-arn "$SERVICE_ARN" \
+                --query 'OperationId' \
+                --output text 2>/tmp/start-deployment-error); then
+                break
+              fi
+              echo "start-deployment attempt ${attempt} failed, retrying in 15s..."
+              cat /tmp/start-deployment-error
+              operation_id=""
+              sleep 15
+            done
+            if [ -z "$operation_id" ] || [ "$operation_id" = "None" ]; then
+              echo "❌ Failed to start App Runner deployment after retries"
+              exit 1
+            fi
+          fi
+
+          if [ -z "$operation_id" ] || [ "$operation_id" = "None" ]; then
+            echo "❌ App Runner did not return an operation ID from update-service or start-deployment"
+            exit 1
+          fi
+
+          echo "✅ App Runner deployment started (operation: ${operation_id})"
+          echo "operation_id=${operation_id}" >> "$GITHUB_OUTPUT"
         }
 
         # Check service status
@@ -538,26 +578,42 @@ jobs:
         SERVICE_NAME="ashinaga-api-${ENVIRONMENT}"
         SERVICE_ARN=$(aws apprunner list-services --query "ServiceSummaryList[?ServiceName=='${SERVICE_NAME}'].ServiceArn" --output text)
         
-        echo "Waiting for deployment to complete..."
-        # Wait up to 20 minutes for deployment to complete
-        timeout 1200 bash -c "
-          while true; do
-            STATUS=\$(aws apprunner describe-service --service-arn ${SERVICE_ARN} --query 'Service.Status' --output text)
-            echo \"Current deployment status: \$STATUS\"
-            if [ \"\$STATUS\" = \"RUNNING\" ]; then
-              echo \"Deployment completed successfully!\"
-              break
-            elif [ \"\$STATUS\" = \"CREATE_FAILED\" ] || [ \"\$STATUS\" = \"DELETE_FAILED\" ]; then
-              echo \"Deployment failed: \$STATUS\"
-              exit 1
-            fi
-            sleep 30
-          done
-        " || {
-          echo "Timeout waiting for deployment to complete"
+        # Follow the exact operation the update step started. The newest listed
+        # operation can still be the previous one, and the service status is
+        # RUNNING both before a deployment starts and after one rolls back.
+        OPERATION_ID="${{ steps.apprunner_update.outputs.operation_id }}"
+        if [ -z "$OPERATION_ID" ]; then
+          echo "::error::The update step did not report an App Runner operation ID"
           exit 1
+        fi
+        echo "Waiting for App Runner operation ${OPERATION_ID}..."
+
+        op_status() {
+          aws apprunner list-operations --service-arn "${SERVICE_ARN}" --max-results 20 \
+            --query "OperationSummaryList[?Id=='${OPERATION_ID}'] | [0].Status" --output text
         }
-        
+
+        DEADLINE=$(( $(date +%s) + 1800 ))
+        while true; do
+          OP_STATUS=$(op_status)
+          echo "Operation ${OPERATION_ID}: ${OP_STATUS}"
+          case "$OP_STATUS" in
+            None|""|PENDING|IN_PROGRESS) ;;   # not listed yet, or still running
+            *) break ;;
+          esac
+          if [ "$(date +%s)" -ge "$DEADLINE" ]; then
+            echo "::error::Timed out waiting for App Runner operation ${OPERATION_ID}"
+            exit 1
+          fi
+          sleep 30
+        done
+
+        if [ "$OP_STATUS" != "SUCCEEDED" ]; then
+          echo "::error::App Runner deployment ${OPERATION_ID} ended with status ${OP_STATUS} (the previous version is still serving). Check the service and application logs in CloudWatch."
+          exit 1
+        fi
+        echo "Deployment completed successfully!"
+
         # Get service URL
         SERVICE_URL=$(aws apprunner describe-service --service-arn ${SERVICE_ARN} --query "Service.ServiceUrl" --output text)
         echo "Deployment complete! Service available at: https://${SERVICE_URL}"

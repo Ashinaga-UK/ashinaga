@@ -1,9 +1,11 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { getRequests } from '../../lib/api-client';
 import { RequestsQueue } from '../requests-queue';
 
 const replace = jest.fn();
 const bulkUpdateRequestStatus = jest.fn();
+const mockToast = jest.fn();
 
 jest.mock(
   'lucide-react',
@@ -67,6 +69,9 @@ jest.mock('../../lib/api-client', () => ({
     pagination: { page: 1, limit: 8, totalItems: 1, totalPages: 1, hasNext: false, hasPrev: false },
   }),
   bulkUpdateRequestStatus: (...args: unknown[]) => bulkUpdateRequestStatus(...args),
+  isConflictError: (error: unknown) =>
+    error instanceof Error && error.message.startsWith('API Error: 409'),
+  apiErrorMessage: (_error: unknown, fallback: string) => fallback,
 }));
 
 jest.mock('../request-management', () => ({
@@ -78,7 +83,7 @@ jest.mock('../staff-other-request-dialog', () => ({
 }));
 
 jest.mock('../ui/use-toast', () => ({
-  useToast: () => ({ toast: jest.fn() }),
+  useToast: () => ({ toast: mockToast }),
 }));
 
 describe('RequestsQueue', () => {
@@ -145,6 +150,119 @@ describe('RequestsQueue', () => {
         ids: ['req-1'],
         status: 'rejected',
         comment: 'Missing documents',
+        expectedStatuses: { 'req-1': 'pending' },
+      });
+    });
+  });
+
+  it('reloads the queue when a bulk decision hits a changed request (409)', async () => {
+    const user = userEvent.setup();
+    const onReviewed = jest.fn();
+    bulkUpdateRequestStatus.mockRejectedValueOnce(
+      new Error('API Error: 409 - {"message":"This request changed while you were reviewing it."}')
+    );
+    render(<RequestsQueue onReviewed={onReviewed} />);
+
+    await user.click(
+      await screen.findByRole('checkbox', { name: 'Select request from Ada Lovelace' })
+    );
+    await user.click(screen.getByRole('button', { name: 'Reject' }));
+    await user.type(screen.getByLabelText('Reason'), 'Missing documents');
+    const loadsBefore = (getRequests as jest.Mock).mock.calls.length;
+    await user.click(screen.getByRole('button', { name: 'Reject selected' }));
+
+    await waitFor(() =>
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Some requests have changed', variant: 'destructive' })
+      )
+    );
+    expect((getRequests as jest.Mock).mock.calls.length).toBeGreaterThan(loadsBefore);
+    expect(onReviewed).not.toHaveBeenCalled();
+  });
+
+  it('bulk approve selects open requests and skips decided ones', async () => {
+    const user = userEvent.setup();
+    jest.mocked(getRequests).mockResolvedValueOnce({
+      data: [
+        {
+          id: 'req-1',
+          scholarId: 'scholar-1',
+          scholarName: 'Ada Lovelace',
+          scholarEmail: 'ada@example.com',
+          type: 'others',
+          description: 'Need a letter',
+          priority: 'medium',
+          status: 'pending',
+          submittedDate: '2026-01-01T00:00:00.000Z',
+          assignees: [],
+          attachments: [],
+          auditLogs: [],
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'req-2',
+          scholarId: 'scholar-2',
+          scholarName: 'Grace Hopper',
+          scholarEmail: 'grace@example.com',
+          type: 'others',
+          description: 'Already decided',
+          priority: 'medium',
+          status: 'rejected',
+          submittedDate: '2026-01-02T00:00:00.000Z',
+          assignees: [],
+          attachments: [],
+          auditLogs: [],
+          createdAt: '2026-01-02T00:00:00.000Z',
+          updatedAt: '2026-01-02T00:00:00.000Z',
+        },
+        {
+          id: 'req-3',
+          scholarId: 'scholar-3',
+          scholarName: 'Katherine Johnson',
+          scholarEmail: 'katherine@example.com',
+          type: 'others',
+          description: 'Already commented',
+          priority: 'medium',
+          status: 'reviewed',
+          submittedDate: '2026-01-03T00:00:00.000Z',
+          assignees: [],
+          attachments: [],
+          auditLogs: [],
+          createdAt: '2026-01-03T00:00:00.000Z',
+          updatedAt: '2026-01-03T00:00:00.000Z',
+        },
+      ],
+      pagination: {
+        page: 1,
+        limit: 20,
+        totalItems: 3,
+        totalPages: 1,
+        hasNext: false,
+        hasPrev: false,
+      },
+      cohort: null,
+    });
+    render(<RequestsQueue onReviewed={jest.fn()} />);
+
+    expect(
+      await screen.findByRole('checkbox', { name: 'Select request from Grace Hopper' })
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('checkbox', { name: 'Select request from Katherine Johnson' })
+    ).toBeEnabled();
+    expect(screen.getByText('Select open')).toBeInTheDocument();
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Select all open requests on this page' })
+    );
+    await user.click(screen.getByRole('button', { name: 'Approve' }));
+
+    await waitFor(() => {
+      expect(bulkUpdateRequestStatus).toHaveBeenCalledWith({
+        ids: ['req-1', 'req-3'],
+        status: 'approved',
+        comment: undefined,
+        expectedStatuses: { 'req-1': 'pending', 'req-3': 'reviewed' },
       });
     });
   });

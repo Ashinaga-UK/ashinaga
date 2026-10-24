@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -30,6 +31,15 @@ import {
   UpdateRequestStatusDto,
 } from './dto/update-request-status.dto';
 import { SCHOLAR_CREATABLE_REQUEST_TYPES, SCHOLAR_VISIBLE_REQUEST_TYPES } from './request-types';
+
+const BULK_OPEN_STATUSES = ['pending', 'reviewed', 'commented'] as const;
+
+function isBulkOpenStatus(status: string): status is (typeof BULK_OPEN_STATUSES)[number] {
+  return (BULK_OPEN_STATUSES as readonly string[]).includes(status);
+}
+
+const STALE_REVIEW_MESSAGE =
+  'This request changed while you were reviewing it. Reload and try again.';
 
 @Injectable()
 export class RequestsService {
@@ -589,10 +599,11 @@ export class RequestsService {
     requestId: string,
     status: UpdateRequestStatusDto['status'],
     comment: string | undefined,
-    reviewedBy: string
+    reviewedBy: string,
+    expectedStatus?: string
   ) {
-    const reviewComment = comment?.trim() ?? '';
-    if (status === 'rejected' && !reviewComment) {
+    const providedComment = comment?.trim() ?? '';
+    if (status === 'rejected' && !providedComment) {
       throw new BadRequestException('A reason is required to reject a request');
     }
 
@@ -616,6 +627,20 @@ export class RequestsService {
     }
 
     const { request: currentRequest, user } = requestWithScholar[0];
+    const reviewComment = providedComment;
+
+    // The reviewer decided on the status they were shown. If it has moved on
+    // (e.g. the scholar replied to "commented"), don't apply the decision blind.
+    if (expectedStatus !== undefined && currentRequest.status !== expectedStatus) {
+      throw new ConflictException(STALE_REVIEW_MESSAGE);
+    }
+
+    if (!isBulkOpenStatus(currentRequest.status)) {
+      if (currentRequest.status === status) {
+        return currentRequest;
+      }
+      throw new BadRequestException('Decided requests cannot be reviewed');
+    }
 
     const [updatedRequest] = await database
       .update(requests)
@@ -626,11 +651,13 @@ export class RequestsService {
         reviewDate: new Date(),
         updatedAt: new Date(),
       })
-      .where(eq(requests.id, requestId))
+      // Compare-and-set on the status just read, so a concurrent change
+      // (scholar reply, another reviewer) is never overwritten.
+      .where(and(eq(requests.id, requestId), eq(requests.status, currentRequest.status)))
       .returning();
 
     if (!updatedRequest) {
-      throw new NotFoundException(`Request with ID ${requestId} not found`);
+      throw new ConflictException(STALE_REVIEW_MESSAGE);
     }
 
     // Create audit log entry
@@ -640,7 +667,7 @@ export class RequestsService {
       performedBy: reviewedBy,
       previousStatus: currentRequest.status,
       newStatus: status,
-      comment: reviewComment,
+      comment: providedComment || null,
       metadata: JSON.stringify({ reviewedBy, reviewDate: new Date() }),
     });
 
@@ -689,8 +716,8 @@ export class RequestsService {
     reviewedBy: string
   ): Promise<{ data: Awaited<ReturnType<RequestsService['updateRequestStatus']>>[] }> {
     const ids = [...new Set(body.ids)];
-    const reviewComment = body.comment?.trim() ?? '';
-    if (body.status === 'rejected' && !reviewComment) {
+    const providedComment = body.comment?.trim() ?? '';
+    if (body.status === 'rejected' && !providedComment) {
       throw new BadRequestException('A reason is required to reject a request');
     }
 
@@ -698,11 +725,141 @@ export class RequestsService {
       await this.assertCallerCanReview(requestId, reviewedBy);
     }
 
-    const data = [];
-    for (const requestId of ids) {
-      data.push(await this.updateRequestStatus(requestId, body.status, reviewComment, reviewedBy));
+    const loaded = await database
+      .select({
+        request: requests,
+        user: users,
+      })
+      .from(requests)
+      .innerJoin(scholars, eq(requests.scholarId, scholars.id))
+      .innerJoin(users, eq(scholars.userId, users.id))
+      .where(inArray(requests.id, ids));
+
+    if (loaded.length !== ids.length) {
+      throw new NotFoundException('Request with ID not found');
     }
-    return { data };
+
+    const byId = new Map(loaded.map((row) => [row.request.id, row]));
+
+    const expected = body.expectedStatuses ?? {};
+    const changed = ids.filter(
+      (id) => expected[id] !== undefined && byId.get(id)?.request.status !== expected[id]
+    );
+    if (changed.length > 0) {
+      throw new ConflictException(STALE_REVIEW_MESSAGE);
+    }
+
+    const blocked = ids.filter((id) => {
+      const status = byId.get(id)?.request.status;
+      return !status || (!isBulkOpenStatus(status) && status !== body.status);
+    });
+    if (blocked.length > 0) {
+      throw new BadRequestException('Decided requests cannot be bulk-reviewed');
+    }
+
+    const openIds = ids.filter((id) => {
+      const status = byId.get(id)?.request.status;
+      return status !== undefined && isBulkOpenStatus(status);
+    });
+    const notices: {
+      email: string;
+      name: string;
+      type: (typeof requests.$inferSelect)['type'];
+      description: string;
+      scholarId: string;
+      scholarName: string;
+      requestId: string;
+      reviewComment: string;
+      updatedAt: Date;
+      emailScholar: boolean;
+    }[] = [];
+    if (openIds.length > 0) {
+      await database.transaction(async (tx) => {
+        notices.length = 0;
+        for (const requestId of openIds) {
+          const current = byId.get(requestId);
+          if (!current) continue;
+          const [updatedRequest] = await tx
+            .update(requests)
+            .set({
+              status: body.status,
+              reviewComment: providedComment,
+              reviewedBy,
+              reviewDate: new Date(),
+              updatedAt: new Date(),
+            })
+            // Compare-and-set on the status read above. Any row that moved
+            // on aborts the whole batch (the transaction rolls back) so the
+            // reviewer reloads instead of overwriting a change they never saw.
+            .where(and(eq(requests.id, requestId), eq(requests.status, current.request.status)))
+            .returning();
+
+          if (!updatedRequest) {
+            throw new ConflictException(STALE_REVIEW_MESSAGE);
+          }
+
+          await tx.insert(requestAuditLogs).values({
+            requestId,
+            action: 'status_changed',
+            performedBy: reviewedBy,
+            previousStatus: current.request.status,
+            newStatus: body.status,
+            comment: providedComment || null,
+            metadata: JSON.stringify({ reviewedBy, reviewDate: new Date() }),
+          });
+          byId.set(requestId, { ...current, request: updatedRequest });
+
+          notices.push({
+            email: current.user.email,
+            name: current.user.name,
+            type: current.request.type,
+            description: current.request.description,
+            scholarId: current.request.scholarId,
+            scholarName: current.user.name,
+            requestId,
+            reviewComment: providedComment,
+            updatedAt: updatedRequest.updatedAt,
+            emailScholar:
+              SCHOLAR_VISIBLE_REQUEST_TYPES.includes(current.request.type) &&
+              (body.status === 'approved' || body.status === 'rejected'),
+          });
+        }
+      });
+    }
+
+    for (const notice of notices) {
+      if (notice.emailScholar) {
+        try {
+          await this.emailService.sendRequestStatusNotification(
+            notice.email,
+            notice.name,
+            notice.type.replace('_', ' '),
+            body.status,
+            notice.reviewComment,
+            notice.description
+          );
+        } catch (error) {
+          console.error('Failed to send email notification:', error);
+        }
+      }
+      void this.notifications
+        .notifyRequestStatusChanged({
+          requestId: notice.requestId,
+          scholarId: notice.scholarId,
+          scholarName: notice.scholarName,
+          requestType: notice.type,
+          status: body.status,
+          actorUserId: reviewedBy,
+          dedupeSuffix: `${body.status}:${notice.updatedAt.toISOString()}`,
+        })
+        .catch((error) => {
+          console.error('Failed to create staff request_status_changed notifications:', error);
+        });
+    }
+
+    return {
+      data: ids.map((id) => byId.get(id)?.request).filter((row) => row !== undefined),
+    };
   }
 
   private async assertCallerCanReview(requestId: string, userId: string): Promise<void> {
@@ -807,20 +964,29 @@ export class RequestsService {
 
     const previousStatus = requestRow.request.status;
 
-    // Re-open the request so it returns to the staff queue
+    if (attachmentIds.length > 0) {
+      await this.assertAttachmentsOwnedByScholar(attachmentIds, scholar.id);
+    }
+
+    // Re-open the request so it returns to the staff queue. Compare-and-set on
+    // "commented" so a staff decision made meanwhile is not silently reopened.
     const [updatedRequest] = await database
       .update(requests)
       .set({
         status: 'pending',
         updatedAt: new Date(),
       })
-      .where(eq(requests.id, requestId))
+      .where(and(eq(requests.id, requestId), eq(requests.status, 'commented')))
       .returning();
+
+    if (!updatedRequest) {
+      throw new ConflictException(
+        'This request was updated by staff while you were replying. Reload to see the latest status.'
+      );
+    }
 
     // Link new attachments to this request (if any)
     if (attachmentIds.length > 0) {
-      await this.assertAttachmentsOwnedByScholar(attachmentIds, scholar.id);
-
       await database
         .update(requestAttachments)
         .set({ requestId })

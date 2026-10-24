@@ -22,6 +22,9 @@ jest.mock('../../lib/api-client', () => ({
   updateRequestStatus: jest.fn().mockResolvedValue({}),
   deleteRequest: jest.fn(),
   getFileDownloadUrl: jest.fn(),
+  isConflictError: (error: unknown) =>
+    error instanceof Error && error.message.startsWith('API Error: 409'),
+  apiErrorMessage: (_error: unknown, fallback: string) => fallback,
 }));
 
 jest.mock('../../lib/auth-client', () => ({
@@ -73,6 +76,17 @@ describe('RequestManagement — Request More Information (commented) action', ()
     });
   });
 
+  it('still offers Review after a request has been commented', async () => {
+    render(
+      <RequestManagement
+        request={buildRequest({ status: 'commented', reviewComment: 'Need a document' })}
+        onStatusUpdate={jest.fn()}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: /^Review$/i })).toBeEnabled();
+  });
+
   it('exposes a "Request More Information" button in the review dialog for a pending request', async () => {
     const user = userEvent.setup();
     render(<RequestManagement request={buildRequest()} onStatusUpdate={jest.fn()} />);
@@ -115,13 +129,46 @@ describe('RequestManagement — Request More Information (commented) action', ()
         'req-1',
         'commented',
         'Please attach your bank statement.',
-        'staff-1'
+        'staff-1',
+        'pending'
       );
     });
     expect(onStatusUpdate).toHaveBeenCalledWith(
       'req-1',
       'commented',
       'Please attach your bank statement.'
+    );
+  });
+
+  it('reloads instead of applying the decision when the request changed (409)', async () => {
+    const user = userEvent.setup();
+    const onStatusUpdate = jest.fn();
+    const onStale = jest.fn();
+    updateRequestStatus.mockRejectedValueOnce(
+      new Error('API Error: 409 - {"message":"This request changed while you were reviewing it."}')
+    );
+    render(
+      <RequestManagement
+        request={buildRequest({ status: 'commented' })}
+        onStatusUpdate={onStatusUpdate}
+        onStale={onStale}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: /^Review$/i }));
+    await user.click(await screen.findByRole('button', { name: /^Approve$/i }));
+
+    await waitFor(() => expect(onStale).toHaveBeenCalledTimes(1));
+    expect(updateRequestStatus).toHaveBeenCalledWith(
+      'req-1',
+      'approved',
+      '',
+      'staff-1',
+      'commented'
+    );
+    expect(onStatusUpdate).not.toHaveBeenCalled();
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Request has changed', variant: 'destructive' })
     );
   });
 

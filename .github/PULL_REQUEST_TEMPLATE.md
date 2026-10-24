@@ -2,6 +2,10 @@
 
 -
 
+## Flow coverage
+
+- [ ] If this PR adds a page route, nav item, scholar-profile tab or `/api/` route, it adds a test for it and lists the spec in `packages/qa-skill/catalogue/flows.json` (or gives a `specSkip` reason). The **Flow coverage** check fails otherwise; it stays silent for docs, copy, styling and infra changes. See `.claude/skills/flow-coverage/SKILL.md`.
+
 ## PR Checklist (Skills)
 
 - [ ] If this PR adds or changes a skill package (`packages/*` with `SKILL.md`), `scripts.dev` points to `src/dev.ts` (non-blocking in root `pnpm dev`).

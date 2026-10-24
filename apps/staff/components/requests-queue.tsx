@@ -4,10 +4,12 @@ import { AlertCircle, MessageSquare } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  apiErrorMessage,
   bulkUpdateRequestStatus,
   getFilterOptions,
   getRequests,
   getScholars,
+  isConflictError,
   type PaginationMeta,
   type Request,
 } from '../lib/api-client';
@@ -292,8 +294,15 @@ export function RequestsQueue({ onReviewed }: RequestsQueueProps) {
     return () => window.clearTimeout(handle);
   }, [scholarOpen, scholarQuery]);
 
-  const allVisibleSelected =
-    requests.length > 0 && requests.every((request) => selectedIds.includes(request.id));
+  const openIds = requests
+    .filter(
+      (request) =>
+        request.status === 'pending' ||
+        request.status === 'reviewed' ||
+        request.status === 'commented'
+    )
+    .map((request) => request.id);
+  const allVisibleSelected = openIds.length > 0 && openIds.every((id) => selectedIds.includes(id));
 
   const currentQuery = useMemo(() => {
     const query: Record<string, string> = {};
@@ -351,12 +360,36 @@ export function RequestsQueue({ onReviewed }: RequestsQueueProps) {
     if (selectedIds.length === 0) return;
     setBulkSubmitting(true);
     try {
-      await bulkUpdateRequestStatus({ ids: selectedIds, status: nextStatus, comment });
+      const expectedStatuses = Object.fromEntries(
+        requests
+          .filter((request) => selectedIds.includes(request.id))
+          .map((request) => [request.id, request.status])
+      );
+      await bulkUpdateRequestStatus({
+        ids: selectedIds,
+        status: nextStatus,
+        comment,
+        expectedStatuses,
+      });
       setRejectOpen(false);
       setRejectReason('');
       await load();
       onReviewed();
     } catch (err) {
+      if (isConflictError(err)) {
+        // Nothing was applied; show the current statuses before staff try again.
+        toast({
+          title: 'Some requests have changed',
+          description: apiErrorMessage(
+            err,
+            'This request changed while you were reviewing it. Reload and try again.'
+          ),
+          variant: 'destructive',
+        });
+        setRejectOpen(false);
+        await load();
+        return;
+      }
       toast({
         title: 'Bulk update failed',
         description: err instanceof Error ? err.message : 'Could not update the selected requests.',
@@ -662,12 +695,11 @@ export function RequestsQueue({ onReviewed }: RequestsQueueProps) {
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Checkbox
                   checked={allVisibleSelected}
-                  onCheckedChange={(checked) =>
-                    setSelectedIds(checked ? requests.map((request) => request.id) : [])
-                  }
-                  aria-label="Select all requests on this page"
+                  disabled={openIds.length === 0}
+                  onCheckedChange={(checked) => setSelectedIds(checked ? openIds : [])}
+                  aria-label="Select all open requests on this page"
                 />
-                Select page
+                Select open
               </div>
               {requests.map((request) => (
                 <div
@@ -682,6 +714,7 @@ export function RequestsQueue({ onReviewed }: RequestsQueueProps) {
                   <Checkbox
                     className="mt-4"
                     checked={selectedIds.includes(request.id)}
+                    disabled={request.status === 'approved' || request.status === 'rejected'}
                     onCheckedChange={(checked) =>
                       setSelectedIds((current) =>
                         checked
@@ -698,6 +731,7 @@ export function RequestsQueue({ onReviewed }: RequestsQueueProps) {
                         void load();
                         onReviewed();
                       }}
+                      onStale={() => void load()}
                     />
                   </div>
                 </div>

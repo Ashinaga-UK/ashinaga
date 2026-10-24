@@ -3,6 +3,7 @@ import {
   ArrayMinSize,
   IsArray,
   IsIn,
+  IsObject,
   IsOptional,
   IsString,
   IsUUID,
@@ -15,6 +16,14 @@ export class UpdateRequestStatusDto {
   @IsOptional()
   @IsString()
   comment?: string;
+
+  /**
+   * The status the reviewer was looking at. If the request has changed since
+   * (e.g. the scholar replied), the update is rejected with 409.
+   */
+  @IsOptional()
+  @IsIn(['pending', 'approved', 'rejected', 'reviewed', 'commented'])
+  expectedStatus?: 'pending' | 'approved' | 'rejected' | 'reviewed' | 'commented';
 
   /** Accepted and ignored. The reviewer is always the session user. */
   @IsOptional()
@@ -31,6 +40,11 @@ export class BulkUpdateRequestStatusDto {
 
   @IsIn(['approved', 'rejected'])
   status: 'approved' | 'rejected';
+
+  /** id => status the reviewer saw. Any mismatch rejects the batch with 409. */
+  @IsOptional()
+  @IsObject()
+  expectedStatuses?: Record<string, string>;
 
   @IsOptional()
   @IsString()

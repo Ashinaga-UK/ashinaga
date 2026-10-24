@@ -17,11 +17,13 @@ import {
   deleteCoordinatorNote,
   deleteScholar,
   deleteTask,
+  type FaqAudience,
   type GetAnnouncementsParams,
   getAnnouncements,
   getAnnualUpdatesByScholar,
   getCoordinatorMeetingUpdates,
   getCoordinatorNotes,
+  getFaqs,
   getOverview,
   getPrepTaskCohort,
   getPrepYearReport,
@@ -31,6 +33,7 @@ import {
   getRequiredDocumentTypes,
   getResourceFilterOptions,
   getResources,
+  getScholarActivityReport,
   getScholarProfile,
   getScholarProposal,
   getScholarRequiredDocuments,
@@ -42,6 +45,7 @@ import {
   type PrepYearReportFilters,
   type ResourceFilterOptions,
   reviewProposalStep,
+  type ScholarActivityFilters,
   type Task,
   type UpdateScholarProfileData,
   type UpdateTaskData,
@@ -61,6 +65,7 @@ export const queryKeys = {
   user: ['user'] as const,
   announcements: (params?: GetAnnouncementsParams) => ['announcements', params] as const,
   resources: ['resources'] as const,
+  faqs: (audience?: FaqAudience) => ['faqs', audience ?? 'all'] as const,
   resourceFilterOptions: ['resources', 'filter-options'] as const,
   requiredDocumentCohort: (missingTypeId?: string) =>
     ['required-documents', 'cohort', missingTypeId ?? 'all'] as const,
@@ -70,6 +75,8 @@ export const queryKeys = {
     ['prep-tasks', 'cohort', filters] as const,
   prepYearReport: (filters: PrepYearReportFilters = {}) =>
     ['prep-year', 'report', filters] as const,
+  scholarActivityReport: (filters: ScholarActivityFilters = {}) =>
+    ['scholar-activity', 'report', filters] as const,
   scholarCoordinatorNotes: (id: string) => ['scholar', id, 'coordinator-notes'] as const,
   scholarMeetingUpdates: (id: string) => ['scholar', id, 'meeting-updates'] as const,
   proposalInbox: ['proposals', 'inbox'] as const,
@@ -163,6 +170,14 @@ export function useResources(enabled = true) {
   });
 }
 
+export function useFaqs(audience?: FaqAudience, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.faqs(audience),
+    queryFn: () => getFaqs(audience),
+    enabled,
+  });
+}
+
 export function useResourceFilterOptions() {
   return useQuery<ResourceFilterOptions>({
     queryKey: queryKeys.resourceFilterOptions,
@@ -183,6 +198,14 @@ export function usePrepYearReport(filters: PrepYearReportFilters = {}) {
   return useQuery({
     queryKey: queryKeys.prepYearReport(filters),
     queryFn: () => getPrepYearReport(filters),
+  });
+}
+
+export function useScholarActivityReport(filters: ScholarActivityFilters = {}) {
+  return useQuery({
+    queryKey: queryKeys.scholarActivityReport(filters),
+    queryFn: () => getScholarActivityReport(filters),
+    placeholderData: keepPreviousData,
   });
 }
 
