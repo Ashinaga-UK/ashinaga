@@ -4,10 +4,12 @@ import { AlertCircle, MessageSquare } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  apiErrorMessage,
   bulkUpdateRequestStatus,
   getFilterOptions,
   getRequests,
   getScholars,
+  isConflictError,
   type PaginationMeta,
   type Request,
 } from '../lib/api-client';
@@ -358,12 +360,36 @@ export function RequestsQueue({ onReviewed }: RequestsQueueProps) {
     if (selectedIds.length === 0) return;
     setBulkSubmitting(true);
     try {
-      await bulkUpdateRequestStatus({ ids: selectedIds, status: nextStatus, comment });
+      const expectedStatuses = Object.fromEntries(
+        requests
+          .filter((request) => selectedIds.includes(request.id))
+          .map((request) => [request.id, request.status])
+      );
+      await bulkUpdateRequestStatus({
+        ids: selectedIds,
+        status: nextStatus,
+        comment,
+        expectedStatuses,
+      });
       setRejectOpen(false);
       setRejectReason('');
       await load();
       onReviewed();
     } catch (err) {
+      if (isConflictError(err)) {
+        // Nothing was applied; show the current statuses before staff try again.
+        toast({
+          title: 'Some requests have changed',
+          description: apiErrorMessage(
+            err,
+            'This request changed while you were reviewing it. Reload and try again.'
+          ),
+          variant: 'destructive',
+        });
+        setRejectOpen(false);
+        await load();
+        return;
+      }
       toast({
         title: 'Bulk update failed',
         description: err instanceof Error ? err.message : 'Could not update the selected requests.',
@@ -705,6 +731,7 @@ export function RequestsQueue({ onReviewed }: RequestsQueueProps) {
                         void load();
                         onReviewed();
                       }}
+                      onStale={() => void load()}
                     />
                   </div>
                 </div>

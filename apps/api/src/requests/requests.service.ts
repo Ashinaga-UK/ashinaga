@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -36,6 +37,9 @@ const BULK_OPEN_STATUSES = ['pending', 'reviewed', 'commented'] as const;
 function isBulkOpenStatus(status: string): status is (typeof BULK_OPEN_STATUSES)[number] {
   return (BULK_OPEN_STATUSES as readonly string[]).includes(status);
 }
+
+const STALE_REVIEW_MESSAGE =
+  'This request changed while you were reviewing it. Reload and try again.';
 
 @Injectable()
 export class RequestsService {
@@ -595,7 +599,8 @@ export class RequestsService {
     requestId: string,
     status: UpdateRequestStatusDto['status'],
     comment: string | undefined,
-    reviewedBy: string
+    reviewedBy: string,
+    expectedStatus?: string
   ) {
     const providedComment = comment?.trim() ?? '';
     if (status === 'rejected' && !providedComment) {
@@ -624,6 +629,12 @@ export class RequestsService {
     const { request: currentRequest, user } = requestWithScholar[0];
     const reviewComment = providedComment;
 
+    // The reviewer decided on the status they were shown. If it has moved on
+    // (e.g. the scholar replied to "commented"), don't apply the decision blind.
+    if (expectedStatus !== undefined && currentRequest.status !== expectedStatus) {
+      throw new ConflictException(STALE_REVIEW_MESSAGE);
+    }
+
     if (!isBulkOpenStatus(currentRequest.status)) {
       if (currentRequest.status === status) {
         return currentRequest;
@@ -640,16 +651,13 @@ export class RequestsService {
         reviewDate: new Date(),
         updatedAt: new Date(),
       })
-      .where(and(eq(requests.id, requestId), inArray(requests.status, [...BULK_OPEN_STATUSES])))
+      // Compare-and-set on the status just read, so a concurrent change
+      // (scholar reply, another reviewer) is never overwritten.
+      .where(and(eq(requests.id, requestId), eq(requests.status, currentRequest.status)))
       .returning();
 
     if (!updatedRequest) {
-      const [fresh] = await database
-        .select()
-        .from(requests)
-        .where(eq(requests.id, requestId))
-        .limit(1);
-      return fresh ?? currentRequest;
+      throw new ConflictException(STALE_REVIEW_MESSAGE);
     }
 
     // Create audit log entry
@@ -732,6 +740,15 @@ export class RequestsService {
     }
 
     const byId = new Map(loaded.map((row) => [row.request.id, row]));
+
+    const expected = body.expectedStatuses ?? {};
+    const changed = ids.filter(
+      (id) => expected[id] !== undefined && byId.get(id)?.request.status !== expected[id]
+    );
+    if (changed.length > 0) {
+      throw new ConflictException(STALE_REVIEW_MESSAGE);
+    }
+
     const blocked = ids.filter((id) => {
       const status = byId.get(id)?.request.status;
       return !status || (!isBulkOpenStatus(status) && status !== body.status);
@@ -771,21 +788,14 @@ export class RequestsService {
               reviewDate: new Date(),
               updatedAt: new Date(),
             })
-            .where(
-              and(eq(requests.id, requestId), inArray(requests.status, [...BULK_OPEN_STATUSES]))
-            )
+            // Compare-and-set on the status read above. Any row that moved
+            // on aborts the whole batch (the transaction rolls back) so the
+            // reviewer reloads instead of overwriting a change they never saw.
+            .where(and(eq(requests.id, requestId), eq(requests.status, current.request.status)))
             .returning();
 
           if (!updatedRequest) {
-            const [fresh] = await tx
-              .select()
-              .from(requests)
-              .where(eq(requests.id, requestId))
-              .limit(1);
-            if (fresh) {
-              byId.set(requestId, { ...current, request: fresh });
-            }
-            continue;
+            throw new ConflictException(STALE_REVIEW_MESSAGE);
           }
 
           await tx.insert(requestAuditLogs).values({
@@ -954,20 +964,29 @@ export class RequestsService {
 
     const previousStatus = requestRow.request.status;
 
-    // Re-open the request so it returns to the staff queue
+    if (attachmentIds.length > 0) {
+      await this.assertAttachmentsOwnedByScholar(attachmentIds, scholar.id);
+    }
+
+    // Re-open the request so it returns to the staff queue. Compare-and-set on
+    // "commented" so a staff decision made meanwhile is not silently reopened.
     const [updatedRequest] = await database
       .update(requests)
       .set({
         status: 'pending',
         updatedAt: new Date(),
       })
-      .where(eq(requests.id, requestId))
+      .where(and(eq(requests.id, requestId), eq(requests.status, 'commented')))
       .returning();
+
+    if (!updatedRequest) {
+      throw new ConflictException(
+        'This request was updated by staff while you were replying. Reload to see the latest status.'
+      );
+    }
 
     // Link new attachments to this request (if any)
     if (attachmentIds.length > 0) {
-      await this.assertAttachmentsOwnedByScholar(attachmentIds, scholar.id);
-
       await database
         .update(requestAttachments)
         .set({ requestId })
