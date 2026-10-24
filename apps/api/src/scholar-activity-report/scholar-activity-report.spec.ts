@@ -153,6 +153,26 @@ describe('buildScholarActivityReport', () => {
     expect(newest.scholars.map((row) => row.name)).toEqual(['Cia', 'Ada', 'Ben']);
   });
 
+  it('groups padded and differently cased programs and years into one cohort', () => {
+    const report = buildScholarActivityReport(
+      [
+        scholar({ scholarId: 'a', name: 'A', program: 'Law', year: '2026', tasksBehind: 1 }),
+        scholar({ scholarId: 'b', name: 'B', program: 'Law ', year: '2026 ', tasksBehind: 1 }),
+        scholar({ scholarId: 'c', name: 'C', program: 'law', year: '2026' }),
+      ],
+      undefined,
+      {},
+      now
+    );
+    expect(report.cohorts).toHaveLength(1);
+    expect(report.cohorts[0]).toMatchObject({
+      program: 'Law',
+      year: '2026',
+      scholarCount: 3,
+      scholarsBehindOnTasks: 2,
+    });
+  });
+
   it('collapses padded and differently cased filter values', () => {
     const report = buildScholarActivityReport(
       [],

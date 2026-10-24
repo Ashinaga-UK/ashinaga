@@ -203,10 +203,15 @@ function sortScholars(
   });
 }
 
+/** Same trimmed, case-folded key the program/year filters match on. */
+function cohortKey(value: string | null | undefined): string {
+  return (value ?? '').trim().toLocaleLowerCase('en-GB');
+}
+
 function buildCohorts(rows: ScholarActivityRow[]): ScholarActivityCohort[] {
   const groups = new Map<string, ScholarActivityRow[]>();
   for (const row of rows) {
-    const key = `${row.program}\0${row.year}`;
+    const key = `${cohortKey(row.program)}\0${cohortKey(row.year)}`;
     const group = groups.get(key) ?? [];
     group.push(row);
     groups.set(key, group);
@@ -218,8 +223,8 @@ function buildCohorts(rows: ScholarActivityRow[]): ScholarActivityCohort[] {
       throw new Error('Cohort group was empty');
     }
     return {
-      program: first.program,
-      year: first.year,
+      program: first.program.trim(),
+      year: first.year.trim(),
       scholarCount: group.length,
       staleLoginCount: group.filter((row) => row.isStaleLogin).length,
       unknownLoginCount: group.filter((row) => row.lastActivityUnknown).length,
