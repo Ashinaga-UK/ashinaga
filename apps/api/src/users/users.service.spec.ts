@@ -8,6 +8,7 @@ jest.mock('../db/connection', () => ({
   database: {
     select: jest.fn(),
     update: jest.fn(),
+    delete: jest.fn(),
     transaction: jest.fn(),
   },
 }));
@@ -17,7 +18,7 @@ type StaffRow = { userId: string; isActive: boolean; isSuperAdmin: boolean };
 const requesterId = 'staff-super';
 const targetId = 'staff-target';
 
-// Every select in setStaffAdmin ends in `.limit()` or `.for()`; resolve both
+// Every select in setStaffAdmin and removeStaff ends in `.limit()` or `.for()`; resolve both
 // with the next queued result. `locks` records which selects took `FOR UPDATE`.
 function selectReturning(queue: unknown[][], locks: unknown[][] = []) {
   return jest.fn(() => {
@@ -209,6 +210,91 @@ describe('UsersService', () => {
         new BadRequestException('Cannot remove the last super-admin')
       );
       expect(tx.update).not.toHaveBeenCalled();
+    });
+  });
+  describe('removeStaff', () => {
+    beforeEach(() => {
+      (database.delete as jest.Mock).mockReturnValue({
+        where: jest.fn().mockResolvedValue(undefined),
+      });
+    });
+
+    it('deactivates an active staff member and clears their sessions', async () => {
+      const { set } = mockDb({
+        requester: superAdmin,
+        activeSuperAdmins: [{ userId: requesterId }],
+        target: { userId: targetId, isActive: true, isSuperAdmin: false },
+      });
+
+      const result = await service.removeStaff(targetId, requesterId);
+
+      expect(result).toEqual({ success: true, alreadyInactive: false });
+      expect(set).toHaveBeenCalledWith(expect.objectContaining({ isActive: false }));
+      expect(database.delete).toHaveBeenCalled();
+    });
+
+    it('removes another super-admin when one remains', async () => {
+      const { set } = mockDb({
+        requester: superAdmin,
+        activeSuperAdmins: [{ userId: requesterId }, { userId: targetId }],
+        target: { userId: targetId, isActive: true, isSuperAdmin: true },
+      });
+
+      await expect(service.removeStaff(targetId, requesterId)).resolves.toEqual({
+        success: true,
+        alreadyInactive: false,
+      });
+      expect(set).toHaveBeenCalledWith(expect.objectContaining({ isActive: false }));
+    });
+
+    it('rejects removing the last super-admin and writes nothing', async () => {
+      const { tx } = mockDb({
+        requester: superAdmin,
+        activeSuperAdmins: [{ userId: targetId }],
+        target: { userId: targetId, isActive: true, isSuperAdmin: true },
+      });
+
+      await expect(service.removeStaff(targetId, requesterId)).rejects.toThrow(
+        new BadRequestException('Cannot remove the last super-admin')
+      );
+      expect(tx.update).not.toHaveBeenCalled();
+      expect(database.delete).not.toHaveBeenCalled();
+    });
+
+    it('returns 403 and writes nothing when the caller was demoted before the lock', async () => {
+      const { tx, locks } = mockDb({
+        activeSuperAdmins: [{ userId: 'staff-other-admin' }],
+        requester: { userId: requesterId, isActive: true, isSuperAdmin: false },
+        target: { userId: targetId, isActive: true, isSuperAdmin: false },
+      });
+
+      await expect(service.removeStaff(targetId, requesterId)).rejects.toThrow(
+        new ForbiddenException('Only super-admins can remove staff members')
+      );
+      expect(tx.update).not.toHaveBeenCalled();
+      expect(locks).toContainEqual([{ userId: requesterId, isActive: true, isSuperAdmin: false }]);
+    });
+
+    it('rejects removing yourself before opening a transaction', async () => {
+      await expect(service.removeStaff(requesterId, requesterId)).rejects.toBeInstanceOf(
+        BadRequestException
+      );
+      expect(database.transaction).not.toHaveBeenCalled();
+    });
+
+    it('does nothing for a staff member who is already inactive', async () => {
+      const { tx } = mockDb({
+        requester: superAdmin,
+        activeSuperAdmins: [{ userId: requesterId }],
+        target: { userId: targetId, isActive: false, isSuperAdmin: false },
+      });
+
+      await expect(service.removeStaff(targetId, requesterId)).resolves.toEqual({
+        success: true,
+        alreadyInactive: true,
+      });
+      expect(tx.update).not.toHaveBeenCalled();
+      expect(database.delete).not.toHaveBeenCalled();
     });
   });
 });
