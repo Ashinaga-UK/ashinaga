@@ -32,12 +32,15 @@
   },
   "packageManager": "pnpm@10.15.1",
   "engines": {
-    "node": ">=18"
+    "node": ">=20.19"
   },
   "pnpm": {
     "overrides": {
       "fastify": "^5.12.5",
-      "@nestjs/platform-express": "^11.2.7"
+      "@nestjs/platform-express": "^11.2.7",
+      "defu": ">=6.1.5",
+      "kysely": "0.28.18",
+      "zod": "4.6.5"
     }
   }
 }
