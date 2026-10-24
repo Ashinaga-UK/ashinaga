@@ -3,6 +3,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Calendar,
+  ChevronDown,
   ClipboardCheck,
   Clock,
   FileText,
@@ -15,7 +16,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import type {
   OverviewAttentionItem,
   OverviewAttentionType,
@@ -27,6 +28,7 @@ import { ProposalInbox } from './proposal-inbox';
 import { StaffInviteDialog } from './staff-invite-dialog';
 import { TaskAssignment } from './task-assignment';
 import { Button } from './ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { Skeleton } from './ui/skeleton';
 
 const VIEWS = [
@@ -161,7 +163,15 @@ export function OverviewDashboard() {
   const requested = searchParams.get('attention');
   const view = isViewId(requested) ? requested : 'action';
   const current = VIEWS.find((item) => item.id === view) ?? VIEWS[0];
+  // Keep overview counts current even while the attention panel is collapsed.
   const { data, isLoading, isError, error, refetch, isFetching } = useOverview(true);
+  const [attentionOpen, setAttentionOpen] = useState(true);
+
+  useEffect(() => {
+    if (isViewId(requested)) {
+      setAttentionOpen(true);
+    }
+  }, [requested]);
 
   const selectView = (next: ViewId) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -172,53 +182,6 @@ export function OverviewDashboard() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-lg border bg-card" aria-labelledby="attention-purpose">
-        <div className="px-4 pt-4 sm:px-5">
-          <p id="attention-purpose" className="max-w-3xl text-sm text-muted-foreground">
-            {current.id === 'follow' && data?.followUpDays
-              ? `Scholars quiet for more than ${data.followUpDays} ${data.followUpDays === 1 ? 'day' : 'days'}. A missing login date is unknown, so it is not listed here.`
-              : current.purpose}
-          </p>
-        </div>
-        <div
-          className="flex flex-wrap gap-x-4 gap-y-1 px-4 pt-3 sm:px-5"
-          role="tablist"
-          aria-label="Attention views"
-        >
-          {VIEWS.map((item) => {
-            const count = data?.attention.counts[item.id] ?? 0;
-            const selected = item.id === view;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                role="tab"
-                aria-selected={selected}
-                className={cn(
-                  'border-b border-transparent pb-1 text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-                  selected && 'border-brand font-medium text-foreground'
-                )}
-                onClick={() => selectView(item.id)}
-              >
-                <span className={cn(selected && 'text-brand')}>{item.label}</span>{' '}
-                <span className="tabular-nums text-foreground">{isLoading ? '…' : count}</span>
-              </button>
-            );
-          })}
-        </div>
-        <AttentionBody
-          data={data}
-          isLoading={isLoading}
-          isError={isError}
-          error={error}
-          isFetching={isFetching}
-          viewId={current.id}
-          viewTypes={current.types}
-          empty={current.empty}
-          onRetry={() => void refetch()}
-        />
-      </section>
-
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4" aria-label="Cohort">
         <CohortLink
           label="Scholars"
@@ -320,6 +283,79 @@ export function OverviewDashboard() {
           />
         </div>
       </section>
+
+      <Collapsible
+        open={attentionOpen}
+        onOpenChange={setAttentionOpen}
+        className="rounded-lg border bg-card"
+      >
+        <section aria-labelledby="attention-heading">
+          <h3
+            id="attention-heading"
+            className="text-sm font-semibold leading-none tracking-tight text-balance"
+          >
+            <CollapsibleTrigger
+              className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:px-5"
+              aria-controls={attentionOpen ? 'attention-panel' : undefined}
+            >
+              <span>What needs attention</span>
+              <ChevronDown
+                className={cn(
+                  'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200',
+                  attentionOpen && 'rotate-180'
+                )}
+                aria-hidden
+              />
+            </CollapsibleTrigger>
+          </h3>
+          <CollapsibleContent id="attention-panel">
+            <div className="px-4 sm:px-5">
+              <p className="max-w-3xl text-sm text-muted-foreground">
+                {current.id === 'follow' && data?.followUpDays
+                  ? `Scholars quiet for more than ${data.followUpDays} ${data.followUpDays === 1 ? 'day' : 'days'}. A missing login date is unknown, so it is not listed here.`
+                  : current.purpose}
+              </p>
+            </div>
+            <div
+              className="flex flex-wrap gap-x-4 gap-y-1 px-4 pt-3 sm:px-5"
+              role="tablist"
+              aria-label="Attention views"
+            >
+              {VIEWS.map((item) => {
+                const count = data?.attention.counts[item.id] ?? 0;
+                const selected = item.id === view;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={selected}
+                    className={cn(
+                      'border-b border-transparent pb-1 text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                      selected && 'border-brand font-medium text-foreground'
+                    )}
+                    onClick={() => selectView(item.id)}
+                  >
+                    <span className={cn(selected && 'text-brand')}>{item.label}</span>{' '}
+                    <span className="tabular-nums text-foreground">{isLoading ? '…' : count}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <AttentionBody
+              data={data}
+              isLoading={isLoading}
+              isError={isError}
+              error={error}
+              isFetching={isFetching}
+              viewId={current.id}
+              viewTypes={current.types}
+              empty={current.empty}
+              onRetry={() => void refetch()}
+            />
+          </CollapsibleContent>
+        </section>
+      </Collapsible>
 
       <ProposalInbox
         onOpenScholar={(scholarId) =>
