@@ -287,6 +287,7 @@ jobs:
         printf '%s\n' "$APPLIED" | node "${GITHUB_WORKSPACE}/scripts/assert-applied-migrations.mjs"
 
     - name: Update App Runner service
+      id: apprunner_update
       run: |
         # This step:
         # 1. Fetches latest secrets from AWS Secrets Manager (GitHub Actions is the source of truth for secrets)
@@ -464,6 +465,7 @@ jobs:
             # The unfiltered response includes RuntimeEnvironmentVariables and
             # therefore plaintext secrets. Only log the safe operation ID.
             echo "✅ App Runner update started (operation: ${operation_id})"
+            echo "operation_id=${operation_id}" >> "$GITHUB_OUTPUT"
           else
             echo "❌ Failed to update App Runner service"
             exit 1
@@ -538,29 +540,38 @@ jobs:
         SERVICE_NAME="ashinaga-api-${ENVIRONMENT}"
         SERVICE_ARN=$(aws apprunner list-services --query "ServiceSummaryList[?ServiceName=='${SERVICE_NAME}'].ServiceArn" --output text)
         
-        # Follow the App Runner operation the update just started. The service
-        # status is RUNNING both before a deployment starts and after a failed
-        # one rolls back, so it can't tell us whether the new image went live.
-        echo "Waiting for the App Runner operation to finish..."
-        timeout 1800 bash -c "
-          while true; do
-            read -r OP_TYPE OP_STATUS OP_STARTED <<< \$(aws apprunner list-operations --service-arn ${SERVICE_ARN} --max-results 1 \
-              --query 'OperationSummaryList[0].[Type,Status,StartedAt]' --output text)
-            echo \"Latest operation: \$OP_TYPE \$OP_STATUS (started \$OP_STARTED)\"
-            case \"\$OP_STATUS\" in
-              PENDING|IN_PROGRESS) sleep 30 ;;
-              *) break ;;
-            esac
-          done
-        " || {
-          echo "Timeout waiting for the App Runner operation to finish"
+        # Follow the exact operation the update step started. The newest listed
+        # operation can still be the previous one, and the service status is
+        # RUNNING both before a deployment starts and after one rolls back.
+        OPERATION_ID="${{ steps.apprunner_update.outputs.operation_id }}"
+        if [ -z "$OPERATION_ID" ]; then
+          echo "::error::The update step did not report an App Runner operation ID"
           exit 1
+        fi
+        echo "Waiting for App Runner operation ${OPERATION_ID}..."
+
+        op_status() {
+          aws apprunner list-operations --service-arn "${SERVICE_ARN}" --max-results 20 \
+            --query "OperationSummaryList[?Id=='${OPERATION_ID}'] | [0].Status" --output text
         }
 
-        OP_STATUS=$(aws apprunner list-operations --service-arn ${SERVICE_ARN} --max-results 1 \
-          --query 'OperationSummaryList[0].Status' --output text)
+        DEADLINE=$(( $(date +%s) + 1800 ))
+        while true; do
+          OP_STATUS=$(op_status)
+          echo "Operation ${OPERATION_ID}: ${OP_STATUS}"
+          case "$OP_STATUS" in
+            None|""|PENDING|IN_PROGRESS) ;;   # not listed yet, or still running
+            *) break ;;
+          esac
+          if [ "$(date +%s)" -ge "$DEADLINE" ]; then
+            echo "::error::Timed out waiting for App Runner operation ${OPERATION_ID}"
+            exit 1
+          fi
+          sleep 30
+        done
+
         if [ "$OP_STATUS" != "SUCCEEDED" ]; then
-          echo "::error::App Runner deployment ended with status $OP_STATUS (the previous version is still serving). Check the service and application logs in CloudWatch."
+          echo "::error::App Runner deployment ${OPERATION_ID} ended with status ${OP_STATUS} (the previous version is still serving). Check the service and application logs in CloudWatch."
           exit 1
         fi
         echo "Deployment completed successfully!"
