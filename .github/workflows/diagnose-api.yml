@@ -144,7 +144,7 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: CloudWatch log groups + recent events
+      - name: CloudWatch log activity summary
         run: |
           set -euo pipefail
           echo "## CloudWatch logs" >> "$GITHUB_STEP_SUMMARY"
@@ -174,58 +174,29 @@ jobs:
 
           python3 <<'PY'
           import json, os, re, subprocess
+          from collections import Counter
+          from datetime import datetime, timezone
 
           groups = json.load(open("/tmp/log_groups.json")) or []
           start_ms = open("/tmp/start_ms").read().strip()
           summary = open(os.environ["GITHUB_STEP_SUMMARY"], "a")
-          sensitive_value = re.compile(
-              r"""(?ix)
-              (?P<prefix>
-                  ["']?
-                  (?:
-                      DB_PASSWORD |
-                      BETTER_AUTH_SECRET |
-                      RESEND_API_KEY |
-                      CRON_SECRET |
-                      [\w-]*(?:password|token|secret|authorization|cookie|api[_-]?key|session(?:[_-]?id)?)[\w-]*
-                  )
-                  ["']?\s*[:=]\s*
-              )
-              (?P<value>
-                  "(?:\\.|[^"\\])*" |
-                  '(?:\\.|[^'\\])*' |
-                  (?:Bearer\s+)?[^,;}&\s\r\n]+
-              )
-              """,
+          summary.write(
+              "Raw messages are intentionally omitted because Actions output is public. "
+              "Only allow-listed aggregate fields are shown.\n"
           )
-          sensitive_query = re.compile(
-              r"(?i)([?&][\w-]*(?:password|token|secret|authorization|cookie|api[_-]?key|"
-              r"session(?:[_-]?id)?)[\w-]*=)[^&\s<>\"']+"
-          )
-          sensitive_link = re.compile(
-              r"(?i)\bhttps?://[^\s<>\"']*(?:password-reset|reset-password|reset|signup|invite)"
-              r"[^\s<>\"']*"
-          )
-          bare_jwt = re.compile(r"\beyJ[\w-]{10,}\.[\w-]{10,}\.[\w-]{10,}\b")
+          status_pattern = re.compile(r"\bStatus:\s*([1-5]\d{2})\b")
+          error_pattern = re.compile(r"\b(?:error|exception|fatal)\b", re.I)
 
-          def redact(message):
-              message = sensitive_link.sub("[REDACTED_URL]", message)
-              message = sensitive_query.sub(r"\1[REDACTED]", message)
-
-              def replace_value(match):
-                  value = match.group("value")
-                  if value.strip("\"'") == "[REDACTED]":
-                      return match.group(0)
-                  quote = value[0] if value[:1] in {'"', "'"} else ""
-                  return f"{match.group('prefix')}{quote}[REDACTED]{quote}"
-
-              message = sensitive_value.sub(replace_value, message)
-              return bare_jwt.sub("[REDACTED_JWT]", message)
+          def iso_timestamp(value):
+              try:
+                  return datetime.fromtimestamp(int(value) / 1000, timezone.utc).isoformat()
+              except (TypeError, ValueError, OverflowError):
+                  return None
 
           for g in groups:
               lg = g["name"]
               print(f"--- Log group: {lg} ---")
-              summary.write(f"### `{lg}` (up to 40 newest events from the last 24 hours)\n")
+              summary.write(f"### `{lg}`\n")
               out = subprocess.run(
                   [
                       "aws", "logs", "filter-log-events",
@@ -241,8 +212,7 @@ jobs:
                   text=True,
               )
               if out.returncode != 0:
-                  error = redact(out.stderr.strip()).replace("\r", "\\r").replace("\n", "\\n")
-                  line = f"filter-log-events failed: {error}"[:500]
+                  line = f"filter-log-events failed with RC={out.returncode}"
                   print(line)
                   summary.write(f"{line}\n")
                   continue
@@ -251,14 +221,26 @@ jobs:
               except json.JSONDecodeError:
                   summary.write("could not parse log events JSON\n")
                   continue
-              block = ["```"]
+
+              status_counts = Counter()
+              error_like_events = 0
+              timestamps = []
               for e in events:
-                  msg = redact(e.get("m") or "")
-                  msg = msg.replace("\r", "\\r").replace("\n", "\\n")
-                  line = f"{e.get('t')}: {msg}"[:500]
-                  print(line)
-                  block.append(line)
-              block.append("```")
-              summary.write("\n".join(block) + "\n")
+                  message = e.get("m") or ""
+                  status_counts.update(status_pattern.findall(message))
+                  error_like_events += bool(error_pattern.search(message))
+                  if isinstance(e.get("t"), int):
+                      timestamps.append(e["t"])
+
+              result = {
+                  "sampledEvents": len(events),
+                  "errorLikeEvents": error_like_events,
+                  "httpStatusCounts": dict(sorted(status_counts.items())),
+                  "oldestSampledEvent": iso_timestamp(min(timestamps)) if timestamps else None,
+                  "newestSampledEvent": iso_timestamp(max(timestamps)) if timestamps else None,
+              }
+              encoded = json.dumps(result, sort_keys=True)
+              print(encoded)
+              summary.write(f"```json\n{encoded}\n```\n")
           summary.close()
           PY
