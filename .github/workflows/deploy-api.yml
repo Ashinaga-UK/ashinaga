@@ -198,9 +198,11 @@ jobs:
         fi
         
         echo "Found secret: $SECRET_ARN"
-        export DB_PASSWORD=$(aws secretsmanager get-secret-value \
+        DB_PASSWORD=$(aws secretsmanager get-secret-value \
           --secret-id "$SECRET_ARN" \
           --query SecretString --output text)
+        printf '::add-mask::%s\n' "$DB_PASSWORD"
+        export DB_PASSWORD
           
         # Get Better Auth secret from AWS Secrets Manager
         echo "Retrieving Better Auth secret from AWS Secrets Manager..."
@@ -215,9 +217,11 @@ jobs:
           exit 1
         fi
         
-        export BETTER_AUTH_SECRET=$(aws secretsmanager get-secret-value \
+        BETTER_AUTH_SECRET=$(aws secretsmanager get-secret-value \
           --secret-id "$AUTH_SECRET_ARN" \
           --query SecretString --output text)
+        printf '::add-mask::%s\n' "$BETTER_AUTH_SECRET"
+        export BETTER_AUTH_SECRET
 
         # Get Resend API key from AWS Secrets Manager
         echo "Retrieving Resend API key from AWS Secrets Manager..."
@@ -232,9 +236,11 @@ jobs:
           exit 1
         fi
 
-        export RESEND_API_KEY=$(aws secretsmanager get-secret-value \
+        RESEND_API_KEY=$(aws secretsmanager get-secret-value \
           --secret-id "$RESEND_SECRET_ARN" \
           --query SecretString --output text)
+        printf '::add-mask::%s\n' "$RESEND_API_KEY"
+        export RESEND_API_KEY
 
         # Set Better Auth URL based on environment
         if [ "$ENVIRONMENT" = "test" ]; then
@@ -281,6 +287,7 @@ jobs:
         printf '%s\n' "$APPLIED" | node "${GITHUB_WORKSPACE}/scripts/assert-applied-migrations.mjs"
 
     - name: Update App Runner service
+      id: apprunner_update
       run: |
         # This step:
         # 1. Fetches latest secrets from AWS Secrets Manager (GitHub Actions is the source of truth for secrets)
@@ -306,12 +313,14 @@ jobs:
         # Fetch the latest secrets from AWS Secrets Manager
         echo "Fetching latest secrets from AWS Secrets Manager..."
 
-        # Helper function to get secret value and trim whitespace
+        # Helper function to get a secret value. Command substitution removes
+        # the trailing newline without xargs interpreting secret punctuation.
         get_secret_value() {
           local secret_pattern="$1"
           # Get the most recent secret name matching the pattern
           # First get all matching secrets, filter out "None", then sort and pick the last one
-          local secret_name=$(aws secretsmanager list-secrets \
+          local secret_name
+          secret_name=$(aws secretsmanager list-secrets \
             --query "SecretList[?contains(Name, '${secret_pattern}')].Name" \
             --output text | tr '\t' '\n' | grep -v "^None$" | sort | tail -n 1)
 
@@ -324,11 +333,12 @@ jobs:
 
           echo "Found secret: $secret_name" >&2
 
-          # Get secret value and trim whitespace
+          # Return the value unchanged; command substitution strips only the
+          # trailing newline emitted by the AWS CLI.
           aws secretsmanager get-secret-value \
             --secret-id "$secret_name" \
             --query SecretString \
-            --output text | xargs
+            --output text
         }
 
         # Fetch all secrets
@@ -340,6 +350,19 @@ jobs:
         RESEND_API_KEY=$(get_secret_value "ashinaga-resend-api-key-${ENVIRONMENT}")
         echo "Fetching notification cron secret (optional until terraform apply)..."
         CRON_SECRET=$(get_secret_value "ashinaga-notification-cron-secret-${ENVIRONMENT}" || true)
+
+        # GitHub only redacts values registered with add-mask. Hard-coded
+        # "[MASKED]" log messages do not protect later command output.
+        for secret_value in \
+          "$DB_PASSWORD" \
+          "$BETTER_AUTH_SECRET" \
+          "$RESEND_API_KEY" \
+          "${CRON_SECRET:-}"
+        do
+          if [ -n "$secret_value" ]; then
+            printf '::add-mask::%s\n' "$secret_value"
+          fi
+        done
 
         # Get database connection details
         echo "Getting database configuration..."
@@ -433,16 +456,58 @@ jobs:
         # Function to update App Runner service
         update_app_runner_service() {
           echo "Sending update request to App Runner..."
-          aws apprunner update-service \
-            --service-arn ${SERVICE_ARN} \
-            --source-configuration "$APP_RUNNER_CONFIG"
-
-          if [ $? -eq 0 ]; then
-            echo "✅ Successfully triggered App Runner update with latest secrets"
+          local operation_id
+          if operation_id=$(aws apprunner update-service \
+            --service-arn "$SERVICE_ARN" \
+            --source-configuration "$APP_RUNNER_CONFIG" \
+            --query 'OperationId' \
+            --output text); then
+            # The unfiltered response includes RuntimeEnvironmentVariables and
+            # therefore plaintext secrets. Only log the safe operation ID.
+            :
           else
             echo "❌ Failed to update App Runner service"
             exit 1
           fi
+
+          # update-service only returns an OperationId when it detects a config
+          # change (env vars, secrets, image identifier, ...). AutoDeploymentsEnabled
+          # means a plain ECR push to the same :latest tag is usually already picked
+          # up on its own by the time we get here, so this call is frequently a
+          # genuine no-op and OperationId comes back empty/"None". Force a real,
+          # trackable deployment of whatever :latest currently points to so there is
+          # always an operation to wait on, instead of assuming success or hanging.
+          if [ -z "$operation_id" ] || [ "$operation_id" = "None" ]; then
+            echo "App Runner update was a no-op (no config change) - forcing a deployment of the current image..."
+            # start-deployment can transiently fail if an auto-deploy triggered by
+            # the earlier ECR push is still wrapping up; retry a few times rather
+            # than failing the whole job on that race.
+            local attempt
+            for attempt in 1 2 3 4 5; do
+              if operation_id=$(aws apprunner start-deployment \
+                --service-arn "$SERVICE_ARN" \
+                --query 'OperationId' \
+                --output text 2>/tmp/start-deployment-error); then
+                break
+              fi
+              echo "start-deployment attempt ${attempt} failed, retrying in 15s..."
+              cat /tmp/start-deployment-error
+              operation_id=""
+              sleep 15
+            done
+            if [ -z "$operation_id" ] || [ "$operation_id" = "None" ]; then
+              echo "❌ Failed to start App Runner deployment after retries"
+              exit 1
+            fi
+          fi
+
+          if [ -z "$operation_id" ] || [ "$operation_id" = "None" ]; then
+            echo "❌ App Runner did not return an operation ID from update-service or start-deployment"
+            exit 1
+          fi
+
+          echo "✅ App Runner deployment started (operation: ${operation_id})"
+          echo "operation_id=${operation_id}" >> "$GITHUB_OUTPUT"
         }
 
         # Check service status
@@ -513,26 +578,42 @@ jobs:
         SERVICE_NAME="ashinaga-api-${ENVIRONMENT}"
         SERVICE_ARN=$(aws apprunner list-services --query "ServiceSummaryList[?ServiceName=='${SERVICE_NAME}'].ServiceArn" --output text)
         
-        echo "Waiting for deployment to complete..."
-        # Wait up to 20 minutes for deployment to complete
-        timeout 1200 bash -c "
-          while true; do
-            STATUS=\$(aws apprunner describe-service --service-arn ${SERVICE_ARN} --query 'Service.Status' --output text)
-            echo \"Current deployment status: \$STATUS\"
-            if [ \"\$STATUS\" = \"RUNNING\" ]; then
-              echo \"Deployment completed successfully!\"
-              break
-            elif [ \"\$STATUS\" = \"CREATE_FAILED\" ] || [ \"\$STATUS\" = \"DELETE_FAILED\" ]; then
-              echo \"Deployment failed: \$STATUS\"
-              exit 1
-            fi
-            sleep 30
-          done
-        " || {
-          echo "Timeout waiting for deployment to complete"
+        # Follow the exact operation the update step started. The newest listed
+        # operation can still be the previous one, and the service status is
+        # RUNNING both before a deployment starts and after one rolls back.
+        OPERATION_ID="${{ steps.apprunner_update.outputs.operation_id }}"
+        if [ -z "$OPERATION_ID" ]; then
+          echo "::error::The update step did not report an App Runner operation ID"
           exit 1
+        fi
+        echo "Waiting for App Runner operation ${OPERATION_ID}..."
+
+        op_status() {
+          aws apprunner list-operations --service-arn "${SERVICE_ARN}" --max-results 20 \
+            --query "OperationSummaryList[?Id=='${OPERATION_ID}'] | [0].Status" --output text
         }
-        
+
+        DEADLINE=$(( $(date +%s) + 1800 ))
+        while true; do
+          OP_STATUS=$(op_status)
+          echo "Operation ${OPERATION_ID}: ${OP_STATUS}"
+          case "$OP_STATUS" in
+            None|""|PENDING|IN_PROGRESS) ;;   # not listed yet, or still running
+            *) break ;;
+          esac
+          if [ "$(date +%s)" -ge "$DEADLINE" ]; then
+            echo "::error::Timed out waiting for App Runner operation ${OPERATION_ID}"
+            exit 1
+          fi
+          sleep 30
+        done
+
+        if [ "$OP_STATUS" != "SUCCEEDED" ]; then
+          echo "::error::App Runner deployment ${OPERATION_ID} ended with status ${OP_STATUS} (the previous version is still serving). Check the service and application logs in CloudWatch."
+          exit 1
+        fi
+        echo "Deployment completed successfully!"
+
         # Get service URL
         SERVICE_URL=$(aws apprunner describe-service --service-arn ${SERVICE_ARN} --query "Service.ServiceUrl" --output text)
         echo "Deployment complete! Service available at: https://${SERVICE_URL}"

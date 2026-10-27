@@ -4,9 +4,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
-import { AvatarsService } from '../avatars/avatars.service';
+import { and, eq } from 'drizzle-orm';
 import { resolveAvatarSrc } from '../avatars/avatar-files';
+import { AvatarsService } from '../avatars/avatars.service';
 import { validateProfileImage } from '../common/profile-image';
 import { database } from '../db/connection';
 import { sessions, staff, users } from '../db/schema';
@@ -133,45 +133,136 @@ export class UsersService {
       throw new BadRequestException('You cannot remove your own staff account');
     }
 
-    const [requester] = await database
-      .select()
-      .from(staff)
-      .where(eq(staff.userId, requesterUserId))
-      .limit(1);
+    const result = await database.transaction(async (tx) => {
+      // Same lock order as setStaffAdmin: the active super-admins first, then
+      // the caller, then the target. This serialises concurrent removals and
+      // demotions so they can't together remove the last super-admin.
+      const activeSuperAdmins = await tx
+        .select({ userId: staff.userId })
+        .from(staff)
+        .where(and(eq(staff.isActive, true), eq(staff.isSuperAdmin, true)))
+        .for('update');
 
-    if (!requester || !requester.isActive) {
-      throw new ForbiddenException('Staff access required');
+      // Re-check the caller after the lock, in case they were demoted or
+      // removed since loading the page.
+      const [requester] = await tx
+        .select()
+        .from(staff)
+        .where(eq(staff.userId, requesterUserId))
+        .for('update')
+        .limit(1);
+
+      if (!requester || !requester.isActive) {
+        throw new ForbiddenException('Staff access required');
+      }
+
+      if (!requester.isSuperAdmin) {
+        throw new ForbiddenException('Only super-admins can remove staff members');
+      }
+
+      const [target] = await tx
+        .select()
+        .from(staff)
+        .where(eq(staff.userId, targetUserId))
+        .for('update')
+        .limit(1);
+
+      if (!target) {
+        throw new NotFoundException('Staff member not found');
+      }
+
+      if (!target.isActive) {
+        return { success: true, alreadyInactive: true };
+      }
+
+      if (target.isSuperAdmin && activeSuperAdmins.length <= 1) {
+        throw new BadRequestException('Cannot remove the last super-admin');
+      }
+
+      await tx
+        .update(staff)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(eq(staff.userId, targetUserId));
+
+      return { success: true, alreadyInactive: false };
+    });
+
+    if (!result.alreadyInactive) {
+      try {
+        await database.delete(sessions).where(eq(sessions.userId, targetUserId));
+      } catch (error) {
+        console.error('Failed to clear sessions for removed staff member:', error);
+      }
     }
 
-    if (!requester.isSuperAdmin) {
-      throw new ForbiddenException('Only super-admins can remove staff members');
+    return result;
+  }
+
+  async setStaffAdmin(targetUserId: string, isSuperAdmin: boolean, requesterUserId: string) {
+    if (targetUserId === requesterUserId) {
+      throw new BadRequestException('You cannot change your own admin access');
     }
 
-    const [target] = await database
-      .select()
-      .from(staff)
-      .where(eq(staff.userId, targetUserId))
-      .limit(1);
+    return database.transaction(async (tx) => {
+      // Lock the active super-admins first, so two concurrent changes queue up
+      // here instead of both passing the last-admin check. Taking this lock
+      // before reading the caller also keeps the lock order the same for every
+      // caller, so two admins changing each other cannot deadlock.
+      const activeSuperAdmins = await tx
+        .select({ userId: staff.userId })
+        .from(staff)
+        .where(and(eq(staff.isActive, true), eq(staff.isSuperAdmin, true)))
+        .for('update');
 
-    if (!target) {
-      throw new NotFoundException('Staff member not found');
-    }
+      // Re-check the caller inside the transaction, after the lock. A check
+      // before the transaction would let a caller who was demoted in the
+      // meantime still run the write.
+      const [requester] = await tx
+        .select()
+        .from(staff)
+        .where(eq(staff.userId, requesterUserId))
+        .for('update')
+        .limit(1);
 
-    if (!target.isActive) {
-      return { success: true, alreadyInactive: true };
-    }
+      if (!requester || !requester.isActive) {
+        throw new ForbiddenException('Staff access required');
+      }
 
-    await database
-      .update(staff)
-      .set({ isActive: false, updatedAt: new Date() })
-      .where(eq(staff.userId, targetUserId));
+      if (!requester.isSuperAdmin) {
+        throw new ForbiddenException('Only super-admins can change admin access');
+      }
 
-    try {
-      await database.delete(sessions).where(eq(sessions.userId, targetUserId));
-    } catch (error) {
-      console.error('Failed to clear sessions for removed staff member:', error);
-    }
+      const [target] = await tx
+        .select()
+        .from(staff)
+        .where(eq(staff.userId, targetUserId))
+        .for('update')
+        .limit(1);
 
-    return { success: true, alreadyInactive: false };
+      if (!target) {
+        throw new NotFoundException('Staff member not found');
+      }
+
+      if (!target.isActive) {
+        throw new BadRequestException('Cannot change admin access for an inactive staff member');
+      }
+
+      if (!isSuperAdmin && target.isSuperAdmin && activeSuperAdmins.length <= 1) {
+        throw new BadRequestException('Cannot remove the last super-admin');
+      }
+
+      // `is_super_admin` lets staff remove staff and see all scholar requests.
+      // `role` is not just the badge: StaffGuard copies it to
+      // `req.user.staffRole`, and `admin` is what allows editing annual-review
+      // copy (`updateAnnualReviewCopy`) and platform links (`updatePlatformUrl`).
+      // ASH-120 grants and revokes both together, and the confirm dialog says so.
+      const role = isSuperAdmin ? ('admin' as const) : ('viewer' as const);
+      await tx
+        .update(staff)
+        .set({ isSuperAdmin, role, updatedAt: new Date() })
+        .where(eq(staff.userId, targetUserId));
+
+      return { success: true, userId: targetUserId, isSuperAdmin, role };
+    });
   }
 }

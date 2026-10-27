@@ -7,6 +7,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { AnnouncementCreator } from '../components/announcement-creator';
 import { AnnualReviewCopyEditor } from '../components/annual-review-copy-editor';
 import { AnnualReviewsReport } from '../components/annual-reviews-report';
+import { FaqManagement } from '../components/faq-management';
 import { InvitationsManagement } from '../components/invitations-management';
 import { LoginPage } from '../components/login-page';
 import { MyProfile } from '../components/my-profile';
@@ -17,6 +18,7 @@ import { PrepDocumentsTracker } from '../components/prep-documents-tracker';
 import { PrepTasksTracker } from '../components/prep-tasks-tracker';
 import { RequestsQueue } from '../components/requests-queue';
 import { ResourcesManagement } from '../components/resources-management';
+import { ScholarActivityReport } from '../components/scholar-activity-report';
 import { ScholarManagementTable } from '../components/scholar-management-table';
 import { ScholarOnboarding } from '../components/scholar-onboarding';
 import {
@@ -262,6 +264,7 @@ function StaffDashboardContent() {
               >
                 {activeTab === 'overview' && 'Overview'}
                 {activeTab === 'scholars' && 'Scholars'}
+                {activeTab === 'scholar-activity' && 'Scholar activity'}
                 {activeTab === 'prep-documents' && 'Prep documents'}
                 {activeTab === 'prep-tasks' && 'Prep tasks'}
                 {activeTab === 'prep-reports' && 'Prep reports'}
@@ -269,11 +272,14 @@ function StaffDashboardContent() {
                 {activeTab === 'requests' && 'Requests'}
                 {activeTab === 'announcements' && 'Announcements'}
                 {activeTab === 'resources' && 'Resources'}
+                {activeTab === 'faqs' && 'FAQs'}
                 {activeTab === 'invitations' && 'Invitations'}
               </h2>
               <p className="mt-0.5 text-sm text-muted-foreground print:hidden">
                 {activeTab === 'overview' && 'What needs attention right now.'}
                 {activeTab === 'scholars' && 'View and manage your assigned scholars.'}
+                {activeTab === 'scholar-activity' &&
+                  'See who has gone quiet, who is behind on tasks, and which cohorts are least active.'}
                 {activeTab === 'prep-documents' &&
                   'See submitted and missing Prep Year documents without opening each profile.'}
                 {activeTab === 'prep-tasks' &&
@@ -285,6 +291,7 @@ function StaffDashboardContent() {
                 {activeTab === 'requests' && 'Review and respond to scholar submissions.'}
                 {activeTab === 'announcements' && 'Create and manage announcements.'}
                 {activeTab === 'resources' && 'Review scholar-facing handbooks and guides.'}
+                {activeTab === 'faqs' && 'Add and edit student FAQ answers by programme stage.'}
                 {activeTab === 'invitations' && 'Invite scholars and staff to the portal.'}
               </p>
             </div>
@@ -314,6 +321,20 @@ function StaffDashboardContent() {
                   </Card>
                 )}
               </div>
+            )}
+
+            {activeTab === 'scholar-activity' && (
+              <Card>
+                <CardContent className="p-4 sm:p-5">
+                  <ScholarActivityReport
+                    onViewScholar={(scholarId) => {
+                      router.push(
+                        `?tab=scholars&view=scholar-profile&scholarId=${scholarId}&scholarTab=profile`
+                      );
+                    }}
+                  />
+                </CardContent>
+              </Card>
             )}
 
             {activeTab === 'prep-documents' && (
@@ -393,6 +414,12 @@ function StaffDashboardContent() {
             {activeTab === 'resources' && (
               <div className="space-y-6">
                 <ResourcesManagement />
+              </div>
+            )}
+
+            {activeTab === 'faqs' && (
+              <div className="space-y-6">
+                <FaqManagement />
               </div>
             )}
 

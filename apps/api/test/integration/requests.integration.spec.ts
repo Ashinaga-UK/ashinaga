@@ -279,6 +279,102 @@ describe('Requests API – multi-assignee (integration)', () => {
     );
   });
 
+  describe('stale review decisions', () => {
+    async function seedCommentedRequest(description: string) {
+      const [row] = await db
+        .insert(requestRecords)
+        .values({
+          scholarId: scholar.scholarId,
+          type: 'extenuating_circumstances',
+          description,
+          status: 'commented',
+          reviewComment: 'Please add a supporting statement.',
+          assignedTo: staffA.userId,
+        })
+        .returning({ id: requestRecords.id });
+      if (!row) throw new Error('Expected the commented request to be created');
+      createdRequestIds.push(row.id);
+      await db.insert(requestAssignees).values({ requestId: row.id, userId: staffA.userId });
+      return row.id;
+    }
+
+    async function statusChangedLogs(requestId: string) {
+      return db
+        .select()
+        .from(requestAuditLogs)
+        .where(
+          and(
+            eq(requestAuditLogs.requestId, requestId),
+            eq(requestAuditLogs.action, 'status_changed')
+          )
+        );
+    }
+
+    it('returns 409 when staff decide on a request the scholar has since replied to', async () => {
+      const requestId = await seedCommentedRequest(
+        'Commented request the scholar replies to while staff still have it open.'
+      );
+
+      // The scholar replies, which reopens the request as pending.
+      auth.setUser({ id: scholar.userId, email: scholar.email, userType: 'scholar' });
+      await request(app.getHttpServer())
+        .post(`/api/requests/${requestId}/respond`)
+        .send({ comment: 'Here is the supporting statement you asked for.' })
+        .expect(201);
+
+      // Staff act on the "commented" request they were looking at.
+      auth.setUser({ id: staffA.userId, email: staffA.email, userType: 'staff' });
+      await request(app.getHttpServer())
+        .post(`/api/requests/${requestId}/status`)
+        .send({ status: 'approved', expectedStatus: 'commented' })
+        .expect(409);
+
+      const [row] = await db.select().from(requestRecords).where(eq(requestRecords.id, requestId));
+      expect(row?.status).toBe('pending');
+      expect(await statusChangedLogs(requestId)).toHaveLength(0);
+    });
+
+    it('returns 409 for a bulk decision when a request is no longer in the status shown', async () => {
+      const requestId = await seedCommentedRequest(
+        'Commented request included in a bulk approve after the scholar replied.'
+      );
+      await db
+        .update(requestRecords)
+        .set({ status: 'pending' })
+        .where(eq(requestRecords.id, requestId));
+
+      auth.setUser({ id: staffA.userId, email: staffA.email, userType: 'staff' });
+      await request(app.getHttpServer())
+        .post('/api/requests/bulk-status')
+        .send({
+          ids: [requestId],
+          status: 'approved',
+          expectedStatuses: { [requestId]: 'commented' },
+        })
+        .expect(409);
+
+      const [row] = await db.select().from(requestRecords).where(eq(requestRecords.id, requestId));
+      expect(row?.status).toBe('pending');
+      expect(await statusChangedLogs(requestId)).toHaveLength(0);
+    });
+
+    it('still applies a decision when the request is in the status shown', async () => {
+      const requestId = await seedCommentedRequest(
+        'Commented request approved by staff before the scholar replies.'
+      );
+
+      auth.setUser({ id: staffA.userId, email: staffA.email, userType: 'staff' });
+      await request(app.getHttpServer())
+        .post(`/api/requests/${requestId}/status`)
+        .send({ status: 'approved', expectedStatus: 'commented' })
+        .expect(201);
+
+      const [row] = await db.select().from(requestRecords).where(eq(requestRecords.id, requestId));
+      expect(row?.status).toBe('approved');
+      expect(await statusChangedLogs(requestId)).toHaveLength(1);
+    });
+  });
+
   describe('GET /api/requests', () => {
     let requestForAB: string;
     let requestForBOnly: string;
@@ -398,6 +494,102 @@ describe('Requests API – multi-assignee (integration)', () => {
         .from(requestRecords)
         .where(eq(requestRecords.id, requestForAB));
       expect(row?.status).toBe('pending');
+    });
+
+    it('rejects a bulk update that includes a request that is not pending', async () => {
+      const pending = await createRequestAs(scholar.userId, scholar.email, 'scholar', {
+        type: 'extenuating_circumstances',
+        description: 'Pending request that must stay pending when the batch is refused.',
+        priority: 'low',
+        assigneeIds: [staffA.userId],
+      });
+      expect(pending.status).toBe(201);
+      createdRequestIds.push(pending.body.id);
+
+      const decided = await createRequestAs(scholar.userId, scholar.email, 'scholar', {
+        type: 'extenuating_circumstances',
+        description: 'Rejected request that must not be reopened by a bulk approve.',
+        priority: 'low',
+        assigneeIds: [staffA.userId],
+      });
+      expect(decided.status).toBe(201);
+      createdRequestIds.push(decided.body.id);
+      await db
+        .update(requestRecords)
+        .set({ status: 'rejected', reviewComment: 'Earlier reason' })
+        .where(eq(requestRecords.id, decided.body.id));
+
+      auth.setUser({ id: staffA.userId, email: staffA.email, userType: 'staff' });
+      await request(app.getHttpServer())
+        .post('/api/requests/bulk-status')
+        .send({ ids: [pending.body.id, decided.body.id], status: 'approved' })
+        .expect(400);
+
+      const [pendingRow] = await db
+        .select()
+        .from(requestRecords)
+        .where(eq(requestRecords.id, pending.body.id));
+      const [decidedRow] = await db
+        .select()
+        .from(requestRecords)
+        .where(eq(requestRecords.id, decided.body.id));
+      expect(pendingRow?.status).toBe('pending');
+      expect(decidedRow?.status).toBe('rejected');
+      expect(decidedRow?.reviewComment).toBe('Earlier reason');
+    });
+
+    it('clears a stale comment and does not audit a repeated bulk approve', async () => {
+      const created = await createRequestAs(scholar.userId, scholar.email, 'scholar', {
+        type: 'extenuating_circumstances',
+        description: 'Pending request approved twice to confirm the second call is a no-op.',
+        priority: 'low',
+        assigneeIds: [staffA.userId],
+      });
+      expect(created.status).toBe(201);
+      createdRequestIds.push(created.body.id);
+      await db
+        .update(requestRecords)
+        .set({ reviewComment: 'Keep me' })
+        .where(eq(requestRecords.id, created.body.id));
+
+      auth.setUser({ id: staffA.userId, email: staffA.email, userType: 'staff' });
+      await request(app.getHttpServer())
+        .post('/api/requests/bulk-status')
+        .send({ ids: [created.body.id], status: 'approved' })
+        .expect(201);
+
+      const [approved] = await db
+        .select()
+        .from(requestRecords)
+        .where(eq(requestRecords.id, created.body.id));
+      expect(approved?.status).toBe('approved');
+      expect(approved?.reviewComment).toBe('');
+
+      const logsAfterFirst = await db
+        .select()
+        .from(requestAuditLogs)
+        .where(
+          and(
+            eq(requestAuditLogs.requestId, created.body.id),
+            eq(requestAuditLogs.action, 'status_changed')
+          )
+        );
+
+      await request(app.getHttpServer())
+        .post('/api/requests/bulk-status')
+        .send({ ids: [created.body.id], status: 'approved' })
+        .expect(201);
+
+      const logsAfterSecond = await db
+        .select()
+        .from(requestAuditLogs)
+        .where(
+          and(
+            eq(requestAuditLogs.requestId, created.body.id),
+            eq(requestAuditLogs.action, 'status_changed')
+          )
+        );
+      expect(logsAfterSecond).toHaveLength(logsAfterFirst.length);
     });
 
     it('writes one audit log per request when bulk rejecting', async () => {
