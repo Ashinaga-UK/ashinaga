@@ -623,7 +623,7 @@ function ResourceDialog({
             <div className="space-y-2">
               <Label>Category</Label>
               <Select
-                value={formData.category || undefined}
+                value={formData.category}
                 onValueChange={(value) =>
                   setFormData((current) => ({ ...current, category: value as ResourceCategory }))
                 }
