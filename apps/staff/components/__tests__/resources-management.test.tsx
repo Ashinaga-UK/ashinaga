@@ -54,7 +54,9 @@ const resource = {
   title: 'Original title',
   description: 'Original description',
   type: 'Guide' as const,
-  category: 'Support' as const,
+  category: 'Other' as const,
+  categoryReviewPending: false,
+  proposalContext: false,
   url: 'https://example.com/resource',
   sourceType: 'url' as const,
   fileName: null,
@@ -157,6 +159,81 @@ describe('ResourcesManagement', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Edit' }));
 
     expect(screen.getByLabelText('Title')).toHaveValue('Updated title');
+  });
+
+  it('offers exactly the six approved categories', async () => {
+    renderResources();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add resource' }));
+    fireEvent.click(screen.getByText('Guides and Handbooks'));
+
+    for (const category of [
+      'Guides and Handbooks',
+      'Workbooks',
+      'Forms and Templates',
+      'How-to Videos',
+      'Presentations',
+      'Other',
+    ]) {
+      expect(screen.getByRole('option', { name: category })).toBeInTheDocument();
+    }
+    for (const legacyCategory of ['LDF', 'Handbook', 'Proposal', 'Support']) {
+      expect(screen.queryByRole('option', { name: legacyCategory })).not.toBeInTheDocument();
+    }
+  });
+
+  it('requires an explicit category when reviewing an unassigned resource', async () => {
+    const pendingResource = {
+      ...resource,
+      category: null,
+      categoryReviewPending: true,
+      proposalContext: true,
+    };
+    mockGetResources.mockResolvedValue([pendingResource]);
+    mockUpdateResource.mockResolvedValue({
+      ...pendingResource,
+      category: 'Workbooks',
+      categoryReviewPending: false,
+    });
+    renderResources();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit' }));
+    expect(screen.getByText('This existing resource is awaiting category review.')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Update resource' })).toBeDisabled();
+
+    fireEvent.click(screen.getByText('Choose a category'));
+    fireEvent.click(screen.getByRole('option', { name: 'Workbooks' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Update resource' }));
+
+    await waitFor(() =>
+      expect(mockUpdateResource).toHaveBeenCalledWith(
+        'resource-1',
+        expect.objectContaining({
+          category: 'Workbooks',
+          proposalContext: true,
+        })
+      )
+    );
+  });
+
+  it('filters the review queue to unassigned resources', async () => {
+    mockGetResources.mockResolvedValue([
+      resource,
+      {
+        ...resource,
+        id: 'resource-2',
+        title: 'Needs category review',
+        category: null,
+        categoryReviewPending: true,
+      },
+    ]);
+    renderResources();
+
+    fireEvent.click(await screen.findByRole('combobox', { name: 'Resource category' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Unassigned' }));
+
+    expect(screen.getByText('Needs category review')).toBeVisible();
+    expect(screen.queryByText('Original title')).not.toBeInTheDocument();
   });
 
   it('keeps the edit dialog mounted when the row leaves the filtered list', async () => {

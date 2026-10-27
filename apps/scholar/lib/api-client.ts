@@ -173,7 +173,13 @@ export async function getStaffList(): Promise<StaffMember[]> {
 
 // Resources
 export type ResourceType = 'Guide' | 'Handbook' | 'Template';
-export type ResourceCategory = 'LDF' | 'Handbook' | 'Proposal' | 'Support';
+export type ResourceCategory =
+  | 'Guides and Handbooks'
+  | 'Workbooks'
+  | 'Forms and Templates'
+  | 'How-to Videos'
+  | 'Presentations'
+  | 'Other';
 
 export type ResourceSourceType = 'url' | 'file';
 
@@ -182,7 +188,8 @@ export interface Resource {
   title: string;
   description: string;
   type: ResourceType;
-  category: ResourceCategory;
+  category: ResourceCategory | null;
+  categoryReviewPending: boolean;
   sourceType: ResourceSourceType;
   url: string | null;
   fileName: string | null;

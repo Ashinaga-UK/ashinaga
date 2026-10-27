@@ -70,14 +70,23 @@ type ResourceFormData = {
   sourceType: ResourceSourceType;
   url: string;
   type: ResourceType;
-  category: ResourceCategory;
+  category: ResourceCategory | '';
+  proposalContext: boolean;
   status: ResourceStatus;
 };
 
 const resourceTypes: ResourceType[] = ['Guide', 'Handbook', 'Template'];
-const resourceCategories: ResourceCategory[] = ['LDF', 'Handbook', 'Proposal', 'Support'];
+const resourceCategories: ResourceCategory[] = [
+  'Guides and Handbooks',
+  'Workbooks',
+  'Forms and Templates',
+  'How-to Videos',
+  'Presentations',
+  'Other',
+];
 const typeOptions: Array<ResourceType | 'all'> = ['all', ...resourceTypes];
-const categoryOptions: Array<ResourceCategory | 'all'> = ['all', ...resourceCategories];
+type ResourceCategoryFilter = ResourceCategory | 'all' | 'unassigned';
+const categoryOptions: ResourceCategoryFilter[] = ['all', 'unassigned', ...resourceCategories];
 const statusOptions: Array<ResourceStatus | 'all'> = ['all', 'draft', 'live'];
 
 const resourceIcons: Record<ResourceType, typeof BookOpen> = {
@@ -197,7 +206,8 @@ const emptyResourceFormData: ResourceFormData = {
   sourceType: 'url',
   url: '',
   type: 'Guide',
-  category: 'LDF',
+  category: 'Guides and Handbooks',
+  proposalContext: false,
   status: 'draft',
 };
 
@@ -210,7 +220,8 @@ function getResourceFormData(resource?: Resource): ResourceFormData {
     sourceType: resource.sourceType,
     url: resource.url ?? '',
     type: resource.type,
-    category: resource.category,
+    category: resource.category ?? '',
+    proposalContext: resource.proposalContext,
     status: resource.status,
   };
 }
@@ -370,6 +381,14 @@ function ResourceDialog({
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!formData.category) {
+      toast({
+        title: 'Choose a category',
+        description: 'Assign this resource to one of the six resource headings.',
+        variant: 'destructive',
+      });
+      return;
+    }
     if (formData.sourceType === 'file' && fileValidationError) {
       return;
     }
@@ -393,6 +412,7 @@ function ResourceDialog({
                     description: formData.description,
                     type: formData.type,
                     category: formData.category,
+                    proposalContext: formData.proposalContext,
                     status: formData.status,
                     filters,
                     sourceType: 'file',
@@ -406,6 +426,7 @@ function ResourceDialog({
                     description: formData.description,
                     type: formData.type,
                     category: formData.category,
+                    proposalContext: formData.proposalContext,
                     status: formData.status,
                     filters,
                     sourceType: 'url',
@@ -420,6 +441,7 @@ function ResourceDialog({
                     description: formData.description,
                     type: formData.type,
                     category: formData.category,
+                    proposalContext: formData.proposalContext,
                     status: formData.status,
                     filters,
                     ...(pendingUpload
@@ -436,6 +458,7 @@ function ResourceDialog({
                     description: formData.description,
                     type: formData.type,
                     category: formData.category,
+                    proposalContext: formData.proposalContext,
                     status: formData.status,
                     filters,
                     url: formData.url,
@@ -600,13 +623,13 @@ function ResourceDialog({
             <div className="space-y-2">
               <Label>Category</Label>
               <Select
-                value={formData.category}
+                value={formData.category || undefined}
                 onValueChange={(value) =>
                   setFormData((current) => ({ ...current, category: value as ResourceCategory }))
                 }
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Choose a category" />
                 </SelectTrigger>
                 <SelectContent>
                   {resourceCategories.map((category) => (
@@ -616,6 +639,26 @@ function ResourceDialog({
                   ))}
                 </SelectContent>
               </Select>
+              {!formData.category && (
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  This existing resource is awaiting category review.
+                </p>
+              )}
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-md border p-3 sm:col-span-2">
+              <div>
+                <Label htmlFor="resource-proposal-context">Proposal workflow</Label>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Show this resource within Ashinaga Proposal steps.
+                </p>
+              </div>
+              <Switch
+                id="resource-proposal-context"
+                checked={formData.proposalContext}
+                onCheckedChange={(checked) =>
+                  setFormData((current) => ({ ...current, proposalContext: checked }))
+                }
+              />
             </div>
             <div className="space-y-2">
               <Label>Status</Label>
@@ -734,6 +777,7 @@ function ResourceDialog({
               disabled={
                 submitting ||
                 uploading ||
+                !formData.category ||
                 (formData.sourceType === 'file' && fileValidationError !== null)
               }
             >
@@ -834,7 +878,7 @@ export function ResourcesManagement() {
   const filterOptionsQuery = useResourceFilterOptions();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<ResourceType | 'all'>('all');
-  const [categoryFilter, setCategoryFilter] = useState<ResourceCategory | 'all'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<ResourceCategoryFilter>('all');
   const [statusFilter, setStatusFilter] = useState<ResourceStatus | 'all'>('all');
   const [busyId, setBusyId] = useState<string | null>(null);
   const [editingResourceId, setEditingResourceId] = useState<string | null>(null);
@@ -867,7 +911,11 @@ export function ResourcesManagement() {
         resource.title.toLowerCase().includes(normalizedSearch) ||
         resource.description.toLowerCase().includes(normalizedSearch);
       const matchesType = typeFilter === 'all' || resource.type === typeFilter;
-      const matchesCategory = categoryFilter === 'all' || resource.category === categoryFilter;
+      const matchesCategory =
+        categoryFilter === 'all' ||
+        (categoryFilter === 'unassigned'
+          ? resource.categoryReviewPending
+          : resource.category === categoryFilter);
       const matchesStatus = statusFilter === 'all' || resource.status === statusFilter;
 
       return matchesSearch && matchesType && matchesCategory && matchesStatus;
@@ -964,7 +1012,7 @@ export function ResourcesManagement() {
           </Select>
           <Select
             value={categoryFilter}
-            onValueChange={(value) => setCategoryFilter(value as ResourceCategory | 'all')}
+            onValueChange={(value) => setCategoryFilter(value as ResourceCategoryFilter)}
           >
             <SelectTrigger aria-label="Resource category">
               <SelectValue placeholder="Category" />
@@ -972,7 +1020,11 @@ export function ResourcesManagement() {
             <SelectContent>
               {categoryOptions.map((category) => (
                 <SelectItem key={category} value={category}>
-                  {category === 'all' ? 'All categories' : category}
+                  {category === 'all'
+                    ? 'All categories'
+                    : category === 'unassigned'
+                      ? 'Unassigned'
+                      : category}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -1098,8 +1150,14 @@ export function ResourcesManagement() {
                     <Badge variant="outline" className="shrink-0">
                       {resource.type}
                     </Badge>
-                    <span className="min-w-0 truncate text-sm text-muted-foreground">
-                      {resource.category}
+                    <span
+                      className={
+                        resource.categoryReviewPending
+                          ? 'min-w-0 truncate text-sm font-medium text-amber-700 dark:text-amber-300'
+                          : 'min-w-0 truncate text-sm text-muted-foreground'
+                      }
+                    >
+                      {resource.category ?? 'Unassigned'}
                     </span>
                   </div>
                   <div className="flex min-w-0 items-center">

@@ -5,7 +5,7 @@ import { normalizeAudienceFilters } from '../common/audience-filters/audience-fi
 import { buildResourceAudienceVisibilitySql } from '../common/audience-filters/audience-filter.sql';
 import { getScholarAudienceFilterOptions } from '../common/audience-filters/audience-filter-options';
 import { database } from '../db/connection';
-import { resourceFilters, resources, scholars, users } from '../db/schema';
+import { resourceCategoryReviews, resourceFilters, resources, scholars, users } from '../db/schema';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ObjectStorageService } from '../storage/object-storage';
 import { CreateResourceDto, ResourceFilterDto } from './dto/create-resource.dto';
@@ -30,6 +30,7 @@ type ResourceFilter = {
 };
 
 type ResourceFilterWriter = Pick<typeof database, 'delete' | 'insert'>;
+type ResourceCategoryReview = Pick<typeof resourceCategoryReviews.$inferSelect, 'finalCategory'>;
 
 @Injectable()
 export class ResourcesService {
@@ -152,9 +153,16 @@ export class ResourcesService {
     const filtersByResourceId = await this.getResourceFiltersByResourceIds(
       rows.map((resource) => resource.id)
     );
+    const categoryReviewsByResourceId = await this.getResourceCategoryReviewsByResourceIds(
+      rows.map((resource) => resource.id)
+    );
 
     return rows.map((resource) =>
-      this.formatResource(resource, filtersByResourceId.get(resource.id) ?? [])
+      this.formatResource(
+        resource,
+        filtersByResourceId.get(resource.id) ?? [],
+        categoryReviewsByResourceId.get(resource.id)
+      )
     );
   }
 
@@ -249,6 +257,17 @@ export class ResourcesService {
           await this.replaceFilters(resourceId, filters, tx);
         }
 
+        if (resourceData.category !== undefined) {
+          await tx
+            .update(resourceCategoryReviews)
+            .set({
+              finalCategory: resourceData.category,
+              reviewedBy: userId,
+              reviewedAt: new Date(),
+            })
+            .where(eq(resourceCategoryReviews.resourceId, resourceId));
+        }
+
         return resource;
       });
 
@@ -263,6 +282,7 @@ export class ResourcesService {
         filters !== undefined
           ? this.formatFilters(filters)
           : await this.getResourceFilters(resourceId);
+      const categoryReview = await this.getResourceCategoryReview(resourceId);
 
       const nextAudienceFilters = nextFilters.map((filter) => ({
         filterType: filter.type,
@@ -280,7 +300,7 @@ export class ResourcesService {
         });
       }
 
-      return this.formatResource(updated, nextFilters);
+      return this.formatResource(updated, nextFilters, categoryReview);
     } catch (error) {
       if (nextFileKey) {
         await this.deleteStoredObject(nextFileKey, 'copied resource file after update failure');
@@ -381,9 +401,16 @@ export class ResourcesService {
     const filtersByResourceId = await this.getResourceFiltersByResourceIds(
       visibleResources.map((resource) => resource.id)
     );
+    const categoryReviewsByResourceId = await this.getResourceCategoryReviewsByResourceIds(
+      visibleResources.map((resource) => resource.id)
+    );
 
     return visibleResources.map((resource) =>
-      this.formatResource(resource, filtersByResourceId.get(resource.id) ?? [])
+      this.formatResource(
+        resource,
+        filtersByResourceId.get(resource.id) ?? [],
+        categoryReviewsByResourceId.get(resource.id)
+      )
     );
   }
 
@@ -565,6 +592,39 @@ export class ResourcesService {
     return filtersByResourceId;
   }
 
+  private async getResourceCategoryReview(
+    resourceId: string
+  ): Promise<ResourceCategoryReview | undefined> {
+    const [review] = await database
+      .select({ finalCategory: resourceCategoryReviews.finalCategory })
+      .from(resourceCategoryReviews)
+      .where(eq(resourceCategoryReviews.resourceId, resourceId))
+      .limit(1);
+
+    return review;
+  }
+
+  private async getResourceCategoryReviewsByResourceIds(resourceIds: string[]) {
+    const reviewsByResourceId = new Map<string, ResourceCategoryReview>();
+    if (resourceIds.length === 0) return reviewsByResourceId;
+
+    const reviews = await database
+      .select({
+        resourceId: resourceCategoryReviews.resourceId,
+        finalCategory: resourceCategoryReviews.finalCategory,
+      })
+      .from(resourceCategoryReviews)
+      .where(inArray(resourceCategoryReviews.resourceId, resourceIds));
+
+    for (const review of reviews) {
+      reviewsByResourceId.set(review.resourceId, {
+        finalCategory: review.finalCategory,
+      });
+    }
+
+    return reviewsByResourceId;
+  }
+
   private formatFilters(filters: ResourceFilterDto[]): ResourceFilter[] {
     return filters.map((filter) => ({
       type: filter.filterType,
@@ -609,13 +669,21 @@ export class ResourcesService {
     }
   }
 
-  private formatResource(resource: typeof resources.$inferSelect, filters: ResourceFilter[]) {
+  private formatResource(
+    resource: typeof resources.$inferSelect,
+    filters: ResourceFilter[],
+    categoryReview?: ResourceCategoryReview
+  ) {
+    const categoryReviewPending = categoryReview?.finalCategory == null && categoryReview != null;
+
     return {
       id: resource.id,
       title: resource.title,
       description: resource.description,
       type: resource.type,
-      category: resource.category,
+      category: categoryReviewPending ? null : resource.category,
+      categoryReviewPending,
+      proposalContext: resource.proposalContext,
       sourceType: resource.sourceType,
       url: resource.url,
       fileName: resource.fileName,
