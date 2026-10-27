@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
 import request from 'supertest';
-import { resourceCategoryReviews, resources } from '../../src/db/schema';
+import { proposalStepResources, resourceCategoryReviews, resources } from '../../src/db/schema';
 import { type AuthContext, createAuthenticatedIntegrationApp } from './helpers/create-app';
 import { cleanupSeeded, getTestPool, type SeededStaff, seedStaffUser } from './helpers/seed';
 
@@ -32,6 +32,7 @@ describe('resource category review queue', () => {
         type: 'Guide',
         category: 'Other',
         proposalContext: true,
+        status: 'live',
         url: 'https://example.com/resource',
         createdBy: staffActor.userId,
         updatedBy: staffActor.userId,
@@ -96,5 +97,15 @@ describe('resource category review queue', () => {
         reviewedAt: expect.any(Date),
       })
     );
+
+    await request(app.getHttpServer())
+      .post('/api/proposals/steps/topic/resources')
+      .send({ resourceId })
+      .expect(201);
+    const [proposalResource] = await db
+      .select()
+      .from(proposalStepResources)
+      .where(eq(proposalStepResources.resourceId, resourceId));
+    expect(proposalResource).toEqual(expect.objectContaining({ stepKey: 'topic', resourceId }));
   });
 });
