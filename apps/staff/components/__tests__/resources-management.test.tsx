@@ -165,7 +165,12 @@ describe('ResourcesManagement', () => {
     renderResources();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Add resource' }));
-    fireEvent.click(screen.getByText('Guides and Handbooks'));
+    const categoryTrigger = screen
+      .getAllByText('Guides and Handbooks')
+      .find((element) => element.closest('[role="combobox"]'))
+      ?.closest('[role="combobox"]');
+    expect(categoryTrigger).toBeTruthy();
+    fireEvent.click(categoryTrigger!);
 
     for (const category of [
       'Guides and Handbooks',
