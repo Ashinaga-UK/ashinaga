@@ -1220,7 +1220,8 @@ describe('ScholarsService', () => {
         .fn()
         .mockResolvedValue([{ id: 's1', userId: 'u1', status: 'archived' }]);
       const mockSet = jest.fn().mockReturnThis();
-      const mockUpdateWhere = jest.fn().mockResolvedValue(undefined);
+      const mockReturning = jest.fn().mockResolvedValue([{ id: 's1' }]);
+      const mockUpdateWhere = jest.fn().mockReturnValue({ returning: mockReturning });
 
       mockDatabase.select = jest.fn().mockReturnValue({
         from: mockFrom,
@@ -1258,8 +1259,40 @@ describe('ScholarsService', () => {
       expect(mockSet).toHaveBeenCalledWith(
         expect.objectContaining({ status: 'active', updatedAt: expect.any(Date) })
       );
+      expect(mockReturning).toHaveBeenCalledTimes(1);
       expect(getScholarSpy).toHaveBeenCalledWith('s1');
       expect(result.status).toBe('active');
+      getScholarSpy.mockRestore();
+    });
+
+    it('should throw ConflictException when the scholar is no longer archived at update time', async () => {
+      const mockFrom = jest.fn().mockReturnThis();
+      const mockWhere = jest.fn().mockReturnThis();
+      const mockLimit = jest
+        .fn()
+        .mockResolvedValue([{ id: 's1', userId: 'u1', status: 'archived' }]);
+      const mockSet = jest.fn().mockReturnThis();
+      const mockReturning = jest.fn().mockResolvedValue([]);
+      const mockUpdateWhere = jest.fn().mockReturnValue({ returning: mockReturning });
+
+      mockDatabase.select = jest.fn().mockReturnValue({
+        from: mockFrom,
+        where: mockWhere,
+        limit: mockLimit,
+      });
+      mockDatabase.update = jest.fn().mockReturnValue({
+        set: mockSet,
+        where: mockUpdateWhere,
+      });
+
+      mockFrom.mockReturnThis();
+      mockWhere.mockReturnThis();
+      const getScholarSpy = jest.spyOn(service, 'getScholar');
+
+      await expect(service.restoreScholar('s1')).rejects.toThrow(ConflictException);
+      await expect(service.restoreScholar('s1')).rejects.toThrow('Scholar is no longer archived');
+      expect(getScholarSpy).not.toHaveBeenCalled();
+
       getScholarSpy.mockRestore();
     });
 

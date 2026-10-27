@@ -1374,10 +1374,14 @@ export class ScholarsService {
     if (row.status !== 'archived') {
       throw new ConflictException(`Cannot restore scholar with status '${row.status}'`);
     }
-    await database
+    const [updated] = await database
       .update(scholars)
       .set({ status: 'active', updatedAt: new Date() })
-      .where(eq(scholars.id, scholarId));
+      .where(and(eq(scholars.id, scholarId), eq(scholars.status, 'archived')))
+      .returning({ id: scholars.id });
+    if (!updated) {
+      throw new ConflictException('Scholar is no longer archived');
+    }
     return this.getScholar(scholarId);
   }
 
