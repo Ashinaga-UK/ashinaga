@@ -534,6 +534,12 @@ export async function archiveScholar(scholarId: string): Promise<Scholar> {
   });
 }
 
+export async function restoreScholar(scholarId: string): Promise<Scholar> {
+  return fetchAPI<Scholar>(`/api/scholars/${scholarId}/restore`, {
+    method: 'PATCH',
+  });
+}
+
 export async function deleteScholar(scholarId: string): Promise<{ success: boolean }> {
   return fetchAPI<{ success: boolean }>(`/api/scholars/${scholarId}`, {
     method: 'DELETE',

@@ -3,6 +3,7 @@
 import {
   AlertCircle,
   Archive,
+  ArchiveRestore,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -25,7 +26,7 @@ import {
   type Scholar,
   type ScholarFilterOptions,
 } from '../lib/api-client';
-import { useArchiveScholar, useDeleteScholar } from '../lib/hooks/use-queries';
+import { useArchiveScholar, useDeleteScholar, useRestoreScholar } from '../lib/hooks/use-queries';
 import { BulkTaskAssignment } from './bulk-task-assignment';
 import { StaleActivityBadge } from './stale-activity-badge';
 import { TaskAssignment } from './task-assignment';
@@ -44,6 +45,7 @@ import {
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
+import { useToast } from './ui/use-toast';
 
 function programStageFromSearch(value: string | null): 'all' | 'prep_year' | 'scholar' {
   return value === 'prep_year' || value === 'scholar' ? value : 'all';
@@ -86,7 +88,9 @@ export function ScholarManagementTable({
   >('all');
   const [loginActivityFilter, setLoginActivityFilter] = useState<'all' | 'stale'>('all');
   const [exportingCsv, setExportingCsv] = useState(false);
+  const { toast } = useToast();
   const archiveScholar = useArchiveScholar();
+  const restoreScholar = useRestoreScholar();
   const deleteScholar = useDeleteScholar();
 
   // Filter options from API
@@ -218,6 +222,25 @@ export function ScholarManagementTable({
     }
   };
 
+  const handleRestore = async (scholarId: string, scholarName: string) => {
+    if (!confirm(`Restore "${scholarName}"? They will return to the active Scholars list.`)) return;
+    try {
+      await restoreScholar.mutateAsync(scholarId);
+      await fetchScholars();
+      toast({
+        title: 'Scholar restored',
+        description: `${scholarName} is active again.`,
+      });
+    } catch (e) {
+      console.error(e);
+      toast({
+        title: 'Could not restore scholar',
+        description: e instanceof Error ? e.message : 'Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleDelete = async (scholarId: string, scholarName: string) => {
     if (
       !confirm(
@@ -344,7 +367,7 @@ export function ScholarManagementTable({
           value={statusFilter}
           onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}
         >
-          <SelectTrigger>
+          <SelectTrigger aria-label="Status">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -560,7 +583,7 @@ export function ScholarManagementTable({
                       <Eye className="h-4 w-4 mr-2" />
                       View Profile
                     </DropdownMenuItem>
-                    {scholar.status !== 'archived' && (
+                    {scholar.status !== 'archived' ? (
                       <DropdownMenuItem
                         onClick={(e) => {
                           e.preventDefault();
@@ -569,6 +592,16 @@ export function ScholarManagementTable({
                       >
                         <Archive className="h-4 w-4 mr-2" />
                         Archive
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleRestore(scholar.id, scholar.name);
+                        }}
+                      >
+                        <ArchiveRestore className="h-4 w-4 mr-2" />
+                        Restore
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuItem
@@ -794,7 +827,11 @@ export function ScholarManagementTable({
                       />
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label={`Actions for ${scholar.name}`}
+                          >
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -803,7 +840,7 @@ export function ScholarManagementTable({
                             <Eye className="h-4 w-4 mr-2" />
                             View Profile
                           </DropdownMenuItem>
-                          {scholar.status !== 'archived' && (
+                          {scholar.status !== 'archived' ? (
                             <DropdownMenuItem
                               onClick={(e) => {
                                 e.preventDefault();
@@ -812,6 +849,16 @@ export function ScholarManagementTable({
                             >
                               <Archive className="h-4 w-4 mr-2" />
                               Archive
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handleRestore(scholar.id, scholar.name);
+                              }}
+                            >
+                              <ArchiveRestore className="h-4 w-4 mr-2" />
+                              Restore
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuItem
