@@ -14,12 +14,15 @@ import { users } from './users';
 
 export const resourceStatusEnum = pgEnum('resource_status', ['draft', 'live']);
 export const resourceTypeEnum = pgEnum('resource_type', ['Guide', 'Handbook', 'Template']);
-export const resourceCategoryEnum = pgEnum('resource_category', [
-  'LDF',
-  'Handbook',
-  'Proposal',
-  'Support',
-]);
+export const resourceCategories = [
+  'Guides and Handbooks',
+  'Workbooks',
+  'Forms and Templates',
+  'How-to Videos',
+  'Presentations',
+  'Other',
+] as const;
+export type ResourceCategory = (typeof resourceCategories)[number];
 export const resourceSourceTypeEnum = pgEnum('resource_source_type', ['url', 'file']);
 
 export const resources = pgTable(
@@ -29,7 +32,8 @@ export const resources = pgTable(
     title: text('title').notNull(),
     description: text('description').notNull(),
     type: resourceTypeEnum('type').notNull(),
-    category: resourceCategoryEnum('category').notNull(),
+    category: text('category').$type<ResourceCategory>().notNull(),
+    proposalContext: boolean('proposal_context').notNull().default(false),
     sourceType: resourceSourceTypeEnum('source_type').notNull().default('url'),
     url: text('url'),
     fileKey: text('file_key'),
@@ -47,12 +51,37 @@ export const resources = pgTable(
   },
   (table) => [
     check(
+      'resources_category_check',
+      sql`${table.category} IN ('Guides and Handbooks', 'Workbooks', 'Forms and Templates', 'How-to Videos', 'Presentations', 'Other')`
+    ),
+    check(
       'resources_source_columns_check',
       sql`(
         (${table.sourceType} = 'url' AND ${table.url} IS NOT NULL AND ${table.fileKey} IS NULL)
         OR
         (${table.sourceType} = 'file' AND ${table.fileKey} IS NOT NULL AND ${table.url} IS NULL)
       )`
+    ),
+  ]
+);
+
+export const resourceCategoryReviews = pgTable(
+  'resource_category_reviews',
+  {
+    resourceId: uuid('resource_id')
+      .primaryKey()
+      .references(() => resources.id, { onDelete: 'cascade' }),
+    resourceTitle: text('resource_title').notNull(),
+    legacyCategory: text('legacy_category').notNull(),
+    finalCategory: text('final_category').$type<ResourceCategory>(),
+    reviewedBy: text('reviewed_by').references(() => users.id, { onDelete: 'set null' }),
+    reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    check(
+      'resource_category_reviews_final_category_check',
+      sql`${table.finalCategory} IS NULL OR ${table.finalCategory} IN ('Guides and Handbooks', 'Workbooks', 'Forms and Templates', 'How-to Videos', 'Presentations', 'Other')`
     ),
   ]
 );
