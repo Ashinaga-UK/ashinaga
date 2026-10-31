@@ -74,6 +74,35 @@ describe('AuthController', () => {
     expect(mockRes.send).toHaveBeenCalledWith('{"success":true}');
   });
 
+  it('forwards password reset to /api/auth/request-password-reset', async () => {
+    const mockReq = {
+      url: '/api/auth/request-password-reset',
+      method: 'POST',
+      body: { email: 'test@example.com', redirectTo: '/reset-password' },
+      headers: { 'content-type': 'application/json' },
+      protocol: 'http',
+      hostname: 'localhost',
+    };
+    const mockRes = {
+      status: jest.fn().mockReturnThis(),
+      send: jest.fn(),
+      header: jest.fn(),
+      redirect: jest.fn(),
+    };
+
+    await controller.requestPasswordReset(mockReq as never, mockRes as never);
+    await controller.forgetPassword(
+      { ...mockReq, url: '/api/auth/forget-password' } as never,
+      mockRes as never
+    );
+
+    const { auth } = require('./auth.config');
+    expect(auth.handler).toHaveBeenCalledTimes(2);
+    for (const [request] of auth.handler.mock.calls) {
+      expect(String(request.url)).toContain('/api/auth/request-password-reset');
+    }
+  });
+
   it('rejects signup without an invitation token', async () => {
     const { auth } = require('./auth.config');
     const mockRes = {
