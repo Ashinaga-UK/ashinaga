@@ -141,6 +141,12 @@ export class ScholarsController {
     return this.scholarsService.archiveScholar(id);
   }
 
+  @Patch(':id/restore')
+  @UseGuards(StaffGuard)
+  async restoreScholar(@Param('id', ParseUUIDPipe) id: string): Promise<ScholarResponseDto> {
+    return this.scholarsService.restoreScholar(id);
+  }
+
   @Delete(':id')
   @UseGuards(StaffGuard)
   async deleteScholar(@Param('id', ParseUUIDPipe) id: string): Promise<{ success: boolean }> {

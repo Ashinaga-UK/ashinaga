@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
 import { EmailService } from '../email/email.service';
@@ -9,11 +9,32 @@ import { RequestsService } from './requests.service';
 // Mock the database module
 jest.mock('../db/connection');
 
+// Values bound into a Drizzle predicate (e.g. the status in eq(status, x)),
+// without walking column/enum definitions (which list every status).
+function boundValues(value: unknown): unknown[] {
+  const out: unknown[] = [];
+  const seen = new Set<unknown>();
+  const visit = (node: unknown) => {
+    if (node == null || typeof node !== 'object' || seen.has(node)) return;
+    seen.add(node);
+    const kind = (node as object).constructor?.name ?? '';
+    if (kind === 'Param') {
+      out.push((node as { value: unknown }).value);
+      return;
+    }
+    if (/Column|Table/.test(kind)) return;
+    for (const child of Object.values(node as Record<string, unknown>)) visit(child);
+  };
+  visit(value);
+  return out;
+}
+
 describe('RequestsService', () => {
   let service: RequestsService;
 
   const mockEmailService = {
     sendRequestStatusNotification: jest.fn(),
+    sendRequestResponseNotification: jest.fn(),
   };
 
   const mockNotifications = {
@@ -516,21 +537,6 @@ describe('RequestsService', () => {
       expect(mockDatabase.update).not.toHaveBeenCalled();
     });
 
-    function sqlMentions(value: unknown, needle: string): boolean {
-      const seen = new Set<unknown>();
-      const visit = (node: unknown): boolean => {
-        if (node == null || seen.has(node)) return false;
-        if (typeof node === 'string' || typeof node === 'number') {
-          return String(node).includes(needle);
-        }
-        if (typeof node !== 'object') return false;
-        seen.add(node);
-        if (Array.isArray(node)) return node.some(visit);
-        return Object.values(node as Record<string, unknown>).some(visit);
-      };
-      return visit(value);
-    }
-
     function mockBulkRows(
       rows: Array<{
         id: string;
@@ -681,12 +687,12 @@ describe('RequestsService', () => {
       );
     });
 
-    it('skips a request that is no longer pending when the update runs', async () => {
+    it('rejects the whole batch with 409 when a request changes during the update', async () => {
       const pendingId = '11111111-1111-4111-8111-111111111111';
       const lostId = '22222222-2222-4222-8222-222222222222';
-      const { mockDatabase, values } = mockBulkRows([
+      const { mockDatabase } = mockBulkRows([
         { id: pendingId, status: 'pending', type: 'extenuating_circumstances' },
-        { id: lostId, status: 'pending', type: 'extenuating_circumstances' },
+        { id: lostId, status: 'commented', type: 'extenuating_circumstances' },
       ]);
       const updatedAt = new Date('2026-09-22T00:00:00.000Z');
       const where = jest
@@ -701,20 +707,86 @@ describe('RequestsService', () => {
         set: jest.fn().mockReturnValue({ where }),
       });
 
-      await service.bulkUpdateRequestStatus(
-        { ids: [pendingId, lostId], status: 'approved' },
-        'staff-1'
-      );
+      await expect(
+        service.bulkUpdateRequestStatus({ ids: [pendingId, lostId], status: 'approved' }, 'staff-1')
+      ).rejects.toBeInstanceOf(ConflictException);
 
+      // Each write is pinned to the status that was read for that row.
       expect(where).toHaveBeenCalledTimes(2);
-      for (const call of where.mock.calls) {
-        expect(sqlMentions(call[0], 'pending')).toBe(true);
-        expect(sqlMentions(call[0], 'reviewed')).toBe(true);
-        expect(sqlMentions(call[0], 'commented')).toBe(true);
-      }
-      expect(values).toHaveBeenCalledTimes(1);
-      expect(values).toHaveBeenCalledWith(expect.objectContaining({ requestId: pendingId }));
-      expect(mockEmailService.sendRequestStatusNotification).toHaveBeenCalledTimes(1);
+      expect(boundValues(where.mock.calls[0][0])).toEqual([pendingId, 'pending']);
+      expect(boundValues(where.mock.calls[1][0])).toEqual([lostId, 'commented']);
+      // The conflict is thrown inside the transaction, so nothing is sent.
+      expect(mockEmailService.sendRequestStatusNotification).not.toHaveBeenCalled();
+      expect(mockNotifications.notifyRequestStatusChanged).not.toHaveBeenCalled();
+    });
+
+    it('rejects a bulk update with 409 when a request is not in the status the reviewer saw', async () => {
+      const id = '11111111-1111-4111-8111-111111111111';
+      const { mockDatabase, values } = mockBulkRows([{ id, status: 'pending' }]);
+
+      await expect(
+        service.bulkUpdateRequestStatus(
+          { ids: [id], status: 'approved', expectedStatuses: { [id]: 'commented' } },
+          'staff-1'
+        )
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(mockDatabase.transaction).not.toHaveBeenCalled();
+      expect(values).not.toHaveBeenCalled();
+      expect(mockEmailService.sendRequestStatusNotification).not.toHaveBeenCalled();
+    });
+
+    it('pins a single review to the status that was read', async () => {
+      mockStatusUpdate('summer_funding_request');
+      const mockDatabase = require('../db/connection').database;
+      const where = jest.fn().mockReturnValue({
+        returning: jest.fn().mockResolvedValue([
+          {
+            id: 'request-1',
+            status: 'approved',
+            updatedAt: new Date('2026-09-22T00:00:00.000Z'),
+          },
+        ]),
+      });
+      mockDatabase.update = jest
+        .fn()
+        .mockReturnValue({ set: jest.fn().mockReturnValue({ where }) });
+
+      await service.updateRequestStatus('request-1', 'approved', '', 'staff-1');
+
+      expect(boundValues(where.mock.calls[0][0])).toEqual(['request-1', 'pending']);
+    });
+
+    it('returns 409 and writes nothing when the request changes between read and write', async () => {
+      mockStatusUpdate('summer_funding_request');
+      const mockDatabase = require('../db/connection').database;
+      mockDatabase.update = jest.fn().mockReturnValue({
+        set: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({ returning: jest.fn().mockResolvedValue([]) }),
+        }),
+      });
+      mockDatabase.insert = jest.fn();
+
+      await expect(
+        service.updateRequestStatus('request-1', 'approved', '', 'staff-1')
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(mockDatabase.insert).not.toHaveBeenCalled();
+      expect(mockEmailService.sendRequestStatusNotification).not.toHaveBeenCalled();
+      expect(mockNotifications.notifyRequestStatusChanged).not.toHaveBeenCalled();
+    });
+
+    it('returns 409 without writing when the request is no longer in the status the reviewer saw', async () => {
+      // Staff saw "commented", but the scholar has since replied (now "pending").
+      mockStatusUpdate('summer_funding_request');
+      const mockDatabase = require('../db/connection').database;
+      mockDatabase.update = jest.fn();
+      mockDatabase.insert = jest.fn();
+
+      await expect(
+        service.updateRequestStatus('request-1', 'approved', '', 'staff-1', 'commented')
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(mockDatabase.update).not.toHaveBeenCalled();
+      expect(mockDatabase.insert).not.toHaveBeenCalled();
+      expect(mockEmailService.sendRequestStatusNotification).not.toHaveBeenCalled();
     });
 
     it('clears a stale comment when a single approve omits one', async () => {
@@ -786,5 +858,62 @@ describe('RequestsService', () => {
         expect(mockEmailService.sendRequestStatusNotification).not.toHaveBeenCalled();
       }
     );
+  });
+
+  describe('respondToCommentedRequest', () => {
+    function mockRespond(updateResult: unknown[]) {
+      const mockDatabase = require('../db/connection').database;
+      mockDatabase.select = jest
+        .fn()
+        // scholar profile for the caller
+        .mockReturnValueOnce({
+          from: () => ({ where: () => ({ limit: async () => [{ id: 'scholar-1' }] }) }),
+        })
+        // the request joined with the scholar's user
+        .mockReturnValueOnce({
+          from: () => ({
+            innerJoin: () => ({
+              innerJoin: () => ({
+                where: () => ({
+                  limit: async () => [
+                    {
+                      request: {
+                        id: 'request-1',
+                        scholarId: 'scholar-1',
+                        type: 'extenuating_circumstances',
+                        status: 'commented',
+                        archived: false,
+                      },
+                      user: { name: 'Test Scholar', email: 'scholar@example.com' },
+                    },
+                  ],
+                }),
+              }),
+            }),
+          }),
+        });
+      const where = jest.fn().mockReturnValue({ returning: async () => updateResult });
+      mockDatabase.update = jest
+        .fn()
+        .mockReturnValue({ set: jest.fn().mockReturnValue({ where }) });
+      mockDatabase.insert = jest
+        .fn()
+        .mockReturnValue({ values: jest.fn().mockResolvedValue(undefined) });
+      return { mockDatabase, where };
+    }
+
+    it('returns 409 and records nothing when staff decided the request meanwhile', async () => {
+      const { mockDatabase, where } = mockRespond([]);
+
+      await expect(
+        service.respondToCommentedRequest('request-1', 'scholar-user-1', 'Here is my statement')
+      ).rejects.toBeInstanceOf(ConflictException);
+
+      // The reopen is pinned to "commented", not just the request id.
+      expect(boundValues(where.mock.calls[0][0])).toEqual(['request-1', 'commented']);
+      expect(mockDatabase.insert).not.toHaveBeenCalled();
+      expect(mockEmailService.sendRequestResponseNotification).not.toHaveBeenCalled();
+      expect(mockNotifications.notifyRequestStatusChanged).not.toHaveBeenCalled();
+    });
   });
 });

@@ -1366,6 +1366,25 @@ export class ScholarsService {
     return this.getScholar(scholarId);
   }
 
+  async restoreScholar(scholarId: string): Promise<ScholarResponseDto> {
+    const [row] = await database.select().from(scholars).where(eq(scholars.id, scholarId)).limit(1);
+    if (!row) {
+      throw new NotFoundException('Scholar not found');
+    }
+    if (row.status !== 'archived') {
+      throw new ConflictException(`Cannot restore scholar with status '${row.status}'`);
+    }
+    const [updated] = await database
+      .update(scholars)
+      .set({ status: 'active', updatedAt: new Date() })
+      .where(and(eq(scholars.id, scholarId), eq(scholars.status, 'archived')))
+      .returning({ id: scholars.id });
+    if (!updated) {
+      throw new ConflictException('Scholar is no longer archived');
+    }
+    return this.getScholar(scholarId);
+  }
+
   async deleteScholar(scholarId: string): Promise<void> {
     const [row] = await database.select().from(scholars).where(eq(scholars.id, scholarId)).limit(1);
     if (!row) {
