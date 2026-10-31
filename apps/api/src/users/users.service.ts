@@ -133,46 +133,69 @@ export class UsersService {
       throw new BadRequestException('You cannot remove your own staff account');
     }
 
-    const [requester] = await database
-      .select()
-      .from(staff)
-      .where(eq(staff.userId, requesterUserId))
-      .limit(1);
+    const result = await database.transaction(async (tx) => {
+      // Same lock order as setStaffAdmin: the active super-admins first, then
+      // the caller, then the target. This serialises concurrent removals and
+      // demotions so they can't together remove the last super-admin.
+      const activeSuperAdmins = await tx
+        .select({ userId: staff.userId })
+        .from(staff)
+        .where(and(eq(staff.isActive, true), eq(staff.isSuperAdmin, true)))
+        .for('update');
 
-    if (!requester || !requester.isActive) {
-      throw new ForbiddenException('Staff access required');
+      // Re-check the caller after the lock, in case they were demoted or
+      // removed since loading the page.
+      const [requester] = await tx
+        .select()
+        .from(staff)
+        .where(eq(staff.userId, requesterUserId))
+        .for('update')
+        .limit(1);
+
+      if (!requester || !requester.isActive) {
+        throw new ForbiddenException('Staff access required');
+      }
+
+      if (!requester.isSuperAdmin) {
+        throw new ForbiddenException('Only super-admins can remove staff members');
+      }
+
+      const [target] = await tx
+        .select()
+        .from(staff)
+        .where(eq(staff.userId, targetUserId))
+        .for('update')
+        .limit(1);
+
+      if (!target) {
+        throw new NotFoundException('Staff member not found');
+      }
+
+      if (!target.isActive) {
+        return { success: true, alreadyInactive: true };
+      }
+
+      if (target.isSuperAdmin && activeSuperAdmins.length <= 1) {
+        throw new BadRequestException('Cannot remove the last super-admin');
+      }
+
+      await tx
+        .update(staff)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(eq(staff.userId, targetUserId));
+
+      return { success: true, alreadyInactive: false };
+    });
+
+    if (!result.alreadyInactive) {
+      try {
+        await database.delete(sessions).where(eq(sessions.userId, targetUserId));
+      } catch (error) {
+        console.error('Failed to clear sessions for removed staff member:', error);
+      }
     }
 
-    if (!requester.isSuperAdmin) {
-      throw new ForbiddenException('Only super-admins can remove staff members');
-    }
-
-    const [target] = await database
-      .select()
-      .from(staff)
-      .where(eq(staff.userId, targetUserId))
-      .limit(1);
-
-    if (!target) {
-      throw new NotFoundException('Staff member not found');
-    }
-
-    if (!target.isActive) {
-      return { success: true, alreadyInactive: true };
-    }
-
-    await database
-      .update(staff)
-      .set({ isActive: false, updatedAt: new Date() })
-      .where(eq(staff.userId, targetUserId));
-
-    try {
-      await database.delete(sessions).where(eq(sessions.userId, targetUserId));
-    } catch (error) {
-      console.error('Failed to clear sessions for removed staff member:', error);
-    }
-
-    return { success: true, alreadyInactive: false };
+    return result;
   }
 
   async setStaffAdmin(targetUserId: string, isSuperAdmin: boolean, requesterUserId: string) {

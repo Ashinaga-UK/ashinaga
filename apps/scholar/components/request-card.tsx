@@ -131,9 +131,25 @@ export function RequestCard({ request }: RequestCardProps) {
       await queryClient.invalidateQueries({ queryKey: queryKeys.myRequests });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
+      const body = msg.replace(/^API Error:\s*\d+\s*-\s*/, '');
+      if (msg.startsWith('API Error: 409')) {
+        // Staff decided the request while this reply was being written. Show
+        // the current status instead of leaving a reply form for a closed request.
+        let description = 'This request was updated by staff. Reload to see the latest status.';
+        try {
+          const parsed = JSON.parse(body) as { message?: unknown };
+          if (typeof parsed.message === 'string') description = parsed.message;
+        } catch {
+          // keep the default description
+        }
+        toast({ title: 'Request has changed', description, variant: 'destructive' });
+        setShowRespondForm(false);
+        await queryClient.invalidateQueries({ queryKey: queryKeys.myRequests });
+        return;
+      }
       toast({
         title: 'Could not submit response',
-        description: msg.replace(/^API Error:\s*\d+\s*-\s*/, ''),
+        description: body,
         variant: 'destructive',
       });
     } finally {

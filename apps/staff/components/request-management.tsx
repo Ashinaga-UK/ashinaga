@@ -12,8 +12,10 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import {
+  apiErrorMessage,
   deleteRequest,
   getFileDownloadUrl,
+  isConflictError,
   type Request,
   updateRequestStatus,
 } from '../lib/api-client';
@@ -38,6 +40,8 @@ import { useToast } from './ui/use-toast';
 interface RequestManagementProps {
   request: Request;
   onStatusUpdate: (requestId: string, status: string, comment?: string) => void;
+  /** Reload the request after it changed underneath the reviewer (409). */
+  onStale?: () => void;
 }
 
 type ReviewStatus = 'approved' | 'rejected' | 'reviewed' | 'commented';
@@ -47,7 +51,7 @@ const SCHOLAR_VISIBLE_REQUEST_TYPES: readonly Request['type'][] = [
   'summer_funding_request',
 ];
 
-export function RequestManagement({ request, onStatusUpdate }: RequestManagementProps) {
+export function RequestManagement({ request, onStatusUpdate, onStale }: RequestManagementProps) {
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [viewReviewOpen, setViewReviewOpen] = useState(false);
   const [approvalComment, setApprovalComment] = useState('');
@@ -73,11 +77,25 @@ export function RequestManagement({ request, onStatusUpdate }: RequestManagement
 
     setIsSubmitting(true);
     try {
-      await updateRequestStatus(request.id, status, approvalComment, user.id);
+      // Send the status shown so a scholar reply made meanwhile isn't overridden.
+      await updateRequestStatus(request.id, status, approvalComment, user.id, request.status);
       onStatusUpdate(request.id, status, approvalComment);
       setApprovalOpen(false);
       setApprovalComment('');
     } catch (error) {
+      if (isConflictError(error)) {
+        toast({
+          title: 'Request has changed',
+          description: apiErrorMessage(
+            error,
+            'This request changed while you were reviewing it. Reload and try again.'
+          ),
+          variant: 'destructive',
+        });
+        setApprovalOpen(false);
+        onStale?.();
+        return;
+      }
       console.error('Error updating request status:', error);
       alert('Failed to update request status. Please try again.');
     } finally {

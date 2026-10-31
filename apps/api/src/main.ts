@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { redactUrlForLog } from './common/redact-url';
 import { setupSwagger } from './setup-swagger';
 
 async function bootstrap() {
@@ -14,7 +15,20 @@ async function bootstrap() {
 
   // Default Fastify bodyLimit is 1MB, which rejects typical profile-picture data URLs.
   const fastifyAdapter = new FastifyAdapter({
-    logger: true, // Enable Fastify's built-in logger
+    // Fastify's built-in request logger. Serialize the URL without its query
+    // string and with token path segments redacted, so tokens stay out of logs.
+    logger: {
+      serializers: {
+        req(request: { method?: string; url?: string; hostname?: string; ip?: string }) {
+          return {
+            method: request.method,
+            url: redactUrlForLog(request.url),
+            hostname: request.hostname,
+            remoteAddress: request.ip,
+          };
+        },
+      },
+    },
     bodyLimit: 5 * 1024 * 1024,
   });
 

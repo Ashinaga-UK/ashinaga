@@ -534,6 +534,12 @@ export async function archiveScholar(scholarId: string): Promise<Scholar> {
   });
 }
 
+export async function restoreScholar(scholarId: string): Promise<Scholar> {
+  return fetchAPI<Scholar>(`/api/scholars/${scholarId}/restore`, {
+    method: 'PATCH',
+  });
+}
+
 export async function deleteScholar(scholarId: string): Promise<{ success: boolean }> {
   return fetchAPI<{ success: boolean }>(`/api/scholars/${scholarId}`, {
     method: 'DELETE',
@@ -731,10 +737,29 @@ export async function markStaffNotificationsRead(body: {
   });
 }
 
+/** True when the API rejected a write because the record changed underneath it (409). */
+export function isConflictError(error: unknown): boolean {
+  return error instanceof Error && error.message.startsWith('API Error: 409');
+}
+
+/** The human-readable message from a fetchAPI error, falling back if the body isn't JSON. */
+export function apiErrorMessage(error: unknown, fallback: string): string {
+  if (!(error instanceof Error)) return fallback;
+  const body = error.message.replace(/^API Error: \d+ - /, '');
+  try {
+    const parsed = JSON.parse(body) as { message?: unknown };
+    return typeof parsed.message === 'string' ? parsed.message : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export async function bulkUpdateRequestStatus(body: {
   ids: string[];
   status: 'approved' | 'rejected';
   comment?: string;
+  /** id => status the reviewer saw; the API returns 409 if any has changed. */
+  expectedStatuses?: Record<string, string>;
 }): Promise<{ data: Array<{ id: string; status: string }> }> {
   return fetchAPI('/api/requests/bulk-status', {
     method: 'POST',
@@ -747,7 +772,9 @@ export async function updateRequestStatus(
   requestId: string,
   status: 'approved' | 'rejected' | 'reviewed' | 'commented',
   comment: string,
-  reviewedBy: string
+  reviewedBy: string,
+  /** The status the reviewer saw; the API returns 409 if it has changed. */
+  expectedStatus?: string
 ): Promise<{
   id: string;
   status: string;
@@ -760,7 +787,7 @@ export async function updateRequestStatus(
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ status, comment, reviewedBy }),
+    body: JSON.stringify({ status, comment, reviewedBy, expectedStatus }),
   });
 }
 
