@@ -113,17 +113,9 @@ resource "aws_security_group" "rds" {
   name_prefix = "${var.project_name}-rds-${var.environment}-"
   vpc_id      = module.vpc.vpc_id
 
-  # Present only while the database is still intentionally public. The lock
-  # apply removes this block and adds the security-group rules below.
-  dynamic "ingress" {
-    for_each = !var.lock_database_network && length(var.db_ingress_cidr_blocks) > 0 ? [1] : []
-    content {
-      from_port   = 5432
-      to_port     = 5432
-      protocol    = "tcp"
-      cidr_blocks = var.db_ingress_cidr_blocks
-    }
-  }
+  # Explicitly empty. A missing ingress block, or a dynamic block with zero
+  # items, leaves the existing public rule in place.
+  ingress = []
 
   egress {
     from_port   = 0
@@ -136,6 +128,17 @@ resource "aws_security_group" "rds" {
     Name        = "${var.project_name}-rds-${var.environment}"
     Environment = var.environment
   }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "rds_public" {
+  for_each = var.lock_database_network ? toset([]) : toset(var.db_ingress_cidr_blocks)
+
+  security_group_id = aws_security_group.rds.id
+  cidr_ipv4         = each.value
+  from_port         = 5432
+  to_port           = 5432
+  ip_protocol       = "tcp"
+  description       = "Public database access until the network lock"
 }
 
 resource "aws_vpc_security_group_ingress_rule" "rds_from_connector" {
@@ -289,7 +292,7 @@ resource "null_resource" "push_initial_image" {
 # App Runner Service for API
 module "api_app_runner" {
   source     = "../../modules/app_runner_service"
-  depends_on = [aws_db_instance.postgres, null_resource.push_initial_image]
+  depends_on = [aws_db_instance.postgres, null_resource.push_initial_image, module.private_data_plane]
 
   service_name       = "${var.project_name}-api-${var.environment}"
   image_identifier   = "${module.api_ecr.repository_url}:latest"

@@ -361,7 +361,8 @@ resource "aws_iam_role_policy" "codebuild" {
           "secretsmanager:GetSecretValue",
           "secretsmanager:DescribeSecret",
         ]
-        Resource = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:ashinaga-*"
+        # Names are ashinaga-<purpose>-<environment>-<suffix>. Test and prod share this account.
+        Resource = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:ashinaga-*-${var.environment}-*"
       },
       {
         Effect   = "Allow"
