@@ -69,6 +69,7 @@ describe('resource category review queue', () => {
       expect.objectContaining({
         category: null,
         categoryReviewPending: true,
+        legacyCategory: 'Proposal',
         proposalContext: true,
       })
     );
@@ -81,6 +82,7 @@ describe('resource category review queue', () => {
       expect.objectContaining({
         category: 'Workbooks',
         categoryReviewPending: false,
+        legacyCategory: null,
         proposalContext: true,
       })
     );
@@ -107,5 +109,37 @@ describe('resource category review queue', () => {
       .from(proposalStepResources)
       .where(eq(proposalStepResources.resourceId, resourceId));
     expect(proposalResource).toEqual(expect.objectContaining({ stepKey: 'topic', resourceId }));
+
+    const originalReviewedAt = review?.reviewedAt;
+    const unrelatedUpdateResponse = await request(app.getHttpServer())
+      .patch(`/api/resources/${resourceId}`)
+      .send({
+        title: 'Updated pending category resource',
+        category: 'Workbooks',
+        proposalContext: false,
+      })
+      .expect(200);
+    expect(unrelatedUpdateResponse.body).toEqual(
+      expect.objectContaining({
+        title: 'Updated pending category resource',
+        category: 'Workbooks',
+        categoryReviewPending: false,
+        legacyCategory: null,
+        proposalContext: false,
+      })
+    );
+
+    const [unchangedReview] = await db
+      .select()
+      .from(resourceCategoryReviews)
+      .where(eq(resourceCategoryReviews.resourceId, resourceId));
+    expect(unchangedReview).toEqual(
+      expect.objectContaining({
+        finalCategory: 'Workbooks',
+        reviewedBy: staffActor.userId,
+        reviewedAt: originalReviewedAt,
+      })
+    );
+
   });
 });

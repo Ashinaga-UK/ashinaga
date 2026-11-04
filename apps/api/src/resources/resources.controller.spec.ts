@@ -41,6 +41,7 @@ describe('ResourcesController', () => {
     type: 'Handbook',
     category: 'Guides and Handbooks',
     categoryReviewPending: false,
+    legacyCategory: null,
     proposalContext: false,
     sourceType: 'url',
     url: 'https://docs.example/handbook',

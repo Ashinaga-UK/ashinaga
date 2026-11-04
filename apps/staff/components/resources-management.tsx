@@ -642,6 +642,9 @@ function ResourceDialog({
               {!formData.category && (
                 <p className="text-xs text-amber-700 dark:text-amber-300">
                   This existing resource is awaiting category review.
+                  {resource?.legacyCategory
+                    ? ` Previous category: ${resource.legacyCategory}.`
+                    : ''}
                 </p>
               )}
             </div>
@@ -1157,7 +1160,10 @@ export function ResourcesManagement() {
                           : 'min-w-0 truncate text-sm text-muted-foreground'
                       }
                     >
-                      {resource.category ?? 'Unassigned'}
+                      {resource.category ??
+                        (resource.legacyCategory
+                          ? `Unassigned · Previous: ${resource.legacyCategory}`
+                          : 'Unassigned')}
                     </span>
                   </div>
                   <div className="flex min-w-0 items-center">

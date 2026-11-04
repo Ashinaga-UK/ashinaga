@@ -56,6 +56,7 @@ const resource = {
   type: 'Guide' as const,
   category: 'Other' as const,
   categoryReviewPending: false,
+  legacyCategory: null,
   proposalContext: false,
   url: 'https://example.com/resource',
   sourceType: 'url' as const,
@@ -192,6 +193,7 @@ describe('ResourcesManagement', () => {
       ...resource,
       category: null,
       categoryReviewPending: true,
+      legacyCategory: 'Proposal' as const,
       proposalContext: true,
     };
     mockGetResources.mockResolvedValue([pendingResource]);
@@ -203,7 +205,11 @@ describe('ResourcesManagement', () => {
     renderResources();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Edit' }));
-    expect(screen.getByText('This existing resource is awaiting category review.')).toBeVisible();
+    expect(
+      screen.getByText(
+        'This existing resource is awaiting category review. Previous category: Proposal.'
+      )
+    ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Update resource' })).toBeDisabled();
 
     fireEvent.click(screen.getByText('Choose a category'));
@@ -230,6 +236,7 @@ describe('ResourcesManagement', () => {
         title: 'Needs category review',
         category: null,
         categoryReviewPending: true,
+        legacyCategory: 'Support' as const,
       },
     ]);
     renderResources();
@@ -238,6 +245,7 @@ describe('ResourcesManagement', () => {
     fireEvent.click(screen.getByRole('option', { name: 'Unassigned' }));
 
     expect(screen.getByText('Needs category review')).toBeVisible();
+    expect(screen.getByText('Unassigned · Previous: Support')).toBeVisible();
     expect(screen.queryByText('Original title')).not.toBeInTheDocument();
   });
 

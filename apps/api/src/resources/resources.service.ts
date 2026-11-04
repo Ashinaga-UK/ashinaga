@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { normalizeAudienceFilters } from '../common/audience-filters/audience-filter';
 import { buildResourceAudienceVisibilitySql } from '../common/audience-filters/audience-filter.sql';
 import { getScholarAudienceFilterOptions } from '../common/audience-filters/audience-filter-options';
@@ -30,7 +30,10 @@ type ResourceFilter = {
 };
 
 type ResourceFilterWriter = Pick<typeof database, 'delete' | 'insert'>;
-type ResourceCategoryReview = Pick<typeof resourceCategoryReviews.$inferSelect, 'finalCategory'>;
+type ResourceCategoryReview = Pick<
+  typeof resourceCategoryReviews.$inferSelect,
+  'finalCategory' | 'legacyCategory'
+>;
 
 @Injectable()
 export class ResourcesService {
@@ -265,7 +268,12 @@ export class ResourcesService {
               reviewedBy: userId,
               reviewedAt: new Date(),
             })
-            .where(eq(resourceCategoryReviews.resourceId, resourceId));
+            .where(
+              and(
+                eq(resourceCategoryReviews.resourceId, resourceId),
+                sql`${resourceCategoryReviews.finalCategory} IS DISTINCT FROM ${resourceData.category}`
+              )
+            );
         }
 
         return resource;
@@ -596,7 +604,10 @@ export class ResourcesService {
     resourceId: string
   ): Promise<ResourceCategoryReview | undefined> {
     const [review] = await database
-      .select({ finalCategory: resourceCategoryReviews.finalCategory })
+      .select({
+        finalCategory: resourceCategoryReviews.finalCategory,
+        legacyCategory: resourceCategoryReviews.legacyCategory,
+      })
       .from(resourceCategoryReviews)
       .where(eq(resourceCategoryReviews.resourceId, resourceId))
       .limit(1);
@@ -612,6 +623,7 @@ export class ResourcesService {
       .select({
         resourceId: resourceCategoryReviews.resourceId,
         finalCategory: resourceCategoryReviews.finalCategory,
+        legacyCategory: resourceCategoryReviews.legacyCategory,
       })
       .from(resourceCategoryReviews)
       .where(inArray(resourceCategoryReviews.resourceId, resourceIds));
@@ -619,6 +631,7 @@ export class ResourcesService {
     for (const review of reviews) {
       reviewsByResourceId.set(review.resourceId, {
         finalCategory: review.finalCategory,
+        legacyCategory: review.legacyCategory,
       });
     }
 
@@ -683,6 +696,7 @@ export class ResourcesService {
       type: resource.type,
       category: categoryReviewPending ? null : resource.category,
       categoryReviewPending,
+      legacyCategory: categoryReviewPending ? categoryReview.legacyCategory : null,
       proposalContext: resource.proposalContext,
       sourceType: resource.sourceType,
       url: resource.url,
