@@ -140,6 +140,5 @@ describe('resource category review queue', () => {
         reviewedAt: originalReviewedAt,
       })
     );
-
   });
 });
