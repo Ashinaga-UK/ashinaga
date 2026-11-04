@@ -134,14 +134,10 @@ jobs:
             echo '```' >> "$GITHUB_STEP_SUMMARY"
           else
             RC=$?
+            # Do not print AWS CLI stderr — AccessDenied includes account ID / role ARN.
+            rm -f /tmp/active_instances_error
             echo "CloudWatch GetMetricStatistics failed. RC=$RC"
-            cat /tmp/active_instances_error
-            {
-              echo "CloudWatch GetMetricStatistics failed. RC=$RC"
-              echo '```text'
-              cat /tmp/active_instances_error
-              echo '```'
-            } >> "$GITHUB_STEP_SUMMARY"
+            echo "CloudWatch GetMetricStatistics failed. RC=$RC" >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: CloudWatch log activity summary
@@ -155,14 +151,10 @@ jobs:
             cat /tmp/log_groups.json
           else
             RC=$?
+            # Do not print AWS CLI stderr — AccessDenied includes account ID / role ARN.
+            rm -f /tmp/log_groups_error
             echo "describe-log-groups failed. RC=$RC"
-            cat /tmp/log_groups_error
-            {
-              echo "Could not list log groups. RC=$RC"
-              echo '```text'
-              cat /tmp/log_groups_error
-              echo '```'
-            } >> "$GITHUB_STEP_SUMMARY"
+            echo "Could not list log groups. RC=$RC" >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 
