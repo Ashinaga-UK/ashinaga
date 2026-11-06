@@ -92,12 +92,14 @@ Vercel env vars can be set per environment (Production / Preview / Development).
 **API (wherever it runs):**
 
 - `BETTER_AUTH_URL` must be the API's own public URL in that environment (e.g. `https://api-test.ashinaga-uk.org` for test, `https://api.ashinaga-uk.org` for production). It is used for redirects and session handling.
-- Cross-origin cookies are **enabled automatically** for non-production environments (test/staging/preview). Session cookies use `SameSite=None; Secure` automatically, allowing the browser to send cookies when the frontend (e.g. `*.vercel.app`) calls the API on a different domain. In production, where frontend and API are on the same domain, `SameSite=Lax` is used instead.
-- `CORS_ORIGINS` is optional if you already allow `*.vercel.app` (the API and Better Auth in this repo allow any `*.vercel.app` origin by default).
+- Cross-origin cookies are **enabled automatically** for non-production environments (test/staging/preview). Session cookies use `SameSite=None; Secure` automatically, allowing the browser to send cookies when the frontend calls the API on a different domain. In production, where frontend and API are on the same registrable domain, `SameSite=Lax` is used instead.
+- Point Preview `NEXT_PUBLIC_API_URL` at the **test** API. Production does not trust Vercel preview hosts.
+- The API trusts origins listed in `CORS_ORIGINS`. It also trusts `http://localhost` on any port when `NODE_ENV` is not `production`. It does not trust `*.vercel.app`.
+- To let this team's preview hosts call the test API, set `VERCEL_PREVIEW_ORIGIN_PATTERN` to a regex for the full origin, for example `^https://ashinaga-(staff|scholar)-[a-z0-9-]+-<team>\.vercel\.app$`. The pattern is ignored unless `NODE_ENV=test`. Leave it unset to reject every `*.vercel.app` origin. Set the GitHub Actions environment variable of the same name on the `test` environment (the deploy workflow forwards it). If you apply Terraform, put the same value in `infra/accounts/test/main.tf`, because apply rewrites App Runner environment variables.
 
 ### 2. CORS
 
-The API already allows any `http://localhost:*` origin, any `*.vercel.app` origin, and any origin in `CORS_ORIGINS`. So CORS is rarely the cause if the env vars above are correct. If you use a custom domain for Preview, add that domain to `CORS_ORIGINS` and ensure Better Auth's `trustedOrigins` allows it (or extend the logic in `apps/api/src/auth/auth.config.ts`).
+Staff and scholar custom domains must be in `CORS_ORIGINS`. A Vercel preview host is allowed only when it matches `VERCEL_PREVIEW_ORIGIN_PATTERN` on the test API. `http://localhost` is allowed only outside production. A custom preview domain has to be added to `CORS_ORIGINS` on the test API.
 
 ### Checklist for Preview login
 
@@ -105,7 +107,8 @@ The API already allows any `http://localhost:*` origin, any `*.vercel.app` origi
 |-------|----------|----------------------------|
 | Scholar/Staff (Vercel) | `NEXT_PUBLIC_API_URL` (Preview) | Yes – must be the API URL (test/staging) |
 | API | `BETTER_AUTH_URL` | Yes – API's own URL (must be HTTPS or non-localhost) |
-| API | `NODE_ENV` | Set to anything except `production` for test/staging (enables cross-origin cookies) |
+| API | `NODE_ENV` | `test` on the test API (enables cross-origin cookies and the preview-origin pattern). `production` does not trust preview hosts or localhost |
+| API | `VERCEL_PREVIEW_ORIGIN_PATTERN` | Only if Preview deployments should call the test API. Team-scoped origin regex. Ignored in production |
 | API | Cross-origin cookies | Automatic – enabled for non-production environments |
 
 ## Troubleshooting
