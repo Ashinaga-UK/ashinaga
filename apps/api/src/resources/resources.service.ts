@@ -417,7 +417,8 @@ export class ResourcesService {
       this.formatResource(
         resource,
         filtersByResourceId.get(resource.id) ?? [],
-        categoryReviewsByResourceId.get(resource.id)
+        categoryReviewsByResourceId.get(resource.id),
+        { includeLegacyCategory: false }
       )
     );
   }
@@ -685,9 +686,11 @@ export class ResourcesService {
   private formatResource(
     resource: typeof resources.$inferSelect,
     filters: ResourceFilter[],
-    categoryReview?: ResourceCategoryReview
+    categoryReview?: ResourceCategoryReview,
+    options?: { includeLegacyCategory?: boolean }
   ) {
     const categoryReviewPending = categoryReview?.finalCategory == null && categoryReview != null;
+    const includeLegacyCategory = options?.includeLegacyCategory !== false;
 
     return {
       id: resource.id,
@@ -696,7 +699,9 @@ export class ResourcesService {
       type: resource.type,
       category: categoryReviewPending ? null : resource.category,
       categoryReviewPending,
-      legacyCategory: categoryReviewPending ? categoryReview.legacyCategory : null,
+      ...(includeLegacyCategory
+        ? { legacyCategory: categoryReviewPending ? categoryReview.legacyCategory : null }
+        : {}),
       proposalContext: resource.proposalContext,
       sourceType: resource.sourceType,
       url: resource.url,

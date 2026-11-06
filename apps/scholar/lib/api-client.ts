@@ -180,8 +180,6 @@ export type ResourceCategory =
   | 'How-to Videos'
   | 'Presentations'
   | 'Other';
-export type LegacyResourceCategory = 'LDF' | 'Handbook' | 'Proposal' | 'Support';
-
 export type ResourceSourceType = 'url' | 'file';
 
 export interface Resource {
@@ -191,7 +189,6 @@ export interface Resource {
   type: ResourceType;
   category: ResourceCategory | null;
   categoryReviewPending: boolean;
-  legacyCategory: LegacyResourceCategory | null;
   sourceType: ResourceSourceType;
   url: string | null;
   fileName: string | null;

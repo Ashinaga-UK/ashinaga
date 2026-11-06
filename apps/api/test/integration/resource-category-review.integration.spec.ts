@@ -5,7 +5,14 @@ import type { Pool } from 'pg';
 import request from 'supertest';
 import { proposalStepResources, resourceCategoryReviews, resources } from '../../src/db/schema';
 import { type AuthContext, createAuthenticatedIntegrationApp } from './helpers/create-app';
-import { cleanupSeeded, getTestPool, type SeededStaff, seedStaffUser } from './helpers/seed';
+import {
+  cleanupSeeded,
+  getTestPool,
+  type SeededScholar,
+  type SeededStaff,
+  seedScholarUser,
+  seedStaffUser,
+} from './helpers/seed';
 
 describe('resource category review queue', () => {
   let app: import('@nestjs/platform-fastify').NestFastifyApplication;
@@ -13,6 +20,7 @@ describe('resource category review queue', () => {
   let pool: Pool;
   let db: NodePgDatabase;
   let staffActor: SeededStaff;
+  let scholar: SeededScholar;
   let resourceId: string;
 
   beforeAll(async () => {
@@ -24,6 +32,7 @@ describe('resource category review queue', () => {
     db = testDatabase.db;
 
     staffActor = await seedStaffUser(db, { name: 'Resource Category Reviewer' });
+    scholar = await seedScholarUser(db, { name: 'Resource Category Scholar' });
     const [resource] = await db
       .insert(resources)
       .values({
@@ -55,7 +64,10 @@ describe('resource category review queue', () => {
 
   afterAll(async () => {
     await db.delete(resources).where(eq(resources.id, resourceId));
-    await cleanupSeeded(db, { userIds: [staffActor.userId] });
+    await cleanupSeeded(db, {
+      userIds: [staffActor.userId, scholar.userId],
+      scholarIds: [scholar.scholarId],
+    });
     await pool.end();
     await app.close();
   });
@@ -74,6 +86,31 @@ describe('resource category review queue', () => {
       })
     );
 
+    auth.setUser({
+      id: scholar.userId,
+      email: scholar.email,
+      userType: 'scholar',
+    });
+    const scholarResponse = await request(app.getHttpServer())
+      .get('/api/resources/my-resources')
+      .expect(200);
+    const scholarPending = scholarResponse.body.find(
+      (resource: { id: string }) => resource.id === resourceId
+    );
+    expect(scholarPending).toEqual(
+      expect.objectContaining({
+        category: null,
+        categoryReviewPending: true,
+        proposalContext: true,
+      })
+    );
+    expect(scholarPending).not.toHaveProperty('legacyCategory');
+
+    auth.setUser({
+      id: staffActor.userId,
+      email: staffActor.email,
+      userType: 'staff',
+    });
     const updateResponse = await request(app.getHttpServer())
       .patch(`/api/resources/${resourceId}`)
       .send({ category: 'Workbooks' })
