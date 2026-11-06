@@ -1,6 +1,7 @@
 import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
+  IsBoolean,
   IsIn,
   IsInt,
   IsNotEmpty,
@@ -15,7 +16,7 @@ import {
 import { audienceFilterTypes } from '../../common/audience-filters/audience-filter';
 import { AudienceFilterDto } from '../../common/audience-filters/audience-filter.dto';
 import {
-  resourceCategoryEnum,
+  resourceCategories,
   resourceSourceTypeEnum,
   resourceStatusEnum,
   resourceTypeEnum,
@@ -27,7 +28,6 @@ import {
 } from '../resource-files';
 
 const resourceTypes = resourceTypeEnum.enumValues;
-const resourceCategories = resourceCategoryEnum.enumValues;
 const resourceStatuses = resourceStatusEnum.enumValues;
 const resourceSourceTypes = resourceSourceTypeEnum.enumValues;
 export const resourceFilterTypes = audienceFilterTypes;
@@ -63,6 +63,10 @@ export class CreateResourceDto {
 
   @IsIn(resourceCategories)
   category: (typeof resourceCategories)[number];
+
+  @IsBoolean()
+  @IsOptional()
+  proposalContext?: boolean;
 
   @IsIn(resourceSourceTypes)
   @IsOptional()
