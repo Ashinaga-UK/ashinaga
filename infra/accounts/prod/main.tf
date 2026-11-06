@@ -113,9 +113,8 @@ resource "aws_security_group" "rds" {
   name_prefix = "${var.project_name}-rds-${var.environment}-"
   vpc_id      = module.vpc.vpc_id
 
-  # Explicitly empty. A missing ingress block, or a dynamic block with zero
-  # items, leaves the existing public rule in place.
-  ingress = []
+  # Ingress is managed by the rules below. Leave this argument unset:
+  # ingress = [] revokes every ingress rule on each apply.
 
   egress {
     from_port   = 0
@@ -130,15 +129,32 @@ resource "aws_security_group" "rds" {
   }
 }
 
-resource "aws_vpc_security_group_ingress_rule" "rds_public" {
-  for_each = var.lock_database_network ? toset([]) : toset(var.db_ingress_cidr_blocks)
+module "rds_public_ingress" {
+  source = "../../modules/rds_public_ingress"
 
   security_group_id = aws_security_group.rds.id
-  cidr_ipv4         = each.value
-  from_port         = 5432
-  to_port           = 5432
-  ip_protocol       = "tcp"
-  description       = "Public database access until the network lock"
+  cidr_blocks       = var.db_ingress_cidr_blocks
+  locked            = var.lock_database_network
+}
+
+import {
+  for_each = module.rds_public_ingress.adopted_rule_ids
+  to       = module.rds_public_ingress.aws_vpc_security_group_ingress_rule.rds_public[each.key]
+  id       = each.value
+}
+
+resource "terraform_data" "rds_public_ingress_adoption" {
+  lifecycle {
+    precondition {
+      condition     = var.lock_database_network || length(module.rds_public_ingress.duplicate_public_cidrs) == 0
+      error_message = "More than one public 5432 rule matches a configured CIDR. Refusing to guess which sgr- id to adopt."
+    }
+
+    precondition {
+      condition     = var.lock_database_network || length(module.rds_public_ingress.unadopted_rule_ids) == 0
+      error_message = "A public 5432 rule on this security group was not adopted into rds_public. Refusing to create a second one."
+    }
+  }
 }
 
 resource "aws_vpc_security_group_ingress_rule" "rds_from_connector" {
