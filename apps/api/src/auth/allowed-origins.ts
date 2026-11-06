@@ -93,6 +93,9 @@ function isHttpLocalhost(parsed: ParsedOrigin): boolean {
   return parsed.protocol === 'http:' && parsed.hostname === 'localhost';
 }
 
+/** Probe origin outside this team. A pattern that matches it is closed. */
+const FOREIGN_VERCEL_PREVIEW_ORIGIN = 'https://not-this-team.vercel.app';
+
 function matchesVercelPreview(parsed: ParsedOrigin, patternSource: string | undefined): boolean {
   if (parsed.protocol !== 'https:') return false;
   if (!isVercelAppHostname(parsed.hostname)) return false;
@@ -107,9 +110,15 @@ function matchesVercelPreview(parsed: ParsedOrigin, patternSource: string | unde
   } catch {
     return false;
   }
-  const match = expression.exec(parsed.origin);
+  // ^https://.+\.vercel\.app$ names vercel.app and still matches every preview host.
+  if (matchesEntireOrigin(expression, FOREIGN_VERCEL_PREVIEW_ORIGIN)) return false;
+  return matchesEntireOrigin(expression, parsed.origin);
+}
+
+function matchesEntireOrigin(expression: RegExp, origin: string): boolean {
+  const match = expression.exec(origin);
   expression.lastIndex = 0;
-  return match?.[0] === parsed.origin;
+  return match?.[0] === origin;
 }
 
 function isVercelAppHostname(hostname: string): boolean {

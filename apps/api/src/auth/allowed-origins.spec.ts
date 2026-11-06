@@ -98,6 +98,17 @@ describe('isCorsOriginAllowed', () => {
     ).toBe(false);
   });
 
+  it('rejects a preview pattern that matches a host outside this team', () => {
+    const broad = String.raw`^https://.+\.vercel\.app$`;
+    const env = { ...testEnv, vercelPreviewOriginPattern: broad };
+    expect(isCorsOriginAllowed(PREVIEW, env)).toBe(false);
+    expect(isCorsOriginAllowed('https://not-this-team.vercel.app', env)).toBe(false);
+    expect(trustedOriginsForRequest(PREVIEW, env)).not.toContain(PREVIEW);
+    expect(trustedOriginsForRequest('https://not-this-team.vercel.app', env)).not.toContain(
+      'https://not-this-team.vercel.app'
+    );
+  });
+
   it('rejects a preview pattern that is invalid, unanchored, or not limited to vercel.app', () => {
     expect(isCorsOriginAllowed(PREVIEW, { ...testEnv, vercelPreviewOriginPattern: '(' })).toBe(
       false

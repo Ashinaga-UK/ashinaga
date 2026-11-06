@@ -95,7 +95,7 @@ Vercel env vars can be set per environment (Production / Preview / Development).
 - Cross-origin cookies are **enabled automatically** for non-production environments (test/staging/preview). Session cookies use `SameSite=None; Secure` automatically, allowing the browser to send cookies when the frontend calls the API on a different domain. In production, where frontend and API are on the same registrable domain, `SameSite=Lax` is used instead.
 - Point Preview `NEXT_PUBLIC_API_URL` at the **test** API. Production does not trust Vercel preview hosts.
 - The API trusts origins listed in `CORS_ORIGINS`. It also trusts `http://localhost` on any port when `NODE_ENV` is not `production`. It does not trust `*.vercel.app`.
-- To let this team's preview hosts call the test API, set `VERCEL_PREVIEW_ORIGIN_PATTERN` to a regex for the full origin, for example `^https://ashinaga-(staff|scholar)-[a-z0-9-]+-<team>\.vercel\.app$`. The pattern is ignored unless `NODE_ENV=test`. Leave it unset to reject every `*.vercel.app` origin. Set the GitHub Actions environment variable of the same name on the `test` environment (the deploy workflow forwards it). If you apply Terraform, put the same value in `infra/accounts/test/main.tf`, because apply rewrites App Runner environment variables.
+- To let this team's preview hosts call the test API, set `VERCEL_PREVIEW_ORIGIN_PATTERN` to a regex for the full origin, for example `^https://ashinaga-(staff|scholar)-[a-z0-9-]+-<team>\.vercel\.app$`. The pattern is ignored unless `NODE_ENV=test`. It is also ignored when it matches `https://not-this-team.vercel.app`, so `^https://.+\.vercel\.app$` does not allow every preview host. Leave it unset to reject every `*.vercel.app` origin. Set the GitHub Actions environment variable of the same name on the `test` environment (the deploy workflow forwards it). If you apply Terraform, put the same value in `infra/accounts/test/main.tf`, because apply rewrites App Runner environment variables.
 
 ### 2. CORS
 
@@ -108,7 +108,7 @@ Staff and scholar custom domains must be in `CORS_ORIGINS`. A Vercel preview hos
 | Scholar/Staff (Vercel) | `NEXT_PUBLIC_API_URL` (Preview) | Yes – must be the API URL (test/staging) |
 | API | `BETTER_AUTH_URL` | Yes – API's own URL (must be HTTPS or non-localhost) |
 | API | `NODE_ENV` | `test` on the test API (enables cross-origin cookies and the preview-origin pattern). `production` does not trust preview hosts or localhost |
-| API | `VERCEL_PREVIEW_ORIGIN_PATTERN` | Only if Preview deployments should call the test API. Team-scoped origin regex. Ignored in production |
+| API | `VERCEL_PREVIEW_ORIGIN_PATTERN` | Only if Preview deployments should call the test API. Team-scoped origin regex. A pattern that matches `https://not-this-team.vercel.app` is ignored. Ignored in production |
 | API | Cross-origin cookies | Automatic – enabled for non-production environments |
 
 ## Troubleshooting
