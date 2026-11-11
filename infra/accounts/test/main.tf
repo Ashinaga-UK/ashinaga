@@ -274,8 +274,14 @@ module "api_app_runner" {
     BETTER_AUTH_SECRET = module.better_auth_secret.secret_value
     BETTER_AUTH_URL    = "https://api-test.ashinaga-uk.org"
 
-    # CORS Configuration for test environment
+    # Staff, scholar, and local dev. The API allows any http://localhost port while
+    # NODE_ENV is not production. It does not trust *.vercel.app unless the pattern below is set.
     CORS_ORIGINS = "https://staff-test.ashinaga-uk.org,https://scholar-test.ashinaga-uk.org,http://localhost:4001,http://localhost:4002"
+
+    # Optional. Full-origin regex for this Vercel team's preview hosts. Honoured only
+    # when NODE_ENV=test. Empty rejects every *.vercel.app origin. The deploy workflow
+    # overwrites this from the GitHub test environment variable of the same name.
+    VERCEL_PREVIEW_ORIGIN_PATTERN = ""
 
     # Email Configuration
     RESEND_API_KEY                    = module.resend_api_key.secret_value

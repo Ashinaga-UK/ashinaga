@@ -7,6 +7,7 @@ import { getDatabase } from '../db/connection';
 import * as schema from '../db/schema';
 import { EmailService } from '../email/email.service';
 import { touchScholarLastActivity } from '../scholars/scholar-activity';
+import { readOriginPolicyEnv, trustedOriginsForRequest } from './allowed-origins';
 import { logAuthError } from './auth-logging';
 
 // Create email service instance
@@ -53,23 +54,9 @@ const authConfig = betterAuth({
   }),
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: process.env.BETTER_AUTH_URL || 'http://localhost:4000',
-  trustedOrigins: (request) => {
-    const origin = request.headers.get('origin') || '';
-    // Allow all localhost origins
-    if (origin.startsWith('http://localhost:')) {
-      return [origin];
-    }
-    // Allow Vercel preview deployments
-    if (origin.endsWith('.vercel.app')) {
-      return [origin];
-    }
-    // Check against explicit list
-    const allowedOrigins = process.env.CORS_ORIGINS?.split(',') || [];
-    if (allowedOrigins.includes(origin)) {
-      return [origin];
-    }
-    return [];
-  },
+  // Better Auth checks this list against Origin, callbackURL, and redirectTo.
+  trustedOrigins: (request) =>
+    trustedOriginsForRequest(request.headers.get('origin'), readOriginPolicyEnv()),
   // Enable cross-origin cookies for non-production environments (test/staging/preview).
   // In production, frontend and API are on the same domain, so SameSite=Lax is sufficient.
   // For test/staging/preview (e.g. Vercel preview + separate API), we need SameSite=None; Secure
