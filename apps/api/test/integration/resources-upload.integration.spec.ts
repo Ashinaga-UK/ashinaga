@@ -99,7 +99,7 @@ describe('Resources API – file uploads (integration)', () => {
         title: 'Uploaded Handbook',
         description: 'File resource',
         type: 'Handbook',
-        category: 'Handbook',
+        category: 'Guides and Handbooks',
         sourceType: 'file',
         status: 'live',
         pendingFileKey: uploadResponse.body.fileKey,

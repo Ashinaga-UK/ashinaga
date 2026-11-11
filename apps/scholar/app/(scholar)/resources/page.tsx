@@ -24,13 +24,18 @@ import {
 import { useMyResources } from '../../../lib/hooks/use-queries';
 
 const categoryStyles: Record<ResourceCategory, string> = {
-  LDF: 'bg-ashinaga-green-50 text-ashinaga-green-700 border-ashinaga-green-200 dark:bg-ashinaga-green-900/20 dark:text-ashinaga-green-300 dark:border-ashinaga-green-800',
-  Handbook:
+  'Guides and Handbooks':
+    'bg-ashinaga-green-50 text-ashinaga-green-700 border-ashinaga-green-200 dark:bg-ashinaga-green-900/20 dark:text-ashinaga-green-300 dark:border-ashinaga-green-800',
+  Workbooks:
     'bg-ashinaga-teal-50 text-ashinaga-teal-700 border-ashinaga-teal-200 dark:bg-ashinaga-teal-900/20 dark:text-ashinaga-teal-300 dark:border-ashinaga-teal-800',
-  Proposal:
+  'Forms and Templates':
     'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800',
-  Support:
+  'How-to Videos':
+    'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800',
+  Presentations:
     'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800',
+  Other:
+    'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-900/20 dark:text-gray-300 dark:border-gray-800',
 };
 
 const resourceIcons: Record<ResourceType, typeof BookOpen> = {
@@ -151,19 +156,23 @@ export default function ResourcesPage() {
                           {resource.type}
                         </p>
                       </div>
+                      {resource.category && (
+                        <Badge
+                          variant="outline"
+                          className={`${categoryStyles[resource.category]} hidden shrink-0 px-2 text-[10px] sm:inline-flex sm:px-2.5 sm:text-xs`}
+                        >
+                          {resource.category}
+                        </Badge>
+                      )}
+                    </div>
+                    {resource.category && (
                       <Badge
                         variant="outline"
-                        className={`${categoryStyles[resource.category]} hidden shrink-0 px-2 text-[10px] sm:inline-flex sm:px-2.5 sm:text-xs`}
+                        className={`${categoryStyles[resource.category]} mt-2 shrink-0 px-2 text-[10px] sm:hidden`}
                       >
                         {resource.category}
                       </Badge>
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className={`${categoryStyles[resource.category]} mt-2 shrink-0 px-2 text-[10px] sm:hidden`}
-                    >
-                      {resource.category}
-                    </Badge>
+                    )}
                   </div>
                 </div>
                 <p className="mt-3 hidden line-clamp-2 text-sm leading-6 text-muted-foreground sm:block">
