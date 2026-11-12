@@ -18,5 +18,12 @@ data "aws_subnets" "default" {
     values = [aws_default_vpc.default.id]
   }
 
+  # Only the original default subnets. Private subnets added later must not
+  # join the RDS subnet group on the next apply.
+  filter {
+    name   = "default-for-az"
+    values = ["true"]
+  }
+
   depends_on = [aws_default_vpc.default]
 }

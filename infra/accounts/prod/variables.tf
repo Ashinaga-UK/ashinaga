@@ -85,13 +85,41 @@ variable "skip_final_snapshot" {
 }
 
 variable "publicly_accessible" {
-  description = "Whether RDS instance should be publicly accessible"
+  description = "Whether RDS is publicly accessible while lock_database_network is false. An apply that omits this variable keeps the instance private."
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "db_ingress_cidr_blocks" {
-  description = "CIDR blocks allowed to connect to the database"
+  description = "CIDR ingress used only while lock_database_network is false. An apply that omits this variable does not open the database to the internet."
   type        = list(string)
-  default     = ["0.0.0.0/0"] # Allow all IPs
+  default     = []
+}
+
+variable "lock_database_network" {
+  description = "Attended second apply. When true, RDS is not publicly accessible and ingress is only the App Runner connector and the in-VPC migration security group. Leave false until sign-in, mail, and S3 have been proven through the VPC connector."
+  type        = bool
+  default     = false
+}
+
+variable "apply_db_changes_immediately" {
+  description = "Apply RDS modifications now instead of the Sunday maintenance window. Set true only for the attended lock apply, then set it back to false."
+  type        = bool
+  default     = false
+}
+
+variable "private_subnet_cidrs" {
+  description = "Two literal CIDRs inside 172.31.0.0/16, one per availability zone. Do not allocate these at apply time."
+  type        = list(string)
+
+  validation {
+    condition     = length(var.private_subnet_cidrs) == 2
+    error_message = "Provide exactly two private subnet CIDRs."
+  }
+}
+
+variable "github_actions_role_name" {
+  description = "Existing GitHub OIDC role name. When set, the database-task StartBuild policy is attached to it."
+  type        = string
+  default     = ""
 }

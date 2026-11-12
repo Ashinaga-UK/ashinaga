@@ -42,7 +42,23 @@ jobs:
         role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
         aws-region: ${{ env.AWS_REGION }}
 
+    - name: Run populate in the VPC
+      id: db_task
+      run: |
+        set +e
+        ./scripts/start-db-task.sh test populate
+        status=$?
+        set -e
+        if [ "$status" -eq 0 ]; then
+          echo "ran=codebuild" >> "$GITHUB_OUTPUT"
+        elif [ "$status" -eq 42 ]; then
+          echo "ran=runner" >> "$GITHUB_OUTPUT"
+        else
+          exit "$status"
+        fi
+
     - name: Get database connection
+      if: steps.db_task.outputs.ran == 'runner'
       run: |
         # Get database connection details
         DB_IDENTIFIER="ashinaga-postgres-test"
@@ -99,6 +115,7 @@ jobs:
         echo "BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}" >> $GITHUB_ENV
 
     - name: Run test data population
+      if: steps.db_task.outputs.ran == 'runner'
       run: |
         cd apps/api
         
@@ -130,7 +147,7 @@ jobs:
         echo "## 🎉 Test Data Population Complete" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Database" >> $GITHUB_STEP_SUMMARY
-        echo "- **Host**: ${DB_HOST}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Host**: ${DB_HOST:-in-VPC CodeBuild}" >> $GITHUB_STEP_SUMMARY
         echo "- **Database**: ${DB_NAME}" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Test Accounts" >> $GITHUB_STEP_SUMMARY
