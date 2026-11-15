@@ -9,6 +9,9 @@ import { EmailService } from '../email/email.service';
 import { touchScholarLastActivity } from '../scholars/scholar-activity';
 import { readOriginPolicyEnv, trustedOriginsForRequest } from './allowed-origins';
 import { logAuthError } from './auth-logging';
+import { assertSessionAllowed } from './session-guard';
+
+export { assertSessionAllowed } from './session-guard';
 
 // Create email service instance
 const emailService = new EmailService();
@@ -323,6 +326,14 @@ If you didn't request this, you can ignore this email.
     },
   },
   databaseHooks: {
+    session: {
+      create: {
+        // Rejects deactivated staff at sign-in. No NODE_ENV bypass: tests exercise this path.
+        before: async (session) => {
+          await assertSessionAllowed(session);
+        },
+      },
+    },
     user: {
       create: {
         before: async (user, context) => {
