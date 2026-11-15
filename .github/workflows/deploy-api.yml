@@ -288,6 +288,8 @@ jobs:
 
     - name: Update App Runner service
       id: apprunner_update
+      env:
+        VERCEL_PREVIEW_ORIGIN_PATTERN: ${{ vars.VERCEL_PREVIEW_ORIGIN_PATTERN }}
       run: |
         # This step:
         # 1. Fetches latest secrets from AWS Secrets Manager (GitHub Actions is the source of truth for secrets)
@@ -390,12 +392,16 @@ jobs:
           CORS_ORIGINS="https://staff-test.ashinaga-uk.org,https://scholar-test.ashinaga-uk.org,http://localhost:4001,http://localhost:4002"
           STAFF_APP_URL="https://staff-test.ashinaga-uk.org"
           SCHOLAR_APP_URL="https://scholar-test.ashinaga-uk.org"
+          # Test only. Empty rejects every *.vercel.app origin. Set the GitHub
+          # environment variable VERCEL_PREVIEW_ORIGIN_PATTERN to this team's preview regex.
+          PREVIEW_ORIGIN_PATTERN="${VERCEL_PREVIEW_ORIGIN_PATTERN:-}"
         else
           NODE_ENV="production"
           BETTER_AUTH_URL="https://api.ashinaga-uk.org"
-          CORS_ORIGINS="https://staff.ashinaga-uk.org,https://scholar.ashinaga-uk.org,http://localhost:4001,http://localhost:4002"
+          CORS_ORIGINS="https://staff.ashinaga-uk.org,https://scholar.ashinaga-uk.org"
           STAFF_APP_URL="https://staff.ashinaga-uk.org"
           SCHOLAR_APP_URL="https://scholar.ashinaga-uk.org"
+          PREVIEW_ORIGIN_PATTERN=""
         fi
 
         # Build the App Runner configuration JSON using jq for proper escaping
@@ -410,6 +416,7 @@ jobs:
           --arg auth_secret "$BETTER_AUTH_SECRET" \
           --arg auth_url "$BETTER_AUTH_URL" \
           --arg cors_origins "$CORS_ORIGINS" \
+          --arg preview_origin_pattern "$PREVIEW_ORIGIN_PATTERN" \
           --arg resend_api_key "$RESEND_API_KEY" \
           --arg cron_secret "${CRON_SECRET:-}" \
           --arg email_from "noreply@ashinaga-uk.org" \
@@ -435,6 +442,7 @@ jobs:
                   "BETTER_AUTH_SECRET": $auth_secret,
                   "BETTER_AUTH_URL": $auth_url,
                   "CORS_ORIGINS": $cors_origins,
+                  "VERCEL_PREVIEW_ORIGIN_PATTERN": $preview_origin_pattern,
                   "RESEND_API_KEY": $resend_api_key,
                   "CRON_SECRET": $cron_secret,
                   "NOTIFICATION_REMINDER_DAYS": "2",

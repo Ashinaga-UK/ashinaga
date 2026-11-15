@@ -2,6 +2,7 @@ import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module';
+import { isCorsOriginAllowed, readOriginPolicyEnv } from './auth/allowed-origins';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { redactUrlForLog } from './common/redact-url';
 import { setupSwagger } from './setup-swagger';
@@ -39,30 +40,11 @@ async function bootstrap() {
   // Global logging interceptor
   app.useGlobalInterceptors(new LoggingInterceptor());
 
-  // Enable CORS
-  const corsOrigins = process.env.CORS_ORIGINS
-    ? process.env.CORS_ORIGINS.split(',')
-    : ['http://localhost:3001', 'http://localhost:3002'];
-
+  // Same allow-list as Better Auth trustedOrigins. A denied origin gets no
+  // Access-Control-Allow-Origin header.
   app.enableCors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps or curl)
-      if (!origin) {
-        callback(null, true);
-        return;
-      }
-      // Allow all localhost origins regardless of port
-      if (origin.startsWith('http://localhost:')) {
-        callback(null, true);
-        return;
-      }
-      // Allow Vercel preview deployments
-      if (origin.endsWith('.vercel.app')) {
-        callback(null, true);
-        return;
-      }
-      // Check against configured CORS origins
-      if (corsOrigins.includes(origin)) {
+      if (isCorsOriginAllowed(origin, readOriginPolicyEnv())) {
         callback(null, true);
         return;
       }

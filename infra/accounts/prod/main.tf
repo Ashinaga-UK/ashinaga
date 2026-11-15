@@ -274,8 +274,8 @@ module "api_app_runner" {
     BETTER_AUTH_SECRET = module.better_auth_secret.secret_value
     BETTER_AUTH_URL    = "https://api.ashinaga-uk.org"
 
-    # CORS Configuration for production environment
-    CORS_ORIGINS = "https://staff.ashinaga-uk.org,https://scholar.ashinaga-uk.org,http://localhost:4001,http://localhost:4002"
+    # Staff and scholar only. Production does not trust localhost or *.vercel.app.
+    CORS_ORIGINS = "https://staff.ashinaga-uk.org,https://scholar.ashinaga-uk.org"
 
     # Email Configuration
     RESEND_API_KEY                    = module.resend_api_key.secret_value

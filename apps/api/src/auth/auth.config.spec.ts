@@ -1,6 +1,14 @@
+import { betterAuth } from 'better-auth';
 import { getDatabase } from '../db/connection';
 import * as schema from '../db/schema';
 import { generateInvitationToken } from './auth.config';
+
+// Captured at import. Tests clear mock history afterwards.
+const betterAuthConfig = (betterAuth as jest.Mock).mock.calls[0][0] as {
+  trustedOrigins: (
+    request?: { headers: { get: (name: string) => string | null } } | null
+  ) => string[];
+};
 
 // Mock the database connection
 jest.mock('../db/connection', () => ({
@@ -230,6 +238,62 @@ describe('Auth Configuration', () => {
 
       expect(parsedScholarData.program).toBe('Computer Science');
       expect(parsedScholarData.university).toBe('Tokyo University');
+    });
+  });
+
+  describe('trustedOrigins', () => {
+    it('withholds untrusted callback and redirect origins in production', () => {
+      const previousNodeEnv = process.env.NODE_ENV;
+      const previousCors = process.env.CORS_ORIGINS;
+      const previousPattern = process.env.VERCEL_PREVIEW_ORIGIN_PATTERN;
+      process.env.NODE_ENV = 'production';
+      process.env.CORS_ORIGINS =
+        'https://staff.ashinaga-uk.org,https://scholar.ashinaga-uk.org,http://localhost:4001,http://localhost:4002';
+      delete process.env.VERCEL_PREVIEW_ORIGIN_PATTERN;
+
+      try {
+        const origins = betterAuthConfig.trustedOrigins({
+          headers: {
+            get: (name: string) => (name === 'origin' ? 'https://evil.vercel.app' : null),
+          },
+        });
+
+        expect(origins).toEqual([
+          'https://staff.ashinaga-uk.org',
+          'https://scholar.ashinaga-uk.org',
+        ]);
+        expect(origins).not.toContain('https://evil.vercel.app');
+        expect(origins).not.toContain('http://localhost:4001');
+        expect(origins).not.toContain('http://localhost:1234');
+      } finally {
+        if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+        else process.env.NODE_ENV = previousNodeEnv;
+        if (previousCors === undefined) delete process.env.CORS_ORIGINS;
+        else process.env.CORS_ORIGINS = previousCors;
+        if (previousPattern === undefined) delete process.env.VERCEL_PREVIEW_ORIGIN_PATTERN;
+        else process.env.VERCEL_PREVIEW_ORIGIN_PATTERN = previousPattern;
+      }
+    });
+
+    it('returns the configured allowlist when Better Auth passes no request', () => {
+      const previousNodeEnv = process.env.NODE_ENV;
+      const previousCors = process.env.CORS_ORIGINS;
+      process.env.NODE_ENV = 'production';
+      process.env.CORS_ORIGINS = 'https://staff.ashinaga-uk.org,https://scholar.ashinaga-uk.org';
+
+      try {
+        // better-auth 1.6 calls trustedOrigins with no request during init / auth.api.
+        const origins = betterAuthConfig.trustedOrigins(undefined);
+        expect(origins).toEqual([
+          'https://staff.ashinaga-uk.org',
+          'https://scholar.ashinaga-uk.org',
+        ]);
+      } finally {
+        if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+        else process.env.NODE_ENV = previousNodeEnv;
+        if (previousCors === undefined) delete process.env.CORS_ORIGINS;
+        else process.env.CORS_ORIGINS = previousCors;
+      }
     });
   });
 
