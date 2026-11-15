@@ -18,7 +18,12 @@ import {
   seedStaffUser,
 } from './helpers/seed';
 
-const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+/** Match InvitationsService: calendar +30 days (not a fixed ms duration — DST can shift wall time). */
+function plusThirtyCalendarDays(fromMs: number): number {
+  const date = new Date(fromMs);
+  date.setDate(date.getDate() + 30);
+  return date.getTime();
+}
 
 describe('Invitations API (integration)', () => {
   let app: import('@nestjs/platform-fastify').NestFastifyApplication;
@@ -60,8 +65,8 @@ describe('Invitations API (integration)', () => {
         status: 'pending',
       });
       const expiresAt = new Date(res.body.expiresAt).getTime();
-      const expectedMin = before + THIRTY_DAYS_MS - 60_000;
-      const expectedMax = before + THIRTY_DAYS_MS + 60_000;
+      const expectedMin = plusThirtyCalendarDays(before) - 60_000;
+      const expectedMax = plusThirtyCalendarDays(Date.now()) + 60_000;
       expect(expiresAt).toBeGreaterThanOrEqual(expectedMin);
       expect(expiresAt).toBeLessThanOrEqual(expectedMax);
 

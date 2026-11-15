@@ -5,7 +5,9 @@ import { generateInvitationToken } from './auth.config';
 
 // Captured at import. Tests clear mock history afterwards.
 const betterAuthConfig = (betterAuth as jest.Mock).mock.calls[0][0] as {
-  trustedOrigins: (request: { headers: { get: (name: string) => string | null } }) => string[];
+  trustedOrigins: (
+    request?: { headers: { get: (name: string) => string | null } } | null
+  ) => string[];
 };
 
 // Mock the database connection
@@ -239,93 +241,6 @@ describe('Auth Configuration', () => {
     });
   });
 
-  describe('Auth Configuration - Signin Callbacks', () => {
-    it('should allow active staff members to sign in', async () => {
-      const activeUser = {
-        id: 'user-123',
-        email: 'staff@example.com',
-        userType: 'staff',
-      };
-
-      const activeStaff = {
-        id: 'staff-123',
-        userId: 'user-123',
-        isActive: true,
-      };
-
-      mockDb.limit
-        .mockResolvedValueOnce([activeUser]) // First call for user
-        .mockResolvedValueOnce([activeStaff]); // Second call for staff
-
-      // Simulate signin check
-      const userResults = await mockDb.select().from(schema.users).where().limit(1);
-
-      const user = userResults[0];
-      expect(user).toBeDefined();
-
-      if (user.userType === 'staff') {
-        const staffResults = await mockDb.select().from(schema.staff).where().limit(1);
-
-        const staffMember = staffResults[0];
-        expect(staffMember.isActive).toBe(true);
-      }
-    });
-
-    it('should reject inactive staff members', async () => {
-      const inactiveUser = {
-        id: 'user-456',
-        email: 'inactive@example.com',
-        userType: 'staff',
-      };
-
-      const inactiveStaff = {
-        id: 'staff-456',
-        userId: 'user-456',
-        isActive: false,
-      };
-
-      mockDb.limit.mockResolvedValueOnce([inactiveUser]).mockResolvedValueOnce([inactiveStaff]);
-
-      try {
-        const userResults = await mockDb.select().from(schema.users).where().limit(1);
-
-        const user = userResults[0];
-
-        if (user && user.userType === 'staff') {
-          const staffResults = await mockDb.select().from(schema.staff).where().limit(1);
-
-          const staffMember = staffResults[0];
-
-          if (staffMember && !staffMember.isActive) {
-            throw new Error('Your account has been deactivated. Please contact an administrator.');
-          }
-        }
-      } catch (error) {
-        expect(error.message).toBe(
-          'Your account has been deactivated. Please contact an administrator.'
-        );
-      }
-    });
-
-    it('should allow scholars to sign in without checking active status', async () => {
-      const scholarUser = {
-        id: 'user-789',
-        email: 'scholar@example.com',
-        userType: 'scholar',
-      };
-
-      mockDb.limit.mockResolvedValueOnce([scholarUser]);
-
-      // Simulate signin check
-      const userResults = await mockDb.select().from(schema.users).where().limit(1);
-
-      const user = userResults[0];
-      expect(user).toBeDefined();
-      expect(user.userType).toBe('scholar');
-      // No additional checks for scholars
-    });
-  });
-
   describe('trustedOrigins', () => {
     it('withholds untrusted callback and redirect origins in production', () => {
       const previousNodeEnv = process.env.NODE_ENV;
@@ -357,6 +272,27 @@ describe('Auth Configuration', () => {
         else process.env.CORS_ORIGINS = previousCors;
         if (previousPattern === undefined) delete process.env.VERCEL_PREVIEW_ORIGIN_PATTERN;
         else process.env.VERCEL_PREVIEW_ORIGIN_PATTERN = previousPattern;
+      }
+    });
+
+    it('returns the configured allowlist when Better Auth passes no request', () => {
+      const previousNodeEnv = process.env.NODE_ENV;
+      const previousCors = process.env.CORS_ORIGINS;
+      process.env.NODE_ENV = 'production';
+      process.env.CORS_ORIGINS = 'https://staff.ashinaga-uk.org,https://scholar.ashinaga-uk.org';
+
+      try {
+        // better-auth 1.6 calls trustedOrigins with no request during init / auth.api.
+        const origins = betterAuthConfig.trustedOrigins(undefined);
+        expect(origins).toEqual([
+          'https://staff.ashinaga-uk.org',
+          'https://scholar.ashinaga-uk.org',
+        ]);
+      } finally {
+        if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+        else process.env.NODE_ENV = previousNodeEnv;
+        if (previousCors === undefined) delete process.env.CORS_ORIGINS;
+        else process.env.CORS_ORIGINS = previousCors;
       }
     });
   });
