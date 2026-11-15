@@ -40,7 +40,8 @@
       "@nestjs/platform-express": "^11.2.7",
       "defu": ">=6.1.5",
       "kysely": "0.28.18",
-      "zod": "4.6.6"
+      "zod": "4.6.6",
+      "validator": "^13.15.22"
     }
   }
 }
