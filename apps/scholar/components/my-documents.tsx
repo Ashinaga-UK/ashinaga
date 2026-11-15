@@ -10,6 +10,7 @@ import {
   type RequiredDocumentChecklistItem,
 } from '../lib/api-client';
 import { queryKeys, useMyDocumentChecklist } from '../lib/hooks/use-queries';
+import { EmptyState } from './empty-state';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { useToast } from './ui/use-toast';
@@ -112,6 +113,21 @@ export function MyDocuments() {
     );
   }
 
+  if (!data || data.items.length === 0) {
+    return (
+      <div className="space-y-4">
+        <h2 className="hidden text-2xl font-semibold tracking-tight md:block print:block">
+          My Documents
+        </h2>
+        <EmptyState
+          icon={FileText}
+          title="Nothing required yet"
+          description="There are no documents for you to upload right now. If anything is needed, it will show up here."
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div>
@@ -123,7 +139,7 @@ export function MyDocuments() {
         </p>
       </div>
       <div className="space-y-3">
-        {(data?.items ?? []).map((item) => (
+        {data.items.map((item) => (
           <DocumentTypeCard
             key={item.type.id}
             item={item}
