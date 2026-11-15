@@ -10,6 +10,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 
+const ACCOUNT_DEACTIVATED_CODE = 'ACCOUNT_DEACTIVATED';
+const ACCOUNT_DEACTIVATED_COPY =
+  'Your account has been deactivated. Please contact an administrator.';
+const INVALID_CREDENTIALS_COPY = 'Invalid email or password';
+
 export function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -35,7 +40,13 @@ export function LoginPage() {
       });
 
       if (authError) {
-        setError(authError.message || 'Invalid email or password');
+        // Only ACCOUNT_DEACTIVATED is specific. The API raises it after the password is
+        // verified, so everything else stays generic and does not reveal account state.
+        setError(
+          authError.code === ACCOUNT_DEACTIVATED_CODE
+            ? ACCOUNT_DEACTIVATED_COPY
+            : authError.message || INVALID_CREDENTIALS_COPY
+        );
         setIsLoading(false);
         return;
       }
