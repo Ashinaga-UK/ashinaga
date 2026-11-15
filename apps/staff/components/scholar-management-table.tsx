@@ -16,7 +16,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   downloadAllScholarsCSV,
   type GetScholarsParams,
@@ -92,6 +92,8 @@ export function ScholarManagementTable({
   const archiveScholar = useArchiveScholar();
   const restoreScholar = useRestoreScholar();
   const deleteScholar = useDeleteScholar();
+  const lifecycleInFlight = useRef(false);
+  const [lifecycleBusy, setLifecycleBusy] = useState(false);
 
   // Filter options from API
   const [filterOptions, setFilterOptions] = useState<ScholarFilterOptions>({
@@ -112,11 +114,16 @@ export function ScholarManagementTable({
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
-      setCurrentPage(1); // Reset to first page on search
     }, 500);
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
+
+  // Reset page only when the applied search term changes — not on every mount
+  // debounce tick (that used to force page 1 ~500ms after load and race Next clicks).
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchTerm]);
 
   const scholarListFilterKey = `${programFilter}|${yearFilter}|${universityFilter}|${statusFilter}|${programStageFilter}|${platformSetupFilter}|${taskProgressFilter}|${loginActivityFilter}`;
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset pagination when program/year/university/status filters change
@@ -148,6 +155,11 @@ export function ScholarManagementTable({
       const response = await getScholars(params);
       setScholars(response.data);
       setPagination(response.pagination);
+      // The current page can disappear after archive/delete/restore empties it; step back
+      // to the last page that still exists (the effect then refetches).
+      if (response.data.length === 0 && currentPage > 1) {
+        setCurrentPage(Math.max(1, Math.min(currentPage - 1, response.pagination.totalPages)));
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load scholars');
       console.error('Error fetching scholars:', err);
@@ -211,51 +223,88 @@ export function ScholarManagementTable({
     }
   };
 
-  const handleArchive = async (scholarId: string, scholarName: string) => {
-    if (!confirm(`Archive "${scholarName}"? They will be hidden from the default list.`)) return;
-    try {
-      await archiveScholar.mutateAsync(scholarId);
-      await fetchScholars();
-    } catch (e) {
-      console.error(e);
-      alert('Failed to archive. Please try again.');
-    }
-  };
+  /**
+   * Single entry point for archive / restore / delete (ASH-146). A ref guards against a
+   * second submit before React has re-rendered with `lifecycleBusy`; the state disables the
+   * menu items. The busy check runs before `confirm()` so a rapid second click never even
+   * prompts.
+   */
+  const runLifecycleAction = async ({
+    scholarId,
+    confirmMessage,
+    mutate,
+    onSuccess,
+    failureTitle,
+  }: {
+    scholarId: string;
+    confirmMessage: string;
+    mutate: (scholarId: string) => Promise<unknown>;
+    onSuccess: { title: string; description: string };
+    failureTitle: string;
+  }) => {
+    if (lifecycleInFlight.current) return;
+    if (!confirm(confirmMessage)) return;
 
-  const handleRestore = async (scholarId: string, scholarName: string) => {
-    if (!confirm(`Restore "${scholarName}"? They will return to the active Scholars list.`)) return;
+    lifecycleInFlight.current = true;
+    setLifecycleBusy(true);
     try {
-      await restoreScholar.mutateAsync(scholarId);
-      await fetchScholars();
-      toast({
-        title: 'Scholar restored',
-        description: `${scholarName} is active again.`,
-      });
+      await mutate(scholarId);
+      toast(onSuccess);
     } catch (e) {
       console.error(e);
       toast({
-        title: 'Could not restore scholar',
+        title: failureTitle,
         description: e instanceof Error ? e.message : 'Please try again.',
         variant: 'destructive',
       });
+    } finally {
+      // Always resync with the server (even on failure) and drop the acted-on row from the
+      // bulk selection so it can't be assigned a task after being deleted/archived.
+      setSelectedScholars((prev) => prev.filter((id) => id !== scholarId));
+      try {
+        await fetchScholars();
+      } finally {
+        lifecycleInFlight.current = false;
+        setLifecycleBusy(false);
+      }
     }
   };
 
-  const handleDelete = async (scholarId: string, scholarName: string) => {
-    if (
-      !confirm(
-        `Permanently delete "${scholarName}"? This cannot be undone. All goals, tasks, and documents will be removed.`
-      )
-    )
-      return;
-    try {
-      await deleteScholar.mutateAsync(scholarId);
-      await fetchScholars();
-    } catch (e) {
-      console.error(e);
-      alert('Failed to delete. Please try again.');
-    }
-  };
+  const handleArchive = (scholarId: string, scholarName: string) =>
+    runLifecycleAction({
+      scholarId,
+      confirmMessage: `Archive "${scholarName}"? They will be hidden from the default list.`,
+      mutate: archiveScholar.mutateAsync,
+      onSuccess: {
+        title: 'Scholar archived',
+        description: `${scholarName} is hidden from the default list.`,
+      },
+      failureTitle: 'Could not archive scholar',
+    });
+
+  const handleRestore = (scholarId: string, scholarName: string) =>
+    runLifecycleAction({
+      scholarId,
+      confirmMessage: `Restore "${scholarName}"? Their status will be set to Active and they will leave the Archived list.`,
+      mutate: restoreScholar.mutateAsync,
+      onSuccess: {
+        title: 'Scholar restored',
+        description: `${scholarName} is active again.`,
+      },
+      failureTitle: 'Could not restore scholar',
+    });
+
+  const handleDelete = (scholarId: string, scholarName: string) =>
+    runLifecycleAction({
+      scholarId,
+      confirmMessage: `Permanently delete "${scholarName}"? This cannot be undone. All goals, tasks, and documents will be removed.`,
+      mutate: deleteScholar.mutateAsync,
+      onSuccess: {
+        title: 'Scholar deleted',
+        description: `${scholarName} was permanently deleted.`,
+      },
+      failureTitle: 'Could not delete scholar',
+    });
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -585,20 +634,16 @@ export function ScholarManagementTable({
                     </DropdownMenuItem>
                     {scholar.status !== 'archived' ? (
                       <DropdownMenuItem
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleArchive(scholar.id, scholar.name);
-                        }}
+                        disabled={lifecycleBusy}
+                        onSelect={() => handleArchive(scholar.id, scholar.name)}
                       >
                         <Archive className="h-4 w-4 mr-2" />
                         Archive
                       </DropdownMenuItem>
                     ) : (
                       <DropdownMenuItem
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleRestore(scholar.id, scholar.name);
-                        }}
+                        disabled={lifecycleBusy}
+                        onSelect={() => handleRestore(scholar.id, scholar.name)}
                       >
                         <ArchiveRestore className="h-4 w-4 mr-2" />
                         Restore
@@ -606,10 +651,8 @@ export function ScholarManagementTable({
                     )}
                     <DropdownMenuItem
                       className="text-red-600 focus:text-red-600"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleDelete(scholar.id, scholar.name);
-                      }}
+                      disabled={lifecycleBusy}
+                      onSelect={() => handleDelete(scholar.id, scholar.name)}
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
                       Delete
@@ -842,20 +885,16 @@ export function ScholarManagementTable({
                           </DropdownMenuItem>
                           {scholar.status !== 'archived' ? (
                             <DropdownMenuItem
-                              onClick={(e) => {
-                                e.preventDefault();
-                                handleArchive(scholar.id, scholar.name);
-                              }}
+                              disabled={lifecycleBusy}
+                              onSelect={() => handleArchive(scholar.id, scholar.name)}
                             >
                               <Archive className="h-4 w-4 mr-2" />
                               Archive
                             </DropdownMenuItem>
                           ) : (
                             <DropdownMenuItem
-                              onClick={(e) => {
-                                e.preventDefault();
-                                handleRestore(scholar.id, scholar.name);
-                              }}
+                              disabled={lifecycleBusy}
+                              onSelect={() => handleRestore(scholar.id, scholar.name)}
                             >
                               <ArchiveRestore className="h-4 w-4 mr-2" />
                               Restore
@@ -863,10 +902,8 @@ export function ScholarManagementTable({
                           )}
                           <DropdownMenuItem
                             className="text-red-600 focus:text-red-600"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              handleDelete(scholar.id, scholar.name);
-                            }}
+                            disabled={lifecycleBusy}
+                            onSelect={() => handleDelete(scholar.id, scholar.name)}
                           >
                             <Trash2 className="h-4 w-4 mr-2" />
                             Delete
