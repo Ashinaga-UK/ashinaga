@@ -114,11 +114,16 @@ export function ScholarManagementTable({
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
-      setCurrentPage(1); // Reset to first page on search
     }, 500);
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
+
+  // Reset page only when the applied search term changes — not on every mount
+  // debounce tick (that used to force page 1 ~500ms after load and race Next clicks).
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchTerm]);
 
   const scholarListFilterKey = `${programFilter}|${yearFilter}|${universityFilter}|${statusFilter}|${programStageFilter}|${platformSetupFilter}|${taskProgressFilter}|${loginActivityFilter}`;
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset pagination when program/year/university/status filters change

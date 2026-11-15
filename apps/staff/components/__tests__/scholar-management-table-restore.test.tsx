@@ -581,10 +581,25 @@ describe('ScholarManagementTable lifecycle guard (ASH-146)', () => {
     });
     renderTable();
     await screen.findAllByText('Active Ada');
+    expect(await screen.findByText(/page 1 of 2/i)).toBeInTheDocument();
 
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: /next/i }));
+    const next = await screen.findByRole('button', { name: /^next$/i });
+    expect(next).toBeEnabled();
+    await user.click(next);
+
+    await waitFor(() =>
+      expect(mockGetScholars).toHaveBeenCalledWith(expect.objectContaining({ page: 2 }))
+    );
     await screen.findAllByText('Archived Ada');
+    expect(await screen.findByText(/page 2 of 2/i)).toBeInTheDocument();
+
+    // Stay on page 2 past the search debounce window so a buggy mount-time
+    // setCurrentPage(1) would fail this test instead of only failing in CI.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+    expect(screen.getAllByText('Archived Ada').length).toBeGreaterThan(0);
 
     await openActionsMenu('Archived Ada', 'mobile', user);
     await user.click(await screen.findByRole('menuitem', { name: /delete/i }));
