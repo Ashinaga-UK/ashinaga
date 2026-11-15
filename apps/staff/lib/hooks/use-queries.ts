@@ -1,5 +1,6 @@
 import {
   keepPreviousData,
+  type QueryClient,
   useInfiniteQuery,
   useMutation,
   useQuery,
@@ -490,23 +491,62 @@ export function useMarkStaffNotificationsRead() {
   });
 }
 
+// Cache invalidation shared by archive / restore / delete scholar mutations.
+// Fire-and-forget: callers must not await/return these so isPending isn't extended.
+export function invalidateScholarLifecycle(
+  queryClient: QueryClient,
+  scholarId: string,
+  { deleted }: { deleted: boolean }
+) {
+  if (deleted) {
+    queryClient.removeQueries({ queryKey: ['scholar', scholarId] });
+  } else {
+    queryClient.invalidateQueries({ queryKey: queryKeys.scholarProfile(scholarId) });
+  }
+
+  queryClient.invalidateQueries({ queryKey: ['overview'] });
+  queryClient.invalidateQueries({ queryKey: ['prep-year', 'report'] });
+  queryClient.invalidateQueries({ queryKey: ['prep-tasks', 'cohort'] });
+  queryClient.invalidateQueries({ queryKey: ['scholar-activity', 'report'] });
+
+  if (deleted) {
+    queryClient.invalidateQueries({ queryKey: queryKeys.requestStats });
+    queryClient.invalidateQueries({ queryKey: queryKeys.proposalInbox });
+    // Prefix (no trailing filter) so every missing-type variant is refreshed.
+    queryClient.invalidateQueries({ queryKey: ['required-documents', 'cohort'] });
+    queryClient.invalidateQueries({ queryKey: ['announcements'] });
+  }
+}
+
 // Archive scholar (staff)
 export function useArchiveScholar() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: archiveScholar,
+    onSuccess: (_data, scholarId) => {
+      invalidateScholarLifecycle(queryClient, scholarId, { deleted: false });
+    },
   });
 }
 
 // Restore archived scholar (staff)
 export function useRestoreScholar() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: restoreScholar,
+    onSuccess: (_data, scholarId) => {
+      invalidateScholarLifecycle(queryClient, scholarId, { deleted: false });
+    },
   });
 }
 
 // Delete scholar (staff)
 export function useDeleteScholar() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: deleteScholar,
+    onSuccess: (_data, scholarId) => {
+      invalidateScholarLifecycle(queryClient, scholarId, { deleted: true });
+    },
   });
 }
