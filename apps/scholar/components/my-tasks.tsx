@@ -7,6 +7,7 @@ import { completeTask, getMyTasks, updateTaskStatus } from '../lib/api/tasks';
 import { groupPrepYearTasks } from '../lib/group-prep-tasks';
 import { useScholarSession } from '../lib/scholar-session';
 import { isTaskDueToday, isTaskOverdue } from '../lib/task-due';
+import { EmptyState } from './empty-state';
 import { TaskCompletionDialog } from './task-completion-dialog';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -303,7 +304,7 @@ export function MyTasks() {
 
         {isPrepYear && grouped ? (
           tasks.length === 0 ? (
-            <TasksEmptyState hint={emptyHint} />
+            <EmptyState icon={ListTodo} title="No tasks found" description={emptyHint} />
           ) : (
             <>
               <TaskGroupSection
@@ -327,7 +328,7 @@ export function MyTasks() {
             </>
           )
         ) : sortedTasks.length === 0 ? (
-          <TasksEmptyState hint={emptyHint} />
+          <EmptyState icon={ListTodo} title="No tasks found" description={emptyHint} />
         ) : (
           <div className="space-y-3">{sortedTasks.map(renderTaskCard)}</div>
         )}
@@ -342,16 +343,6 @@ export function MyTasks() {
         />
       )}
     </>
-  );
-}
-
-function TasksEmptyState({ hint }: { hint: string }) {
-  return (
-    <div className="flex min-h-[220px] flex-col items-center justify-center rounded-lg border border-ashinaga-teal-100 bg-card/40 px-4 text-center dark:border-border">
-      <ListTodo className="mb-2 h-6 w-6 text-muted-foreground" />
-      <p className="text-sm font-medium text-foreground">No tasks found</p>
-      <p className="mt-1 max-w-sm text-sm text-muted-foreground">{hint}</p>
-    </div>
   );
 }
 

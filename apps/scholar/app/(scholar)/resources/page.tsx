@@ -12,6 +12,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { EmptyState } from '../../../components/empty-state';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { useToast } from '../../../components/ui/use-toast';
@@ -82,6 +83,8 @@ export default function ResourcesPage() {
     return resources.filter((resource) => resource.type === selectedType);
   }, [resources, selectedType]);
 
+  const isFiltered = selectedType !== 'All' && resources.length > 0;
+
   return (
     <div className="space-y-4 p-4 sm:space-y-6 sm:p-6">
       <div className="flex flex-col gap-4">
@@ -126,13 +129,29 @@ export default function ResourcesPage() {
           Could not load resources.
         </div>
       ) : filteredResources.length === 0 ? (
-        <div className="flex min-h-[220px] flex-col items-center justify-center rounded-lg border border-ashinaga-teal-100 bg-white/50 px-4 text-center dark:border-gray-700 dark:bg-card/40">
-          <Library className="mb-2 h-6 w-6 text-muted-foreground" />
-          <p className="text-sm font-medium text-foreground">No resources available</p>
-          <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-            Published resources assigned to you will appear here.
-          </p>
-        </div>
+        isFiltered ? (
+          <EmptyState
+            icon={Library}
+            title={`No ${selectedType.toLowerCase()} resources`}
+            description="Nothing matches this filter. Show all to see every resource available to you."
+            action={
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedType('All')}
+              >
+                Show all
+              </Button>
+            }
+          />
+        ) : (
+          <EmptyState
+            icon={Library}
+            title="No resources available"
+            description="Published resources assigned to you will appear here."
+          />
+        )
       ) : (
         <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-3">
           {filteredResources.map((resource: Resource) => {

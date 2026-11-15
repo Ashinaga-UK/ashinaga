@@ -1,6 +1,7 @@
 'use client';
 
 import { AlertCircle, FileText, Plus } from 'lucide-react';
+import { EmptyState } from '../../../components/empty-state';
 import { NewRequestDialog } from '../../../components/new-request-dialog';
 import { RequestCard } from '../../../components/request-card';
 import { Button } from '../../../components/ui/button';
@@ -52,17 +53,22 @@ export default function RequestsPage() {
           </CardContent>
         </Card>
       ) : !requests || requests.length === 0 ? (
-        <Card className="border-ashinaga-teal-100 dark:border-border">
-          <CardContent className="pt-6">
-            <div className="text-center py-8">
-              <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground">No requests yet</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                Click "New Request" to submit your first request
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={FileText}
+          title="No requests yet"
+          description="Need support, a change, or an answer from the team? Submit a request and track it here."
+          action={
+            <NewRequestDialog
+              trigger={
+                <Button className="bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Submit your first request
+                </Button>
+              }
+              onSuccess={() => refetch()}
+            />
+          }
+        />
       ) : (
         <div className="space-y-4">
           {requests.map((request) => (

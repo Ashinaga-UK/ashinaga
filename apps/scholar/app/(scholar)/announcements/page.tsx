@@ -2,6 +2,7 @@
 
 import { AlertCircle, Bell } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { EmptyState } from '../../../components/empty-state';
 import { Button } from '../../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import {
@@ -57,6 +58,9 @@ export default function AnnouncementsPage() {
       )
     );
   }, [announcements, yearFilter, programFilter, universityFilter]);
+
+  const hasActiveFilters =
+    yearFilter !== 'all' || programFilter !== 'all' || universityFilter !== 'all';
 
   const clearFilters = () => {
     setYearFilter('all');
@@ -149,17 +153,24 @@ export default function AnnouncementsPage() {
           </CardContent>
         </Card>
       ) : filteredAnnouncements.length === 0 ? (
-        <Card className="border-ashinaga-teal-100 dark:border-border">
-          <CardContent className="pt-6">
-            <div className="text-center py-8">
-              <Bell className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground">No announcements found</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                Try changing your filters or check back later for updates from staff
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        hasActiveFilters && announcements && announcements.length > 0 ? (
+          <EmptyState
+            icon={Bell}
+            title="No announcements match these filters"
+            description="Try a different year, program, or university, or reset the filters to see everything."
+            action={
+              <Button type="button" variant="outline" size="sm" onClick={clearFilters}>
+                Reset filters
+              </Button>
+            }
+          />
+        ) : (
+          <EmptyState
+            icon={Bell}
+            title="No announcements yet"
+            description="Updates from staff will appear here. Check back later."
+          />
+        )
       ) : (
         <div className="space-y-4">
           {filteredAnnouncements.map((announcement) => (
