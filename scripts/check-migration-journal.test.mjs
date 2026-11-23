@@ -88,7 +88,7 @@ describe('assertAppliedMigrationWhens', () => {
 const keptColumns = ['access_token_expires_at', 'refresh_token_expires_at', 'scope', 'password'];
 const additiveSql = [
   {
-    name: '0036_orange_skrulls.sql',
+    name: '0037_orange_skrulls.sql',
     sql: `ALTER TABLE "account" ADD COLUMN "access_token_expires_at" timestamp with time zone;--> statement-breakpoint
 UPDATE "account" SET "access_token_expires_at" = "expires_at";--> statement-breakpoint
 ALTER TABLE "account" ADD COLUMN "refresh_token_expires_at" timestamp with time zone;--> statement-breakpoint
@@ -97,7 +97,7 @@ ALTER TABLE "account" ADD COLUMN "scope" text;`,
 ];
 
 describe('checkAccountExpiresAt', () => {
-  it('accepts the additive 0036 migration and a snapshot that omits expires_at', () => {
+  it('accepts the additive orange_skrulls migration and a snapshot that omits expires_at', () => {
     assert.deepEqual(checkAccountExpiresAt(additiveSql, keptColumns).failures, []);
   });
 
@@ -105,7 +105,7 @@ describe('checkAccountExpiresAt', () => {
     const rename = checkAccountExpiresAt(
       [
         {
-          name: '0036_orange_skrulls.sql',
+          name: '0037_orange_skrulls.sql',
           sql: 'ALTER TABLE "account" RENAME COLUMN "expires_at" TO "access_token_expires_at";',
         },
       ],
@@ -117,13 +117,13 @@ describe('checkAccountExpiresAt', () => {
       [
         ...additiveSql,
         {
-          name: '0037_drop.sql',
+          name: '0038_drop_expires_at.sql',
           sql: 'ALTER TABLE "account" DROP COLUMN "expires_at";',
         },
       ],
       keptColumns
     );
-    assert.match(laterDrop.failures[0], /0037_drop.sql/);
+    assert.match(laterDrop.failures[0], /0038_drop_expires_at\.sql/);
   });
 
   it('rejects a snapshot that still lists account.expires_at', () => {
@@ -131,12 +131,14 @@ describe('checkAccountExpiresAt', () => {
     assert.match(failures[0], /next drizzle-kit generate would drop/);
   });
 
-  it('matches the migrations on disk', () => {
+  it('matches the migrations on disk via orange_skrulls journal tag', () => {
     const migrationsDir = path.join(
       path.dirname(fileURLToPath(import.meta.url)),
       '../apps/api/src/db/migrations'
     );
     const sources = readAccountExpiresAtSources(migrationsDir);
+    assert.match(sources.compatTag, /orange_skrulls/);
+    assert.match(sources.snapshotName, /^\d+_snapshot\.json$/);
     assert.deepEqual(checkAccountExpiresAt(sources.sqlFiles, sources.accountColumns).failures, []);
   });
 });

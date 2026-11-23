@@ -1,5 +1,5 @@
 {
-  "id": "c04e6b23-5c9a-4c67-8325-a7d6618fa42f",
+  "id": "f02246e7-2a0c-486e-a9e6-59acd027a330",
   "prevId": "cb4b31fd-e7f2-4dd3-a462-b960ad6af63f",
   "version": "7",
   "dialect": "postgresql",
@@ -2618,6 +2618,94 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.resource_category_reviews": {
+      "name": "resource_category_reviews",
+      "schema": "",
+      "columns": {
+        "resource_id": {
+          "name": "resource_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "resource_title": {
+          "name": "resource_title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "legacy_category": {
+          "name": "legacy_category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "final_category": {
+          "name": "final_category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reviewed_by": {
+          "name": "reviewed_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reviewed_at": {
+          "name": "reviewed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "resource_category_reviews_resource_id_resources_id_fk": {
+          "name": "resource_category_reviews_resource_id_resources_id_fk",
+          "tableFrom": "resource_category_reviews",
+          "tableTo": "resources",
+          "columnsFrom": [
+            "resource_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "resource_category_reviews_reviewed_by_user_id_fk": {
+          "name": "resource_category_reviews_reviewed_by_user_id_fk",
+          "tableFrom": "resource_category_reviews",
+          "tableTo": "user",
+          "columnsFrom": [
+            "reviewed_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "resource_category_reviews_final_category_check": {
+          "name": "resource_category_reviews_final_category_check",
+          "value": "\"resource_category_reviews\".\"final_category\" IS NULL OR \"resource_category_reviews\".\"final_category\" IN ('Guides and Handbooks', 'Workbooks', 'Forms and Templates', 'How-to Videos', 'Presentations', 'Other')"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.resource_filters": {
       "name": "resource_filters",
       "schema": "",
@@ -2725,10 +2813,16 @@
         },
         "category": {
           "name": "category",
-          "type": "resource_category",
-          "typeSchema": "public",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "proposal_context": {
+          "name": "proposal_context",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         },
         "source_type": {
           "name": "source_type",
@@ -2843,6 +2937,10 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
+        "resources_category_check": {
+          "name": "resources_category_check",
+          "value": "\"resources\".\"category\" IN ('Guides and Handbooks', 'Workbooks', 'Forms and Templates', 'How-to Videos', 'Presentations', 'Other')"
+        },
         "resources_source_columns_check": {
           "name": "resources_source_columns_check",
           "value": "(\n        (\"resources\".\"source_type\" = 'url' AND \"resources\".\"url\" IS NOT NULL AND \"resources\".\"file_key\" IS NULL)\n        OR\n        (\"resources\".\"source_type\" = 'file' AND \"resources\".\"file_key\" IS NOT NULL AND \"resources\".\"url\" IS NULL)\n      )"
@@ -3885,21 +3983,9 @@
           "primaryKey": false,
           "notNull": false
         },
-        "access_token_expires_at": {
-          "name": "access_token_expires_at",
+        "expires_at": {
+          "name": "expires_at",
           "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "refresh_token_expires_at": {
-          "name": "refresh_token_expires_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "scope": {
-          "name": "scope",
-          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -4346,16 +4432,6 @@
         "summer_funding_report",
         "requirement_submission",
         "others"
-      ]
-    },
-    "public.resource_category": {
-      "name": "resource_category",
-      "schema": "public",
-      "values": [
-        "LDF",
-        "Handbook",
-        "Proposal",
-        "Support"
       ]
     },
     "public.resource_source_type": {

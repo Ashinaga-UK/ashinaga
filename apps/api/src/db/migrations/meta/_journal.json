@@ -257,8 +257,15 @@
     {
       "idx": 36,
       "version": "7",
-      "when": 1792372303939,
-      "tag": "0036_orange_skrulls",
+      "when": 1793128068928,
+      "tag": "0036_cheerful_lethal_legion",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1793128068929,
+      "tag": "0037_orange_skrulls",
       "breakpoints": true
     }
   ]

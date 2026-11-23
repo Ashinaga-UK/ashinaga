@@ -81,13 +81,22 @@ function changesAccountExpiresAt(sql) {
   });
 }
 
-/** 0036 must add the 1.6 columns beside expires_at. A later drop is a deliberate migration. */
+/** Better Auth 1.6 compat migration tag fragment (survives renumber, e.g. 0037_orange_skrulls). */
+export const BETTER_AUTH_COMPAT_TAG = 'orange_skrulls';
+
+export function findBetterAuthCompatSql(sqlFiles) {
+  return sqlFiles.find(
+    (file) => file.name.includes(BETTER_AUTH_COMPAT_TAG) && file.name.endsWith('.sql')
+  );
+}
+
+/** Compat migration must add the 1.6 columns beside expires_at. A later drop is deliberate. */
 export function checkAccountExpiresAt(sqlFiles, accountColumns) {
   const failures = [];
-  const compat = sqlFiles.find((file) => file.name.startsWith('0036_'));
+  const compat = findBetterAuthCompatSql(sqlFiles);
 
   if (!compat) {
-    failures.push('Missing migration 0036.');
+    failures.push(`Missing Better Auth compat migration (*_${BETTER_AUTH_COMPAT_TAG}.sql).`);
   } else if (changesAccountExpiresAt(compat.sql)) {
     failures.push(`${compat.name} renames or drops account.expires_at.`);
   } else if (
@@ -113,12 +122,12 @@ export function checkAccountExpiresAt(sqlFiles, accountColumns) {
   const columns = new Set(accountColumns);
   for (const column of ['access_token_expires_at', 'refresh_token_expires_at', 'scope']) {
     if (!columns.has(column)) {
-      failures.push(`0036 snapshot account is missing ${column}.`);
+      failures.push(`Better Auth compat snapshot account is missing ${column}.`);
     }
   }
   if (columns.has('expires_at')) {
     failures.push(
-      '0036 snapshot lists account.expires_at. The next drizzle-kit generate would drop the column the running 1.3.4 image still selects.'
+      'Better Auth compat snapshot lists account.expires_at. The next drizzle-kit generate would drop the column the running 1.3.4 image still selects.'
     );
   }
 
@@ -133,11 +142,27 @@ export function readAccountExpiresAtSources(migrationsDir) {
       name,
       sql: readFileSync(path.join(migrationsDir, name), 'utf8'),
     }));
+
+  const journal = JSON.parse(
+    readFileSync(path.join(migrationsDir, 'meta', '_journal.json'), 'utf8')
+  );
+  const entry = (journal.entries ?? []).find((e) =>
+    String(e.tag ?? '').includes(BETTER_AUTH_COMPAT_TAG)
+  );
+  if (!entry) {
+    throw new Error(
+      `Journal is missing Better Auth compat tag containing ${BETTER_AUTH_COMPAT_TAG}`
+    );
+  }
+  const prefix = String(entry.tag).match(/^(\d+)_/)?.[1];
+  if (!prefix) {
+    throw new Error(`Better Auth compat journal tag has no numeric prefix: ${entry.tag}`);
+  }
   const snapshot = JSON.parse(
-    readFileSync(path.join(migrationsDir, 'meta', '0036_snapshot.json'), 'utf8')
+    readFileSync(path.join(migrationsDir, 'meta', `${prefix}_snapshot.json`), 'utf8')
   );
   const accountColumns = Object.keys(snapshot.tables['public.account'].columns);
-  return { sqlFiles, accountColumns };
+  return { sqlFiles, accountColumns, compatTag: entry.tag, snapshotName: `${prefix}_snapshot.json` };
 }
 
 export function parseAppliedWhens(raw) {

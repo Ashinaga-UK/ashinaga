@@ -11,7 +11,7 @@ describe('CreateResourceDto', () => {
       title: 'Scholar Handbook',
       description: 'Reference material',
       type: 'Handbook',
-      category: 'Handbook',
+      category: 'Guides and Handbooks',
       url: 'docs.example/handbook',
     });
 
@@ -25,7 +25,7 @@ describe('CreateResourceDto', () => {
       title: 'Scholar Handbook',
       description: 'Reference material',
       type: 'Handbook',
-      category: 'Handbook',
+      category: 'Guides and Handbooks',
       url: 'https://docs.example/handbook',
       filters: [{ filterType: 'program' }],
     });
@@ -41,7 +41,7 @@ describe('CreateResourceDto', () => {
       title: 'Scholar Handbook',
       description: 'Reference material',
       type: 'Handbook',
-      category: 'Handbook',
+      category: 'Guides and Handbooks',
       url: 'https://docs.example/handbook',
       filters: [{ filterType: 'programme', filterValue: 'Medicine' }],
     });
@@ -57,7 +57,7 @@ describe('CreateResourceDto', () => {
       title: 'Scholar Handbook',
       description: 'Reference material',
       type: 'Handbook',
-      category: 'Handbook',
+      category: 'Guides and Handbooks',
       url: 'https://docs.example/handbook',
       filters: null,
     });
@@ -78,7 +78,7 @@ describe('CreateResourceDto', () => {
       title: 'Scholar Handbook',
       description: 'Reference material',
       type: 'Handbook',
-      category: 'Handbook',
+      category: 'Guides and Handbooks',
       url: 'https://docs.example/handbook',
       filters: [{ filterType: 'program', filterValue: ' Medicine ' }],
     });
@@ -92,7 +92,7 @@ describe('CreateResourceDto', () => {
       title: 'Scholar Handbook',
       description: 'Reference material',
       type: 'Handbook',
-      category: 'Handbook',
+      category: 'Guides and Handbooks',
       sourceType: 'file',
       pendingFileKey: 'resources/pending/upload-1-handbook.pdf',
       fileName: 'handbook.pdf',
@@ -108,7 +108,7 @@ describe('CreateResourceDto', () => {
       title: 'Scholar Handbook',
       description: 'Reference material',
       type: 'Handbook',
-      category: 'Handbook',
+      category: 'Guides and Handbooks',
       sourceType: 'file',
       fileName: 'handbook.pdf',
       fileMimeType: 'application/pdf',
@@ -118,4 +118,38 @@ describe('CreateResourceDto', () => {
     const errors = await validate(dto);
     expect(errors.some((error) => error.property === 'pendingFileKey')).toBe(true);
   });
+
+  it.each([
+    'Guides and Handbooks',
+    'Workbooks',
+    'Forms and Templates',
+    'How-to Videos',
+    'Presentations',
+    'Other',
+  ])('accepts the supported category %s', async (category) => {
+    const dto = plainToInstance(CreateResourceDto, {
+      title: 'Resource',
+      description: 'Reference material',
+      type: 'Guide',
+      category,
+      url: 'https://docs.example/resource',
+    });
+
+    expect((await validate(dto)).some((error) => error.property === 'category')).toBe(false);
+  });
+
+  it.each(['LDF', 'Handbook', 'Proposal', 'Support', 'Unknown'])(
+    'rejects the unsupported category %s',
+    async (category) => {
+      const dto = plainToInstance(CreateResourceDto, {
+        title: 'Resource',
+        description: 'Reference material',
+        type: 'Guide',
+        category,
+        url: 'https://docs.example/resource',
+      });
+
+      expect((await validate(dto)).some((error) => error.property === 'category')).toBe(true);
+    }
+  );
 });

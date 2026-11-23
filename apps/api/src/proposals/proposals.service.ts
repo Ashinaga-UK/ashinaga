@@ -261,18 +261,13 @@ export class ProposalsService {
         id: resources.id,
         archived: resources.archived,
         status: resources.status,
-        category: resources.category,
+        proposalContext: resources.proposalContext,
       })
       .from(resources)
       .where(eq(resources.id, resourceId))
       .limit(1);
 
-    if (
-      !resource ||
-      resource.archived ||
-      resource.status !== 'live' ||
-      resource.category !== 'Proposal'
-    ) {
+    if (!resource || resource.archived || resource.status !== 'live' || !resource.proposalContext) {
       throw new NotFoundException('Resource not found');
     }
 
@@ -484,7 +479,7 @@ export class ProposalsService {
         and(
           eq(resources.archived, false),
           eq(resources.status, 'live'),
-          eq(resources.category, 'Proposal'),
+          eq(resources.proposalContext, true),
           ...(audience ? [buildResourceAudienceVisibilitySql(audience)] : [])
         )
       );
