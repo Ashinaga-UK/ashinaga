@@ -133,7 +133,7 @@ export class UsersService {
       throw new BadRequestException('You cannot remove your own staff account');
     }
 
-    const result = await database.transaction(async (tx) => {
+    return database.transaction(async (tx) => {
       // Same lock order as setStaffAdmin: the active super-admins first, then
       // the caller, then the target. This serialises concurrent removals and
       // demotions so they can't together remove the last super-admin.
@@ -184,18 +184,12 @@ export class UsersService {
         .set({ isActive: false, updatedAt: new Date() })
         .where(eq(staff.userId, targetUserId));
 
+      // Same transaction so a failed delete rolls back the deactivation instead of
+      // reporting success while the member's sessions survive.
+      await tx.delete(sessions).where(eq(sessions.userId, targetUserId));
+
       return { success: true, alreadyInactive: false };
     });
-
-    if (!result.alreadyInactive) {
-      try {
-        await database.delete(sessions).where(eq(sessions.userId, targetUserId));
-      } catch (error) {
-        console.error('Failed to clear sessions for removed staff member:', error);
-      }
-    }
-
-    return result;
   }
 
   async setStaffAdmin(targetUserId: string, isSuperAdmin: boolean, requesterUserId: string) {
