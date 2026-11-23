@@ -2,7 +2,6 @@
 
 import { ArrowRight, Bell, CheckSquare, FileText, Plus, Target, User } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { NewRequestDialog } from '../../../components/new-request-dialog';
 import { Badge } from '../../../components/ui/badge';
@@ -22,7 +21,6 @@ import { useMyAnnouncements, useMyRequests } from '../../../lib/hooks/use-querie
 import { useScholarSession } from '../../../lib/scholar-session';
 
 export default function DashboardPage() {
-  const router = useRouter();
   const { data: session } = useSession();
   const { data: requests } = useMyRequests();
   const { data: announcements } = useMyAnnouncements();
@@ -214,13 +212,10 @@ export default function DashboardPage() {
                 <Target className="h-5 w-5" />
                 LDF Progress
               </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs shrink-0"
-                onClick={() => router.push('/goals')}
-              >
-                View All <ArrowRight className="h-3 w-3 ml-1" />
+              <Button variant="ghost" size="sm" className="text-xs shrink-0" asChild>
+                <Link href="/goals">
+                  View All <ArrowRight className="h-3 w-3 ml-1" />
+                </Link>
               </Button>
             </CardTitle>
           </CardHeader>
@@ -249,24 +244,21 @@ export default function DashboardPage() {
                     </div>
                   ))}
                 <Button
-                  onClick={() => router.push('/goals')}
+                  asChild
                   className="w-full mt-2 bg-gradient-to-r from-ashinaga-teal-600 to-ashinaga-green-600 hover:from-ashinaga-teal-700 hover:to-ashinaga-green-700 dark:from-ashinaga-teal-800 dark:to-ashinaga-green-800 dark:hover:from-ashinaga-teal-900 dark:hover:to-ashinaga-green-900"
                 >
-                  <Target className="h-4 w-4 mr-2" />
-                  Update My Progress
+                  <Link href="/goals">
+                    <Target className="h-4 w-4 mr-2" />
+                    Update My Progress
+                  </Link>
                 </Button>
               </>
             ) : (
               <div className="text-center py-4">
                 <Target className="h-8 w-8 mx-auto text-gray-300 dark:text-gray-600 mb-2" />
                 <p className="text-sm text-gray-500 dark:text-gray-400">No active LDF goals</p>
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="text-xs mt-1"
-                  onClick={() => router.push('/goals')}
-                >
-                  Set your first LDF goal
+                <Button variant="link" size="sm" className="text-xs mt-1" asChild>
+                  <Link href="/goals">Set your first LDF goal</Link>
                 </Button>
               </div>
             )}
@@ -281,13 +273,10 @@ export default function DashboardPage() {
                 <Bell className="h-5 w-5" />
                 Recent Announcements
               </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs shrink-0"
-                onClick={() => router.push('/announcements')}
-              >
-                View All <ArrowRight className="h-3 w-3 ml-1" />
+              <Button variant="ghost" size="sm" className="text-xs shrink-0" asChild>
+                <Link href="/announcements">
+                  View All <ArrowRight className="h-3 w-3 ml-1" />
+                </Link>
               </Button>
             </CardTitle>
           </CardHeader>
@@ -337,10 +326,12 @@ export default function DashboardPage() {
             <Button
               variant="outline"
               className="h-auto flex-col py-4 border-ashinaga-teal-200 dark:border-border hover:bg-ashinaga-teal-50 dark:hover:bg-muted bg-transparent"
-              onClick={() => router.push('/tasks')}
+              asChild
             >
-              <CheckSquare className="h-5 w-5 mb-2" />
-              <span className="text-sm">View My Tasks</span>
+              <Link href="/tasks">
+                <CheckSquare className="h-5 w-5 mb-2" />
+                <span className="text-sm">View My Tasks</span>
+              </Link>
             </Button>
             <NewRequestDialog
               trigger={
@@ -356,18 +347,22 @@ export default function DashboardPage() {
             <Button
               variant="outline"
               className="h-auto flex-col py-4 border-ashinaga-teal-200 dark:border-border hover:bg-ashinaga-teal-50 dark:hover:bg-muted bg-transparent"
-              onClick={() => router.push('/announcements')}
+              asChild
             >
-              <Bell className="h-5 w-5 mb-2" />
-              <span className="text-sm">View Announcements</span>
+              <Link href="/announcements">
+                <Bell className="h-5 w-5 mb-2" />
+                <span className="text-sm">View Announcements</span>
+              </Link>
             </Button>
             <Button
               variant="outline"
               className="h-auto flex-col py-4 border-ashinaga-teal-200 dark:border-border hover:bg-ashinaga-teal-50 dark:hover:bg-muted bg-transparent"
-              onClick={() => router.push('/goals')}
+              asChild
             >
-              <Target className="h-5 w-5 mb-2" />
-              <span className="text-sm">My LDF & Progress</span>
+              <Link href="/goals">
+                <Target className="h-5 w-5 mb-2" />
+                <span className="text-sm">My LDF & Progress</span>
+              </Link>
             </Button>
           </div>
         </CardContent>

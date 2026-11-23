@@ -87,7 +87,9 @@ export function ScholarFaqs() {
           <HelpCircle className="h-5 w-5" />
         </div>
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white sm:text-3xl">FAQs</h1>
+          <h1 className="hidden text-2xl font-bold md:block print:block text-gray-900 dark:text-white sm:text-3xl">
+            FAQs
+          </h1>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
             Answers for your current programme stage.
           </p>

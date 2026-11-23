@@ -131,6 +131,30 @@ describe('DashboardPage', () => {
     );
   });
 
+  it('renders dashboard navigation actions as links', async () => {
+    renderDashboard();
+
+    await waitFor(() => {
+      expect(screen.getByRole('link', { name: 'Update My Progress' })).toHaveAttribute(
+        'href',
+        '/goals'
+      );
+    });
+
+    const viewAll = screen.getAllByRole('link', { name: /View All/i });
+    expect(viewAll[0]).toHaveAttribute('href', '/goals');
+    expect(viewAll[1]).toHaveAttribute('href', '/announcements');
+    expect(screen.getByRole('link', { name: 'View My Tasks' })).toHaveAttribute('href', '/tasks');
+    expect(screen.getByRole('link', { name: 'View Announcements' })).toHaveAttribute(
+      'href',
+      '/announcements'
+    );
+    expect(screen.getByRole('link', { name: 'My LDF & Progress' })).toHaveAttribute(
+      'href',
+      '/goals'
+    );
+  });
+
   it('shows Prep Year subtitle and intended pathway instead of university/year', async () => {
     mockGetMyProfile.mockResolvedValue({
       program: 'Prep',
