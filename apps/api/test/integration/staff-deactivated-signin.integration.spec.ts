@@ -1,6 +1,7 @@
 /**
  * Deactivated staff are rejected when the session is created, through the real Better Auth
- * handler and the real StaffGuard (no guard overrides).
+ * handler, and leftover sessions are blocked by the real AuthGuard and StaffGuard (no guard
+ * overrides).
  */
 import { randomBytes } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
@@ -142,5 +143,26 @@ describe('Deactivated staff sign-in (integration)', () => {
       .get('/api/users/staff/manage')
       .set('Cookie', cookie)
       .expect(403);
+  });
+
+  it('AuthGuard blocks a session that predates deactivation with ACCOUNT_DEACTIVATED', async () => {
+    const { email, userId } = await signUpStaff();
+    const res = await signIn(email, PASSWORD).expect(200);
+    const cookie = cookieFrom(res);
+    expect(cookie).not.toBe('');
+
+    await request(app.getHttpServer())
+      .get('/api/documents/types')
+      .set('Cookie', cookie)
+      .expect(200);
+
+    await db.update(staff).set({ isActive: false }).where(eq(staff.userId, userId));
+
+    const blocked = await request(app.getHttpServer())
+      .get('/api/documents/types')
+      .set('Cookie', cookie)
+      .expect(403);
+    expect(blocked.body.code).toBe('ACCOUNT_DEACTIVATED');
+    expect(blocked.body.message).toMatch(/deactivated/i);
   });
 });

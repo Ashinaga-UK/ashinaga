@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, NotFoundException } from '@nes
 import { Test, type TestingModule } from '@nestjs/testing';
 import { AvatarsService } from '../avatars/avatars.service';
 import { database } from '../db/connection';
+import { sessions } from '../db/schema';
 import { UsersService } from './users.service';
 
 jest.mock('../db/connection', () => ({
@@ -49,16 +50,30 @@ function mockDb({
   // All reads happen inside the transaction, in this order: the locked set of
   // active super-admins, then the caller, then the target.
   const locks: unknown[][] = [];
-  const set = jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue(undefined) });
+  // Updates are staged and only applied to `committed` when the callback resolves,
+  // so a throw inside the transaction behaves like a rollback.
+  const committed: Record<string, unknown> = {};
+  let staged: Record<string, unknown> = {};
+  const set = jest.fn((values: Record<string, unknown>) => {
+    staged = { ...staged, ...values };
+    return { where: jest.fn().mockResolvedValue(undefined) };
+  });
+  const deleteWhere = jest.fn().mockResolvedValue(undefined);
   const tx = {
     select: selectReturning(
       [activeSuperAdmins, requester ? [requester] : [], target ? [target] : []],
       locks
     ),
     update: jest.fn().mockReturnValue({ set }),
+    delete: jest.fn().mockReturnValue({ where: deleteWhere }),
   };
-  (database.transaction as jest.Mock).mockImplementation((cb: (t: typeof tx) => unknown) => cb(tx));
-  return { tx, set, locks };
+  (database.transaction as jest.Mock).mockImplementation(async (cb: (t: typeof tx) => unknown) => {
+    staged = {};
+    const result = await cb(tx);
+    Object.assign(committed, staged);
+    return result;
+  });
+  return { tx, set, locks, deleteWhere, committed };
 }
 
 const superAdmin: StaffRow = { userId: requesterId, isActive: true, isSuperAdmin: true };
@@ -213,14 +228,8 @@ describe('UsersService', () => {
     });
   });
   describe('removeStaff', () => {
-    beforeEach(() => {
-      (database.delete as jest.Mock).mockReturnValue({
-        where: jest.fn().mockResolvedValue(undefined),
-      });
-    });
-
-    it('deactivates an active staff member and clears their sessions', async () => {
-      const { set } = mockDb({
+    it('deactivates an active staff member and clears their sessions in the same transaction', async () => {
+      const { tx, set, deleteWhere, committed } = mockDb({
         requester: superAdmin,
         activeSuperAdmins: [{ userId: requesterId }],
         target: { userId: targetId, isActive: true, isSuperAdmin: false },
@@ -230,7 +239,22 @@ describe('UsersService', () => {
 
       expect(result).toEqual({ success: true, alreadyInactive: false });
       expect(set).toHaveBeenCalledWith(expect.objectContaining({ isActive: false }));
-      expect(database.delete).toHaveBeenCalled();
+      expect(tx.delete).toHaveBeenCalledWith(sessions);
+      expect(deleteWhere).toHaveBeenCalled();
+      expect(committed.isActive).toBe(false);
+      expect(database.delete).not.toHaveBeenCalled();
+    });
+
+    it('rejects and leaves the member active when clearing sessions fails', async () => {
+      const { deleteWhere, committed } = mockDb({
+        requester: superAdmin,
+        activeSuperAdmins: [{ userId: requesterId }],
+        target: { userId: targetId, isActive: true, isSuperAdmin: false },
+      });
+      deleteWhere.mockRejectedValueOnce(new Error('connection lost'));
+
+      await expect(service.removeStaff(targetId, requesterId)).rejects.toThrow('connection lost');
+      expect(committed).not.toHaveProperty('isActive');
     });
 
     it('removes another super-admin when one remains', async () => {
@@ -258,7 +282,7 @@ describe('UsersService', () => {
         new BadRequestException('Cannot remove the last super-admin')
       );
       expect(tx.update).not.toHaveBeenCalled();
-      expect(database.delete).not.toHaveBeenCalled();
+      expect(tx.delete).not.toHaveBeenCalled();
     });
 
     it('returns 403 and writes nothing when the caller was demoted before the lock', async () => {
@@ -294,7 +318,7 @@ describe('UsersService', () => {
         alreadyInactive: true,
       });
       expect(tx.update).not.toHaveBeenCalled();
-      expect(database.delete).not.toHaveBeenCalled();
+      expect(tx.delete).not.toHaveBeenCalled();
     });
   });
 });
