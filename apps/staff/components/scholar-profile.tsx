@@ -338,7 +338,8 @@ export function ScholarProfilePage({
               <DialogHeader>
                 <DialogTitle>Edit scholar profile</DialogTitle>
                 <DialogDescription>
-                  Update basic info, contact details, and academic information.
+                  Update basic info, contact and emergency details, academic information, and
+                  personal plans.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
@@ -435,6 +436,68 @@ export function ScholarProfilePage({
                       placeholder="Street, city, region (home country)"
                     />
                   </div>
+                  <h3 className="col-span-2 border-b pb-1 pt-2 text-sm font-semibold">
+                    Travel documents &amp; emergency contact
+                  </h3>
+                  <div>
+                    <Label htmlFor="edit-passport-expiration-date">Passport expiration date</Label>
+                    <Input
+                      id="edit-passport-expiration-date"
+                      type="date"
+                      value={editForm.passportExpirationDate ?? ''}
+                      onChange={(e) =>
+                        setEditForm((f) => ({ ...f, passportExpirationDate: e.target.value }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-visa-expiration-date">Visa expiration date</Label>
+                    <Input
+                      id="edit-visa-expiration-date"
+                      type="date"
+                      value={editForm.visaExpirationDate ?? ''}
+                      onChange={(e) =>
+                        setEditForm((f) => ({ ...f, visaExpirationDate: e.target.value }))
+                      }
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Label htmlFor="edit-emergency-contact-country-of-study">
+                      Emergency contact (country of study)
+                    </Label>
+                    <Textarea
+                      id="edit-emergency-contact-country-of-study"
+                      value={editForm.emergencyContactCountryOfStudy ?? ''}
+                      onChange={(e) =>
+                        setEditForm((f) => ({
+                          ...f,
+                          emergencyContactCountryOfStudy: e.target.value,
+                        }))
+                      }
+                      placeholder="Name, relationship, phone, email"
+                      rows={2}
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Label htmlFor="edit-emergency-contact-home-country">
+                      Emergency contact (home country)
+                    </Label>
+                    <Textarea
+                      id="edit-emergency-contact-home-country"
+                      value={editForm.emergencyContactHomeCountry ?? ''}
+                      onChange={(e) =>
+                        setEditForm((f) => ({
+                          ...f,
+                          emergencyContactHomeCountry: e.target.value,
+                        }))
+                      }
+                      placeholder="Name, relationship, phone, email"
+                      rows={2}
+                    />
+                  </div>
+                  <h3 className="col-span-2 border-b pb-1 pt-2 text-sm font-semibold">
+                    Academic details
+                  </h3>
                   <div>
                     <Label>Program</Label>
                     <Select
@@ -604,12 +667,91 @@ export function ScholarProfilePage({
                       </div>
                     </>
                   )}
+                  <div>
+                    <Label htmlFor="edit-university-id">University ID</Label>
+                    <Input
+                      id="edit-university-id"
+                      value={editForm.universityId ?? ''}
+                      onChange={(e) => setEditForm((f) => ({ ...f, universityId: e.target.value }))}
+                      placeholder="University student ID"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-major-category">Major category</Label>
+                    <Input
+                      id="edit-major-category"
+                      value={editForm.majorCategory ?? ''}
+                      onChange={(e) =>
+                        setEditForm((f) => ({ ...f, majorCategory: e.target.value }))
+                      }
+                      placeholder="Major category"
+                    />
+                  </div>
                   <div className="col-span-2">
-                    <Label>Bio</Label>
+                    <Label htmlFor="edit-field-of-study">Field of study</Label>
+                    <Input
+                      id="edit-field-of-study"
+                      value={editForm.fieldOfStudy ?? ''}
+                      onChange={(e) => setEditForm((f) => ({ ...f, fieldOfStudy: e.target.value }))}
+                      placeholder="Field of study"
+                    />
+                  </div>
+                  <h3 className="col-span-2 border-b pb-1 pt-2 text-sm font-semibold">
+                    About &amp; plans
+                  </h3>
+                  <div className="col-span-2">
+                    <Label htmlFor="edit-bio">Bio</Label>
                     <Textarea
+                      id="edit-bio"
                       value={editForm.bio ?? ''}
                       onChange={(e) => setEditForm((f) => ({ ...f, bio: e.target.value }))}
                       placeholder="Short bio"
+                      rows={3}
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Label htmlFor="edit-dietary-information">Dietary information</Label>
+                    <Textarea
+                      id="edit-dietary-information"
+                      value={editForm.dietaryInformation ?? ''}
+                      onChange={(e) =>
+                        setEditForm((f) => ({ ...f, dietaryInformation: e.target.value }))
+                      }
+                      placeholder="Dietary requirements or allergies"
+                      rows={2}
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Label htmlFor="edit-kokorozashi">Kokorozashi</Label>
+                    <Textarea
+                      id="edit-kokorozashi"
+                      value={editForm.kokorozashi ?? ''}
+                      onChange={(e) => setEditForm((f) => ({ ...f, kokorozashi: e.target.value }))}
+                      placeholder="Kokorozashi"
+                      rows={3}
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Label htmlFor="edit-long-term-career-plan">Long-term career plan</Label>
+                    <Textarea
+                      id="edit-long-term-career-plan"
+                      value={editForm.longTermCareerPlan ?? ''}
+                      onChange={(e) =>
+                        setEditForm((f) => ({ ...f, longTermCareerPlan: e.target.value }))
+                      }
+                      placeholder="Long-term career plan"
+                      rows={3}
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Label htmlFor="edit-post-graduation-plan">Post-graduation plan</Label>
+                    <Textarea
+                      id="edit-post-graduation-plan"
+                      value={editForm.postGraduationPlan ?? ''}
+                      onChange={(e) =>
+                        setEditForm((f) => ({ ...f, postGraduationPlan: e.target.value }))
+                      }
+                      placeholder="Post-graduation plan"
                       rows={3}
                     />
                   </div>
