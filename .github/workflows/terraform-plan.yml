@@ -53,6 +53,14 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Show assumed role
+        run: |
+          set -euo pipefail
+          aws sts get-caller-identity
+          ARN="$(aws sts get-caller-identity --query Arn --output text)"
+          ROLE_NAME="$(echo "${ARN}" | sed -n 's|.*/assumed-role/\([^/]*\)/.*|\1|p')"
+          echo "GHA role name (for grant-gha-terraform-state-access.sh): ${ROLE_NAME}"
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
