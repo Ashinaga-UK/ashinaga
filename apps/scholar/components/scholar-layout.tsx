@@ -27,6 +27,7 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarInset,
   SidebarMenu,
   SidebarMenuButton,
@@ -43,19 +44,52 @@ interface ScholarLayoutProps {
 
 type ProgramStage = 'prep_year' | 'scholar';
 
-const NAV_ITEMS = [
-  { id: 'dashboard', href: '/dashboard', label: 'Overview', icon: Home },
-  { id: 'profile', href: '/profile', label: 'My Profile', icon: User },
-  { id: 'documents', href: '/documents', label: 'My Documents', icon: FolderOpen },
-  { id: 'goals', href: '/goals', label: 'My LDF', icon: Target },
-  { id: 'annual-review', href: '/annual-review', label: 'My Annual Review', icon: ClipboardCheck },
-  { id: 'proposal', href: '/proposal', label: 'My Proposal', icon: PenLine },
-  { id: 'tasks', href: '/tasks', label: 'My Tasks', icon: CheckSquare },
-  { id: 'requests', href: '/requests', label: 'My Requests', icon: FileText },
-  { id: 'announcements', href: '/announcements', label: 'Announcements', icon: MessageSquare },
-  { id: 'resources', href: '/resources', label: 'Resources', icon: Library },
-  { id: 'faqs', href: '/faqs', label: 'FAQs', icon: HelpCircle },
+const NAV_GROUPS = [
+  { id: 'overview', label: null },
+  { id: 'programme', label: 'My programme' },
+  { id: 'updates', label: 'Updates & help' },
+  { id: 'profile', label: null },
 ] as const;
+
+type NavGroupId = (typeof NAV_GROUPS)[number]['id'];
+
+const NAV_ITEMS = [
+  { id: 'dashboard', group: 'overview', href: '/dashboard', label: 'Overview', icon: Home },
+  { id: 'tasks', group: 'programme', href: '/tasks', label: 'My Tasks', icon: CheckSquare },
+  { id: 'requests', group: 'programme', href: '/requests', label: 'My Requests', icon: FileText },
+  { id: 'goals', group: 'programme', href: '/goals', label: 'My LDF', icon: Target },
+  {
+    id: 'annual-review',
+    group: 'programme',
+    href: '/annual-review',
+    label: 'My Annual Review',
+    icon: ClipboardCheck,
+  },
+  {
+    id: 'documents',
+    group: 'programme',
+    href: '/documents',
+    label: 'My Documents',
+    icon: FolderOpen,
+  },
+  { id: 'proposal', group: 'programme', href: '/proposal', label: 'My Proposal', icon: PenLine },
+  {
+    id: 'announcements',
+    group: 'updates',
+    href: '/announcements',
+    label: 'Announcements',
+    icon: MessageSquare,
+  },
+  { id: 'resources', group: 'updates', href: '/resources', label: 'Resources', icon: Library },
+  { id: 'faqs', group: 'updates', href: '/faqs', label: 'FAQs', icon: HelpCircle },
+  { id: 'profile', group: 'profile', href: '/profile', label: 'My Profile', icon: User },
+] as const satisfies readonly {
+  id: string;
+  group: NavGroupId;
+  href: string;
+  label: string;
+  icon: unknown;
+}[];
 
 type NavItem = (typeof NAV_ITEMS)[number];
 
@@ -73,12 +107,10 @@ function getVisibleNavItems(
   });
 }
 
-function getScholarSection(pathname: string) {
-  return (
-    NAV_ITEMS.find(
-      (item) =>
-        pathname === item.href || (item.href !== HOME_HREF && pathname.startsWith(`${item.href}/`))
-    ) ?? NAV_ITEMS[0]
+function findNavItem(pathname: string): NavItem | undefined {
+  return NAV_ITEMS.find(
+    (item) =>
+      pathname === item.href || (item.href !== HOME_HREF && pathname.startsWith(`${item.href}/`))
   );
 }
 
@@ -94,6 +126,7 @@ function ScholarSidebar({
   const pathname = usePathname();
   const { isMobile, setOpenMobile } = useSidebar();
   const navItems = getVisibleNavItems(programStage, profileStatus);
+  const activeItem = findNavItem(pathname);
 
   return (
     <Sidebar
@@ -114,34 +147,48 @@ function ScholarSidebar({
         </div>
       ) : null}
       <SidebarContent className="overscroll-none">
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = pathname === item.href;
-                return (
-                  <SidebarMenuItem key={item.id}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive}
-                      tooltip={item.label}
-                      className={cn(
-                        isActive &&
-                          'bg-ashinaga-teal-50 text-ashinaga-teal-700 hover:bg-ashinaga-teal-100 dark:bg-accent dark:text-accent-foreground dark:hover:bg-accent/80'
-                      )}
-                    >
-                      <Link href={item.href} onClick={() => setOpenMobile(false)}>
-                        <Icon />
-                        <span>{item.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {NAV_GROUPS.map((group) => {
+          const items = navItems.filter((item) => item.group === group.id);
+          if (items.length === 0) return null;
+          const labelId = `scholar-nav-${group.id}`;
+          return (
+            <SidebarGroup key={group.id}>
+              {group.label ? (
+                <SidebarGroupLabel id={labelId}>{group.label}</SidebarGroupLabel>
+              ) : null}
+              <SidebarGroupContent>
+                <SidebarMenu aria-labelledby={group.label ? labelId : undefined}>
+                  {items.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = activeItem?.id === item.id;
+                    return (
+                      <SidebarMenuItem key={item.id}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={isActive}
+                          tooltip={item.label}
+                          className={cn(
+                            isActive &&
+                              'bg-ashinaga-teal-50 text-ashinaga-teal-700 hover:bg-ashinaga-teal-100 dark:bg-accent dark:text-accent-foreground dark:hover:bg-accent/80'
+                          )}
+                        >
+                          <Link
+                            href={item.href}
+                            aria-current={isActive ? 'page' : undefined}
+                            onClick={() => setOpenMobile(false)}
+                          >
+                            <Icon />
+                            <span>{item.label}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          );
+        })}
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
@@ -159,7 +206,7 @@ function ScholarSidebar({
 
 function ScholarHeader({ programStage }: { programStage: ProgramStage | null }) {
   const pathname = usePathname();
-  const section = getScholarSection(pathname);
+  const section = findNavItem(pathname) ?? NAV_ITEMS[0];
   const isHome = section.href === HOME_HREF;
   const brandTitle =
     programStage === 'prep_year' ? 'Ashinaga Prep Year' : 'Ashinaga Scholar Portal';

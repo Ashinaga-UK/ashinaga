@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { ScholarLayout } from '../scholar-layout';
@@ -22,6 +22,16 @@ jest.mock('../../lib/api-client', () => ({
   }),
   markScholarNotificationsRead: jest.fn().mockResolvedValue({ updated: 0 }),
 }));
+
+jest.mock('next/link', () => {
+  const { createElement, forwardRef } = jest.requireActual('react');
+  return {
+    __esModule: true,
+    default: forwardRef((props: Record<string, unknown>, ref: unknown) =>
+      createElement('a', { ...props, ref })
+    ),
+  };
+});
 
 jest.mock('next-themes', () => ({
   useTheme: () => ({ theme: 'light', setTheme: jest.fn() }),
@@ -265,6 +275,66 @@ describe('ScholarLayout', () => {
       '/documents'
     );
     expect(screen.getByRole('link', { name: 'FAQs' })).toHaveAttribute('href', '/faqs');
+  });
+
+  it('marks only the active sidebar link with aria-current', async () => {
+    navState.pathname = '/requests';
+    await renderLayout();
+
+    expect(screen.getByRole('link', { name: 'My Requests' })).toHaveAttribute(
+      'aria-current',
+      'page'
+    );
+    expect(document.querySelectorAll('[aria-current="page"]')).toHaveLength(1);
+    expect(screen.getByRole('link', { name: 'Overview' })).not.toHaveAttribute('aria-current');
+  });
+
+  it('activates the parent item on nested paths', async () => {
+    navState.pathname = '/goals/abc-123';
+    await renderLayout();
+
+    expect(screen.getByRole('link', { name: 'My LDF' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('banner')).toContainElement(
+      screen.getByRole('heading', { name: 'My LDF' })
+    );
+  });
+
+  it('does not highlight Overview in the sidebar on unknown paths', async () => {
+    navState.pathname = '/somewhere-else';
+    await renderLayout();
+
+    expect(screen.getByRole('link', { name: 'Overview' })).not.toHaveAttribute('aria-current');
+    expect(document.querySelectorAll('[aria-current="page"]')).toHaveLength(0);
+  });
+
+  it('groups nav items and leaves Profile unlabelled at the end', async () => {
+    await renderLayout();
+
+    const labels = Array.from(document.querySelectorAll('[data-sidebar="group-label"]')).map(
+      (el) => el.textContent
+    );
+    expect(labels).toEqual(['My programme', 'Updates & help']);
+
+    const programme = screen.getByRole('list', { name: 'My programme' });
+    expect(within(programme).getByRole('link', { name: 'My Tasks' })).toBeInTheDocument();
+    expect(within(programme).getByRole('link', { name: 'My Requests' })).toBeInTheDocument();
+    expect(within(programme).getByRole('link', { name: 'My LDF' })).toBeInTheDocument();
+    expect(
+      await within(programme).findByRole('link', { name: 'My Annual Review' })
+    ).toBeInTheDocument();
+
+    const updates = screen.getByRole('list', { name: 'Updates & help' });
+    expect(within(updates).getByRole('link', { name: 'Announcements' })).toBeInTheDocument();
+    expect(within(updates).getByRole('link', { name: 'Resources' })).toBeInTheDocument();
+    expect(within(updates).getByRole('link', { name: 'FAQs' })).toBeInTheDocument();
+
+    const profileLink = screen.getByRole('link', { name: 'My Profile' });
+    const profileGroup = profileLink.closest('[data-sidebar="group"]') as HTMLElement;
+    expect(profileGroup.querySelector('[data-sidebar="group-label"]')).toBeNull();
+    const navLinks = Array.from(
+      document.querySelectorAll('[data-sidebar="content"] [data-sidebar="menu-button"]')
+    );
+    expect(navLinks.at(-1)).toBe(profileLink);
   });
 
   it('does not show annual review when profile loading fails', async () => {
