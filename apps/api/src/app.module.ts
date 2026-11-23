@@ -23,6 +23,7 @@ import { RequestsModule } from './requests/requests.module';
 import { ResourcesModule } from './resources/resources.module';
 import { ScholarActivityReportModule } from './scholar-activity-report/scholar-activity-report.module';
 import { ScholarsModule } from './scholars/scholars.module';
+import { SubmissionReportModule } from './submission-report/submission-report.module';
 import { TasksModule } from './tasks/tasks.module';
 import { UsersModule } from './users/users.module';
 
@@ -53,6 +54,7 @@ import { UsersModule } from './users/users.module';
     AnnualUpdatesModule,
     PrepYearReportModule,
     ScholarActivityReportModule,
+    SubmissionReportModule,
     PlatformsModule,
   ],
   controllers: [AppController],
