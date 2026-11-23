@@ -253,6 +253,13 @@
       "when": 1790871742232,
       "tag": "0035_scholar_activity_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1793128068928,
+      "tag": "0036_cheerful_lethal_legion",
+      "breakpoints": true
     }
   ]
 }

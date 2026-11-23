@@ -35,7 +35,7 @@ describe('Resources API – scholar audience filtering (integration)', () => {
         title,
         description: `${title} description`,
         type: 'Guide',
-        category: 'Support',
+        category: 'Other',
         url: 'https://example.com/resource',
         status: 'live',
         createdBy: staffActor.userId,
