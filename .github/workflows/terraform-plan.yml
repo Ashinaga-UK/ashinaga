@@ -58,7 +58,8 @@ jobs:
           set -euo pipefail
           aws sts get-caller-identity
           ARN="$(aws sts get-caller-identity --query Arn --output text)"
-          ROLE_NAME="$(echo "${ARN}" | sed -n 's|.*/assumed-role/\([^/]*\)/.*|\1|p')"
+          ROLE_NAME="${ARN#*assumed-role/}"
+          ROLE_NAME="${ROLE_NAME%%/*}"
           echo "GHA role name (for grant-gha-terraform-state-access.sh): ${ROLE_NAME}"
 
       - name: Setup Terraform
