@@ -11,7 +11,14 @@ const authClient = createAuthClient({
   baseURL: apiBaseUrl,
 }) as any;
 
-export const { signIn, signUp, signOut, useSession, forgetPassword, resetPassword, getSession } =
-  authClient;
+export const {
+  signIn,
+  signUp,
+  signOut,
+  useSession,
+  requestPasswordReset,
+  resetPassword,
+  getSession,
+} = authClient;
 
 export { authClient };
