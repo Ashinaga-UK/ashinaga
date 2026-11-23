@@ -65,44 +65,35 @@ jobs:
         run: |
           set -euo pipefail
           SERVICE_NAME="ashinaga-api-${ENVIRONMENT}"
-          SERVICE_ARN=$(aws apprunner list-services \
-            --query "ServiceSummaryList[?ServiceName=='${SERVICE_NAME}'].ServiceArn" \
-            --output text)
+          # ListServices summaries only — avoid DescribeService, which returns
+          # RuntimeEnvironmentVariables (DB_PASSWORD, BETTER_AUTH_SECRET, etc.).
+          aws apprunner list-services \
+            --query "ServiceSummaryList[?ServiceName=='${SERVICE_NAME}'] | [0].{
+              ServiceArn:ServiceArn,
+              ServiceId:ServiceId,
+              ServiceName:ServiceName,
+              Status:Status,
+              ServiceUrl:ServiceUrl,
+              CreatedAt:CreatedAt,
+              UpdatedAt:UpdatedAt
+            }" --output json | tee /tmp/service.json
 
-          if [ -z "$SERVICE_ARN" ] || [ "$SERVICE_ARN" = "None" ]; then
+          if ! python3 -c 'import json,sys; d=json.load(open("/tmp/service.json")); sys.exit(0 if isinstance(d,dict) and d.get("ServiceArn") and d.get("ServiceId") else 1)'; then
             echo "No App Runner service named ${SERVICE_NAME}"
             exit 1
           fi
+          SERVICE_ARN=$(python3 -c 'import json; print(json.load(open("/tmp/service.json"))["ServiceArn"])')
+          SERVICE_ID=$(python3 -c 'import json; print(json.load(open("/tmp/service.json"))["ServiceId"])')
 
           echo "SERVICE_ARN=$SERVICE_ARN" >> "$GITHUB_ENV"
+          echo "SERVICE_ID=$SERVICE_ID" >> "$GITHUB_ENV"
           echo "SERVICE_NAME=$SERVICE_NAME" >> "$GITHUB_ENV"
 
           echo "## App Runner: ${SERVICE_NAME}" >> "$GITHUB_STEP_SUMMARY"
           echo "ARN: \`$SERVICE_ARN\`" >> "$GITHUB_STEP_SUMMARY"
-
-          # Intentionally omit RuntimeEnvironmentVariables (contains secrets).
-          aws apprunner describe-service --service-arn "$SERVICE_ARN" \
-            --query 'Service.{
-              Status:Status,
-              ServiceUrl:ServiceUrl,
-              CreatedAt:CreatedAt,
-              UpdatedAt:UpdatedAt,
-              Image:SourceConfiguration.ImageRepository.ImageIdentifier,
-              AutoDeploy:SourceConfiguration.AutoDeploymentsEnabled,
-              CPU:InstanceConfiguration.Cpu,
-              Memory:InstanceConfiguration.Memory,
-              Health:HealthCheckConfiguration,
-              Egress:NetworkConfiguration.EgressConfiguration,
-              Ingress:NetworkConfiguration.IngressConfiguration
-            }' --output json | tee /tmp/service.json
-
           echo '```json' >> "$GITHUB_STEP_SUMMARY"
           cat /tmp/service.json >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
-
-          SERVICE_ID=$(aws apprunner describe-service --service-arn "$SERVICE_ARN" \
-            --query 'Service.ServiceId' --output text)
-          echo "SERVICE_ID=$SERVICE_ID" >> "$GITHUB_ENV"
 
       - name: Recent App Runner operations
         run: |

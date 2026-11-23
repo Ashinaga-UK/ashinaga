@@ -10,6 +10,20 @@ reuse the existing `token.actions.githubusercontent.com` provider in the account
 
 Replace placeholders: `<ACCOUNT_ID>`, `<env>` (`prod` or `test`), region `eu-west-3`.
 
+## Prerequisites (do these first)
+
+1. **Environment branch policies** (Settings → Environments → `prod` / `test` →
+   Deployment branches). These are required before creating the diagnose role —
+   the trust policy only proves the job ran in a given environment; branch
+   policies stop a random branch from obtaining it:
+   - `prod`: limit to `main` only
+   - `test`: limit to `test` and `main`
+2. **Deploy role unchanged on `main` until `test` is promoted.** Deploy API
+   keeps using `AWS_ROLE_ARN`. Only Diagnose API uses `AWS_DIAGNOSE_ROLE_ARN`.
+   Do not swap deploy over to the diagnose role.
+
+Optional but recommended: required reviewers on each environment.
+
 ## Role names
 
 One role per environment, so the trust policy can pin the GitHub environment:
@@ -47,6 +61,11 @@ Replace `<env>` with `prod` or `test`. The `sub` claim uses the GitHub
 
 Name suggestion: `ashinaga-diagnose-api-<env>-readonly`. Replace `<env>`.
 
+`DescribeService` is **not** included: its response contains
+`RuntimeEnvironmentVariables` (plaintext secrets from deploy-api). The workflow
+takes `ServiceId`, `Status`, `ServiceUrl`, and `UpdatedAt` from `ListServices`
+summaries instead.
+
 ```json
 {
   "Version": "2012-10-17",
@@ -58,12 +77,9 @@ Name suggestion: `ashinaga-diagnose-api-<env>-readonly`. Replace `<env>`.
       "Resource": "*"
     },
     {
-      "Sid": "AppRunnerDescribeOneService",
+      "Sid": "AppRunnerListOperations",
       "Effect": "Allow",
-      "Action": [
-        "apprunner:DescribeService",
-        "apprunner:ListOperations"
-      ],
+      "Action": "apprunner:ListOperations",
       "Resource": "arn:aws:apprunner:eu-west-3:<ACCOUNT_ID>:service/ashinaga-api-<env>/*"
     },
     {
@@ -98,20 +114,22 @@ Notes on the scoping limits:
 - `logs:DescribeLogGroups` is granted on all log groups in the region (the
   workflow filters by `--log-group-name-prefix`); actual log **content** access
   (`FilterLogEvents`) is limited to `/aws/apprunner/ashinaga-api-<env>/*`.
-- The workflow runs `list-operations` and `describe-service` (twice), so those
-  are included. Nothing here allows create/update/delete/deploy.
+- The workflow uses `list-services` for the service summary and
+  `list-operations` for recent ops. Nothing here allows create/update/delete/deploy
+  or `DescribeService`.
 
 ## Create the role in the console
 
-1. IAM → Policies → Create policy → JSON → paste the permission policy for the
+1. Confirm the **Prerequisites** above (branch policies) are in place.
+2. IAM → Policies → Create policy → JSON → paste the permission policy for the
    environment → name it `ashinaga-diagnose-api-<env>-readonly`.
-2. IAM → Roles → Create role → **Custom trust policy** → paste the trust policy
+3. IAM → Roles → Create role → **Custom trust policy** → paste the trust policy
    (with the right `<env>`).
-3. Attach the permission policy from step 1. Do not attach any managed
+4. Attach the permission policy from step 2. Do not attach any managed
    `*FullAccess` or `ReadOnlyAccess` policy.
-4. Name the role `ashinaga-diagnose-api-<env>`. Set max session duration to 1 hour.
-5. Copy the role ARN.
-6. Repeat for the other environment.
+5. Name the role `ashinaga-diagnose-api-<env>`. Set max session duration to 1 hour.
+6. Copy the role ARN.
+7. Repeat for the other environment.
 
 Check that the OIDC provider already exists (IAM → Identity providers). Do not
 create a second one.
@@ -135,21 +153,10 @@ Then run Actions → Diagnose API → Run workflow, once per environment.
 
 ## Security notes
 
-- **Environment branch policies are the stronger lever.** The trust policy only
-  proves the job ran in a given GitHub environment. In each environment's
-  settings, restrict **Deployment branches** (for example, `main` only for
-  `prod`) and consider required reviewers, so a branch with a modified
-  workflow cannot obtain the role.
 - **This is a public repository.** Workflow runs, logs, and step summaries are
   visible to anyone. The workflow deliberately prints only allow-listed
   aggregate fields and drops raw log messages. Do not add steps that echo
   service configuration, log messages, or AWS CLI stderr (AccessDenied errors
   include account and role ARNs).
-- **`DescribeService` can expose env vars server-side.** The API response
-  contains `SourceConfiguration.ImageRepository.ImageConfiguration.RuntimeEnvironmentVariables`
-  (and secret references). The workflow's `--query` projection only hides them
-  from the printed output. It is a client-side filter, **not** an IAM control:
-  anyone who can assume this role can call `describe-service` and read them.
-  Treat the role as able to read App Runner runtime configuration, and keep
-  that in mind when deciding who can run the workflow or push to branches
-  allowed by the environment.
+- **Do not reintroduce `DescribeService`.** Even with a projected `--query`, the
+  API still returns runtime env vars to anyone who can assume this role.
