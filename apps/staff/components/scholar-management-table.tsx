@@ -119,8 +119,10 @@ export function ScholarManagementTable({
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Reset page only when the applied search term changes — not on every mount
-  // debounce tick (that used to force page 1 ~500ms after load and race Next clicks).
+  // Reset to page 1 when the applied (debounced) search term changes. Still runs
+  // once on mount; harmless because currentPage starts at 1. Avoids the old
+  // pattern of resetting on every searchTerm keystroke / debounce tick (~500ms
+  // after load), which raced with Next-page clicks.
   useEffect(() => {
     setCurrentPage(1);
   }, [debouncedSearchTerm]);
