@@ -56,8 +56,8 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          # Account roots need >= 1.7 (import for_each). Pin a current 1.x.
-          terraform_version: '1.9.8'
+          # Matches account required_version (>= 1.11): import for_each + S3 use_lockfile.
+          terraform_version: '1.11.4'
           terraform_wrapper: false
 
       - name: Terraform init
