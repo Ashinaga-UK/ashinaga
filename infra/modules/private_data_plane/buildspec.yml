@@ -1,0 +1,11 @@
+version: 0.2
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+    commands:
+      - apt-get update -y && apt-get install -y postgresql-client
+      - corepack enable && corepack prepare pnpm@10.15.1 --activate
+  build:
+    commands:
+      - bash infra/modules/private_data_plane/run-task.sh

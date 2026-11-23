@@ -1,0 +1,129 @@
+name: Terraform Plan
+
+# Read-only-ish plan against an account root via OIDC (AWS_ROLE_ARN).
+# Used to paste first-apply / pre-lock plans on PRs (e.g. ASH-128 / #165).
+# Does not apply.
+#
+# Trigger: Actions → Terraform Plan → Run workflow → pick environment.
+# Or: gh workflow run terraform-plan.yml --ref <branch> -f environment=test
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Account root to plan'
+        required: true
+        default: 'test'
+        type: choice
+        options:
+          - test
+          - prod
+      pr_number:
+        description: 'Optional PR number to comment the plan summary on'
+        required: false
+        type: string
+
+concurrency:
+  group: terraform-plan-${{ github.event.inputs.environment }}
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: eu-west-3
+  TF_IN_AUTOMATION: 'true'
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+    defaults:
+      run:
+        working-directory: infra/accounts/${{ github.event.inputs.environment }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Show assumed role
+        run: |
+          set -euo pipefail
+          aws sts get-caller-identity
+          ARN="$(aws sts get-caller-identity --query Arn --output text)"
+          ROLE_NAME="${ARN#*assumed-role/}"
+          ROLE_NAME="${ROLE_NAME%%/*}"
+          echo "GHA role name (for grant-gha-terraform-state-access.sh): ${ROLE_NAME}"
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          # Matches account required_version (>= 1.11): import for_each + S3 use_lockfile.
+          terraform_version: '1.11.4'
+          terraform_wrapper: false
+
+      - name: Terraform init
+        run: terraform init -input=false
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan
+        id: plan
+        run: |
+          set -euo pipefail
+          terraform plan -input=false -no-color -out=tfplan | tee plan.txt
+          terraform show -no-color tfplan > plan-full.txt
+          {
+            echo "## Terraform plan (\`${{ github.event.inputs.environment }}\`)"
+            echo ""
+            echo "Ref: \`${{ github.sha }}\` · lock_database_network from tfvars (first plan should be unlocked)."
+            echo ""
+            echo '```'
+            # Keep the summary usable: last 200 lines usually hold the resource ops summary.
+            tail -n 200 plan.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload plan logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan-${{ github.event.inputs.environment }}-${{ github.run_id }}
+          path: |
+            infra/accounts/${{ github.event.inputs.environment }}/plan.txt
+            infra/accounts/${{ github.event.inputs.environment }}/plan-full.txt
+          retention-days: 14
+
+      - name: Comment plan on PR
+        if: ${{ github.event.inputs.pr_number != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.inputs.pr_number }}
+          ENV_NAME: ${{ github.event.inputs.environment }}
+        working-directory: infra/accounts/${{ github.event.inputs.environment }}
+        run: |
+          set -euo pipefail
+          BODY=$(mktemp)
+          {
+            echo "## Terraform plan (\`${ENV_NAME}\`) — first real plan"
+            echo ""
+            echo "From [\`Terraform Plan\` run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) on \`${{ github.sha }}\` (OIDC \`AWS_ROLE_ARN\`, no local profile)."
+            echo ""
+            echo "Gate before lock apply: expect **import** of \`module.rds_public_ingress.aws_vpc_security_group_ingress_rule.rds_public[...]\` only for that rule — no destroy/create of it."
+            echo ""
+            echo '<details><summary>Plan output (tail)</summary>'
+            echo ""
+            echo '```'
+            tail -n 200 plan.txt
+            echo '```'
+            echo ""
+            echo '</details>'
+          } > "$BODY"
+          gh pr comment "$PR" --repo "${{ github.repository }}" --body-file "$BODY"

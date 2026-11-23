@@ -94,18 +94,27 @@ module "vpc" {
   }
 }
 
+module "private_data_plane" {
+  source = "../../modules/private_data_plane"
+
+  project_name               = var.project_name
+  environment                = var.environment
+  aws_region                 = var.aws_region
+  vpc_id                     = module.vpc.vpc_id
+  vpc_cidr_block             = module.vpc.vpc_cidr_block
+  public_subnet_ids          = module.vpc.subnet_ids
+  private_subnet_cidrs       = var.private_subnet_cidrs
+  create_s3_gateway_endpoint = false
+  github_actions_role_name   = var.github_actions_role_name
+}
+
 # Security group for RDS - simple configuration
 resource "aws_security_group" "rds" {
   name_prefix = "${var.project_name}-rds-${var.environment}-"
   vpc_id      = module.vpc.vpc_id
 
-  # Allow all ingress on 5432 - controlled by terraform.tfvars
-  ingress {
-    from_port   = 5432
-    to_port     = 5432
-    protocol    = "tcp"
-    cidr_blocks = var.db_ingress_cidr_blocks
-  }
+  # Ingress is managed by the rules below. Leave this argument unset:
+  # ingress = [] revokes every ingress rule on each apply.
 
   egress {
     from_port   = 0
@@ -118,6 +127,56 @@ resource "aws_security_group" "rds" {
     Name        = "${var.project_name}-rds-${var.environment}"
     Environment = var.environment
   }
+}
+
+module "rds_public_ingress" {
+  source = "../../modules/rds_public_ingress"
+
+  security_group_id = aws_security_group.rds.id
+  cidr_blocks       = var.db_ingress_cidr_blocks
+  locked            = var.lock_database_network
+}
+
+import {
+  for_each = module.rds_public_ingress.adopted_rule_ids
+  to       = module.rds_public_ingress.aws_vpc_security_group_ingress_rule.rds_public[each.key]
+  id       = each.value
+}
+
+resource "terraform_data" "rds_public_ingress_adoption" {
+  lifecycle {
+    precondition {
+      condition     = var.lock_database_network || length(module.rds_public_ingress.duplicate_public_cidrs) == 0
+      error_message = "More than one public 5432 rule matches a configured CIDR. Refusing to guess which sgr- id to adopt."
+    }
+
+    precondition {
+      condition     = var.lock_database_network || length(module.rds_public_ingress.unadopted_rule_ids) == 0
+      error_message = "A public 5432 rule on this security group was not adopted into rds_public. Refusing to create a second one."
+    }
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "rds_from_connector" {
+  count = var.lock_database_network ? 1 : 0
+
+  security_group_id            = aws_security_group.rds.id
+  referenced_security_group_id = module.private_data_plane.connector_security_group_id
+  from_port                    = 5432
+  to_port                      = 5432
+  ip_protocol                  = "tcp"
+  description                  = "App Runner VPC connector"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "rds_from_migration" {
+  count = var.lock_database_network ? 1 : 0
+
+  security_group_id            = aws_security_group.rds.id
+  referenced_security_group_id = module.private_data_plane.migration_security_group_id
+  from_port                    = 5432
+  to_port                      = 5432
+  ip_protocol                  = "tcp"
+  description                  = "In-VPC database tasks"
 }
 
 # DB subnet group
@@ -143,7 +202,8 @@ resource "aws_db_instance" "postgres" {
   db_name                     = var.db_name
   username                    = var.db_username
   password                    = module.db_password.secret_value
-  publicly_accessible         = var.publicly_accessible
+  publicly_accessible         = var.lock_database_network ? false : var.publicly_accessible
+  apply_immediately           = var.apply_db_changes_immediately
   allow_major_version_upgrade = true
 
   vpc_security_group_ids = [aws_security_group.rds.id]
@@ -248,14 +308,17 @@ resource "null_resource" "push_initial_image" {
 # App Runner Service for API
 module "api_app_runner" {
   source     = "../../modules/app_runner_service"
-  depends_on = [aws_db_instance.postgres, null_resource.push_initial_image]
+  depends_on = [aws_db_instance.postgres, null_resource.push_initial_image, module.private_data_plane]
 
-  service_name     = "${var.project_name}-api-${var.environment}"
-  image_identifier = "${module.api_ecr.repository_url}:latest"
-  environment      = var.environment
-  port             = var.app_runner_port
-  cpu              = var.app_runner_cpu
-  memory           = var.app_runner_memory
+  service_name       = "${var.project_name}-api-${var.environment}"
+  image_identifier   = "${module.api_ecr.repository_url}:latest"
+  environment        = var.environment
+  port               = var.app_runner_port
+  cpu                = var.app_runner_cpu
+  memory             = var.app_runner_memory
+  vpc_connector_name = "${var.project_name}-api-${var.environment}"
+  subnet_ids         = module.private_data_plane.private_subnet_ids
+  security_group_ids = [module.private_data_plane.connector_security_group_id]
 
   # S3 access policy for scholar data
   additional_policy_arns = [module.scholar_data_bucket.s3_access_policy_arn]

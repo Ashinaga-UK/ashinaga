@@ -56,7 +56,23 @@ jobs:
         role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
         aws-region: ${{ env.AWS_REGION }}
 
+    - name: Run bootstrap in the VPC
+      id: db_task
+      run: |
+        set +e
+        ./scripts/start-db-task.sh "${{ github.event.inputs.environment }}" bootstrap "${{ github.event.inputs.staff_email }}"
+        status=$?
+        set -e
+        if [ "$status" -eq 0 ]; then
+          echo "ran=codebuild" >> "$GITHUB_OUTPUT"
+        elif [ "$status" -eq 42 ]; then
+          echo "ran=runner" >> "$GITHUB_OUTPUT"
+        else
+          exit "$status"
+        fi
+
     - name: Get database connection
+      if: steps.db_task.outputs.ran == 'runner'
       run: |
         ENVIRONMENT="${{ github.event.inputs.environment }}"
         
@@ -151,6 +167,7 @@ jobs:
         echo "Database user: ${DB_USER}"
 
     - name: Run bootstrap script
+      if: steps.db_task.outputs.ran == 'runner'
       run: |
         cd apps/api
         
